@@ -105,10 +105,18 @@ function acceptsHtml(accept: string | null): boolean {
  */
 export function isNavigation(req: Request): boolean {
   if (req.method !== "GET" && req.method !== "HEAD") return false;
+  return browserHeaders(req);
+}
+
+/** A browser's own headers: `Sec-Fetch-Mode: navigate`, or an `Accept` that lists `text/html`. */
+function browserHeaders(req: Request): boolean {
   if (req.headers.get("sec-fetch-mode")?.toLowerCase() === "navigate")
     return true;
   return acceptsHtml(req.headers.get("accept"));
 }
+
+/** The entries that also take a form `POST` navigation (OIDC Core §3.1.2.1; V5 §12.8 rule 3). */
+const FORM_POST_ENTRIES: readonly string[] = ["authorize"];
 
 /**
  * The friendly refusal for a person who reached an app-sign-in entry of an Identity-off product:
@@ -124,8 +132,10 @@ export async function identityNavigationRedirect(
   rest: readonly string[],
 ): Promise<Response | null> {
   if (product.services.identity?.enabled) return null;
-  if (!IDENTITY_NAVIGATION_ENTRIES.includes(rest.join("/"))) return null;
-  if (!isNavigation(req)) return null;
+  const entry = rest.join("/");
+  if (!IDENTITY_NAVIGATION_ENTRIES.includes(entry)) return null;
+  const formPost = req.method === "POST" && FORM_POST_ENTRIES.includes(entry);
+  if (!(formPost ? browserHeaders(req) : isNavigation(req))) return null;
   const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
   const params = new URLSearchParams({
     product: product.slug,

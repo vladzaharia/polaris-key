@@ -213,6 +213,38 @@
       "title": "Link di accesso scaduto",
       "message": "Questo link di accesso è scaduto. Torna a {product} e ricomincia."
     },
+    "unsupported_response_type": {
+      "title": "Richiesta di accesso non valida",
+      "message": "L'app ha chiesto una risposta di accesso che non supportiamo. Contatta il suo sviluppatore."
+    },
+    "request_not_supported": {
+      "title": "Richiesta di accesso non valida",
+      "message": "L'app ha inviato la richiesta di accesso in una forma che non accettiamo. Contatta il suo sviluppatore."
+    },
+    "request_uri_not_supported": {
+      "title": "Richiesta di accesso non valida",
+      "message": "L'app ha inviato la richiesta di accesso in una forma che non accettiamo. Contatta il suo sviluppatore."
+    },
+    "login_required": {
+      "title": "Accesso obbligatorio",
+      "message": "L'app non è riuscita a farti accedere senza chiedertelo. Accedi per continuare."
+    },
+    "consent_required": {
+      "title": "Approvazione necessaria",
+      "message": "L'app ha bisogno della tua approvazione prima di farti accedere. Accedi per approvare."
+    },
+    "interaction_required": {
+      "title": "Accesso non completato",
+      "message": "L'app non è riuscita a completare l'accesso da sola. Accedi per continuare."
+    },
+    "unauthorized_client": {
+      "title": "Richiesta di accesso non valida",
+      "message": "L'app ha chiesto un tipo di accesso che non può usare. Contatta il suo sviluppatore."
+    },
+    "invalid_token": {
+      "title": "Accesso terminato",
+      "message": "Il tuo accesso a questa app è scaduto o è stato chiuso. Accedi di nuovo."
+    },
     "license_choice_required": {
       "title": "Scegli una licenza",
       "message": "Scegli quale licenza deve usare questo dispositivo, poi continua."

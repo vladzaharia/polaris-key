@@ -2551,6 +2551,38 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_invalid_request_uri_message">このサインインリンクは有効期限が切れました。%1$s に戻って、もう一度始めてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_title">サインインリクエストが無効です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_message">アプリが対応していないサインイン応答を要求しました。開発元にお問い合わせください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_title">サインインリクエストが無効です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_message">アプリが受け付けられない形式でサインインリクエストを送信しました。開発元にお問い合わせください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_title">サインインリクエストが無効です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_message">アプリが受け付けられない形式でサインインリクエストを送信しました。開発元にお問い合わせください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_title">サインインしてください</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_message">アプリは確認なしではサインインできませんでした。続けるにはサインインしてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_title">承認が必要です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_message">アプリがサインインする前にあなたの承認が必要です。サインインして承認してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_title">サインインが完了していません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_message">アプリだけではサインインを完了できませんでした。続けるにはサインインしてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_title">サインインリクエストが無効です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_message">アプリが使用を許可されていないサインイン方式を要求しました。開発元にお問い合わせください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_title">サインインが終了しました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_message">このアプリへのサインインは有効期限が切れたか、終了されました。もう一度サインインしてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">ライセンスを選択</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">このデバイスで使うライセンスを選んでから続行してください。</string>

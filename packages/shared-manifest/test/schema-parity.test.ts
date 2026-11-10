@@ -190,6 +190,30 @@ function base(): Docs {
           },
         },
         nearby: true,
+        // I-21.4: Sign in with <Product>.
+        issuer: { enabled: true },
+        clients: [
+          {
+            key: "forum",
+            name: "Acme Community",
+            developerName: "Example Partner Ltd",
+            type: "web",
+            redirectUris: ["https://forum.example.com/auth/oidc/callback"],
+            postLogoutRedirectUris: ["https://forum.example.com/"],
+            scopes: ["openid", "profile", "email", "pkey:entitlements"],
+            claims: { required: ["name"] },
+          },
+          {
+            key: "desktop",
+            name: "Acme Desktop",
+            type: "native",
+            redirectUris: [
+              "http://127.0.0.1/callback",
+              "com.acme.desktop:/oauth2redirect",
+            ],
+            scopes: ["openid", "offline_access"],
+          },
+        ],
       },
       // CC-02.2: the connect block, every member declared.
       connect: { relay: true, interAccount: false },
@@ -1473,6 +1497,106 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => (p(d).identity.restore = "yes"),
+  },
+  // I-21.4: identity.issuer and identity.clients (plans/I-20.md section 5; V5 section 12.13.2).
+  {
+    code: "invalid_identity_issuer",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.issuer.enabled = "yes"),
+  },
+  {
+    code: "invalid_identity_clients",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.clients[0].secret = "pkeycs_x"),
+  },
+  {
+    code: "invalid_client_key",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.clients[0].key = "Forum"),
+  },
+  {
+    // JSON Schema cannot compare two array items' members.
+    code: "duplicate_client_key",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).identity.clients[1].key = "forum"),
+  },
+  {
+    code: "too_many_clients",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.clients = Array.from({ length: 21 }, (_, i) => ({
+        key: `client-${i}`,
+        name: "Client",
+        type: "web",
+        redirectUris: ["https://c.example.com/cb"],
+        scopes: ["openid"],
+      }))),
+  },
+  {
+    code: "invalid_client_type",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.clients[0].type = "server"),
+  },
+  {
+    code: "invalid_client_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.clients[0].redirectUris = [
+        "https://forum.example.com/cb#frag",
+      ]),
+  },
+  {
+    code: "invalid_client_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.clients[0].redirectUris = [
+        "https://user:pw@forum.example.com/cb",
+      ]),
+  },
+  {
+    code: "invalid_client_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.clients[0].redirectUris = ["http://forum.example.com/cb"]),
+  },
+  {
+    // A loopback or private-use URI is a native client's: the schema cannot condition on `type`.
+    code: "invalid_client_redirect",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) =>
+      (p(d).identity.clients[0].redirectUris = ["http://127.0.0.1/cb"]),
+  },
+  {
+    code: "client_scope_unknown",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.clients[0].scopes = ["profile"]),
+  },
+  {
+    // Which claims a scope delivers is a cross-member rule.
+    code: "client_claim_not_requested",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => {
+      p(d).identity.clients[0].claims = { required: ["picture", "email"] };
+      p(d).identity.clients[0].scopes = ["openid", "email"];
+    },
+  },
+  {
+    code: "issuer_clients_without_issuer",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => delete p(d).identity.issuer,
   },
   {
     code: "google_client_ids_without_server",

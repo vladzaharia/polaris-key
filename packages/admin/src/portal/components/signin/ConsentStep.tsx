@@ -1,23 +1,17 @@
 import * as React from "react";
 import { Cloud, ShieldCheck, UserRound } from "lucide-react";
 import type { AppConsentView } from "@polaris-key/protocol/identity";
-import { Button } from "../../../ui/Button.js";
-import {
-  AUTH_LINK_CLASS,
-  AUTH_METHOD_CLASS,
-  AuthNotice,
-  AuthTitle,
-} from "../../../ui/auth/index.js";
+import { AUTH_LINK_CLASS, AuthNotice } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import { Keep } from "../Keep.js";
 import {
   consentLines,
-  firstName,
   licenseParts,
   type Chosen,
 } from "../../model/signInRequest.js";
 import { cn } from "../../../lib/cn.js";
-import { PersonRow, PRIMARY_CLASS } from "./requestParts.js";
+import { ConsentFoot, ConsentHead } from "./requestParts.js";
+import { useTermsCheck } from "./TermsCheck.js";
 
 /**
  * ConsentStep (SIGN-IN.md §3.8, PX-14a): "Continue to <App> as <first name>?". The chosen licence
@@ -50,26 +44,20 @@ export function ConsentStep({
   error: string | null;
   /** Back to the licence list with the selection kept; null where no choice precedes. */
   onChange: (() => void) | null;
-  onContinue: () => void;
+  /** The terms version shown, when the product's terms are unaccepted. */
+  onContinue: (terms?: string) => void;
   onDeny: () => void;
   onNotYou: () => void;
 }): React.ReactElement {
   const line = licenseParts(chosen, { product, app, device, attach });
   const lines = consentLines(view);
+  const terms = useTermsCheck(view.terms, product);
+  const go = (): void => {
+    if (terms.pass()) onContinue(terms.version);
+  };
   return (
     <>
-      <PersonRow
-        name={view.person.displayName}
-        email={view.person.email}
-        picture={view.person.avatarUrl}
-        onNotYou={onNotYou}
-      />
-      <AuthTitle>
-        {t("signin.consent.title", {
-          app,
-          name: firstName(view.person.displayName, view.person.email),
-        })}
-      </AuthTitle>
+      <ConsentHead person={view.person} app={app} onNotYou={onNotYou} />
       {line ? (
         <section className="space-y-2" aria-labelledby="pk-consent-license">
           <h2
@@ -129,29 +117,14 @@ export function ConsentStep({
           {t("signin.consent.pairwise")}
         </p>
       </section>
-      {error ? <AuthNotice>{error}</AuthNotice> : null}
-      <div className="space-y-3">
-        <Button
-          variant="neutral"
-          size="xl"
-          className={PRIMARY_CLASS}
-          loading={busy === "continue"}
-          aria-disabled={busy === "deny" || undefined}
-          onClick={onContinue}
-        >
-          {t("signin.consent.continue", { app })}
-        </Button>
-        <Button
-          variant="outline"
-          size="xl"
-          className={AUTH_METHOD_CLASS}
-          loading={busy === "deny"}
-          aria-disabled={busy === "continue" || undefined}
-          onClick={onDeny}
-        >
-          {t("signin.consent.deny")}
-        </Button>
-      </div>
+      <ConsentFoot
+        terms={terms.check}
+        error={error}
+        app={app}
+        busy={busy}
+        onContinue={go}
+        onDeny={onDeny}
+      />
     </>
   );
 }

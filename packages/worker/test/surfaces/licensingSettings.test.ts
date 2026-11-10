@@ -742,6 +742,7 @@ describe("the settings API refuses what the registry refuses", () => {
       // CC-07.3: the relay switch, read by the relay ticket route.
       "cloudConnect.relay.enabled",
       // I-09: the identity block's live row-backed settings (claimByKey since ST-14).
+      "identity.issuer.enabled",
       "identity.keyEntry.claimByKey",
       "identity.keyEntry.limit",
       // I-15.2: the native redirect classes.

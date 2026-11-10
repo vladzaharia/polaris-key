@@ -171,6 +171,12 @@ export function corsCoverage(
   };
 }
 
+/**
+ * The internal response header a handler sets to say which origins may read this one answer
+ * (space-separated, empty for none). Only `withCors` reads it, and it is always removed.
+ */
+export const CLIENT_CORS_HEADER = "x-pkey-client-cors";
+
 /** The product's allowlist, from `products.web_origins_json`. */
 export interface CorsProduct {
   webOrigins: readonly string[];
@@ -245,15 +251,24 @@ export function withCors(
   req: Request,
   res: Response,
 ): Response {
-  if (product.webOrigins.length === 0) return res;
+  // I-21.9: the issuer's `token` names who may read ITS answer (a `spa` client's own redirect
+  // origins, or none): that list replaces the product's, and the internal header never leaves.
+  const scoped = res.headers.get(CLIENT_CORS_HEADER);
+  if (product.webOrigins.length === 0 && scoped === null) return res;
   // A fresh Headers, not an in-place edit: a cache hit or an upstream passthrough carries
   // immutable headers in workerd.
   const headers = new Headers(res.headers);
+  headers.delete(CLIENT_CORS_HEADER);
   for (const name of [...headers.keys()]) {
     if (name.toLowerCase().startsWith("access-control-")) headers.delete(name);
   }
   varyOnOrigin(headers);
-  const origin = allowedOrigin(product, req);
+  const origin = allowedOrigin(
+    scoped === null
+      ? product
+      : { webOrigins: scoped.split(" ").filter((o) => isWebOrigin(o)) },
+    req,
+  );
   if (origin !== null) {
     headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Access-Control-Expose-Headers", CORS_EXPOSE_HEADERS);

@@ -250,6 +250,8 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   ),
   "identity.nearby": at("app-sign-in", "Platform sign-in"),
   "identity.restore": at("app-sign-in", "Platform sign-in"),
+  // I-21.4: declared in `.pkey/product` until I-21.14 adds the console page.
+  "identity.issuer.enabled": manifest("product"),
   "identity.oidc": manifest("product"),
   "identity.provisioning": manifest("product"),
   "identity.oidc.syncTierOnSignIn": at("app-sign-in", "Tier sync"),

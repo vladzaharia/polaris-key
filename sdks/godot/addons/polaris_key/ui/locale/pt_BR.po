@@ -6794,6 +6794,86 @@ msgstr "Link de login expirado"
 msgid "core.codes.invalid_request_uri.message"
 msgstr "Este link de login expirou. Volte para {product} e comece de novo."
 
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_response_type.title"
+msgstr "Solicitação de acesso inválida"
+
+#. The app asked for a sign-in response we don't support. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_response_type.message"
+msgstr "O app pediu uma resposta de acesso que não aceitamos. Fale com o desenvolvedor."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_not_supported.title"
+msgstr "Solicitação de acesso inválida"
+
+#. The app sent its sign-in request in a form we don't accept. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_not_supported.message"
+msgstr "O app enviou a solicitação de acesso num formato que não aceitamos. Fale com o desenvolvedor."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_uri_not_supported.title"
+msgstr "Solicitação de acesso inválida"
+
+#. The app sent its sign-in request in a form we don't accept. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_uri_not_supported.message"
+msgstr "O app enviou a solicitação de acesso num formato que não aceitamos. Fale com o desenvolvedor."
+
+#. Sign-in required
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.login_required.title"
+msgstr "Login obrigatório"
+
+#. The app couldn't sign you in without asking. Sign in to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.login_required.message"
+msgstr "O app não conseguiu fazer seu login sem perguntar. Entre para continuar."
+
+#. Approval needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.consent_required.title"
+msgstr "Aprovação necessária"
+
+#. The app needs your approval before it can sign you in. Sign in to approve it.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.consent_required.message"
+msgstr "O app precisa da sua aprovação antes de fazer seu login. Entre para aprovar."
+
+#. Sign-in not finished
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interaction_required.title"
+msgstr "Login não concluído"
+
+#. The app couldn't finish signing you in on its own. Sign in to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interaction_required.message"
+msgstr "O app não conseguiu concluir seu login sozinho. Entre para continuar."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized_client.title"
+msgstr "Solicitação de acesso inválida"
+
+#. The app asked for a sign-in type it isn't allowed to use. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized_client.message"
+msgstr "O app pediu um tipo de acesso que não pode usar. Fale com o desenvolvedor."
+
+#. Sign-in ended
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_token.title"
+msgstr "Acesso encerrado"
+
+#. Your sign-in to this app expired or was ended. Sign in again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_token.message"
+msgstr "Seu acesso a este app expirou ou foi encerrado. Entre de novo."
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"

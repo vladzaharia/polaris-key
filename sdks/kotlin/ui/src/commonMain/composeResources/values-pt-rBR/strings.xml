@@ -2577,6 +2577,38 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_invalid_request_uri_message">Este link de login expirou. Volte para %1$s e comece de novo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_title">Solicitação de acesso inválida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_message">O app pediu uma resposta de acesso que não aceitamos. Fale com o desenvolvedor.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_title">Solicitação de acesso inválida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_message">O app enviou a solicitação de acesso num formato que não aceitamos. Fale com o desenvolvedor.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_title">Solicitação de acesso inválida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_message">O app enviou a solicitação de acesso num formato que não aceitamos. Fale com o desenvolvedor.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_title">Login obrigatório</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_message">O app não conseguiu fazer seu login sem perguntar. Entre para continuar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_title">Aprovação necessária</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_message">O app precisa da sua aprovação antes de fazer seu login. Entre para aprovar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_title">Login não concluído</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_message">O app não conseguiu concluir seu login sozinho. Entre para continuar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_title">Solicitação de acesso inválida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_message">O app pediu um tipo de acesso que não pode usar. Fale com o desenvolvedor.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_title">Acesso encerrado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_message">Seu acesso a este app expirou ou foi encerrado. Entre de novo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Escolha uma licença</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Escolha qual licença este dispositivo usa e continue.</string>

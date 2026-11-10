@@ -20,7 +20,7 @@ import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 import { resolveProductSetting } from "../../core/settings/resolve.js";
-import type { TermsRequirement } from "./accounts/terms.js";
+import { termsAccepted, type TermsRequirement } from "./accounts/terms.js";
 
 /** The registry key (`settings.ts`). */
 export const TERMS_SETTING = "identity.terms";
@@ -69,4 +69,45 @@ export async function signInProduct(
 ): Promise<string | null> {
   if (!raw || !PRODUCT_SLUG_RE.test(raw)) return null;
   return (await identityEnabled(db, raw)) ? raw : null;
+}
+
+/**
+ * The terms gate of a Continue: `accept` is the terms this press must record (the account has not
+ * accepted this version and the card sent the version it was shown), `null` when there is nothing to
+ * record. `ok: false` is `409 terms_required`: terms are in force, not yet accepted, and the press
+ * did not carry the version.
+ */
+export async function termsGate(
+  ctx: { env: Env; db: Db; registry?: SettingsRegistry },
+  accountId: string,
+  product: string,
+  presented: unknown,
+): Promise<{ ok: true; accept: TermsRequirement | null } | { ok: false }> {
+  const terms = await productTerms(ctx, product);
+  if (
+    !terms ||
+    (await termsAccepted(ctx.db, accountId, product, terms.version))
+  )
+    return { ok: true, accept: null };
+  return presented === terms.version
+    ? { ok: true, accept: terms }
+    : { ok: false };
+}
+
+/**
+ * The terms the account still owes, for the consent view: `{version, url}` when the product has terms
+ * in force that this account has not accepted, else `undefined`.
+ */
+export async function termsOwed(
+  ctx: { env: Env; db: Db; registry?: SettingsRegistry },
+  accountId: string,
+  product: string,
+): Promise<{ version: string; url: string } | undefined> {
+  const terms = await productTerms(ctx, product);
+  if (
+    !terms ||
+    (await termsAccepted(ctx.db, accountId, product, terms.version))
+  )
+    return undefined;
+  return { version: terms.version, url: terms.url };
 }

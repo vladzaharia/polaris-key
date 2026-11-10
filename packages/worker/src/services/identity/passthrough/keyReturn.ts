@@ -246,7 +246,7 @@ export async function handleSignInKeyReturn(
   );
   const target = new URL(authz.redirectUri);
   target.searchParams.set("code", code);
-  target.searchParams.set("state", authz.state);
+  if (authz.state !== null) target.searchParams.set("state", authz.state);
   target.searchParams.set("iss", issuerOf(req, product));
   return cardJson({
     redirect: withLoopbackRequest(target.toString(), record, handle),

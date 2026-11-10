@@ -2808,6 +2808,141 @@
       "role": "body",
       "note": "License key step (SIGN-IN.md §3.9), bold lead of the no-entries callout when Continue without an account was refused key_entry_limit (LK-SKIP.5)."
     },
+    "locker.issuer.header": {
+      "value": "{app} wants you to sign in with your {product} account",
+      "role": "body",
+      "note": "Header of the card when a registered client (a website or app that is not the product's own) asks (Sign in with <Product>, I-21.8). Arguments: {app} = the client's name (never translated); {product} = the product's name (never translated)."
+    },
+    "locker.issuer.returnsTo": {
+      "value": "Returns you to {host}",
+      "role": "label",
+      "note": "Where line of the card for a registered client with an https redirect. Arguments: {host} = the host the person returns to (never translated)."
+    },
+    "locker.issuer.returnsDevice": {
+      "value": "Returns you to an app on this device",
+      "role": "label",
+      "note": "Where line of the card for a registered client whose redirect returns to an app on the same device (loopback or private-use scheme)."
+    },
+    "locker.issuer.claim.name": {
+      "value": "Your screen name",
+      "role": "body",
+      "note": "Consent line for a registered client: the profile name."
+    },
+    "locker.issuer.claim.picture": {
+      "value": "Your picture",
+      "role": "body",
+      "note": "Consent line for a registered client: the profile picture."
+    },
+    "locker.issuer.claim.email": {
+      "value": "Your email address",
+      "role": "body",
+      "note": "Consent line for a registered client: the primary email."
+    },
+    "locker.issuer.entitlements": {
+      "value": "Which {product} features you have",
+      "role": "body",
+      "note": "Consent line for a registered client. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.issuer.offline": {
+      "value": "Stay signed in while you're away",
+      "role": "body",
+      "note": "Consent line for a registered client that asked for a refresh token. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.required": {
+      "value": "Required",
+      "role": "label",
+      "note": "Tag on a consent line the person cannot switch off for a registered client."
+    },
+    "locker.issuer.sameForAll": {
+      "value": "Apps you sign in to with {product} get the same name and email, so they can tell it's you.",
+      "role": "body",
+      "note": "Note under the consent lines for a registered client. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.issuer.reauth.body": {
+      "value": "{app} asks you to sign in again.",
+      "role": "body",
+      "note": "Body of the sign in again step. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.reauth.button": {
+      "value": "Sign in as {name}",
+      "role": "button",
+      "note": "Button of the sign in again step."
+    },
+    "locker.issuer.gets": {
+      "value": "{app} asks for",
+      "role": "body",
+      "note": "Heading of the consent lines for a registered client. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.partner": {
+      "value": "{app} is made by {developer}, not {product}. It can tell you're the same person {product}'s apps know.",
+      "role": "body",
+      "note": "Note under the consent lines for a partner client (another developer's registered client). Arguments: {app} = the client's name; {developer} = the client's developer; {product} = the product's name (all never translated)."
+    },
+    "locker.issuer.shared": {
+      "value": "Already shared with {app}:",
+      "role": "body",
+      "note": "Quiet line under the consent lines: label before the items the client already gets from an earlier decision. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.sharedItem.name": {
+      "value": "your screen name",
+      "role": "body",
+      "note": "Item in the already-shared line, lowercase, mid-sentence."
+    },
+    "locker.issuer.sharedItem.picture": {
+      "value": "your picture",
+      "role": "body",
+      "note": "Item in the already-shared line, lowercase, mid-sentence."
+    },
+    "locker.issuer.sharedItem.email": {
+      "value": "your email address",
+      "role": "body",
+      "note": "Item in the already-shared line, lowercase, mid-sentence."
+    },
+    "locker.issuer.share.name": {
+      "value": "Share your screen name with {app}",
+      "role": "label",
+      "note": "Accessible name of the switch for the screen name. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.share.picture": {
+      "value": "Share your picture with {app}",
+      "role": "label",
+      "note": "Accessible name of the switch for the picture. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.share.email": {
+      "value": "Share your email address with {app}",
+      "role": "label",
+      "note": "Accessible name of the switch for the email address. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.wrongAccount.title": {
+      "value": "{app} is expecting another account",
+      "role": "title",
+      "note": "Title when a registered client named another account than the one signed in. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.wrongAccount.body": {
+      "value": "It asked for a different {product} account than the one you're signed in to.",
+      "role": "body",
+      "note": "Body of the another-account step. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.issuer.wrongAccount.button": {
+      "value": "Use another account",
+      "role": "button",
+      "note": "Button of the another-account step: signs out here so the person can sign in with the other account."
+    },
+    "locker.issuer.ended.title": {
+      "value": "{app} can't sign you in right now",
+      "role": "title",
+      "note": "Title when a registered client's request can no longer be completed (the client was switched off). Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.ended.body": {
+      "value": "Go back to {app} and try again.",
+      "role": "body",
+      "note": "Body of the ended step. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.signInWith": {
+      "value": "Sign in with your {product} account.",
+      "role": "body",
+      "note": "Lede of the sign-in step for a registered client's request. Arguments: {product} = the product's name (never translated)."
+    },
     "signin.key.skip": {
       "value": "Continue without an account",
       "role": "button",

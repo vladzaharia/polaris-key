@@ -38,6 +38,15 @@ import { licenseConsentItem } from "./anchor.js";
 import { licenseChoiceView, replaceView } from "./choice.js";
 import { clientRecordFor, cloudSyncOn } from "./client.js";
 import { readSignInRequest } from "./request.js";
+import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
+import { termsOwed } from "../productTerms.js";
+import { getActiveClient } from "../issuer/clientsRepo.js";
+import { registeredConsentView } from "../issuer/consentView.js";
+import { claimsOfScopes, lineScopes } from "../issuer/coverage.js";
+import { getClientGrant } from "../issuer/grantsRepo.js";
+import { needsFreshSignIn, requestCreatedAt } from "../issuer/reauth.js";
+import { registeredClientRecord } from "../issuer/registeredView.js";
+import { issuerServed } from "../issuer/served.js";
 
 /** The profile claims an app may receive (D19); the consent list names all three. */
 export const CONSENT_PROFILE_CLAIMS = ["name", "picture", "email"] as const;
@@ -71,9 +80,36 @@ export async function signInRequestView(
   const live = await liveRequest(env, db, req, handle, now);
   if (!live) return { status: 404 };
   const { record, product } = live;
+  const client = await clientRecordFor(
+    env,
+    db,
+    product,
+    record.kind,
+    now,
+    hooksFor,
+  );
+  // I-21.6: a registered client's request names the client. A client that is gone or disabled
+  // since the request was made leaves no card: the same 404 as an unknown handle.
+  if (record.authz?.registered) {
+    const stored = await getActiveClient(
+      db,
+      product.slug,
+      record.authz.clientId,
+    );
+    if (!stored || !(await issuerServed(db, product.slug)))
+      return { status: 404 };
+    client.registered = await registeredClientRecord(
+      env,
+      db,
+      product,
+      stored,
+      record.authz.redirectUri,
+      client.developerName,
+    );
+  }
   const view: SignInRequestView = {
     request: handle,
-    client: await clientRecordFor(env, db, product, record.kind, now, hooksFor),
+    client,
     deviceLabel: record.deviceLabel,
     userCode: record.userCode,
     expiresAt: record.expiresAt,
@@ -206,12 +242,56 @@ export async function signInConsentView(
   now: number,
   /** The settings registry (ST-04), for the product's entitlement model; absent reads `legacy`. */
   settings?: SettingsRegistry,
+  /** The session's signed sign-in time, to tell a registered client's request it must sign in again. */
+  authTime: number = now,
 ): Promise<Reply> {
   const live = await liveRequest(env, db, req, handle, now);
   if (!live) return { status: 404 };
   const { product } = live;
   const account = await getPortalAccount(db, accountId, now);
   if (!account) return { status: 404 };
+  const authz = live.record.authz;
+  const termsCtx = { env, db, ...(settings ? { registry: settings } : {}) };
+  if (authz?.registered) {
+    // I-21.8 (§12.13.3): a registered client's consent: claims, entitlements, offline; no licence.
+    const client = (await issuerServed(db, product.slug))
+      ? await getActiveClient(db, product.slug, authz.clientId)
+      : null;
+    if (!client) return { status: 404 };
+    const lines = lineScopes(authz.scope);
+    return {
+      status: 200,
+      body: registeredConsentView({
+        handle,
+        person: {
+          displayName: account.display_name,
+          email: account.primary_email,
+          avatarUrl: avatarUrl(account.avatar_key ?? null),
+        },
+        client,
+        scope: authz.scope,
+        scopeHash: await consentScope(claimsOfScopes(authz.scope), lines),
+        grant: await getClientGrant(
+          db,
+          product.slug,
+          account.id,
+          client.clientId,
+        ),
+        reauth: needsFreshSignIn(
+          authz.registered,
+          authTime,
+          now,
+          requestCreatedAt(live.record.expiresAt),
+        ),
+        reask: authz.registered.prompt.consent,
+        wrongAccount:
+          authz.registered.hintSub !== null &&
+          (await existingSubjectFor(db, account.id, product.slug)) !==
+            authz.registered.hintSub,
+        terms: (await termsOwed(termsCtx, account.id, product.slug)) ?? null,
+      }),
+    };
+  }
 
   const { items, scopeHash, firstTime, changed } = await consentState(
     env,
@@ -221,6 +301,7 @@ export async function signInConsentView(
     now,
     settings,
   );
+  const owed = await termsOwed(termsCtx, account.id, product.slug);
   const view: AppConsentView = {
     request: handle,
     person: {
@@ -234,6 +315,7 @@ export async function signInConsentView(
     scopeHash,
     firstTime,
     changed,
+    ...(owed ? { terms: owed } : {}),
   };
   return { status: 200, body: view };
 }

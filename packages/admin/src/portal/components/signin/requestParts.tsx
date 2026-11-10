@@ -2,12 +2,17 @@ import * as React from "react";
 import { RadioGroup } from "radix-ui";
 import { RefreshCw } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
-import { AuthTitle } from "../../../ui/auth/index.js";
+import { AuthNotice, AuthTitle } from "../../../ui/auth/index.js";
 import { portalErrorCopy } from "../../errors.js";
 import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { Avatar } from "../Avatar.js";
-import { AUTH_LINK_CLASS, AUTH_PRIMARY_CLASS } from "../../../ui/auth/parts.js";
+import {
+  AUTH_LINK_CLASS,
+  AUTH_METHOD_CLASS,
+  AUTH_PRIMARY_CLASS,
+} from "../../../ui/auth/parts.js";
+import { firstName } from "../../model/signInRequest.js";
 
 /**
  * The pieces the app card's steps share (PX-14a; SIGN-IN.md §3.6 to §3.9): the person row, a
@@ -19,13 +24,19 @@ import { AUTH_LINK_CLASS, AUTH_PRIMARY_CLASS } from "../../../ui/auth/parts.js";
 /** The step's one primary: the neutral ink button the card uses everywhere. */
 export const PRIMARY_CLASS = AUTH_PRIMARY_CLASS;
 
-/** The request is gone (or never existed): say so and return to the library. */
-export function RequestGone(): React.ReactElement {
+/** The request is gone (or never existed), or its client was switched off: say so and return to the library. */
+export function RequestGone({
+  title = t("signin.request.goneTitle"),
+  body = t("signin.request.gone"),
+}: {
+  title?: string;
+  body?: string;
+}): React.ReactElement {
   return (
     <>
       <div className="space-y-2">
-        <AuthTitle>{t("signin.request.goneTitle")}</AuthTitle>
-        <p className="text-fg-muted">{t("signin.request.gone")}</p>
+        <AuthTitle>{title}</AuthTitle>
+        <p className="text-fg-muted">{body}</p>
       </div>
       <Button asChild variant="neutral" size="xl" className={PRIMARY_CLASS}>
         <a href="/">{t("signin.return.library")}</a>
@@ -72,7 +83,8 @@ export function PersonRow({
   name: string | null;
   email: string | null;
   picture: string | null;
-  onNotYou: () => void;
+  /** Absent where the step's own primary does the same (the account is replaced there). */
+  onNotYou?: () => void;
 }): React.ReactElement {
   return (
     <div
@@ -90,13 +102,15 @@ export function PersonRow({
           </p>
         ) : null}
       </div>
-      <button
-        type="button"
-        onClick={onNotYou}
-        className={cn(AUTH_LINK_CLASS, "shrink-0")}
-      >
-        {t("signin.notYou")}
-      </button>
+      {onNotYou ? (
+        <button
+          type="button"
+          onClick={onNotYou}
+          className={cn(AUTH_LINK_CLASS, "shrink-0")}
+        >
+          {t("signin.notYou")}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -298,5 +312,97 @@ export function DeviceChoiceBody({
         <span className="block text-sm/5 text-fg-muted">{meta}</span>
       </span>
     </span>
+  );
+}
+
+/** The consent steps' top: who is signing in, and "Continue to <App> as <first name>?". */
+export function ConsentHead({
+  person,
+  app,
+  onNotYou,
+}: {
+  person: {
+    displayName: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+  };
+  app: string;
+  onNotYou: () => void;
+}): React.ReactElement {
+  return (
+    <>
+      <PersonRow
+        name={person.displayName}
+        email={person.email}
+        picture={person.avatarUrl}
+        onNotYou={onNotYou}
+      />
+      <AuthTitle>
+        {t("signin.consent.title", {
+          app,
+          name: firstName(person.displayName, person.email),
+        })}
+      </AuthTitle>
+    </>
+  );
+}
+
+/** The consent steps' pair: **Continue to <App>** and **Don't allow**, the same width and height. */
+export function ConsentActions({
+  app,
+  busy,
+  onContinue,
+  onDeny,
+}: {
+  app: string;
+  busy: "continue" | "deny" | null;
+  onContinue: () => void;
+  onDeny: () => void;
+}): React.ReactElement {
+  return (
+    <div className="space-y-3">
+      <Button
+        variant="neutral"
+        size="xl"
+        className={PRIMARY_CLASS}
+        loading={busy === "continue"}
+        aria-disabled={busy === "deny" || undefined}
+        onClick={onContinue}
+      >
+        {t("signin.consent.continue", { app })}
+      </Button>
+      <Button
+        variant="outline"
+        size="xl"
+        className={AUTH_METHOD_CLASS}
+        loading={busy === "deny"}
+        aria-disabled={busy === "continue" || undefined}
+        onClick={onDeny}
+      >
+        {t("signin.consent.deny")}
+      </Button>
+    </div>
+  );
+}
+
+/** What closes a consent step: the terms check, a refusal, then Continue and Don't allow. */
+export function ConsentFoot({
+  terms,
+  error,
+  ...actions
+}: {
+  terms: React.ReactNode;
+  error: string | null;
+  app: string;
+  busy: "continue" | "deny" | null;
+  onContinue: () => void;
+  onDeny: () => void;
+}): React.ReactElement {
+  return (
+    <>
+      {terms}
+      {error ? <AuthNotice>{error}</AuthNotice> : null}
+      <ConsentActions {...actions} />
+    </>
   );
 }

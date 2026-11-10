@@ -415,6 +415,109 @@ describe("the identity block (I-09, plans/I-27.md §3)", () => {
     );
   });
 
+  it("checks identity.issuer and identity.clients (I-21.4)", () => {
+    const client = (over: Record<string, unknown> = {}) => ({
+      key: "forum",
+      name: "Forum",
+      type: "web",
+      redirectUris: ["https://forum.example.com/cb"],
+      scopes: ["openid", "profile"],
+      ...over,
+    });
+    const errs = (clients: unknown, issuer: unknown = { enabled: true }) =>
+      codes(validate({ identity: { issuer, clients } })).errors;
+    expect(errs([client()])).toEqual([]);
+    expect(
+      codes(validate({ identity: { clients: [client()] } })).errors,
+    ).toEqual(["issuer_clients_without_issuer"]);
+    // Redirect classes: loopback and private-use schemes are for native clients only.
+    const native = (uris: string[]) =>
+      errs([client({ type: "native", redirectUris: uris })]);
+    expect(
+      native(["http://127.0.0.1/cb", "http://[::1]/cb", "com.acme.app:/cb"]),
+    ).toEqual([]);
+    expect(native(["http://127.0.0.1:8080/cb"])).toEqual([
+      "invalid_client_redirect",
+    ]);
+    expect(native(["http://localhost/cb"])).toEqual([
+      "invalid_client_redirect",
+    ]);
+    expect(native(["locker.polaris.app:/cb"])).toEqual([
+      "invalid_client_redirect",
+    ]);
+    expect(native(["acme:/cb"])).toEqual(["invalid_client_redirect"]);
+    expect(errs([client({ redirectUris: ["http://127.0.0.1/cb"] })])).toEqual([
+      "invalid_client_redirect",
+    ]);
+    for (const bad of [
+      "https://user:pw@x.example.com/cb",
+      "https://x.example.com/cb#f",
+      "https://x.example.com/*",
+      "http://x.example.com/cb",
+    ])
+      expect(errs([client({ redirectUris: [bad] })])).toEqual([
+        "invalid_client_redirect",
+      ]);
+    expect(errs([client({ redirectUris: [] })])).toEqual([
+      "invalid_client_redirect",
+    ]);
+    expect(errs([client({ scopes: ["profile"] })])).toEqual([
+      "client_scope_unknown",
+    ]);
+    expect(errs([client({ scopes: ["openid", "pkey:licenses"] })])).toEqual([
+      "client_scope_unknown",
+    ]);
+    expect(errs([client({ claims: { required: ["email"] } })])).toEqual([
+      "client_claim_not_requested",
+    ]);
+    expect(errs([client(), client()])).toEqual(["duplicate_client_key"]);
+    expect(errs([client({ key: "A" })])).toEqual(["invalid_client_key"]);
+    expect(errs([client({ type: "server" })])).toEqual(["invalid_client_type"]);
+    expect(errs([client({ secret: "x" })])).toEqual([
+      "invalid_identity_clients",
+    ]);
+    expect(errs("forum")).toEqual(["invalid_identity_clients"]);
+    expect(errs([client()], { enabled: "yes" })).toEqual([
+      "invalid_identity_issuer",
+      "issuer_clients_without_issuer",
+    ]);
+  });
+
+  it("normalizes identity.issuer and identity.clients", () => {
+    const r = parseManifest({
+      product: JSON.stringify({
+        ...PRODUCT,
+        ...IDENTITY_ON,
+        identity: {
+          issuer: { enabled: true },
+          clients: [
+            {
+              key: "forum",
+              name: "Forum",
+              type: "spa",
+              redirectUris: ["https://f.example.com/cb"],
+              scopes: ["openid"],
+            },
+          ],
+        },
+      }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+    if (!r.ok) throw new Error(r.errors.join("\n"));
+    expect(r.manifest.identity?.issuer).toEqual({ enabled: true });
+    expect(r.manifest.identity?.clients).toEqual([
+      {
+        key: "forum",
+        name: "Forum",
+        type: "spa",
+        redirectUris: ["https://f.example.com/cb"],
+        postLogoutRedirectUris: [],
+        scopes: ["openid"],
+        claimsRequired: [],
+      },
+    ]);
+  });
+
   it("checks gameCenter and playGames (I-14.2)", () => {
     const psi = {
       apple: { teamId: "ABCDE12345" },

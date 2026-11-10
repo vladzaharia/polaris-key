@@ -10,6 +10,12 @@ import {
   type Sealed,
 } from "../../../src/platform/keyvault.js";
 import { makeTestDb } from "../../helpers.js";
+import { enableIssuer } from "../../services/identity/issuer/issuerHelpers.js";
+import {
+  ensureIssuerKeys,
+  issuerJwks,
+  signIssuerJwt,
+} from "../../../src/services/identity/issuer/keys.js";
 import { KvMock } from "../../kvMock.js";
 import {
   makeEnv,
@@ -634,6 +640,47 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
     const sweep = await kek(env, db, "POST");
     expect(sweep.status).toBe(200);
     expect(sweep.body).toMatchObject({ resealed: 0, failed: 0, remaining: 0 });
+  });
+
+  it("re-seals an issuer signing key, and the product still signs afterwards", async () => {
+    const { db, kv } = await seedSealedRows();
+    const old = kekAdminEnv(kv, { PLATFORM_KEK: KEK_OLD });
+    await enableIssuer(db, "djdl");
+    const kid = await ensureIssuerKeys(old, db, "djdl", NOW);
+    const jwksBefore = await issuerJwks(db, "djdl");
+    const both = { default: KEK_OLD, k2: KEK_NEW };
+    const promoted = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify(both),
+      PLATFORM_KEK_ACTIVE: "k2",
+    });
+    const status = await kek(promoted, db, "GET");
+    expect(status.body).toMatchObject({ remaining: 5, unopenable: 0 });
+    expect(
+      (status.body.counts as unknown as Record<string, Record<string, number>>)
+        .issuerKeys,
+    ).toEqual({ default: 1 });
+    const sweep = await kek(promoted, db, "POST");
+    expect(sweep.body).toMatchObject({ resealed: 5, failed: 0, remaining: 0 });
+    const row = (await db.first<{ sealed: string }>(
+      "SELECT sealed FROM identity_issuer_keys WHERE kid = ?",
+      kid,
+    ))!;
+    expect(JSON.parse(row.sealed)).toMatchObject({ kekId: "k2" });
+    // The old KEK is no longer needed: only k2 opens, and signing still works.
+    const retired = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+    });
+    const jwt = await signIssuerJwt(
+      retired,
+      db,
+      "djdl",
+      "JWT",
+      { sub: "s" },
+      NOW,
+    );
+    expect(jwt.split(".")).toHaveLength(3);
+    expect(await issuerJwks(db, "djdl")).toEqual(jwksBefore);
   });
 
   it("walks a full rotation with the platform serving throughout", async () => {

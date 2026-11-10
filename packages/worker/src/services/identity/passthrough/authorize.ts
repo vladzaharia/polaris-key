@@ -40,6 +40,7 @@ import type { Env } from "../../../platform/env.js";
 import type { Product } from "../../../core/products.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { appSecurityHeaders } from "../../../core/securityHeaders.js";
+import { readBodyText } from "../../../core/cappedBody.js";
 import { ErrorCode, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { strictEmail } from "../../../core/strictEmail.js";
@@ -55,6 +56,11 @@ import {
   type NativeRequestInfo,
 } from "./request.js";
 import { readPushed } from "./pushedStore.js";
+import { CLIENT_ID_PATTERN } from "@polaris-key/protocol/identity";
+import {
+  authorizeRegistered,
+  registeredErrorRedirect,
+} from "../issuer/authorize.js";
 import { redirectPathsOf, validateRedirectUri } from "./redirectUri.js";
 
 /** `authorize` is a navigation that writes one record: 60 a minute per client network. */
@@ -66,6 +72,8 @@ export const AUTHORIZE_RATE = {
 
 /** The longest `nonce` kept (RFC 9207 / OIDC practice; I-21 reads it). */
 export const NONCE_MAX_LENGTH = 255;
+
+const CLIENT_ID_RE = new RegExp(CLIENT_ID_PATTERN);
 
 /** S256 of a verifier is 32 bytes: always 43 base64url characters. */
 const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;
@@ -232,6 +240,26 @@ export async function buildAuthz(
   };
 }
 
+/** The largest form body `authorize` reads: a request is a few hundred bytes. */
+const AUTHORIZE_FORM_CAP = 8 * 1024;
+
+/**
+ * The parameters of a form `POST` to `authorize`: `application/x-www-form-urlencoded` only, at most
+ * {@link AUTHORIZE_FORM_CAP} bytes. `null` for another content type, an over-long body or an
+ * unreadable one.
+ */
+async function readAuthorizeForm(
+  req: Request,
+): Promise<URLSearchParams | null> {
+  const type = req.headers.get("content-type")?.split(";")[0]?.trim();
+  if (type?.toLowerCase() !== "application/x-www-form-urlencoded") return null;
+  try {
+    return new URLSearchParams(await readBodyText(req, AUTHORIZE_FORM_CAP));
+  } catch {
+    return null;
+  }
+}
+
 export async function handleAuthorize(ctx: {
   req: Request;
   env: Env;
@@ -242,7 +270,7 @@ export async function handleAuthorize(ctx: {
   hooks?: ServiceHooks;
 }): Promise<Response> {
   const { req, env, db, product, now } = ctx;
-  if (req.method !== "GET") return methodNotAllowed();
+  if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
   if (
     !(await rateLimitOk(
       env,
@@ -257,11 +285,27 @@ export async function handleAuthorize(ctx: {
       body: "<p>Wait a minute, then try again.</p>",
     });
 
-  const params = new URL(req.url).searchParams;
+  // A form `POST` reads its parameters from the body alone (OIDC Core §3.1.2.1): the query string
+  // is ignored, so a parameter cannot be smuggled in beside the form.
+  let params: URLSearchParams;
+  if (req.method === "POST") {
+    const form = await readAuthorizeForm(req);
+    if (form === null)
+      return cardPage(400, {
+        title: "Sign-in request not understood",
+        heading: "Sign-in request not understood",
+        body: "<p>Go back to the app and try again.</p>",
+      });
+    params = form;
+  } else params = new URL(req.url).searchParams;
 
   // 1. The two values a redirect depends on. Nothing redirects until both are valid.
   const clientId = single(params, "client_id");
-  if (clientId !== product.slug)
+  const registeredId =
+    typeof clientId === "string" && CLIENT_ID_RE.test(clientId)
+      ? clientId
+      : null;
+  if (clientId !== product.slug && registeredId === null)
     return refusalPage(ctx, 401, ErrorCode.InvalidClient);
   const issuer = issuerOf(req, product);
 
@@ -271,7 +315,23 @@ export async function handleAuthorize(ctx: {
   let native: NativeRequestInfo | undefined;
   let deviceLabel: string | null = null;
   let reqOrigin: string | null;
-  if (params.has("request_uri")) {
+  if (registeredId !== null) {
+    // I-21.6 (§12.13.3): a registered client. Its own checks, its own redirect URI classes.
+    const reg = await authorizeRegistered(
+      { db, product, issuer },
+      params,
+      registeredId,
+      (status, code) => refusalPage(ctx, status, code),
+    );
+    if (!reg.ok) return reg.response;
+    kind = "web";
+    redirectUri = reg.redirectUri;
+    authz = reg.authz;
+    // Only an `https` redirect names an origin; a loopback or private-use URI returns to the device.
+    reqOrigin = redirectUri.startsWith("https://")
+      ? new URL(redirectUri).origin
+      : null;
+  } else if (params.has("request_uri")) {
     // §12.12: a pushed request replaces the whole parameter set. It is resolved first, and an
     // unknown, expired, malformed or already taken one never redirects.
     const uri = single(params, "request_uri");
@@ -330,7 +390,9 @@ export async function handleAuthorize(ctx: {
     authz = built.authz;
   }
   const fail = (error: AuthorizeRedirectError): Response =>
-    errorRedirect(redirectUri, issuer, error, authz.state);
+    authz.registered
+      ? registeredErrorRedirect(redirectUri, issuer, error, authz.state)
+      : errorRedirect(redirectUri, issuer, error, authz.state);
 
   // The card lives on the customer host once `CUSTOMER_ORIGIN` is usable (LK-04): the binder
   // cannot be set from here, so the redirect goes through the bind hop.

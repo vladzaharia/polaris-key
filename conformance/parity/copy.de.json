@@ -213,6 +213,38 @@
       "title": "Anmeldelink abgelaufen",
       "message": "Dieser Anmeldelink ist abgelaufen. Gehen Sie zurück zu {product} und beginnen Sie erneut."
     },
+    "unsupported_response_type": {
+      "title": "Anmeldeanfrage ungültig",
+      "message": "Die App hat eine Anmeldeantwort angefragt, die wir nicht unterstützen. Wenden Sie sich an den Entwickler."
+    },
+    "request_not_supported": {
+      "title": "Anmeldeanfrage ungültig",
+      "message": "Die App hat ihre Anmeldeanfrage in einer Form gesendet, die wir nicht annehmen. Wenden Sie sich an den Entwickler."
+    },
+    "request_uri_not_supported": {
+      "title": "Anmeldeanfrage ungültig",
+      "message": "Die App hat ihre Anmeldeanfrage in einer Form gesendet, die wir nicht annehmen. Wenden Sie sich an den Entwickler."
+    },
+    "login_required": {
+      "title": "Anmeldung erforderlich",
+      "message": "Die App konnte Sie nicht ohne Rückfrage anmelden. Melden Sie sich an, um fortzufahren."
+    },
+    "consent_required": {
+      "title": "Zustimmung erforderlich",
+      "message": "Die App braucht Ihre Zustimmung, bevor sie Sie anmelden kann. Melden Sie sich an, um zuzustimmen."
+    },
+    "interaction_required": {
+      "title": "Anmeldung nicht abgeschlossen",
+      "message": "Die App konnte die Anmeldung nicht allein abschließen. Melden Sie sich an, um fortzufahren."
+    },
+    "unauthorized_client": {
+      "title": "Anmeldeanfrage ungültig",
+      "message": "Die App hat eine Anmeldeart angefragt, die sie nicht verwenden darf. Wenden Sie sich an den Entwickler."
+    },
+    "invalid_token": {
+      "title": "Anmeldung beendet",
+      "message": "Ihre Anmeldung bei dieser App ist abgelaufen oder wurde beendet. Melden Sie sich erneut an."
+    },
     "license_choice_required": {
       "title": "Lizenz wählen",
       "message": "Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort."

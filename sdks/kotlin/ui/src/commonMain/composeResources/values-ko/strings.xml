@@ -2551,6 +2551,38 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_invalid_request_uri_message">이 로그인 링크가 만료되었습니다. %1$s(으)로 돌아가 다시 시작하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_title">잘못된 로그인 요청</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_message">앱에서 지원하지 않는 로그인 응답을 요청했어요. 개발자에게 문의하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_title">잘못된 로그인 요청</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_message">앱에서 받을 수 없는 형식으로 로그인 요청을 보냈어요. 개발자에게 문의하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_title">잘못된 로그인 요청</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_message">앱에서 받을 수 없는 형식으로 로그인 요청을 보냈어요. 개발자에게 문의하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_title">로그인 필요</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_message">앱이 묻지 않고는 로그인할 수 없었어요. 계속하려면 로그인하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_title">승인 필요</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_message">앱이 로그인하기 전에 승인이 필요해요. 로그인해서 승인하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_title">로그인 미완료</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_message">앱이 혼자서 로그인을 완료할 수 없었어요. 계속하려면 로그인하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_title">잘못된 로그인 요청</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_message">앱에서 사용할 수 없는 로그인 방식을 요청했어요. 개발자에게 문의하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_title">로그인 종료됨</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_message">이 앱의 로그인이 만료되었거나 종료되었어요. 다시 로그인하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">라이선스 선택</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">이 기기에서 사용할 라이선스를 선택한 다음 계속하세요.</string>

@@ -835,6 +835,15 @@ const SEALED_TABLES = [
     kind: "notify-destination",
     label: "notifyDestinations",
   },
+  // I-21.3: a product's RSA issuer private keys. Re-sealed byte for byte under the same AAD
+  // (`pkey:v2:<product>:issuer-signing-key:<kid>`); the sweep never parses the plaintext.
+  {
+    table: "identity_issuer_keys",
+    idColumn: "kid",
+    blobColumn: "sealed",
+    kind: "issuer-signing-key",
+    label: "issuerKeys",
+  },
 ] as const;
 
 /**

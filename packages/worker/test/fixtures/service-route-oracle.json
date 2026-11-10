@@ -8125,6 +8125,103 @@
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"
   },
+  "GET /djdl/identity/.well-known/openid-configuration": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "HEAD /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST+body /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS+body /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
   "GET /djdl/identity/attach": {
     "status": 405,
     "headers": {
@@ -9231,6 +9328,103 @@
     "cookies": [],
     "body": "18:e3933184560739b7"
   },
+  "GET /djdl/identity/jwks": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "HEAD /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST+body /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS+body /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
   "GET /djdl/identity/link": {
     "status": 400,
     "headers": {
@@ -10294,6 +10488,101 @@
     "body": "0:e3b0c44298fc1c14"
   },
   "OPTIONS+body /djdl/identity/subject": {
+    "status": 204,
+    "headers": {},
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "GET /djdl/identity/userinfo": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "HEAD /djdl/identity/userinfo": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/userinfo": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "POST+body /djdl/identity/userinfo": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PUT /djdl/identity/userinfo": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/userinfo": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/userinfo": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/userinfo": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/userinfo": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/identity/userinfo": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/identity/userinfo": {
+    "status": 204,
+    "headers": {},
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "OPTIONS+body /djdl/identity/userinfo": {
     "status": 204,
     "headers": {},
     "cookies": [],

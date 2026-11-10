@@ -2564,6 +2564,38 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_invalid_request_uri_message">This sign-in link has expired. Go back to %1$s and start again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_title">Sign-in request invalid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_message">The app asked for a sign-in response we don't support. Contact its developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_title">Sign-in request invalid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_message">The app sent its sign-in request in a form we don't accept. Contact its developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_title">Sign-in request invalid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_message">The app sent its sign-in request in a form we don't accept. Contact its developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_title">Sign-in required</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_message">The app couldn't sign you in without asking. Sign in to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_title">Approval needed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_message">The app needs your approval before it can sign you in. Sign in to approve it.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_title">Sign-in not finished</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_message">The app couldn't finish signing you in on its own. Sign in to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_title">Sign-in request invalid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_message">The app asked for a sign-in type it isn't allowed to use. Contact its developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_title">Sign-in ended</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_message">Your sign-in to this app expired or was ended. Sign in again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Choose a license</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Choose which license this device uses, then continue.</string>

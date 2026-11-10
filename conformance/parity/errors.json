@@ -271,37 +271,85 @@
       "code": "invalid_request",
       "kind": "wire",
       "service": "identity",
-      "description": "400 from POST /<p>/identity/token (flat RFC 6749 body): the request is malformed, a parameter is missing or repeated, or the body is not form-encoded. On the token-exchange grant also an unknown `subject_token_type`, or a Game Center or Play Games type while the launch gate `launch.gameSignIn` is off (WIRE-CONTRACT-V5 §12.11.7). On GET /<p>/identity/authorize it travels only in the redirect's `error` query once client_id and redirect_uri are valid (I-08)."
+      "description": "400 from POST /<p>/identity/token (flat RFC 6749 body): the request is malformed, a parameter is missing or repeated, or the body is not form-encoded. On the token-exchange grant also an unknown `subject_token_type`, or a Game Center or Play Games type while the launch gate `launch.gameSignIn` is off (WIRE-CONTRACT-V5 §12.11.7). On GET /<p>/identity/authorize it travels only in the redirect's `error` query once client_id and redirect_uri are valid (I-08). The same for a registered client on `authorize`, `token`, `userinfo` and `revoke`, and the branded page of `end-session` (WIRE-CONTRACT-V5 §12.13; I-21)."
     },
     {
       "code": "invalid_client",
       "kind": "wire",
       "service": "identity",
-      "description": "401 from POST /<p>/identity/token (flat), and the card page for GET /<p>/identity/authorize: client_id is not the product's slug. Layer 1 has one public client per product (I-08; I-21 adds registered clients)."
+      "description": "401 from POST /<p>/identity/token and /revoke (flat), and the branded page for /<p>/identity/authorize and /end-session: client_id is neither the product's slug nor an active registered client while the product's issuer is on, or a registered client's authentication failed (WIRE-CONTRACT-V5 §12.4, §12.13.2; I-08, I-21)."
     },
     {
       "code": "invalid_grant",
       "kind": "wire",
       "service": "identity",
-      "description": "400 from POST /<p>/identity/token (flat): the authorization code is unknown, expired, already used, or does not match the PKCE verifier, client_id or redirect_uri. A mismatch consumes the code (I-08). On the token-exchange grant, the one answer for a refused subject token, including a Game Center signature or a Play Games server auth code (WIRE-CONTRACT-V5 §12.11.7)."
+      "description": "400 from POST /<p>/identity/token (flat): the authorization code is unknown, expired, already used, or does not match the PKCE verifier, client_id or redirect_uri. A mismatch consumes the code (I-08). On the token-exchange grant, the one answer for a refused subject token, including a Game Center signature or a Play Games server auth code (WIRE-CONTRACT-V5 §12.11.7), and on the device exchange a device token that is not the caller's or a device with no sign-in (§12.13.10). For a registered client also a refresh token that is unknown, expired, revoked, another client's or already rotated (a rotated one revokes its family), and a grant, client, account or issuer that is gone (§12.13.4, §12.13.7; I-21)."
     },
     {
       "code": "unsupported_grant_type",
       "kind": "wire",
       "service": "identity",
-      "description": "400 from POST /<p>/identity/token (flat): grant_type is not authorization_code (token exchange is I-13, refresh is I-21)."
+      "description": "400 from POST /<p>/identity/token (flat): grant_type is none the endpoint serves, which are authorization_code, the token-exchange grants (I-13, I-21), the restore grant (I-49) and, for a registered client only, refresh_token (I-21). `client_credentials` answers it until U-16, and so does the product's own client sending `refresh_token` (WIRE-CONTRACT-V5 §12.5, §12.13.4)."
     },
     {
       "code": "invalid_scope",
       "kind": "wire",
       "service": "identity",
-      "description": "400 from POST /<p>/identity/token (flat) and in the authorize redirect's `error` query: the scope names `openid` (not served until I-21) or asks for nothing this product grants (I-08)."
+      "description": "400 from POST /<p>/identity/token (flat) and in the authorize redirect's `error` query: the scope names `openid` for the product's own client (only a registered client is served it) or asks for nothing this product grants (I-08). For a registered client, a request without `openid` or a refresh that widens the granted scope (WIRE-CONTRACT-V5 §12.13.3, §12.13.4; I-21)."
     },
     {
       "code": "redirect_uri_mismatch",
       "kind": "wire",
       "service": "identity",
-      "description": "400, the card page only, never a redirect: GET /<p>/identity/authorize was given a redirect_uri whose origin is not in the product's web origins or whose path is not in identity.redirectPaths, both matched exactly (I-08)."
+      "description": "400, the card page only, never a redirect: GET /<p>/identity/authorize was given a redirect_uri whose origin is not in the product's web origins or whose path is not in identity.redirectPaths, both matched exactly (I-08); for a registered client, one that matches none of its registered redirect URIs (WIRE-CONTRACT-V5 §12.13.2; I-21)."
+    },
+    {
+      "code": "unsupported_response_type",
+      "kind": "wire",
+      "service": "identity",
+      "description": "In the authorize redirect's `error` query to a registered client (RFC 6749 §4.1.2.1): `response_type` is present and is not `code` (WIRE-CONTRACT-V5 §12.13.3; I-21)."
+    },
+    {
+      "code": "request_not_supported",
+      "kind": "wire",
+      "service": "identity",
+      "description": "In the authorize redirect's `error` query to a registered client: the request carried a `request` object (OpenID Connect Core §6), which the issuer does not accept (WIRE-CONTRACT-V5 §12.13.3; I-21)."
+    },
+    {
+      "code": "request_uri_not_supported",
+      "kind": "wire",
+      "service": "identity",
+      "description": "In the authorize redirect's `error` query to a registered client: the request carried `request_uri`. A pushed request is the product's own client's (WIRE-CONTRACT-V5 §12.12, §12.13.3; I-21)."
+    },
+    {
+      "code": "login_required",
+      "kind": "wire",
+      "service": "identity",
+      "description": "In the authorize redirect's `error` query to a registered client (OpenID Connect Core §3.1.2.6): `prompt=none` found no Polaris Locker session, or one older than `max_age`; or `id_token_hint` names an account other than the one signed in (WIRE-CONTRACT-V5 §12.13.3; I-21)."
+    },
+    {
+      "code": "consent_required",
+      "kind": "wire",
+      "service": "identity",
+      "description": "In the authorize redirect's `error` query to a registered client: `prompt=none` found a Polaris Locker session but no client grant that covers what the request asks (WIRE-CONTRACT-V5 §12.13.3, §12.13.6; I-21)."
+    },
+    {
+      "code": "interaction_required",
+      "kind": "wire",
+      "service": "identity",
+      "description": "In the authorize redirect's `error` query to a registered client: `prompt=none` found a session and a covering grant, but the sign-in still needs the person, such as accepting the product's terms (WIRE-CONTRACT-V5 §12.13.3; I-21)."
+    },
+    {
+      "code": "unauthorized_client",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from POST /<p>/identity/token and /revoke (flat): the client is known but may not do this. A registered client sent a grant only the product's own client may use (token exchange, restore), or asked `revoke` to end another client's token (WIRE-CONTRACT-V5 §12.13.4, §12.13.7; I-21)."
+    },
+    {
+      "code": "invalid_token",
+      "kind": "wire",
+      "service": "identity",
+      "description": "401 from /<p>/identity/userinfo with `WWW-Authenticate: Bearer error=\"invalid_token\"` (RFC 6750 §3.1): the access token is malformed, expired, not this product's, not an `at+jwt` or without `openid`, or its client grant, client, account or the issuer is gone (WIRE-CONTRACT-V5 §12.13.8; I-21)."
     },
     {
       "code": "invalid_request_uri",
@@ -925,13 +973,13 @@
       "code": "connect-unavailable",
       "kind": "client",
       "service": "connect",
-      "description": "Cloud Connect cannot run here: the product has it off, or this SDK has no Connect on this platform. A host hides its Connect surface and does not retry (WIRE-CONTRACT-V5 \u00a715)."
+      "description": "Cloud Connect cannot run here: the product has it off, or this SDK has no Connect on this platform. A host hides its Connect surface and does not retry (WIRE-CONTRACT-V5 §15)."
     },
     {
       "code": "peer-cert-invalid",
       "kind": "client",
       "service": "connect",
-      "description": "A device certificate or roster failed verification, or a roster is stale or belongs to another account or product (WIRE-CONTRACT-V5 \u00a715.2, \u00a715.3). Nothing is trusted; a host fetches a fresh one."
+      "description": "A device certificate or roster failed verification, or a roster is stale or belongs to another account or product (WIRE-CONTRACT-V5 §15.2, §15.3). Nothing is trusted; a host fetches a fresh one."
     },
     {
       "code": "nearby-permission-denied",
@@ -961,7 +1009,7 @@
       "code": "transfer-cancelled",
       "kind": "client",
       "service": "connect",
-      "description": "A Direct Transfer ended without delivering the content. `reason` is the `CANCEL` reason sent or received: `declined`, `cancelled`, `hash`, `size`, `category`, `busy`, `quota` or `timeout`; `cancelled` also when the host cancelled (WIRE-CONTRACT-V5 \u00a715.11). A host shows the reason and may offer again."
+      "description": "A Direct Transfer ended without delivering the content. `reason` is the `CANCEL` reason sent or received: `declined`, `cancelled`, `hash`, `size`, `category`, `busy`, `quota` or `timeout`; `cancelled` also when the host cancelled (WIRE-CONTRACT-V5 §15.11). A host shows the reason and may offer again."
     },
     {
       "code": "link-unknown",

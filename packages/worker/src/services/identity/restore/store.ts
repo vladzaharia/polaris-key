@@ -35,7 +35,8 @@ import {
   appendAudit,
   type AuditActor,
 } from "../../../core/audit.js";
-import type { Db, DbStatement } from "../../../db/types.js";
+import type { Db } from "../../../db/types.js";
+import { batchCounts } from "../../../db/batch.js";
 import type { Env } from "../../../platform/env.js";
 
 /** `rk_` + 22 base64url characters: the row's public id. */
@@ -104,7 +105,7 @@ export async function mintRestoreKey(
   const secret = `rs_${randomToken(32)}`;
   const secretHash = await hashRestoreSecret(env, secret);
   const { product, deviceId, subject, boundSubject, now } = args;
-  const changed = await runCounted(db, [
+  const changed = await batchCounts(db, [
     {
       sql: "DELETE FROM identity_restore_keys WHERE product = ? AND device_id = ?",
       params: [product, deviceId],
@@ -252,7 +253,7 @@ export async function revokeDeviceRestore(
   product: string,
   deviceId: string,
 ): Promise<number> {
-  const [keys] = (await runCounted(db, [
+  const [keys] = (await batchCounts(db, [
     {
       sql: "DELETE FROM identity_restore_keys WHERE product = ? AND device_id = ?",
       params: [product, deviceId],
@@ -274,7 +275,7 @@ export async function revokeSubjectRestore(
   product: string,
   subject: string,
 ): Promise<number> {
-  const [keys] = (await runCounted(db, [
+  const [keys] = (await batchCounts(db, [
     {
       sql: "DELETE FROM identity_restore_keys WHERE product = ? AND subject = ?",
       params: [product, subject],
@@ -305,7 +306,7 @@ export async function purgeProductRestore(
     skipEmpty?: boolean;
   },
 ): Promise<number> {
-  const [keys] = (await runCounted(db, [
+  const [keys] = (await batchCounts(db, [
     {
       sql: "DELETE FROM identity_restore_keys WHERE product = ?",
       params: [product],
@@ -398,15 +399,4 @@ export async function sweepRestoreKeys(
     limit,
   );
   return keys + origins;
-}
-
-/** Each statement's changed-row count, in order (one atomic batch on the real engines). */
-async function runCounted(
-  db: Db,
-  statements: DbStatement[],
-): Promise<number[]> {
-  if (db.batchChanges) return db.batchChanges(statements);
-  const out: number[] = [];
-  for (const s of statements) out.push(await db.runChanges(s.sql, ...s.params));
-  return out;
 }

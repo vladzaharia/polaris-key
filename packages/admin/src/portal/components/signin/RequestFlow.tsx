@@ -22,6 +22,7 @@ import {
   firstName,
   navigation,
   safeRedirect,
+  stashReauthEmail,
   waitText,
   thisDeviceName,
   thisDeviceTitle,
@@ -36,6 +37,11 @@ import {
 import { AuthLockup } from "../Lockup.js";
 import { LegalNav } from "./LegalNav.js";
 import { ConsentStep } from "./ConsentStep.js";
+import {
+  ClientConsentStep,
+  ClientEnded,
+  SessionStep,
+} from "./ClientConsentStep.js";
 import { LicenseChoiceStep } from "./LicenseChoiceStep.js";
 import { ReplaceDeviceStep } from "./ReplaceDeviceStep.js";
 import { ReplacedDone } from "./ReplacedDone.js";
@@ -49,6 +55,7 @@ import {
 } from "./requestParts.js";
 import { qk } from "../../queries.js";
 import { mutate } from "../../mutations.js";
+import { signOutExpected } from "../../data.js";
 
 /**
  * The signed-in half of an app sign-in (SIGN-IN.md §3.6 to §3.8, §4.16; PX-14a): one card at
@@ -61,6 +68,7 @@ type Step =
   | { kind: "choice" }
   | { kind: "replace"; row: LicenseChoice }
   | { kind: "consent" }
+  | { kind: "ended" }
   | { kind: "done"; replaced: string; redirect: string }
   | { kind: "return"; redirect: string; yours: boolean; tier: string | null };
 
@@ -77,8 +85,11 @@ export function RequestFlow({
   const qc = useQueryClient();
   const req = useSignInRequest(handle);
   const view = req.data;
+  // A registered client binds no device or licence: no choice, no Replace (V5 §12.13.3 rule 4).
+  const registered = view?.client.registered !== undefined;
   const cardChooses =
     view !== undefined &&
+    !registered &&
     view.client.services.license &&
     view.licenseChoice !== "app";
   const licenses = useSignInLicenses(handle, cardChooses);
@@ -155,15 +166,30 @@ export function RequestFlow({
       leave((await mutate("signinCancel", handle)).redirect);
     } catch (err) {
       setBusy(null);
-      setError(refusalText(err));
+      setError(refusalText(err, registered));
     }
   };
 
-  const proceed = async (): Promise<void> => {
+  // The client asked for a fresh sign-in: end this session so the card signs the person in again.
+  // The person chose this, so no "You were signed out" toast, and the sign-in starts from their address.
+  // `sameAccount`: a fresh sign-in of the same person starts from their address; another account's
+  // field starts empty (the wrong account's address is not offered back).
+  const signInAgain = async (sameAccount: boolean): Promise<void> => {
+    setBusy("continue");
+    if (sameAccount)
+      stashReauthEmail(handle, consent.data?.person.email ?? null);
+    signOutExpected();
+    await notYou();
+    setBusy(null);
+  };
+
+  const proceed = async (claims?: string[], terms?: string): Promise<void> => {
     if (busy) return;
     setBusy("continue");
     setError(null);
     const body: SignInContinueRequest = {};
+    if (registered && claims) body.consent = { claims };
+    if (terms !== undefined) body.terms = terms;
     if (chosen?.kind === "license")
       body.choice = {
         kind: "license",
@@ -183,7 +209,7 @@ export function RequestFlow({
         return;
       }
       // A native app gets the ReturnStep (§3.10); a web app's Continue is the redirect itself.
-      if (view?.client.kind === "native") {
+      if (view?.client.kind === "native" && !registered) {
         setBusy(null);
         go({
           kind: "return",
@@ -198,6 +224,12 @@ export function RequestFlow({
       leave(out.redirect);
     } catch (err) {
       setBusy(null);
+      // A registered client has no licence list to fall back to: it was switched off, or the
+      // request is gone.
+      if (registered && err instanceof HttpError && err.status === 404) {
+        go({ kind: "ended" });
+        return;
+      }
       if (
         err instanceof HttpError &&
         (err.code === "license_choice_required" ||
@@ -217,7 +249,17 @@ export function RequestFlow({
         go({ kind: "choice" }, "back");
         return;
       }
-      setError(refusalText(err));
+      if (
+        err instanceof HttpError &&
+        (err.code === "reauth_required" ||
+          err.code === "wrong_account" ||
+          err.code === "terms_required")
+      ) {
+        // The consent view now says which step this is (sign in again, another account, the terms).
+        await qc.invalidateQueries({ queryKey: qk.signinConsent(handle) });
+        return;
+      }
+      setError(refusalText(err, registered));
     }
   };
 
@@ -229,30 +271,35 @@ export function RequestFlow({
       onRamp={current?.kind === "return" || current?.kind === "done"}
     />
   ) : undefined;
+  const clientName =
+    view?.client.registered?.name ?? view?.client.appName ?? "";
   const titleText =
-    current?.kind === "done"
-      ? t("signin.choice.replacedTitle")
-      : current?.kind === "replace"
-        ? t("signin.replace.heading")
-        : current?.kind === "consent"
-          ? t("signin.consent.title", {
-              app: view?.client.appName ?? "",
-              name: consent.data
-                ? firstName(
-                    consent.data.person.displayName,
-                    consent.data.person.email,
-                  )
-                : "",
-            })
-          : lic?.state === "none"
-            ? t("signin.none.title", { product: view?.client.appName ?? "" })
-            : req.error
-              ? req.error instanceof HttpError && req.error.status === 404
-                ? t("signin.request.goneTitle")
-                : portalErrorCopy(req.error, { account: true }).title
-              : licenses.error
-                ? portalErrorCopy(licenses.error, { account: true }).title
-                : t("signin.choice.title");
+    current?.kind === "ended"
+      ? t("locker.issuer.ended.title", { app: clientName })
+      : current?.kind === "done"
+        ? t("signin.choice.replacedTitle")
+        : current?.kind === "replace"
+          ? t("signin.replace.heading")
+          : current?.kind === "consent"
+            ? t("signin.consent.title", {
+                app:
+                  view?.client.registered?.name ?? view?.client.appName ?? "",
+                name: consent.data
+                  ? firstName(
+                      consent.data.person.displayName,
+                      consent.data.person.email,
+                    )
+                  : "",
+              })
+            : lic?.state === "none"
+              ? t("signin.none.title", { product: view?.client.appName ?? "" })
+              : req.error
+                ? req.error instanceof HttpError && req.error.status === 404
+                  ? t("signin.request.goneTitle")
+                  : portalErrorCopy(req.error, { account: true }).title
+                : licenses.error
+                  ? portalErrorCopy(licenses.error, { account: true }).title
+                  : t("signin.choice.title");
   useDocumentTitle(titleText);
   const footer = view ? <RequestFooter view={view} /> : undefined;
   const brand = (
@@ -344,6 +391,65 @@ export function RequestFlow({
         }}
       />
     );
+  } else if (current?.kind === "ended") {
+    key = "ended";
+    body = <ClientEnded app={clientName} />;
+  } else if (current?.kind === "consent" && consent.data?.wrongAccount) {
+    key = "wrongAccount";
+    body = (
+      <SessionStep
+        person={consent.data.person}
+        title={t("locker.issuer.wrongAccount.title", { app: clientName })}
+        body={t("locker.issuer.wrongAccount.body", {
+          product: view.client.appName,
+        })}
+        button={t("locker.issuer.wrongAccount.button")}
+        busy={busy === "continue"}
+        onPrimary={() => void signInAgain(false)}
+        onDeny={() => void deny()}
+      />
+    );
+  } else if (current?.kind === "consent" && consent.data?.reauth) {
+    key = "reauth";
+    body = (
+      <SessionStep
+        person={consent.data.person}
+        title={t("core.codes.step_up_required.title")}
+        body={t("locker.issuer.reauth.body", { app: clientName })}
+        button={t("locker.issuer.reauth.button", {
+          name: firstName(
+            consent.data.person.displayName,
+            consent.data.person.email,
+          ),
+        })}
+        busy={busy === "continue"}
+        onPrimary={() => void signInAgain(true)}
+        onDeny={() => void deny()}
+      />
+    );
+  } else if (
+    current?.kind === "consent" &&
+    consent.data &&
+    view.client.registered
+  ) {
+    key = "consent";
+    body = (
+      <ClientConsentStep
+        view={consent.data}
+        app={view.client.registered.name}
+        product={view.client.appName}
+        partner={
+          view.client.registered.partner
+            ? view.client.registered.developerName
+            : null
+        }
+        busy={busy}
+        error={error}
+        onContinue={(claims, terms) => void proceed(claims, terms)}
+        onDeny={() => void deny()}
+        onNotYou={() => void notYou()}
+      />
+    );
   } else if (current?.kind === "consent" && consent.data) {
     key = "consent";
     body = (
@@ -356,7 +462,7 @@ export function RequestFlow({
         busy={busy}
         error={error}
         onChange={chosen ? () => go({ kind: "choice" }, "back") : null}
-        onContinue={() => void proceed()}
+        onContinue={(terms) => void proceed(undefined, terms)}
         onDeny={() => void deny()}
         onNotYou={() => void notYou()}
         attach={view.purpose === "attach"}
@@ -442,10 +548,11 @@ export function RequestFlow({
 }
 
 /** A refusal in the catalog's words. */
-function refusalText(err: unknown): string {
+function refusalText(err: unknown, registered = false): string {
   if (err instanceof HttpError) {
     if (err.status === 429 || err.code === "rate_limited")
-      return typeof err.retryAfter === "number"
+      // The wait line speaks of device changes: a registered client has no device.
+      return typeof err.retryAfter === "number" && !registered
         ? waitText(err.retryAfter)
         : t("signin.request.tooMany");
     if (err.status === 404) return t("signin.request.gone");

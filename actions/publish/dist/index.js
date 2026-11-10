@@ -2090,6 +2090,104 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "restore": {
           "description": "Whether the app may sign a person in again on a new device from a restore key in their platform backup (identity.restore). Default true; set false to opt out.",
           "type": "boolean"
+        },
+        "issuer": {
+          "type": "object",
+          "description": "Sign in with <Product> (identity.issuer.*; WIRE-CONTRACT-V5 section 12.13): the product as an OpenID provider for its registered clients. Off unless enabled is true.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Whether the product serves its OpenID provider routes (identity.issuer.enabled). Default false; needs the identity service on.",
+              "type": "boolean"
+            }
+          }
+        },
+        "clients": {
+          "type": "array",
+          "description": "The registered clients of the issuer (identity.clients), at most 20; needs identity.issuer.enabled true (issuer_clients_without_issuer). Secrets are never declared here: the console generates them. A client dropped from the list is disabled, never deleted.",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/identityClient" }
+        }
+      }
+    },
+    "identityClient": {
+      "type": "object",
+      "description": "One registered client of the issuer (identity.clients[]; WIRE-CONTRACT-V5 section 12.13.2).",
+      "additionalProperties": false,
+      "required": ["key", "name", "type", "redirectUris", "scopes"],
+      "properties": {
+        "key": {
+          "description": "The client's stable name within the product, unique (duplicate_client_key). The Worker mints its cl_ id once.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,31}$"
+        },
+        "name": {
+          "description": "The name the sign-in card shows, 1 to 64 characters, held to the display-name rules.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "developerName": {
+          "description": "The client developer's name; absent means the product's developer. Another name makes a partner client, and the card says so.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "type": {
+          "description": "web (confidential, holds a secret), spa (public, in a browser) or native (public, an installed app).",
+          "enum": ["web", "spa", "native"]
+        },
+        "redirectUris": {
+          "description": "1 to 10 unique URIs: https with no fragment or userinfo; for native clients also a loopback http://127.0.0.1 or http://[::1] URI with a path and no port, or a reverse-DNS private-use scheme other than im.plrs. and locker.polaris.. Matched exactly. Loopback and private-use URIs on a web or spa client are a validator error (invalid_client_redirect).",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^(?:https://[^\\\\s/?#@*]+(?:/[^\\\\s#*]*)?(?:\\\\?[^\\\\s#*]*)?|http://(?:127\\\\.0\\\\.0\\\\.1|\\\\[::1\\\\])/[^\\\\s#*]*|(?!im\\\\.plrs\\\\.)(?!locker\\\\.polaris\\\\.)(?=[^:]*\\\\.)[a-z][a-z0-9+.-]{0,63}:/[^\\\\s#*]*)$"
+          }
+        },
+        "postLogoutRedirectUris": {
+          "description": "0 to 10 unique URIs under the same classes as redirectUris.",
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^(?:https://[^\\\\s/?#@*]+(?:/[^\\\\s#*]*)?(?:\\\\?[^\\\\s#*]*)?|http://(?:127\\\\.0\\\\.0\\\\.1|\\\\[::1\\\\])/[^\\\\s#*]*|(?!im\\\\.plrs\\\\.)(?!locker\\\\.polaris\\\\.)(?=[^:]*\\\\.)[a-z][a-z0-9+.-]{0,63}:/[^\\\\s#*]*)$"
+          }
+        },
+        "scopes": {
+          "description": "The scopes the client may be granted: openid and any of profile, email, offline_access and pkey:entitlements.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "contains": { "const": "openid" },
+          "items": {
+            "enum": [
+              "openid",
+              "profile",
+              "email",
+              "offline_access",
+              "pkey:entitlements"
+            ]
+          }
+        },
+        "claims": {
+          "type": "object",
+          "description": "Claims the person cannot switch off on the consent step; the scopes must deliver them (client_claim_not_requested).",
+          "additionalProperties": false,
+          "required": ["required"],
+          "properties": {
+            "required": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "enum": ["name", "picture", "email"] }
+            }
+          }
         }
       }
     },
@@ -15871,8 +15969,20 @@ function walk(value, path37, depth) {
 // ../shared-protocol/dist/config.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/core.js
+// ../shared-protocol/dist/identity.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../shared-protocol/dist/chunk-I4XFCN4T.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var ISSUER_SCOPES = [
+  "openid",
+  "profile",
+  "email",
+  "offline_access",
+  "pkey:entitlements"
+];
+var MAX_ISSUER_CLIENTS = 20;
+var MAX_CLIENT_REDIRECT_URIS = 10;
 
 // ../shared-protocol/dist/chunk-6OFYMAM7.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -15914,6 +16024,9 @@ var CHANNEL_DEV = "dev";
 var CHANNEL_ALIASES = { staging: "beta", latest: "stable" };
 var CHANNEL_NAME_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
 var PR_CHANNEL_PATTERN = "^pr-?([0-9]+)$";
+
+// ../shared-protocol/dist/core.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // ../shared-protocol/dist/packs.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -20552,6 +20665,10 @@ var MAX_GOOGLE_CLIENT_IDS = 8;
 var APPLE_TEAM_ID_RE = /^[A-Z0-9]{10}$/;
 var MAX_APPLE_SIGN_IN_BUNDLE_IDS = 16;
 var PLAY_GAMES_APPLICATION_ID_RE = /^[0-9]{6,20}$/;
+var CLIENT_KEY_RE = /^[a-z][a-z0-9-]{1,31}$/;
+var CLIENT_NAME_MAX_LENGTH = 64;
+var CLIENT_TYPES = ["web", "spa", "native"];
+var CLIENT_REDIRECT_MAX_LENGTH = 2048;
 var MODULES = Object.keys(MODULE_SERVICES);
 var DEFAULT_ENABLED = DEFAULT_ENABLED_SERVICES;
 var ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
@@ -21970,6 +22087,61 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "reserved_display_name",
         "listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names."
       );
+    const clientList = isRecord6(productRoot.identity) ? productRoot.identity.clients : void 0;
+    if (Array.isArray(clientList))
+      clientList.forEach((c, i) => {
+        if (!isRecord6(c)) return;
+        const cName = verdict(c.name);
+        if (cName === "invalid")
+          add4(
+            errors,
+            "product",
+            `/identity/clients/${i}/name`,
+            "invalid_display_text",
+            "A client name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace."
+          );
+        else if (cName === "reserved" && mode === "error")
+          add4(
+            errors,
+            "product",
+            `/identity/clients/${i}/name`,
+            "reserved_display_name",
+            "A client name uses a reserved platform or store name; a client may not present itself as one. Rename it, or ask the platform operator to approve it."
+          );
+        else if (cName === "reserved")
+          add4(
+            warnings,
+            "product",
+            `/identity/clients/${i}/name`,
+            "reserved_display_name",
+            "A client name uses a reserved platform or store name; the sign-in card shows the client key instead. This becomes an error once the platform enforces reserved display names."
+          );
+        const cDev = verdict(c.developerName);
+        if (cDev === "invalid")
+          add4(
+            errors,
+            "product",
+            `/identity/clients/${i}/developerName`,
+            "invalid_display_text",
+            "A client developerName must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace."
+          );
+        else if (cDev === "reserved" && mode === "error")
+          add4(
+            errors,
+            "product",
+            `/identity/clients/${i}/developerName`,
+            "reserved_display_name",
+            "A client developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it."
+          );
+        else if (cDev === "reserved")
+          add4(
+            warnings,
+            "product",
+            `/identity/clients/${i}/developerName`,
+            "reserved_display_name",
+            "A client developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names."
+          );
+      });
     const outlets = isRecord6(manifest.distribution) ? asRecord(manifest.distribution.outlets) : {};
     for (const [id, entry] of Object.entries(outlets)) {
       const l = isRecord6(entry) ? asRecord(entry.listing) : {};
@@ -24486,7 +24658,7 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
       "product",
       "/identity",
       "invalid_identity",
-      "identity must be an object with keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore."
+      "identity must be an object with keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby, restore, issuer and clients."
     );
     return;
   }
@@ -24497,7 +24669,7 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
         "product",
         `/identity/${key}`,
         "invalid_identity",
-        "identity takes only keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore."
+        "identity takes only keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby, restore, issuer and clients."
       );
     }
   }
@@ -24634,7 +24806,216 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
   }
   if (identity.platformSignIn !== void 0)
     validatePlatformSignIn(identity.platformSignIn, errors);
+  validateIssuer(identity, errors);
 }
+var CLIENT_LOOPBACK_RE = /^http:\/\/(?:127\.0\.0\.1|\[::1\])\/[^\s#*]*$/;
+var CLIENT_PRIVATE_SCHEME_RE = /^([a-z][a-z0-9+.-]*):\/[^\s#*]*$/;
+function clientRedirectProblem(v, type) {
+  if (typeof v !== "string" || v === "") return "must be a string";
+  if (v.length > CLIENT_REDIRECT_MAX_LENGTH)
+    return `must be at most ${CLIENT_REDIRECT_MAX_LENGTH} characters`;
+  if (/\s/.test(v) || v.includes("#") || v.includes("*"))
+    return "must not contain whitespace, a fragment or *";
+  if (v.startsWith("https://")) {
+    try {
+      const url = new URL(v);
+      if (url.host === "" || url.username !== "" || url.password !== "")
+        return "must have a host and no user information";
+      return null;
+    } catch {
+      return "is not a valid https URL";
+    }
+  }
+  if (type !== "native")
+    return "must be an https URI (loopback and private-use schemes are for native clients)";
+  if (CLIENT_LOOPBACK_RE.test(v)) return null;
+  const scheme = CLIENT_PRIVATE_SCHEME_RE.exec(v)?.[1];
+  if (scheme !== void 0 && NATIVE_REDIRECT_SCHEME_RE.test(scheme))
+    return null;
+  return "must be https, a loopback http://127.0.0.1 or http://[::1] URI with a path and no port, or a reverse-DNS private-use scheme other than im.plrs. and locker.polaris.";
+}
+function scopeDeliversClaim(scopes, claim) {
+  return scopes.includes(claim === "email" ? "email" : "profile");
+}
+function validateIssuer(identity, errors) {
+  const issuer = identity.issuer;
+  if (issuer !== void 0) {
+    if (!isRecord6(issuer) || Object.keys(issuer).some((k) => k !== "enabled") || issuer.enabled !== void 0 && typeof issuer.enabled !== "boolean")
+      add4(
+        errors,
+        "product",
+        "/identity/issuer",
+        "invalid_identity_issuer",
+        "identity.issuer must be an object with enabled: true or false."
+      );
+  }
+  const clients = identity.clients;
+  if (clients === void 0) return;
+  if (!Array.isArray(clients)) {
+    add4(
+      errors,
+      "product",
+      "/identity/clients",
+      "invalid_identity_clients",
+      "identity.clients must be a list of clients."
+    );
+    return;
+  }
+  if (!isRecord6(issuer) || issuer.enabled !== true)
+    add4(
+      errors,
+      "product",
+      "/identity/clients",
+      "issuer_clients_without_issuer",
+      "identity.clients needs identity.issuer.enabled: true."
+    );
+  if (clients.length > MAX_ISSUER_CLIENTS)
+    add4(
+      errors,
+      "product",
+      "/identity/clients",
+      "too_many_clients",
+      `A product has at most ${MAX_ISSUER_CLIENTS} clients.`
+    );
+  const seen = /* @__PURE__ */ new Set();
+  clients.forEach((c, i) => {
+    const at = `/identity/clients/${i}`;
+    if (!isRecord6(c)) {
+      add4(
+        errors,
+        "product",
+        at,
+        "invalid_identity_clients",
+        "Each client must be an object."
+      );
+      return;
+    }
+    for (const member of Object.keys(c)) {
+      if (!CLIENT_MEMBERS.includes(member))
+        add4(
+          errors,
+          "product",
+          `${at}/${member}`,
+          "invalid_identity_clients",
+          "A client takes only key, name, developerName, type, redirectUris, postLogoutRedirectUris, scopes and claims."
+        );
+    }
+    if (typeof c.key !== "string" || !CLIENT_KEY_RE.test(c.key))
+      add4(
+        errors,
+        "product",
+        `${at}/key`,
+        "invalid_client_key",
+        "A client key is 2 to 32 characters: a lower-case letter, then lower-case letters, digits or hyphens."
+      );
+    else if (seen.has(c.key))
+      add4(
+        errors,
+        "product",
+        `${at}/key`,
+        "duplicate_client_key",
+        "A client key must be unique within the product."
+      );
+    else seen.add(c.key);
+    if (typeof c.name !== "string" || c.name.length < 1 || c.name.length > CLIENT_NAME_MAX_LENGTH)
+      add4(
+        errors,
+        "product",
+        `${at}/name`,
+        "invalid_identity_clients",
+        "A client needs a name of 1 to 64 characters."
+      );
+    if (c.developerName !== void 0 && (typeof c.developerName !== "string" || c.developerName.length < 1 || c.developerName.length > CLIENT_NAME_MAX_LENGTH))
+      add4(
+        errors,
+        "product",
+        `${at}/developerName`,
+        "invalid_identity_clients",
+        "developerName is 1 to 64 characters, or absent for the product's developer."
+      );
+    if (!CLIENT_TYPES.some((t) => t === c.type))
+      add4(
+        errors,
+        "product",
+        `${at}/type`,
+        "invalid_client_type",
+        "A client's type is web, spa or native."
+      );
+    for (const field of ["redirectUris", "postLogoutRedirectUris"]) {
+      const list3 = c[field];
+      if (list3 === void 0 && field === "postLogoutRedirectUris") continue;
+      if (!Array.isArray(list3) || list3.length > MAX_CLIENT_REDIRECT_URIS || field === "redirectUris" && list3.length < 1) {
+        add4(
+          errors,
+          "product",
+          `${at}/${field}`,
+          "invalid_client_redirect",
+          `${field} is a list of ${field === "redirectUris" ? "1" : "0"} to ${MAX_CLIENT_REDIRECT_URIS} URIs.`
+        );
+        continue;
+      }
+      list3.forEach((uri, j) => {
+        const problem = clientRedirectProblem(uri, c.type);
+        if (problem !== null)
+          add4(
+            errors,
+            "product",
+            `${at}/${field}/${j}`,
+            "invalid_client_redirect",
+            `${field}[${j}] ${problem}.`
+          );
+      });
+      if (new Set(list3).size !== list3.length)
+        add4(
+          errors,
+          "product",
+          `${at}/${field}`,
+          "invalid_client_redirect",
+          `${field} must not repeat a URI.`
+        );
+    }
+    const scopes = c.scopes;
+    const scopesOk = Array.isArray(scopes) && scopes.every((x) => ISSUER_SCOPES.some((k) => k === x)) && scopes.includes("openid") && new Set(scopes).size === scopes.length;
+    if (!scopesOk)
+      add4(
+        errors,
+        "product",
+        `${at}/scopes`,
+        "client_scope_unknown",
+        "scopes is a list of openid, profile, email, offline_access and pkey:entitlements, each once, and holds openid."
+      );
+    const claims = c.claims;
+    if (claims !== void 0) {
+      const required = isRecord6(claims) ? claims.required : void 0;
+      if (!isRecord6(claims) || Object.keys(claims).some((k) => k !== "required") || !Array.isArray(required) || !required.every((x) => ["name", "picture", "email"].includes(String(x))))
+        add4(
+          errors,
+          "product",
+          `${at}/claims`,
+          "invalid_identity_clients",
+          "claims is an object with required: a list of name, picture and email."
+        );
+      else if (scopesOk && required.some((x) => !scopeDeliversClaim(scopes, String(x))))
+        add4(
+          errors,
+          "product",
+          `${at}/claims/required`,
+          "client_claim_not_requested",
+          "claims.required may name only claims the scopes deliver: name and picture need profile, email needs email."
+        );
+    }
+  });
+}
+var CLIENT_MEMBERS = [
+  "key",
+  "name",
+  "developerName",
+  "type",
+  "redirectUris",
+  "postLogoutRedirectUris",
+  "scopes",
+  "claims"
+];
 function validateNativeRedirect(nr, redirectPaths, productRoot, errors, warnings) {
   if (!isRecord6(nr)) {
     add4(
@@ -25037,7 +25418,9 @@ var IDENTITY_MEMBERS = [
   "nativeRedirect",
   "platformSignIn",
   "nearby",
-  "restore"
+  "restore",
+  "issuer",
+  "clients"
 ];
 function normalizeIdentityBlock(raw) {
   if (!isRecord6(raw)) return void 0;
@@ -25072,9 +25455,39 @@ function normalizeIdentityBlock(raw) {
   }
   if (typeof raw.nearby === "boolean") out.nearby = raw.nearby;
   if (typeof raw.restore === "boolean") out.restore = raw.restore;
+  if (isRecord6(raw.issuer) && typeof raw.issuer.enabled === "boolean")
+    out.issuer = { enabled: raw.issuer.enabled };
+  const clients = normalizeClients(raw.clients);
+  if (clients) out.clients = clients;
   const psi = normalizePlatformSignIn(raw.platformSignIn);
   if (psi) out.platformSignIn = psi;
   return Object.keys(out).length > 0 ? out : void 0;
+}
+function normalizeClients(raw) {
+  if (!Array.isArray(raw)) return void 0;
+  const out = [];
+  for (const c of raw.slice(0, MAX_ISSUER_CLIENTS)) {
+    if (!isRecord6(c)) continue;
+    const type = CLIENT_TYPES.find((t) => t === c.type);
+    if (typeof c.key !== "string" || !CLIENT_KEY_RE.test(c.key) || typeof c.name !== "string" || type === void 0 || !Array.isArray(c.redirectUris) || !Array.isArray(c.scopes))
+      continue;
+    const required = isRecord6(c.claims) ? c.claims.required : void 0;
+    out.push({
+      key: c.key,
+      name: c.name,
+      ...typeof c.developerName === "string" ? { developerName: c.developerName } : {},
+      type,
+      redirectUris: c.redirectUris.filter(isString),
+      postLogoutRedirectUris: Array.isArray(c.postLogoutRedirectUris) ? c.postLogoutRedirectUris.filter(isString) : [],
+      scopes: c.scopes.filter(
+        (x) => ISSUER_SCOPES.some((k) => k === x)
+      ),
+      claimsRequired: Array.isArray(required) ? required.filter(
+        (x) => ["name", "picture", "email"].includes(String(x))
+      ) : []
+    });
+  }
+  return out.length > 0 ? out : void 0;
 }
 function normalizePlatformSignIn(raw) {
   if (!isRecord6(raw)) return void 0;

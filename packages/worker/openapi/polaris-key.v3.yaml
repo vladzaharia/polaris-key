@@ -8667,6 +8667,271 @@ paths:
           description: 60 calls per 60 s per client network. Fails closed.
           content:
             text/html: { schema: { type: string } }
+    post:
+      operationId: identityAuthorizeForm
+      tags: [identity]
+      summary: Send a person to the sign-in card from a form (authorize, form POST)
+      description: >
+        I-21.5 (WIRE-CONTRACT-V5 §12.4, §12.13.1). A browser form navigation (OIDC Core §3.1.2.1):
+        the same request as the `GET`, with its parameters in an
+        `application/x-www-form-urlencoded` body of at most 8 KiB. The query string is ignored, so
+        no parameter can ride beside the form. Every answer, rate limit and refusal is the `GET`'s;
+        another content type or an over-long body renders a branded `400` page. With Identity off a
+        browser form navigation lands on the friendly card (`identity_disabled`).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              description: The `GET` parameters, as form members.
+              additionalProperties: { type: string }
+      responses:
+        "303":
+          description: To the card, as for `GET`.
+        "302":
+          description: An error back to the app, as for `GET`.
+        "400":
+          description: "`redirect_uri_mismatch`, or a body that is not a form: a branded page, never a redirect."
+          content:
+            text/html: { schema: { type: string } }
+        "401":
+          description: "`invalid_client`: a branded page, never a redirect."
+          content:
+            text/html: { schema: { type: string } }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 60 calls per 60 s per client network. Fails closed.
+          content:
+            text/html: { schema: { type: string } }
+  /{product}/identity/.well-known/openid-configuration:
+    get:
+      operationId: identityOpenIdConfiguration
+      tags: [identity]
+      summary: The product's OpenID provider metadata (Sign in with this product)
+      description: >
+        I-21.5 (WIRE-CONTRACT-V5 §12.13.1). OpenID Connect Discovery 1.0 metadata for the issuer
+        `<origin>/<p>/identity`. Served only while Identity is on and the product setting
+        `identity.issuer.enabled` is true; otherwise the registry's `404`. Names an endpoint only
+        once the Worker serves it. `cache-control: public, max-age=300`;
+        `access-control-allow-origin: *`, no credentials. Reads nothing per person.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The provider metadata.
+          headers:
+            Cache-Control:
+              { schema: { type: string }, example: "public, max-age=300" }
+            Access-Control-Allow-Origin:
+              { schema: { type: string }, example: "*" }
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [issuer, authorization_endpoint, token_endpoint, jwks_uri]
+                properties:
+                  issuer: { type: string, format: uri }
+                  authorization_endpoint: { type: string, format: uri }
+                  token_endpoint: { type: string, format: uri }
+                  userinfo_endpoint: { type: string, format: uri }
+                  jwks_uri: { type: string, format: uri }
+                  revocation_endpoint: { type: string, format: uri }
+                  end_session_endpoint: { type: string, format: uri }
+                  service_documentation: { type: string, format: uri }
+                  scopes_supported: { type: array, items: { type: string } }
+                  claims_supported: { type: array, items: { type: string } }
+                  response_types_supported:
+                    { type: array, items: { type: string } }
+                  response_modes_supported:
+                    { type: array, items: { type: string } }
+                  grant_types_supported:
+                    { type: array, items: { type: string } }
+                  subject_types_supported:
+                    { type: array, items: { type: string } }
+                  id_token_signing_alg_values_supported:
+                    { type: array, items: { type: string } }
+                  token_endpoint_auth_methods_supported:
+                    { type: array, items: { type: string } }
+                  revocation_endpoint_auth_methods_supported:
+                    { type: array, items: { type: string } }
+                  code_challenge_methods_supported:
+                    { type: array, items: { type: string } }
+                  prompt_values_supported:
+                    { type: array, items: { type: string } }
+                  authorization_response_iss_parameter_supported:
+                    { type: boolean }
+                  claims_parameter_supported: { type: boolean }
+                  request_parameter_supported: { type: boolean }
+                  request_uri_parameter_supported: { type: boolean }
+                  frontchannel_logout_supported: { type: boolean }
+                  backchannel_logout_supported: { type: boolean }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+  /{product}/identity/userinfo:
+    get:
+      operationId: identityUserinfo
+      tags: [identity]
+      summary: The signed-in person's granted claims (Sign in with this product)
+      description: >
+        I-21.11 (WIRE-CONTRACT-V5 §12.13.8). The claims the person granted, read live. The caller
+        holds an `at+jwt` access token, in `Authorization: Bearer` or (on `POST`) an `access_token`
+        form member, never both. The token is verified against this product's key set alone:
+        `alg` RS256, `typ` `at+jwt`, `iss` and `aud` this issuer, `exp` not passed, `openid` in its
+        scope. The client must be active and the person's client grant must still exist and cover
+        the scope, so Disconnect makes the next call fail. Every refusal is one
+        `401 WWW-Authenticate: Bearer error="invalid_token"`. A call without a token is a bare
+        `401 WWW-Authenticate: Bearer`. Served only while Identity is on and
+        `identity.issuer.enabled` is true; otherwise the registry's `404`. Always `no-store`.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: "`sub` and each granted claim; absent, never null, when empty."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sub]
+                properties:
+                  sub: { type: string }
+                  name: { type: string }
+                  picture: { type: string }
+                  email: { type: string }
+                  email_verified: { type: boolean }
+                  "pkey:entitlements": { type: array, items: { type: string } }
+        "401":
+          description: "`invalid_token`, or no token."
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: 120 calls a minute per client network. Fails closed.
+    post:
+      operationId: identityUserinfoPost
+      tags: [identity]
+      summary: The signed-in person's granted claims, token in the form body
+      description: >
+        The same answer as the `GET`, with the access token as an `access_token` member of an
+        `application/x-www-form-urlencoded` body when no `Authorization` header carries it.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                access_token: { type: string }
+      responses:
+        "200":
+          description: As the `GET`.
+        "401":
+          description: "`invalid_token`, or no token."
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: 120 calls a minute per client network. Fails closed.
+    options:
+      operationId: preflightIdentityUserinfo
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`, or on an origin one of
+        its `spa` clients' redirect URIs is on. Answered before service dispatch, so the result
+        never depends on whether the service behind this path is enabled. See `CorsPreflight`. No
+        credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/revoke:
+    post:
+      operationId: identityRevoke
+      tags: [identity]
+      summary: Revoke a refresh token (RFC 7009)
+      description: >
+        I-21.11 (WIRE-CONTRACT-V5 §12.13.7). A registered client ends one of its own refresh tokens
+        and the whole family, with the client authentication of `token`. `200`, empty body, for a
+        refresh token of this client, for an access token (which is not revoked: it ends within 600
+        seconds) and for a token that is unknown or malformed. A refresh token of another client is
+        `400 unauthorized_client` and revokes nothing. Served only while the issuer is on.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+                token_type_hint:
+                  { type: string, enum: [refresh_token, access_token] }
+                client_id: { type: string }
+                client_secret: { type: string }
+      responses:
+        "200": { description: Empty body. Never cached. }
+        "400":
+          description: "`invalid_request` or `unauthorized_client` (flat)."
+        "401":
+          description: "`invalid_client` (flat)."
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Per client and per network budgets. Fails closed.
+    options:
+      operationId: preflightIdentityRevoke
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`, or on an origin one of
+        its `spa` clients' redirect URIs is on. Answered before service dispatch, so the result
+        never depends on whether the service behind this path is enabled. See `CorsPreflight`. No
+        credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/jwks:
+    get:
+      operationId: identityIssuerJwks
+      tags: [identity]
+      summary: The product's issuer key set (Sign in with this product)
+      description: >
+        I-21.5 (WIRE-CONTRACT-V5 §12.13.1, §12.13.5). The RS256 public keys that verify the
+        product's `id_token` and `at+jwt`: the `active`, `next` and `retired` keys, each exactly
+        `kty`, `use`, `alg`, `kid`, `n` and `e`, never a private member. Not the Ed25519
+        `/.well-known/jwks.json`. Served only while Identity is on and `identity.issuer.enabled`
+        is true; otherwise the registry's `404`. It never creates a key, so the set is empty until
+        the first token. `cache-control: public, max-age=60` (short, so a dropped key stops
+        verifying quickly); `access-control-allow-origin: *`, no credentials.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The key set.
+          headers:
+            Cache-Control:
+              { schema: { type: string }, example: "public, max-age=60" }
+            Access-Control-Allow-Origin:
+              { schema: { type: string }, example: "*" }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keys]
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                      required: [kty, use, alg, kid, n, e]
+                      additionalProperties: false
+                      properties:
+                        kty: { type: string, const: RSA }
+                        use: { type: string, const: sig }
+                        alg: { type: string, const: RS256 }
+                        kid: { type: string }
+                        n: { type: string }
+                        e: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /{product}/identity/token:
     post:
       operationId: identityToken

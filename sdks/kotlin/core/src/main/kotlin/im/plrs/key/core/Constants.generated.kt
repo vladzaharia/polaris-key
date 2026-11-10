@@ -63,6 +63,14 @@ public object ErrorCode {
     public const val unsupportedGrantType: String = "unsupported_grant_type"
     public const val invalidScope: String = "invalid_scope"
     public const val redirectUriMismatch: String = "redirect_uri_mismatch"
+    public const val unsupportedResponseType: String = "unsupported_response_type"
+    public const val requestNotSupported: String = "request_not_supported"
+    public const val requestUriNotSupported: String = "request_uri_not_supported"
+    public const val loginRequired: String = "login_required"
+    public const val consentRequired: String = "consent_required"
+    public const val interactionRequired: String = "interaction_required"
+    public const val unauthorizedClient: String = "unauthorized_client"
+    public const val invalidToken: String = "invalid_token"
     public const val invalidRequestUri: String = "invalid_request_uri"
     public const val licenseChoiceRequired: String = "license_choice_required"
     public const val interstitialRequired: String = "interstitial_required"
@@ -299,6 +307,14 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "unsupported_grant_type",
     "invalid_scope",
     "redirect_uri_mismatch",
+    "unsupported_response_type",
+    "request_not_supported",
+    "request_uri_not_supported",
+    "login_required",
+    "consent_required",
+    "interaction_required",
+    "unauthorized_client",
+    "invalid_token",
     "invalid_request_uri",
     "license_choice_required",
     "interstitial_required",
@@ -535,6 +551,14 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "unsupported_grant_type" to "wire",
     "invalid_scope" to "wire",
     "redirect_uri_mismatch" to "wire",
+    "unsupported_response_type" to "wire",
+    "request_not_supported" to "wire",
+    "request_uri_not_supported" to "wire",
+    "login_required" to "wire",
+    "consent_required" to "wire",
+    "interaction_required" to "wire",
+    "unauthorized_client" to "wire",
+    "invalid_token" to "wire",
     "invalid_request_uri" to "wire",
     "license_choice_required" to "wire",
     "interstitial_required" to "wire",

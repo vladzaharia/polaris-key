@@ -2309,20 +2309,22 @@
     "body": "18:e3933184560739b7"
   },
   "POST /djdl/identity/authorize": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "POST+body /djdl/identity/authorize": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "PUT /djdl/identity/authorize": {
     "status": 405,
@@ -2406,20 +2408,22 @@
     "body": "18:e3933184560739b7"
   },
   "POST /djdl/identity/authorize/": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "POST+body /djdl/identity/authorize/": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "PUT /djdl/identity/authorize/": {
     "status": 405,
@@ -2503,20 +2507,22 @@
     "body": "18:e3933184560739b7"
   },
   "POST /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "POST+body /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "PUT /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
     "status": 405,
@@ -5218,20 +5224,22 @@
     "body": "18:e3933184560739b7"
   },
   "POST+commerce-off /djdl/identity/authorize": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "POST+body+commerce-off /djdl/identity/authorize": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "PUT+commerce-off /djdl/identity/authorize": {
     "status": 405,
@@ -5315,20 +5323,22 @@
     "body": "18:e3933184560739b7"
   },
   "POST+commerce-off /djdl/identity/authorize/": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "POST+body+commerce-off /djdl/identity/authorize/": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "PUT+commerce-off /djdl/identity/authorize/": {
     "status": 405,
@@ -5412,20 +5422,22 @@
     "body": "18:e3933184560739b7"
   },
   "POST+commerce-off /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "POST+body+commerce-off /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "PUT+commerce-off /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
     "status": 405,
@@ -7999,20 +8011,22 @@
     "body": "18:e3933184560739b7"
   },
   "POST+license-off /djdl/identity/authorize": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "POST+body+license-off /djdl/identity/authorize": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "PUT+license-off /djdl/identity/authorize": {
     "status": 405,
@@ -8096,20 +8110,22 @@
     "body": "18:e3933184560739b7"
   },
   "POST+license-off /djdl/identity/authorize/": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "POST+body+license-off /djdl/identity/authorize/": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "PUT+license-off /djdl/identity/authorize/": {
     "status": 405,
@@ -8193,20 +8209,22 @@
     "body": "18:e3933184560739b7"
   },
   "POST+license-off /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "POST+body+license-off /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "PUT+license-off /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
     "status": 405,

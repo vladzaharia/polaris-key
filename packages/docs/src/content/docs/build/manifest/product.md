@@ -371,9 +371,17 @@ identity:
   The SDKs' `restore` option (default on) is the per-launch switch; see the
   [Swift](/docs/build/sdks/swift/#restore-from-backup) and
   [Kotlin](/docs/build/sdks/kotlin/#restore-from-backup) sections.
+- `issuer`: `enabled: true` lets websites and apps you register as `clients` sign people in with
+  this product. Off when absent.
+- `clients`: up to 20 registered clients, each with a `key` (2 to 32 characters, unique), a
+  `name`, an optional `developerName`, a `type` (`web`, `spa` or `native`), `redirectUris` (1 to 10) and optional `postLogoutRedirectUris`, `scopes` (with `openid`) and `claims.required`. A
+  redirect URI is https with no fragment or user information; a `native` client may also use a
+  loopback `http://127.0.0.1` or `http://[::1]` URI with a path and no port, or a reverse-DNS
+  private-use scheme. Needs `issuer.enabled`. A client you drop is disabled, not deleted. Secrets
+  are never declared here: the console generates them.
 
 Each member is a claimable setting (`identity.keyEntry.limit`, `identity.keyEntry.claimByKey`,
-`identity.terms`, `identity.redirectPaths`, `identity.nativeRedirect.loopback`, `.schemes`, `.claimedPaths`, `identity.restore`): a console change claims it until you revert it.
+`identity.terms`, `identity.redirectPaths`, `identity.nativeRedirect.loopback`, `.schemes`, `.claimedPaths`, `identity.restore`, `identity.issuer.enabled`): a console change claims it until you revert it.
 
 ## Cloud Connect settings: `connect`
 

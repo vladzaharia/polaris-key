@@ -63,8 +63,10 @@ const HANDLE_RE = new RegExp(REQUEST_HANDLE_PATTERN);
 export interface AuthzRecord {
   clientId: string;
   redirectUri: string;
-  state: string;
-  codeChallenge: string;
+  /** The app's `state`; `null` when a registered client sent none. */
+  state: string | null;
+  /** The PKCE challenge; `null` for a `web` registered client that sent a `nonce` instead. */
+  codeChallenge: string | null;
   /** The scope the app asked for, resolved against what the product grants. */
   scope: string[];
   nonce: string | null;
@@ -74,6 +76,19 @@ export interface AuthzRecord {
   keyReturn?: true;
   loginHint: string | null;
   nameHint: string | null;
+  /** Present on a request from a registered client (V5 §12.13.3); absent for the own client. */
+  registered?: RegisteredAuthz;
+}
+
+/** What a registered client's request adds to {@link AuthzRecord}: read at the card's entry. */
+export interface RegisteredAuthz {
+  type: "web" | "spa" | "native";
+  /** The recognised `prompt` values; `none` never combines with another. */
+  prompt: { none: boolean; login: boolean; consent: boolean };
+  /** `max_age` in seconds, or `null`. `0` acts as `prompt=login`. */
+  maxAge: number | null;
+  /** The `sub` of a verified `id_token_hint`, or `null`. */
+  hintSub: string | null;
 }
 
 /**

@@ -254,6 +254,45 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
   },
+  unsupported_response_type: {
+    title: "Sign-in request invalid",
+    message:
+      "The app asked for a sign-in response we don't support. Contact its developer.",
+  },
+  request_not_supported: {
+    title: "Sign-in request invalid",
+    message:
+      "The app sent its sign-in request in a form we don't accept. Contact its developer.",
+  },
+  request_uri_not_supported: {
+    title: "Sign-in request invalid",
+    message:
+      "The app sent its sign-in request in a form we don't accept. Contact its developer.",
+  },
+  login_required: {
+    title: "Sign-in required",
+    message:
+      "The app couldn't sign you in without asking. Sign in to continue.",
+  },
+  consent_required: {
+    title: "Approval needed",
+    message:
+      "The app needs your approval before it can sign you in. Sign in to approve it.",
+  },
+  interaction_required: {
+    title: "Sign-in not finished",
+    message:
+      "The app couldn't finish signing you in on its own. Sign in to continue.",
+  },
+  unauthorized_client: {
+    title: "Sign-in request invalid",
+    message:
+      "The app asked for a sign-in type it isn't allowed to use. Contact its developer.",
+  },
+  invalid_token: {
+    title: "Sign-in ended",
+    message: "Your sign-in to this app expired or was ended. Sign in again.",
+  },
   invalid_request_uri: {
     title: "Sign-in link expired",
     message:

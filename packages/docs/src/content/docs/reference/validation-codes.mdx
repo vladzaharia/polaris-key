@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 295 distinct emit sites.
+codes with their JSON-pointer paths. 317 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -22,6 +22,8 @@ the offending value, or the allowed set.
 | `catalog_edge_mint_without_recipe` | warning | schema | `${at}/delivery` | \ |
 | `catalog_mint_not_minted` | error | schema | `${at}/mint` | `mint` belongs on a secret entry with `delivery: edgeMint`. |
 | `catalog_secret_flag_retired` | warning | schema | `${at}/secret` | `secret: true` is redundant on a secret entry and is dropped: the kind already says it. Remove it (`pkey validate --fix`). |
+| `client_claim_not_requested` | error | product | `${at}/claims/required` | claims.required may name only claims the scopes deliver: name and picture need profile, email needs email. |
+| `client_scope_unknown` | error | product | `${at}/scopes` | scopes is a list of openid, profile, email, offline_access and pkey:entitlements, each once, and holds openid. |
 | `commerce_requires_license` | error | product | `/modules/commerce` | The commerce service turns store purchases into licence flags, so license must be enabled too. |
 | `config_without_activation` | warning | product | `/modules/config` | Config is enabled without an activation method. |
 | `conflicting_spelling` | warning | product | `${path}` | $\{old\} and $\{write\} are both set; $\{used\} is used. Keep only $\{write\}. |
@@ -36,6 +38,7 @@ the offending value, or the allowed set.
 | `deprecated_spelling` | warning | release | `${path}` | $\{old\} is a deprecated spelling$\{ignored\}; write $\{write\}. |
 | `distribution_requires_release` | error | product | `/modules/distribution` | The distribution service delivers release artifacts, so release must be enabled too. |
 | `duplicate_artifact_id` | error | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} is declared twice; each entry declares one build. |
+| `duplicate_client_key` | error | product | `${at}/key` | A client key must be unique within the product. |
 | `duplicate_profile_id` | error | product | `${profilesAt}/${i}/id` | Profile ids must be unique. |
 | `duplicate_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be unique. |
 | `edge_mint_recipe_duplicate` | error | schema | `${at}/mint` | $\{String(raw.key)\} has a \ |
@@ -86,6 +89,11 @@ the offending value, or the allowed set.
 | `invalid_channel` | error | release | `${at}/channels` | a pack's channels lists 1 to $\{MAX_PACK_CHANNELS\} distinct canonical channel names ($\{CANONICAL_CHANNEL_PATTERN.source\}, and not an alias such as $\{CHANNEL_ALIAS_NAMES.join(" or ")\}). |
 | `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning hooks require claim. |
 | `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning claim names must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
+| `invalid_client_key` | error | product | `${at}/key` | A client key is 2 to 32 characters: a lower-case letter, then lower-case letters, digits or hyphens. |
+| `invalid_client_redirect` | error | product | `${at}/${field}/${j}` | $\{field\}[$\{j\}] $\{problem\}. |
+| `invalid_client_redirect` | error | product | `${at}/${field}` | $\{field\} is a list of $\{field === "redirectUris" ? "1" : "0"\} to $\{MAX_CLIENT_REDIRECT_URIS\} URIs. |
+| `invalid_client_redirect` | error | product | `${at}/${field}` | $\{field\} must not repeat a URI. |
+| `invalid_client_type` | error | product | `${at}/type` | A client's type is web, spa or native. |
 | `invalid_connect` | error | product | `/connect/${key}` | connect takes only relay and interAccount. |
 | `invalid_connect` | error | product | `/connect/${key}` | connect.$\{key\} must be true or false. |
 | `invalid_connect` | error | product | `/connect` | connect must be an object with relay and interAccount. |
@@ -95,6 +103,8 @@ the offending value, or the allowed set.
 | `invalid_deliverable_kind` | error | release | `/release/deliverables/${id}/kind` | the deliverable named $\{APP_DELIVERABLE_ID\} is the product's application (kind: app), and no other deliverable may be kind app. |
 | `invalid_device_limit` | error | product | `/licensing/defaultDeviceLimit` | defaultDeviceLimit must be at most $\{MAX_DEVICE_LIMIT\}. |
 | `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer of at most $\{MAX_DEVICE_LIMIT\}. |
+| `invalid_display_text` | error | product | `/identity/clients/${i}/developerName` | A client developerName must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace. |
+| `invalid_display_text` | error | product | `/identity/clients/${i}/name` | A client name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace. |
 | `invalid_display_text` | error | distribution | `/listing/developerName` | listing.developerName must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace. |
 | `invalid_display_text` | error | distribution | `/listing/name` | listing.name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace. |
 | `invalid_display_text` | error | distribution | `/outlets/${id}/listing/developerName` | outlets.$\{id\}.listing.developerName must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace. |
@@ -116,6 +126,12 @@ the offending value, or the allowed set.
 | `invalid_identity_claim_by_key` | error | product | `/identity/keyEntry/claimByKey` | identity.keyEntry.claimByKey must be true or false. |
 | `invalid_identity_claimed_paths` | error | product | `/identity/nativeRedirect/claimedPaths/${i}` | identity.nativeRedirect.claimedPaths entries $\{problem\}. |
 | `invalid_identity_claimed_paths` | error | product | `/identity/nativeRedirect/claimedPaths` | identity.nativeRedirect.claimedPaths must be an array of at most $\{MAX_NATIVE_REDIRECT_CLAIMED_PATHS\} paths. |
+| `invalid_identity_clients` | error | product | `/identity/clients` | identity.clients must be a list of clients. |
+| `invalid_identity_clients` | error | product | `${at}/${member}` | A client takes only key, name, developerName, type, redirectUris, postLogoutRedirectUris, scopes and claims. |
+| `invalid_identity_clients` | error | product | `${at}/claims` | claims is an object with required: a list of name, picture and email. |
+| `invalid_identity_clients` | error | product | `${at}/developerName` | developerName is 1 to 64 characters, or absent for the product's developer. |
+| `invalid_identity_clients` | error | product | `${at}/name` | A client needs a name of 1 to 64 characters. |
+| `invalid_identity_issuer` | error | product | `/identity/issuer` | identity.issuer must be an object with enabled: true or false. |
 | `invalid_identity_key_entry_limit` | error | product | `/identity/keyEntry/limit` | identity.keyEntry.limit must be an integer from 1 to 100. |
 | `invalid_identity_native_redirect` | error | product | `/identity/nativeRedirect/${key}` | identity.nativeRedirect takes only loopback, schemes and claimedPaths. |
 | `invalid_identity_native_redirect` | error | product | `/identity/nativeRedirect/loopback` | identity.nativeRedirect.loopback must be true or false. |
@@ -137,10 +153,10 @@ the offending value, or the allowed set.
 | `invalid_identity_redirect_scheme` | error | product | `/identity/nativeRedirect/schemes` | identity.nativeRedirect.schemes takes at most $\{MAX_NATIVE_REDIRECT_SCHEMES\} schemes. |
 | `invalid_identity_restore` | error | product | `/identity/restore` | identity.restore must be true or false. |
 | `invalid_identity_terms` | error | product | `/identity/terms` | identity.terms must be \{version, url?\}: a version of 1 to 32 characters of A-Z, a-z, 0-9, ., _ and -, and an https URL when url is given. |
-| `invalid_identity` | error | product | `/identity/${key}` | identity takes only keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore. |
+| `invalid_identity` | error | product | `/identity/${key}` | identity takes only keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby, restore, issuer and clients. |
 | `invalid_identity` | error | product | `/identity/keyEntry/${key}` | identity.keyEntry takes only limit and claimByKey. |
 | `invalid_identity` | error | product | `/identity/keyEntry` | identity.keyEntry must be an object with limit and claimByKey. |
-| `invalid_identity` | error | product | `/identity` | identity must be an object with keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore. |
+| `invalid_identity` | error | product | `/identity` | identity must be an object with keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby, restore, issuer and clients. |
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags/${i}` | deliverables.app.versioning.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags` | deliverables.app.versioning.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
 | `invalid_ignore_tags` | error | release | `/release/ignoreTags/${i}` | release.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
@@ -251,6 +267,7 @@ the offending value, or the allowed set.
 | `invalid_web_origin` | error | product | `/web/origins/${i}` | web.origins entries $\{problem\}. |
 | `invalid_web_origins` | error | product | `/web/origins` | web.origins must be an array of at most $\{MAX_WEB_ORIGINS\} origins. |
 | `invalid_web_origins` | error | product | `/web` | web must be an object. |
+| `issuer_clients_without_issuer` | error | product | `/identity/clients` | identity.clients needs identity.issuer.enabled: true. |
 | `listing_exceeds_model_limit` | warning | distribution | `${at}/${field}` | $\{label\}.$\{field\} is $\{v.length\} characters; the listing model allows $\{limit\}, so it will not be imported as it is. Shorten it to $\{limit\} or fewer. |
 | `listing_field_conflict` | error | distribution | `${at}/${alias}` | $\{label\} declares both $\{field\} and its deprecated alias $\{alias\}; keep $\{field\}. |
 | `listing_url_field_deprecated` | warning | distribution | `${at}/${alias}` | $\{label\}.$\{alias\} is deprecated; write $\{field\} instead (an https URL or a repo path). |
@@ -272,6 +289,10 @@ the offending value, or the allowed set.
 | `play_games_incomplete` | error | product | `/identity/platformSignIn/playGames` | identity.platformSignIn.playGames needs both applicationId and serverClientId. |
 | `release_key_reused` | error | release | `${at}/publicKey` | A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs. |
 | `reserved_channel_name` | warning | release | `${at}/name` | This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V4 §5.1). |
+| `reserved_display_name` | error | product | `/identity/clients/${i}/developerName` | A client developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it. |
+| `reserved_display_name` | warning | product | `/identity/clients/${i}/developerName` | A client developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names. |
+| `reserved_display_name` | error | product | `/identity/clients/${i}/name` | A client name uses a reserved platform or store name; a client may not present itself as one. Rename it, or ask the platform operator to approve it. |
+| `reserved_display_name` | warning | product | `/identity/clients/${i}/name` | A client name uses a reserved platform or store name; the sign-in card shows the client key instead. This becomes an error once the platform enforces reserved display names. |
 | `reserved_display_name` | error | distribution | `/listing/developerName` | listing.developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it. |
 | `reserved_display_name` | warning | distribution | `/listing/developerName` | listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names. |
 | `reserved_display_name` | error | distribution | `/listing/name` | listing.name uses a reserved platform or store name; an app may not present itself as one. Rename it, or ask the platform operator to approve it. |
@@ -286,6 +307,7 @@ the offending value, or the allowed set.
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry. The offline window is product-level (defaultMaxOfflineDays). |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace, which is product-level (defaultMaxOfflineDays). |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace, which is product-level (defaultMaxOfflineDays). |
+| `too_many_clients` | error | product | `/identity/clients` | A product has at most $\{MAX_ISSUER_CLIENTS\} clients. |
 | `too_many_pack_deliverables` | error | release | `/release/deliverables` | a product declares at most $\{MAX_PACK_DELIVERABLES\} pack deliverables (each one costs transport rows and a deliverable row in every resync). |
 | `too_many_package_deliverables` | error | release | `/release/deliverables` | a product declares at most $\{MAX_PACKAGE_DELIVERABLES\} package deliverables. |
 | `too_many_redirect_uris` | error | product | `/oidc/redirectUris` | At most $\{MAX_REDIRECT_URIS\} redirect URIs are allowed. |

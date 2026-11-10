@@ -2577,6 +2577,38 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_invalid_request_uri_message">Este enlace de inicio de sesión caducó. Vuelve a %1$s y empieza de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_title">Solicitud de inicio de sesión no válida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_message">La app pidió una respuesta de inicio de sesión que no admitimos. Contacta con su desarrollador.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_title">Solicitud de inicio de sesión no válida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_message">La app envió su solicitud de inicio de sesión en un formato que no aceptamos. Contacta con su desarrollador.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_title">Solicitud de inicio de sesión no válida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_message">La app envió su solicitud de inicio de sesión en un formato que no aceptamos. Contacta con su desarrollador.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_title">Inicio de sesión obligatorio</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_message">La app no pudo iniciar tu sesión sin preguntarte. Inicia sesión para continuar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_title">Aprobación necesaria</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_message">La app necesita tu aprobación antes de iniciar tu sesión. Inicia sesión para aprobarla.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_title">Inicio de sesión sin terminar</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_message">La app no pudo terminar de iniciar tu sesión por sí sola. Inicia sesión para continuar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_title">Solicitud de inicio de sesión no válida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_message">La app pidió un tipo de inicio de sesión que no tiene permitido. Contacta con su desarrollador.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_title">Sesión finalizada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_message">Tu sesión en esta app caducó o se cerró. Vuelve a iniciar sesión.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Elige una licencia</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Elige qué licencia usa este dispositivo y continúa.</string>

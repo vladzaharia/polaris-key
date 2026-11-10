@@ -213,6 +213,38 @@
       "title": "El enlace de inicio de sesión caducó",
       "message": "Este enlace de inicio de sesión caducó. Vuelve a {product} y empieza de nuevo."
     },
+    "unsupported_response_type": {
+      "title": "Solicitud de inicio de sesión no válida",
+      "message": "La app pidió una respuesta de inicio de sesión que no admitimos. Contacta con su desarrollador."
+    },
+    "request_not_supported": {
+      "title": "Solicitud de inicio de sesión no válida",
+      "message": "La app envió su solicitud de inicio de sesión en un formato que no aceptamos. Contacta con su desarrollador."
+    },
+    "request_uri_not_supported": {
+      "title": "Solicitud de inicio de sesión no válida",
+      "message": "La app envió su solicitud de inicio de sesión en un formato que no aceptamos. Contacta con su desarrollador."
+    },
+    "login_required": {
+      "title": "Inicio de sesión obligatorio",
+      "message": "La app no pudo iniciar tu sesión sin preguntarte. Inicia sesión para continuar."
+    },
+    "consent_required": {
+      "title": "Aprobación necesaria",
+      "message": "La app necesita tu aprobación antes de iniciar tu sesión. Inicia sesión para aprobarla."
+    },
+    "interaction_required": {
+      "title": "Inicio de sesión sin terminar",
+      "message": "La app no pudo terminar de iniciar tu sesión por sí sola. Inicia sesión para continuar."
+    },
+    "unauthorized_client": {
+      "title": "Solicitud de inicio de sesión no válida",
+      "message": "La app pidió un tipo de inicio de sesión que no tiene permitido. Contacta con su desarrollador."
+    },
+    "invalid_token": {
+      "title": "Sesión finalizada",
+      "message": "Tu sesión en esta app caducó o se cerró. Vuelve a iniciar sesión."
+    },
     "license_choice_required": {
       "title": "Elige una licencia",
       "message": "Elige qué licencia usa este dispositivo y continúa."

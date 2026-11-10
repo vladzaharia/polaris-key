@@ -100,6 +100,8 @@ export const ErrorCode = {
   InvalidGrant: "invalid_grant",
   UnsupportedGrantType: "unsupported_grant_type",
   InvalidScope: "invalid_scope",
+  /** I-21.9 (§12.13.4 rule 3): a registered client sent a grant only the product's own client may use. */
+  UnauthorizedClient: "unauthorized_client",
   RedirectUriMismatch: "redirect_uri_mismatch",
   /** I-15 (§12.12): an unknown, expired, malformed or taken `request_uri`; a card page, never a redirect. */
   InvalidRequestUri: "invalid_request_uri",

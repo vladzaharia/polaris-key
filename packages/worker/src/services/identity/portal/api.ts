@@ -2315,6 +2315,7 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
         s.session.accountId,
         c.now,
         c.settings,
+        portalSessionAuthenticatedAt(s.session),
       );
       return view.status === 200 ? portalJson(view.body) : notFound();
     },
@@ -2377,6 +2378,7 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
               m.params.request!,
               c.now,
               c.settings,
+              portalSessionAuthenticatedAt(s.session),
             )
           : handleSignInCancel(
               c.req,
