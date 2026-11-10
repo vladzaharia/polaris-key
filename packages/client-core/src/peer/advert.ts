@@ -5,10 +5,10 @@ import { hmac, sha256 } from "./noise.js";
 
 export const ADVERT_EPOCH_SECONDS = 900;
 const BASE32 = "abcdefghijklmnopqrstuvwxyz234567";
-const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
-const cat = (...p: Uint8Array[]): Uint8Array =>
+export const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
+export const cat = (...p: Uint8Array[]): Uint8Array =>
   Uint8Array.from(p.flatMap((x) => Array.from(x)));
-const u64be = (n: number): Uint8Array => {
+export const u64be = (n: number): Uint8Array => {
   const b = new Uint8Array(8);
   new DataView(b.buffer).setBigUint64(0, BigInt(n));
   return b;
@@ -19,20 +19,9 @@ export const advertEpoch = (nowSeconds: number): number =>
 
 /** RFC 4648 base32, lower-case alphabet, no padding. */
 export function base32Lower(b: Uint8Array): string {
-  let bits = 0;
-  let acc = 0;
-  let out = "";
-  for (const x of b) {
-    acc = (acc << 8) | x;
-    bits += 8;
-    while (bits >= 5) {
-      out += BASE32[(acc >> (bits - 5)) & 31];
-      bits -= 5;
-    }
-    acc &= (1 << bits) - 1;
-  }
-  if (bits > 0) out += BASE32[(acc << (5 - bits)) & 31];
-  return out;
+  const bits = Array.from(b, (x) => x.toString(2).padStart(8, "0")).join("");
+  const groups = bits.match(/.{1,5}/g) ?? [];
+  return groups.map((g) => BASE32[parseInt(g.padEnd(5, "0"), 2)]).join("");
 }
 
 /** A device id is 32 base64url characters: the 24 bytes the advert and the relay use. */
@@ -89,16 +78,28 @@ export type TxtResult =
       reason: "duplicate" | "version" | "mode" | "tag" | "nameplate";
     };
 
-/** An entry splits at its first `=`; one without `=` or with an empty key is ignored; a repeated key refuses. */
-export function parseTxt(entries: readonly string[]): TxtResult {
-  const kv = new Map<string, string>();
-  for (const e of entries) {
-    const at = e.indexOf("=");
-    if (at < 1) continue;
-    const k = e.slice(0, at);
-    if (kv.has(k)) return { ok: false, reason: "duplicate" };
-    kv.set(k, e.slice(at + 1));
+/**
+ * The key-value entries of a TXT record: an entry splits at its first `=`; one without `=` or with
+ * an empty key is ignored. Null when a key repeats.
+ */
+export function txtEntries(
+  entries: readonly string[],
+): Map<string, string> | null {
+  const table = new Map<string, string>();
+  for (const entry of entries) {
+    const eq = entry.indexOf("=");
+    if (eq <= 0) continue;
+    const key = entry.slice(0, eq);
+    if (table.has(key)) return null;
+    table.set(key, entry.substring(eq + 1));
   }
+  return table;
+}
+
+/** Entries split as `txtEntries` splits them; a repeated key refuses. */
+export function parseTxt(entries: readonly string[]): TxtResult {
+  const kv = txtEntries(entries);
+  if (kv === null) return { ok: false, reason: "duplicate" };
   if (kv.get("v") !== "1") return { ok: false, reason: "version" };
   const m = kv.get("m");
   if (m !== "a" && m !== "v" && m !== "p" && m !== "q")

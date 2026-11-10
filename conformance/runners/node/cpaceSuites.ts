@@ -32,10 +32,10 @@ import {
   type PeerMode,
 } from "@polaris-key/client-core";
 
-const bytes = (hex: string): Uint8Array =>
-  Uint8Array.from(hex.match(/../g) ?? [], (b) => parseInt(b, 16));
+const bytes = (text: string): Uint8Array =>
+  new Uint8Array((text.match(/../g) ?? []).map((b) => parseInt(b, 16)));
 const hex = (b: Uint8Array): string =>
-  Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+  [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
 const sha512 = async (b: Uint8Array): Promise<Uint8Array> =>
   new Uint8Array(
@@ -168,14 +168,30 @@ export interface CpaceSection {
   failures: Failure[];
 }
 
-const verdictOf = (v: ReturnType<typeof parseC1>): Verdict =>
-  v.ok
-    ? {
-        ok: true,
-        ...(v.kind !== undefined ? { kind: v.kind } : {}),
-        share: hex(v.share),
-      }
-    : { ok: false, reason: v.reason };
+/** A frame verdict in the corpus's shape. */
+function verdictOf(v: ReturnType<typeof parseC1>): Verdict {
+  if (!v.ok) return { ok: false, reason: v.reason };
+  const out: Verdict = { ok: true, share: hex(v.share) };
+  if (v.kind !== undefined) out.kind = v.kind;
+  return out;
+}
+
+/** The handshake messages in turn, `first` writing first; each is read by the other side. */
+async function relay(
+  first: NoiseHandshake,
+  second: NoiseHandshake,
+  payloads: string[],
+): Promise<Uint8Array[]> {
+  const wires: Uint8Array[] = [];
+  let [from, to] = [first, second];
+  for (const payload of payloads) {
+    const wire = await from.writeMessage(bytes(payload));
+    wires.push(wire);
+    expect(hex(await to.readMessage(wire))).toBe(payload);
+    [from, to] = [to, from];
+  }
+  return wires;
+}
 
 const prsOf = (kind: "code" | "qr", secret: string): Uint8Array =>
   kind === "code" ? cpacePrsCode(secret) : cpacePrsQr(bytes(secret));
@@ -397,30 +413,30 @@ export function registerCpaceSuites(
           expect(a.joinerPsk).toBe(h.psk);
           expect(a.joinerIsk).toBe(h.isk);
         }
+        const keys = {
+          initiator: { s: h.initStatic, e: h.initEphemeral },
+          responder: { s: h.respStatic, e: h.respEphemeral },
+        };
         const mk = (role: "initiator" | "responder") =>
           new NoiseHandshake({
             role,
             protocol: h.protocol,
             prologue: bytes(h.prologue),
             psk: bytes(h.psk),
-            staticKey: bytes(
-              role === "initiator" ? h.initStatic : h.respStatic,
-            ),
-            ephemeralKey: bytes(
-              role === "initiator" ? h.initEphemeral : h.respEphemeral,
-            ),
+            staticKey: bytes(keys[role].s),
+            ephemeralKey: bytes(keys[role].e),
           });
         const i = mk("initiator");
         const r = mk("responder");
         const msgs = h.messages.filter((m) => m.kind === "handshake");
-        for (const [k, m] of msgs.entries()) {
-          const [w, d] = k % 2 === 0 ? [i, r] : [r, i];
-          const wire = await w.writeMessage(bytes(m.payload));
-          expect(hex(wire), `${h.id} message ${k}`).toBe(m.ciphertext);
-          expect(hex(await d.readMessage(wire)), `${h.id} payload ${k}`).toBe(
-            m.payload,
-          );
-        }
+        const wires = await relay(
+          i,
+          r,
+          msgs.map((m) => m.payload),
+        );
+        wires.forEach((w, k) =>
+          expect(hex(w), `${h.id} message ${k}`).toBe(msgs[k]!.ciphertext),
+        );
         expect(hex(i.handshakeHash)).toBe(h.handshakeHash);
         expect(hex(r.handshakeHash)).toBe(h.handshakeHash);
         const ti = await i.transport();

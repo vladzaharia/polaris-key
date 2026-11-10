@@ -17,6 +17,7 @@
 // silently and counts no failure (§15.12 step 3).
 
 import { isX25519LowOrder } from "@polaris-key/jws";
+import { cat, utf8 } from "./advert.js";
 import { hkdfSha256, webCryptoX25519, type X25519Port } from "./noise.js";
 
 export type CpaceKind = "code" | "qr";
@@ -39,16 +40,6 @@ const DSI_ISK = "CPace255_ISK";
 /** SHA-512's input block size, the draft's `s_in_bytes`. */
 const S_IN_BYTES = 128;
 
-const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
-const cat = (...parts: Uint8Array[]): Uint8Array => {
-  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
-  let off = 0;
-  for (const p of parts) {
-    out.set(p, off);
-    off += p.length;
-  }
-  return out;
-};
 const buf = (b: Uint8Array): ArrayBuffer =>
   b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
 
@@ -63,12 +54,12 @@ async function sha512(...parts: Uint8Array[]): Promise<Uint8Array> {
 /** `prepend_len`: the LEB128 length, then the data. */
 export function prependLen(data: Uint8Array): Uint8Array {
   const len: number[] = [];
-  let n = data.length;
-  for (;;) {
-    len.push(n < 128 ? n : (n & 0x7f) | 0x80);
-    n = Math.floor(n / 128);
-    if (n === 0) break;
+  let rest = data.length;
+  while (rest >= 128) {
+    len.push((rest % 128) + 128);
+    rest = Math.floor(rest / 128);
   }
+  len.push(rest);
   return cat(Uint8Array.from(len), data);
 }
 
@@ -120,23 +111,26 @@ function pow(base: bigint, exp: bigint): bigint {
   return r;
 }
 
-/** `decodeUCoordinate(u, 255)`: 32 little-endian bytes with bit 255 cleared; not reduced. */
+/** The little-endian integer of `b`. */
+const fromLittleEndian = (b: Uint8Array): bigint =>
+  BigInt(
+    "0x" +
+      Array.from(b, (x) => x.toString(16).padStart(2, "0"))
+        .reverse()
+        .join(""),
+  );
+
+/** `decodeUCoordinate(u, 255)`: bit 255 cleared, the rest read little-endian; not reduced. */
 function decodeU(u: Uint8Array): bigint {
-  let n = 0n;
-  for (let i = 31; i >= 0; i--)
-    n = (n << 8n) | BigInt(i === 31 ? u[i]! & 0x7f : u[i]!);
-  return n;
+  const masked = Uint8Array.from(u);
+  masked[31] = masked[31]! & 0x7f;
+  return fromLittleEndian(masked);
 }
 
 /** 32 little-endian bytes of a field element in `[0, p)`. */
 function encodeU(x: bigint): Uint8Array {
-  const out = new Uint8Array(32);
-  let v = x;
-  for (let i = 0; i < 32; i++) {
-    out[i] = Number(v & 255n);
-    v >>= 8n;
-  }
-  return out;
+  const hex = x.toString(16).padStart(64, "0");
+  return Uint8Array.from(hex.match(/../g)!.reverse(), (h) => parseInt(h, 16));
 }
 
 export interface Elligator2Result {

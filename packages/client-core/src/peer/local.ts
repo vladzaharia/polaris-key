@@ -8,11 +8,20 @@
 // inside an error. Time comes in as arguments (a monotonic clock, in seconds, for the window), so a
 // machine never reads a clock of its own.
 
-import { advertEpoch, base32Lower, isInstanceName } from "./advert.js";
-import { validCats } from "./contact.js";
+import {
+  advertEpoch,
+  base32Lower,
+  cat,
+  isInstanceName,
+  txtEntries,
+  u64be,
+  utf8,
+} from "./advert.js";
+import { MAX_CONTACT_SECRETS, byteCompare, validCats } from "./contact.js";
 import { cleanLabel } from "./display.js";
 import { hkdfSha256, hmac } from "./noise.js";
 import { capsIntersection, parseStrictObjectScanned } from "./payload.js";
+import type { PeerCloseCode } from "./record.js";
 
 // ── Constants (§15.12) ───────────────────────────────────────────────────────────────────────
 
@@ -40,19 +49,6 @@ export const LOCAL_JOIN_KEPT = 8;
 export const LOCAL_LINK_BODY_MAX = 4096;
 /** The mandatory capability of mode `q`. */
 export const LOCAL_CAP = "local/1";
-
-const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
-const cat = (...p: Uint8Array[]): Uint8Array =>
-  Uint8Array.from(p.flatMap((x) => Array.from(x)));
-const u64be = (n: number): Uint8Array => {
-  const b = new Uint8Array(8);
-  new DataView(b.buffer).setBigUint64(0, BigInt(n));
-  return b;
-};
-const byteCompare = (a: Uint8Array, b: Uint8Array): number => {
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i]! - b[i]!;
-  return 0;
-};
 
 // ── The code (§15.12, "The code") ────────────────────────────────────────────────────────────
 
@@ -262,17 +258,13 @@ export type LocalTxtResult =
 
 /** `v=1` and `m=l`. Entries split as `parseTxt` splits them; `h` and `n` are not read. */
 export function parseLocalTxt(entries: readonly string[]): LocalTxtResult {
-  const kv = new Map<string, string>();
-  for (const e of entries) {
-    const at = e.indexOf("=");
-    if (at < 1) continue;
-    const k = e.slice(0, at);
-    if (kv.has(k)) return { ok: false, reason: "duplicate" };
-    kv.set(k, e.slice(at + 1));
-  }
-  if (kv.get("v") !== "1") return { ok: false, reason: "version" };
-  if (kv.get("m") !== "l") return { ok: false, reason: "mode" };
-  return { ok: true, mode: "l" };
+  const kv = txtEntries(entries);
+  if (kv === null) return { ok: false, reason: "duplicate" };
+  const refused =
+    kv.get("v") !== "1" ? "version" : kv.get("m") !== "l" ? "mode" : null;
+  return refused === null
+    ? { ok: true, mode: "l" }
+    : { ok: false, reason: refused };
 }
 
 // ── The LOCAL_LINK body (§15.12, "The LOCAL_LINK body") ──────────────────────────────────────
@@ -291,13 +283,14 @@ export function buildLocalLink(o: {
   cats: readonly string[];
 }): Uint8Array {
   if (!validCats(o.cats)) throw new RangeError("cats");
-  const body: Record<string, unknown> = { v: 1 };
-  if (o.label !== undefined) {
-    const label = cleanLabel(o.label);
-    if (label !== null) body.label = label;
-  }
-  body.cats = [...o.cats];
-  const bytes = utf8(JSON.stringify(body));
+  const label = o.label === undefined ? null : cleanLabel(o.label);
+  const bytes = utf8(
+    JSON.stringify({
+      v: 1,
+      ...(label !== null ? { label } : {}),
+      cats: [...o.cats],
+    }),
+  );
   if (bytes.length > LOCAL_LINK_BODY_MAX) throw new RangeError("size");
   return bytes;
 }
@@ -308,23 +301,23 @@ export function buildLocalLink(o: {
  * ignored; a key, id or certificate in the body is never read.
  */
 export function parseLocalLink(body: Uint8Array): LocalLinkVerdict {
-  const no: LocalLinkVerdict = { ok: false };
-  if (body.length > LOCAL_LINK_BODY_MAX) return no;
-  const scanned = parseStrictObjectScanned(body);
-  if (scanned === null) return no;
-  const { o, nonWireIntegers } = scanned;
-  if (o.v !== 1 || nonWireIntegers.has("/v")) return no;
-  const cats = o.cats;
-  if (!Array.isArray(cats) || !validCats(cats)) return no;
-  let label: string | undefined;
-  if (o.label !== undefined) {
-    if (typeof o.label !== "string") return no;
-    const l = cleanLabel(o.label);
-    if (l !== null) label = l;
-  }
+  const scanned =
+    body.length > LOCAL_LINK_BODY_MAX ? null : parseStrictObjectScanned(body);
+  if (scanned === null) return { ok: false };
+  const { cats, label, v } = scanned.o;
+  const labelOk = label === undefined || typeof label === "string";
+  if (
+    v !== 1 ||
+    scanned.nonWireIntegers.has("/v") ||
+    !labelOk ||
+    !Array.isArray(cats) ||
+    !validCats(cats)
+  )
+    return { ok: false };
+  const clean = typeof label === "string" ? cleanLabel(label) : null;
   return {
     ok: true,
-    ...(label !== undefined ? { label } : {}),
+    ...(clean !== null ? { label: clean } : {}),
     cats: [...cats],
   };
 }
@@ -699,4 +692,156 @@ export class LocalPairingGate {
   check(): "ok" | "local-pairing-off" {
     return this.allowed ? "ok" : "local-pairing-off";
   }
+}
+
+// ── The pairing exchange (§15.12, "Consent and LOCAL_LINK") ──────────────────────────────────
+
+export type LocalExchangeEvent =
+  | { event: "own-confirm" }
+  | { event: "own-decline" }
+  | { event: "peer-confirm" }
+  | { event: "peer-link"; body: Uint8Array }
+  /** 120 s from the first byte ran out. */
+  | { event: "timeout-confirm" }
+  /** `CONTACT_EXCHANGE_SECONDS` after both `CONFIRM`s ran out. */
+  | { event: "timeout-exchange" };
+
+export interface LocalExchangeStep {
+  /** The records this step makes the side send. */
+  sends: ("CONFIRM" | "LOCAL_LINK")[];
+  close?: Extract<
+    PeerCloseCode,
+    "peer_bye" | "peer_bad_frame" | "peer_timeout" | "peer_not_allowed"
+  >;
+  /** The peer's `LOCAL_LINK`, valid, read in order: the host stores the link. */
+  stored?: { label?: string; cats: string[] };
+}
+
+/**
+ * One side's order guard over the records of the pairing (§15.12, "Order of checks"). A
+ * `LOCAL_LINK` goes out once this side has sent its `CONFIRM` and read the peer's; the peer's
+ * arrives only after both. The first valid `LOCAL_LINK` is stored and the side closes `peer_bye`;
+ * after any close nothing happens, so a second `LOCAL_LINK` is never answered.
+ */
+export class LocalExchange {
+  private ownConfirmed = false;
+  private peerConfirmed = false;
+  private linkSent = false;
+  private dead = false;
+
+  /** `held` is the number of local links the device holds; `cats` are this side's approved ones. */
+  constructor(
+    private readonly held: number,
+    private readonly cats: readonly string[],
+  ) {}
+
+  /** Both `CONFIRM`s are done (this side's sent, the peer's read), and no link has closed the session. */
+  get bothConfirmed(): boolean {
+    return !this.dead && this.ownConfirmed && this.peerConfirmed;
+  }
+
+  step(e: LocalExchangeEvent): LocalExchangeStep {
+    const r: LocalExchangeStep = { sends: [] };
+    if (this.dead) return r;
+    const end = (close: NonNullable<LocalExchangeStep["close"]>) => {
+      this.dead = true;
+      r.close = close;
+      return r;
+    };
+    const maybeLink = (): void => {
+      if (this.ownConfirmed && this.peerConfirmed && !this.linkSent) {
+        this.linkSent = true;
+        r.sends.push("LOCAL_LINK");
+      }
+    };
+    switch (e.event) {
+      case "own-confirm":
+        if (this.ownConfirmed) return r;
+        this.ownConfirmed = true;
+        r.sends.push("CONFIRM");
+        maybeLink();
+        return r;
+      case "own-decline":
+        // A decline after this side's CONFIRM is not an event: the person already agreed.
+        return this.ownConfirmed ? r : end("peer_bye");
+      case "peer-confirm":
+        if (this.peerConfirmed) return end("peer_bad_frame");
+        this.peerConfirmed = true;
+        maybeLink();
+        return r;
+      case "peer-link": {
+        if (!this.ownConfirmed || !this.peerConfirmed)
+          return end("peer_bad_frame");
+        const v = parseLocalLink(e.body);
+        if (!v.ok) return end("peer_bad_frame");
+        if (this.held >= MAX_LOCAL_LINKS) return end("peer_not_allowed");
+        r.stored = {
+          ...(v.label !== undefined ? { label: v.label } : {}),
+          cats: localCategories(this.cats, v.cats),
+        };
+        return end("peer_bye");
+      }
+      case "timeout-confirm":
+        return this.ownConfirmed && this.peerConfirmed
+          ? r
+          : end("peer_timeout");
+      case "timeout-exchange":
+        return this.ownConfirmed && this.peerConfirmed
+          ? end("peer_timeout")
+          : r;
+    }
+  }
+}
+
+// ── The pin (§15.12, "Mode l" and "Link keys") ───────────────────────────────────────────────
+
+const sameKey = (a: Uint8Array, b: Uint8Array): boolean =>
+  a.length === b.length && byteCompare(a, b) === 0;
+
+/**
+ * Mode l: the remote static key must be the peer link key of the link whose secret opened the
+ * session. The initiator asks after message 2, the responder after message 3; a `false` ends the
+ * session as `peer_revoked` with nothing sent.
+ */
+export const localPin = (held: Uint8Array, remoteStatic: Uint8Array): boolean =>
+  sameKey(held, remoteStatic);
+
+/**
+ * Mode q: a remote static key equal to this side's own link key ends the handshake silently,
+ * before the transport (a reflected handshake). `true` means the key is another's.
+ */
+export const pairingRemoteOk = (
+  own: Uint8Array,
+  remoteStatic: Uint8Array,
+): boolean => !sameKey(own, remoteStatic);
+
+// ── The listener's trial order (§15.5 "One listener, one order") ─────────────────────────────
+
+export interface TrialEntry {
+  /** `a` an account discovery key, `c` a contact secret, `l` a local-link secret. */
+  kind: "a" | "c" | "l";
+  /** Index in the list as held (an absent account key keeps its slot). */
+  index: number;
+}
+
+/**
+ * The order a shared listener tries message 1 in: the account's keys (an absent one is skipped),
+ * then the contact secrets (at most `MAX_CONTACT_SECRETS`), then the local-link secrets in held
+ * order (at most `MAX_LOCAL_LINKS`): at most `MAX_LINK_SECRETS` secrets after the account keys.
+ * The contact and local-link trials sit behind the contact limiter; the account keys do not.
+ */
+export function listenerTrialOrder(
+  account: readonly (unknown | null)[] | null,
+  contacts: number,
+  locals: number,
+): TrialEntry[] {
+  const out: TrialEntry[] = [];
+  (account ?? []).slice(0, 2).forEach((k, index) => {
+    if (k !== null) out.push({ kind: "a", index });
+  });
+  for (let i = 0; i < Math.min(contacts, MAX_CONTACT_SECRETS); i++)
+    out.push({ kind: "c", index: i });
+  for (let i = 0; i < Math.min(locals, MAX_LOCAL_LINKS); i++)
+    out.push({ kind: "l", index: i });
+  return out;
 }

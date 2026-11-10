@@ -1114,8 +1114,7 @@ function xferRun(row: any): void {
 }
 
 /**
- * `local` (connect.localLinks): the account-free local-pairing rows, in `localSuites.ts`. Its
- * sections that need a session (`exchange`, `pin`, `trialOrder`, `records`) are CC-29.5b.
+ * `local` (connect.localLinks): the account-free local-pairing rows, in `localSuites.ts`.
  */
 function local(m: PeerMatrix): void {
   registerLocalSuites((m as unknown as { local: LocalSection }).local);

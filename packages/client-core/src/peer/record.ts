@@ -60,29 +60,42 @@ interface TypeRow {
   name: string;
   modes: readonly RecordMode[];
   bodyLen?: number;
+  /**
+   * The capability a session must hold for the type (§15.6, §15.11, §15.12). `xfer/1` is enforced by
+   * the assembler (`xferAllowed`), `local/1` by the mode-q handshake, `app/1` by the host.
+   */
+  needs?: string;
 }
 const ALL: RecordMode[] = ["a", "v", "p", "c", "q", "l"];
+/** One row of the table; a single type has `to === from`. */
+const row = (
+  from: number,
+  to: number,
+  name: string,
+  modes: readonly RecordMode[],
+  extra: Pick<TypeRow, "bodyLen" | "needs"> = {},
+): TypeRow => ({ from, to, name, modes, ...extra });
 export const RECORD_TYPES: readonly TypeRow[] = [
-  { from: 0x8001, to: 0x8001, name: "HELLO", modes: ALL },
-  { from: 0x0002, to: 0x0002, name: "RING", modes: ["a"] },
-  { from: 0x0003, to: 0x0003, name: "TRUST", modes: ["a"] },
-  { from: 0x0004, to: 0x0004, name: "PING", modes: ALL, bodyLen: 8 },
-  { from: 0x0005, to: 0x0005, name: "PONG", modes: ALL, bodyLen: 8 },
-  { from: 0x0006, to: 0x0006, name: "CANDIDATES", modes: ["a"] },
-  { from: 0x8010, to: 0x8010, name: "VOUCH_REQ", modes: ["v"] },
-  { from: 0x8011, to: 0x8011, name: "VOUCH_RESULT", modes: ["v"] },
-  { from: 0x8012, to: 0x8012, name: "CONFIRM", modes: ["p", "q"] },
-  { from: 0x0013, to: 0x0013, name: "CONTACT", modes: ["p"] },
-  { from: 0x0014, to: 0x0014, name: "LOCAL_LINK", modes: ["q"] },
-  { from: 0x8014, to: 0x8014, name: "SAS_COMMIT", modes: ["v", "p"] },
-  { from: 0x8015, to: 0x8015, name: "SAS_NONCE", modes: ["v", "p"] },
-  { from: 0x8016, to: 0x8016, name: "SAS_REVEAL", modes: ["v", "p"] },
-  { from: 0x0020, to: 0x0025, name: "XFER", modes: ["a", "c", "l"] },
-  { from: 0x0030, to: 0x003f, name: "SYNC", modes: ["v"] },
-  { from: 0x0100, to: 0x7fff, name: "APP", modes: ["a", "c", "l"] },
-  { from: 0x8100, to: 0xfffd, name: "APP_CRITICAL", modes: ["a", "c", "l"] },
-  { from: 0x80fe, to: 0x80fe, name: "REKEY", modes: ALL, bodyLen: 0 },
-  { from: 0x80ff, to: 0x80ff, name: "CLOSE", modes: ALL },
+  row(0x8001, 0x8001, "HELLO", ALL),
+  row(0x0002, 0x0002, "RING", ["a"]),
+  row(0x0003, 0x0003, "TRUST", ["a"]),
+  row(0x0004, 0x0004, "PING", ALL, { bodyLen: 8 }),
+  row(0x0005, 0x0005, "PONG", ALL, { bodyLen: 8 }),
+  row(0x0006, 0x0006, "CANDIDATES", ["a"]),
+  row(0x8010, 0x8010, "VOUCH_REQ", ["v"]),
+  row(0x8011, 0x8011, "VOUCH_RESULT", ["v"]),
+  row(0x8012, 0x8012, "CONFIRM", ["p", "q"]),
+  row(0x0013, 0x0013, "CONTACT", ["p"]),
+  row(0x0014, 0x0014, "LOCAL_LINK", ["q"], { needs: "local/1" }),
+  row(0x8014, 0x8014, "SAS_COMMIT", ["v", "p"]),
+  row(0x8015, 0x8015, "SAS_NONCE", ["v", "p"]),
+  row(0x8016, 0x8016, "SAS_REVEAL", ["v", "p"]),
+  row(0x0020, 0x0025, "XFER", ["a", "c", "l"], { needs: "xfer/1" }),
+  row(0x0030, 0x003f, "SYNC", ["v"]),
+  row(0x0100, 0x7fff, "APP", ["a", "c", "l"], { needs: "app/1" }),
+  row(0x8100, 0xfffd, "APP_CRITICAL", ["a", "c", "l"], { needs: "app/1" }),
+  row(0x80fe, 0x80fe, "REKEY", ALL, { bodyLen: 0 }),
+  row(0x80ff, 0x80ff, "CLOSE", ALL),
 ];
 
 export interface PeerRecord {

@@ -8,6 +8,7 @@ import {
   GATED_CALLS,
   JoinPlan,
   LocalPairingGate,
+  LocalExchange,
   MAX_LINK_SECRETS,
   MAX_LIVE_LOCAL_ADVERTS,
   MAX_LOCAL_LINKS,
@@ -17,6 +18,9 @@ import {
   LOCAL_PAIR_SECONDS,
   LOCAL_QR_SECRET_BYTES,
   PairingWindow,
+  RECORD_TYPES,
+  RecordAssembler,
+  type RecordMode,
   base32Lower,
   browseLocalInstance,
   buildLocalLink,
@@ -25,10 +29,13 @@ import {
   drawNameplate,
   drawPassword,
   localInstance,
+  listenerTrialOrder,
   localLinkSecret,
+  localPin,
   makeQr,
   negotiateLocalCaps,
   pairingInstance,
+  pairingRemoteOk,
   parseCode,
   parseHandshakePayload,
   parseLocalLink,
@@ -182,6 +189,55 @@ export interface LocalSection {
       kept: string[];
       dialled: string[];
       result: string;
+    };
+  }[];
+  exchange: {
+    id: string;
+    held: number;
+    cats: string[];
+    steps: { event: string; body?: string }[];
+    want: Record<string, unknown>[];
+  }[];
+  pin: {
+    id: string;
+    mode: "l" | "q";
+    role: "initiator" | "responder";
+    held?: string[];
+    matched?: number;
+    own?: string;
+    remoteStatic: string;
+    checkedAfter: number;
+    want: { ok: boolean; close?: string; sends?: number };
+  }[];
+  trialOrder: {
+    id: string;
+    account: (string | null)[] | null;
+    contacts: string[];
+    locals: string[];
+    opens: {
+      mode: "a" | "c" | "l";
+      key?: number;
+      contact?: number;
+      link?: number;
+    } | null;
+    limiter: "admit" | "refuse";
+    want: {
+      tried: string[];
+      hit: string | null;
+      slot: boolean;
+      close: string | null;
+    };
+  }[];
+  records: {
+    id: string;
+    mode: RecordMode;
+    type: string;
+    want: {
+      allowed?: boolean;
+      ignored?: boolean;
+      name?: string;
+      needs?: string;
+      close?: string;
     };
   }[];
   gate: {
@@ -453,6 +509,114 @@ export function registerLocalSuites(l: LocalSection): void {
           result: plan.result(),
         }).toEqual(r.want);
       });
+  });
+
+  describe("peer-matrix local: exchange", () => {
+    for (const r of l.exchange)
+      it(r.id, () => {
+        const x = new LocalExchange(r.held, r.cats);
+        const got = r.steps.map((s) => {
+          if (s.event === "peer-link")
+            return x.step({ event: "peer-link", body: utf8(s.body!) });
+          return x.step({
+            event: s.event as
+              | "own-confirm"
+              | "own-decline"
+              | "peer-confirm"
+              | "timeout-confirm"
+              | "timeout-exchange",
+          });
+        });
+        expect(got).toEqual(r.want);
+      });
+  });
+
+  describe("peer-matrix local: pin", () => {
+    it("mode l pins the peer link key; mode q refuses its own key", () => {
+      for (const r of l.pin) {
+        if (r.mode === "l") {
+          const ok = localPin(
+            bytes(r.held![r.matched!]!),
+            bytes(r.remoteStatic),
+          );
+          expect(
+            ok ? { ok } : { ok, close: "peer_revoked", sends: 0 },
+            r.id,
+          ).toEqual(r.want);
+        } else {
+          const ok = pairingRemoteOk(bytes(r.own!), bytes(r.remoteStatic));
+          expect(ok ? { ok } : { ok, close: "silent", sends: 0 }, r.id).toEqual(
+            r.want,
+          );
+        }
+        // The initiator asks after message 2, the responder after message 3.
+        expect(r.checkedAfter, r.id).toBe(r.role === "initiator" ? 2 : 3);
+      }
+    });
+  });
+
+  describe("peer-matrix local: trial order", () => {
+    it("account keys, then contacts (72), then local links (32): at most 104", () => {
+      for (const r of l.trialOrder) {
+        const plan = listenerTrialOrder(
+          r.account,
+          r.contacts.length,
+          r.locals.length,
+        );
+        const tried: string[] = [];
+        let hit: string | null = null;
+        let close: string | null = null;
+        let limiterAsked = false;
+        for (const e of plan) {
+          if (e.kind !== "a" && !limiterAsked) {
+            // The contact limiter admits the secret trial once; a refusal tries no secret.
+            limiterAsked = true;
+            if (r.limiter === "refuse") {
+              close = "peer_busy";
+              break;
+            }
+          }
+          const name = `${e.kind}:${e.index}`;
+          tried.push(name);
+          const o = r.opens;
+          if (
+            o !== null &&
+            o.mode === e.kind &&
+            (o.mode === "a" ? o.key : o.mode === "c" ? o.contact : o.link) ===
+              e.index
+          ) {
+            hit = name;
+            break;
+          }
+        }
+        if (hit === null && close === null) close = "handshake_failed";
+        expect(
+          { tried, hit, slot: hit !== null && hit[0] !== "a", close },
+          r.id,
+        ).toEqual(r.want);
+      }
+      expect(l.constants.maxLinkSecrets).toBe(MAX_LINK_SECRETS);
+    });
+  });
+
+  describe("peer-matrix local: records", () => {
+    it("the mode rules of §15.6 for q and l, and the new rows in the other modes", () => {
+      for (const r of l.records) {
+        const type = parseInt(r.type, 16);
+        const body = new Uint8Array(type === 0x0004 || type === 0x0005 ? 8 : 0);
+        const got = new RecordAssembler(r.mode).push({ type, flags: 0, body });
+        if (r.want.ignored === true) {
+          expect(got.kind, r.id).toBe("ignored");
+        } else if (r.want.allowed === true) {
+          expect(got.kind, r.id).toBe("message");
+          const row = RECORD_TYPES.find((t) => type >= t.from && type <= t.to)!;
+          expect(row.name, r.id).toBe(r.want.name);
+          expect(row.needs, r.id).toBe(r.want.needs);
+        } else {
+          expect(got, r.id).toEqual({ kind: "close", code: r.want.close });
+        }
+      }
+    });
   });
 
   describe("peer-matrix local: gate", () => {
