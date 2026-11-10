@@ -9,7 +9,16 @@ extends RefCounted
 ##                                     (`signedOut`, `unsyncedData`, `signInOffered`, `change`,
 ##                                     `rejected`, `purgeFailed`), other keys snake_case, keys only
 ##   PolarisKey.cloud_sync.saves       the synced saves (U-23; PKeySaves, services/cloud_sync/saves.gd): list, read,
-##                                     write, resolve, delete, revisions
+##                                     write, delete, revisions, conflicts
+##   PolarisKey.cloud_sync.conflict_opened(request)   a `revision` write lost to another copy and is waiting for an
+##                                     answer (U-08; PKeyMergeRequest): `await request.keep("local" | "remote" |
+##                                     "both" | {"value": v})`. `conflicts()` lists the open ones;
+##                                     `on_conflict(fn)` is the listener that may decide inline (return the choice)
+##                                     and is replayed the requests already open; `conflict_closed(id, how)`.
+##                                     The stream carries `conflictOpened` {id, cause, collection, record} and
+##                                     `conflictClosed` {id, how}. Unanswered, the device keeps its copy unsent
+##   PolarisKey.cloud_sync.cloud_empty()   true after a first pull that found nothing in the cloud, false after one
+##                                     that did, null before any (the pull's `empty` flag)
 ##   PolarisKey.cloud_sync.transfers() the saves being written now (PKeyTransfer handles)
 ##                                     and, on the same stream, `transferProgress`, `transferDone` and
 ##                                     `transferFailed` (a cancelled write is `transferDone` with state "cancelled")
@@ -40,6 +49,11 @@ extends RefCounted
 ##
 ## "Connect leave" (the first link of the sign-out chain once Cloud Connect exists in Godot) plugs in as
 ## `before_leave`: a Callable awaited before the flush. None today.
+
+## A `revision` write lost to another copy: it waits for `request.keep(...)` (PKeyMergeRequest).
+signal conflict_opened(request: PKeyMergeRequest)
+## A request ended: `how` is "local", "remote", "value", "both" or "superseded".
+signal conflict_closed(id: String, how: String)
 
 const Host := preload("res://addons/polaris_key/services/cloud_sync/host.gd")
 const Transport := preload("res://addons/polaris_key/services/cloud_sync/transport.gd")
@@ -85,6 +99,8 @@ var _files: Object = null
 var _bulk_open := false
 ## Held here: a Callable on a RefCounted does not keep it alive.
 var _saves_port: _SavesPort = null
+## The open MergeRequests: the machine's record requests and the saves'.
+var _merge: PKeyMergeRegistry = null
 var _cache: Object = null
 var _cache_for: Variant = null
 ## While one person replaces another, the incoming person: their chunk folder is the one that stays.
@@ -139,10 +155,35 @@ func bind(p_core: PKeyCore, sdk: Node, p_config: PKeyConfig, p_keyring: Object, 
 		},
 	})
 	_port.set_api(self)
+	_merge = PKeyMergeRegistry.new({
+		"machine": Callable(self, "_merge_machine"),
+		"poke": Callable(self, "_merge_poke"),
+		"event": Callable(self, "_merge_event"),
+		"audience": Callable(self, "_merge_audience"),
+	})
 	_build_saves()
 
 
 # ── What app code calls ───────────────────────────────────────────────────────────────────────
+
+
+## The open MergeRequests (PKeyMergeRequest) in id order: record collections and saves.
+func conflicts() -> Array:
+	return _merge.conflicts() if _merge != null else []
+
+
+## Listen for requests as they open, and be replayed the ones already open. A listener may return a choice
+## ("local", "remote", "both" or {"value": v}) to decide a request inline. Returns the Callable that removes it.
+func on_conflict(fn: Callable) -> Callable:
+	return _merge.on_conflict(fn) if _merge != null else Callable()
+
+
+## Whether the cloud was empty at the first pull of the person signed in: true after one that found nothing,
+## false after one that found something or after any change, null before any pull. Null while Sync is off.
+func cloud_empty() -> Variant:
+	if host == null or not host.is_started():
+		return null
+	return host.machine().cloud_empty()
 
 
 ## The saves being written now (PKeyTransfer handles), oldest first.
@@ -159,6 +200,10 @@ func status() -> PKeyResult:
 	if host == null or not host.is_started():
 		return PKeyResult.success({"state": "local", "pending": 0, "protection": host.state_protection() if host != null else "none"})
 	var out: Dictionary = host.machine().status()
+	out.erase("conflicts")
+	var open := _merge.count() if _merge != null else 0
+	if open > 0:
+		out["conflicts"] = open
 	out["protection"] = host.state_protection()
 	return PKeyResult.success(out)
 
@@ -230,9 +275,37 @@ func _build_saves() -> void:
 		"max_bytes": o["max_bytes"],
 		"format_version": o["save_format_version"],
 		"emit": port.emit_transfer,
+		"merge": _merge,
 		"purge_files": port.purge_files,
 		"device_label": Callable(self, "_device_label"),
 	})
+
+
+func _merge_machine() -> Variant:
+	return host.machine() if host != null and is_instance_valid(host) and host.is_started() else null
+
+
+func _merge_poke() -> void:
+	if host != null and is_instance_valid(host) and host.is_started():
+		host.deliver_events()
+		host.touch()
+
+
+func _merge_audience() -> bool:
+	return not conflict_opened.get_connections().is_empty()
+
+
+## The registry's events: the signal for a host, and the stream (keys only: no value, no copy).
+func _merge_event(e: Dictionary) -> void:
+	if e["type"] == PKeyConstants.MergeEvent.CONFLICTOPENED:
+		var r: PKeyMergeRequest = e["request"]
+		if _emit.is_valid():
+			_emit.call({"type": e["type"], "id": r.id, "cause": r.cause, "collection": r.collection, "record": r.record})
+		conflict_opened.emit(r)
+	else:
+		if _emit.is_valid():
+			_emit.call({"type": e["type"], "id": e["id"], "how": e["how"]})
+		conflict_closed.emit(e["id"], e["how"])
 
 
 ## The file codec of the saves now: the plain-hash codec in server mode, the key ring's in end-to-end
@@ -543,6 +616,8 @@ func _leave() -> void:
 
 
 func _on_events(events: Array) -> void:
+	if _merge != null:
+		_merge.feed(events)
 	var left := false
 	var involuntary := false
 	for e: Dictionary in events:
@@ -565,6 +640,8 @@ func _on_events(events: Array) -> void:
 			_config._note_sync_change(e["keys"], e["origin"])
 		if left and e.get("type") == "signInOffered":
 			continue  # the offer follows the forget (A-5)
+		if e.get("type") == "conflict" or e.get("type") == "conflictClosed":
+			continue  # the registry announces requests as conflictOpened / conflictClosed
 		_deliver(e)
 	if left:
 		_after_forget(offers, involuntary)

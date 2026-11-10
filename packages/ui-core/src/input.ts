@@ -592,6 +592,9 @@ export interface UiInput {
      *  `when` strings. It tags that card and chooses, fills, focuses and reorders nothing; it is
      *  ignored when the other copy was deleted. */
     newer?: "local" | "remote";
+    /** On the choose step: a choice was being applied and the other copy changed again, so
+     *  nothing was applied and the versions shown are the new ones. Adds one line saying so. */
+    reopened?: boolean;
   };
   /** UnlockSync's step (U-42). `nearby` says the host could unlock from a nearby device:
    *  v0.10.0 never offers it, because NearbyApproval does not ship. */

@@ -11,7 +11,11 @@ internal class MachineRecordPuts(private val p: MachineParts) {
     fun revision(part: SyncPartition, rk: String, target: OpTarget.Record, value: JsonElement) {
         // An exact write (`putAt`) is never coalesced into, and a `put` never edits it.
         val queued = part.pending.firstOrNull { p.records.isRecord(it, rk) && it.ticket == null }
+        val open = part.conflicts[rk]?.takeIf { it.keepChoice == null }
         when {
+            // An open request freezes the record: the later put replaces the device's copy and is not sent.
+            open != null -> open.local = value
+
             p.records.inFlightTouches(rk) -> part.held[rk] = value
 
             queued != null -> queued.value = value

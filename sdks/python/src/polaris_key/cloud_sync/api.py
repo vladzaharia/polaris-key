@@ -3,6 +3,8 @@
 A port of ``packages/sdk-node/src/cloudSync/api.ts``.
 
 * ``client.cloud_sync.status()`` / ``flush()``     the machine's status, and "send what is waiting";
+* ``client.cloud_sync.on_conflict(fn)`` / ``conflicts()`` / ``cloud_empty()``  the MergeRequests of
+  ``revision`` records and saves (plans/U-08.md §2.5), and whether the cloud was empty at first sign-in;
 * ``client.events.on("cloudSync", fn)``           the machine's events, in order;
 * ``config.set`` / ``clear`` / ``setting(k).sync()``   routed through the machine while a principal is held.
 
@@ -29,10 +31,11 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from ..config.client import ConfigClient
-from ..constants_generated import SYNC_SIGNOUT_FLUSH_MS, Feature
+from ..constants_generated import SYNC_SIGNOUT_FLUSH_MS, Feature, MergeEvent
 from ..core.context import CoreContext
 from .collection import SyncCollection
 from .host import CloudSyncHost
+from .merge import MergeRegistry, MergeRequest
 
 __all__ = ["CloudSyncApi", "CloudSyncClient"]
 
@@ -70,6 +73,25 @@ class CloudSyncClient:
         the status."""
         return self._api.flush()
 
+    def on_conflict(self, fn: Callable[[MergeRequest], Any]) -> Callable[[], None]:
+        """Listen for the requests a ``revision`` write opens (a record collection, or a save). The
+        requests already open are replayed. A returned choice (``"local"``, ``"remote"``, ``"both"`` or
+        ``{"value": ...}``) decides the request at once. ``fn`` runs on the thread that opened the
+        request: return the choice, or hand the request to another thread, rather than waiting inside
+        it. Returns the remover. Raises the typed ``product`` N/A when the product does not run the Sync
+        service."""
+        return self._api.on_conflict(fn)
+
+    def conflicts(self) -> List[MergeRequest]:
+        """The open requests, in id order. ``request.keep(choice)`` answers one."""
+        return self._api.conflicts()
+
+    def cloud_empty(self) -> Optional[bool]:
+        """Whether the cloud was empty at the first cursor-0 answer of this account on this device:
+        ``True`` after one that said so, ``False`` after one that did not or after any change, ``None``
+        before any."""
+        return self._api.cloud_empty()
+
     def collection(self, name: str) -> SyncCollection:
         """The records handle of a collection the product's catalog declares (U-46): ``get``, ``ids``,
         ``put`` (``if_version`` compare-and-set), ``update``, ``add``, ``remove``, ``delete`` and ``on``.
@@ -91,8 +113,12 @@ class CloudSyncApi:
         log: Optional[Callable[[str], None]] = None,
         on_subject: Optional[Callable[[Optional[str]], None]] = None,
         purge_saves: Optional[Callable[[], None]] = None,
+        merge: Optional[MergeRegistry] = None,
     ) -> None:
         self._on_subject = on_subject
+        #: The client's MergeRequests (machine records and saves); the stream gets their open and close.
+        self._merge = merge if merge is not None else MergeRegistry()
+        self._merge.on_event(self._emit_merge)
         #: Delete the person's save-transfer journal and chunk cache (U-22.5).
         self._purge_saves = purge_saves
         self._ctx = ctx
@@ -125,7 +151,46 @@ class CloudSyncApi:
         if not self._host.started:
             return {"state": "local", "pending": 0}
         with self._host.locked() as m:
-            return m.status()
+            out = m.status()
+        # The machine counts its own requests; the saves layer's are in the registry.
+        out.pop("conflicts", None)
+        open_count = self._merge.count()
+        return {**out, "conflicts": open_count} if open_count > 0 else out
+
+    def on_conflict(self, fn: Callable[[MergeRequest], Any]) -> Callable[[], None]:
+        self._ctx.require_service("sync", Feature.SYNC_CONFLICT)
+        self._attach()
+        return self._merge.on_conflict(fn)
+
+    def conflicts(self) -> List[MergeRequest]:
+        self._ctx.require_service("sync", Feature.SYNC_CONFLICT)
+        self._attach()
+        return self._merge.conflicts()
+
+    def cloud_empty(self) -> Optional[bool]:
+        self._ctx.require_service("sync", Feature.SYNC_CONFLICT)
+        self._attach()
+        if not self._host.started:
+            return None
+        with self._host.locked() as m:
+            return m.cloud_empty()
+
+    def _emit_merge(self, e: Obj) -> None:
+        """``conflictOpened`` / ``conflictClosed`` on the ``cloudSync`` stream."""
+        if e["type"] == MergeEvent.CONFLICTOPENED:
+            r = e["request"]
+            self._emit(
+                {
+                    "type": MergeEvent.CONFLICTOPENED,
+                    "id": r.id,
+                    "cause": r.cause,
+                    "collection": r.collection,
+                    "record": r.record,
+                    "request": r,
+                }
+            )
+        else:
+            self._emit(e)
 
     def collection(self, name: str) -> SyncCollection:
         self._ctx.require_service("sync", Feature.SYNC_RECORDS)
@@ -313,6 +378,9 @@ class CloudSyncApi:
 
     def _on_events(self, events: List[Obj]) -> None:
         left = any(e.get("type") == "signedOut" and e.get("reason") in FORGETTING for e in events)
+        # The machine's `conflict` and `conflictClosed` become the registry's `conflictOpened` and
+        # `conflictClosed`; they reach the stream from there, never raw.
+        self._merge.feed(events)
         # The root leaves memory before anything else runs.
         forgotten = self._forget_async() if left else None
         offers = [e for e in events if e.get("type") == "signInOffered"]
@@ -320,6 +388,8 @@ class CloudSyncApi:
             for e in events:
                 if e.get("type") == "signedOut":
                     self._subject = None
+                if e.get("type") in ("conflict", "conflictClosed"):
+                    continue
                 if e.get("type") == "change":
                     self._config.note_sync_change(e["keys"], e["origin"])
                 if left and e.get("type") == "signInOffered":

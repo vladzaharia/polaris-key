@@ -902,6 +902,8 @@
     <!-- SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied. -->
     <string name="saveConflict_chooseAgain">Erneut wählen</string>
     <string name="saveConflict_chooseAgain__macos">Erneut wählen</string>
+    <!-- SaveConflict: shown on the choices when the other copy changed again while the person's choice was being applied. Nothing was applied. -->
+    <string name="saveConflict_reopened">Auf einem anderen Gerät erneut gespeichert. Wählen Sie noch einmal.</string>
     <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
     <string name="saveConflict_failedDeleted">Ihre Wahl konnte nicht übernommen werden. Ihr Spielstand ist unverändert.</string>
     <!-- SaveConflict: result title after Keep this device's version. -->
@@ -2913,6 +2915,10 @@
     <string name="core_codes_sync_file_invalid_title">Datei nicht geöffnet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_file_invalid_message">Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_title">Bereits entschieden</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_message">Die Auswahl wurde bereits getroffen oder durch eine neuere Änderung ersetzt. Es wurde nichts geändert.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App nicht eingerichtet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

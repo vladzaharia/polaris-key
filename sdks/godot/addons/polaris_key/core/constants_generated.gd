@@ -151,6 +151,7 @@ class ErrorCode:
 	const RECOVERY_CODE_INVALID := "recovery-code-invalid"
 	const SYNC_ENCRYPTION_PINNED := "sync-encryption-pinned"
 	const SYNC_FILE_INVALID := "sync-file-invalid"
+	const SYNC_MERGE_CLOSED := "sync-merge-closed"
 	const INVALID_OPTIONS := "invalid-options"
 	const INVALID_ARGUMENT := "invalid-argument"
 	const INVOKE_NOT_ALLOWED := "invoke-not-allowed"
@@ -242,7 +243,7 @@ class ErrorCode:
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "signing_unavailable", "device_keys_invalid", "device_keys_required", "ring_too_large", "relay_disabled", "relay_paused", "relay_quota_exceeded", "connect_links_disabled", "relay_ticket_invalid", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "erasure_ledger_unavailable", "identity_disabled", "unknown_app", "invalid_request", "invalid_client", "invalid_grant", "unsupported_grant_type", "invalid_scope", "redirect_uri_mismatch", "invalid_request_uri", "license_choice_required", "interstitial_required", "not_nearby", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "code_expired", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "cursor_expired", "client_mismatch", "value_invalid", "op_invalid_for_policy", "setting_not_synced", "collection_unknown", "entitlement_required", "quota_exceeded", "writes_paused", "encryption_mismatch", "revision_conflict", "upload_mismatch", "upload_expired", "upload_incomplete", "file_too_large", "keyring_conflict", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "backend-origin-not-allowed", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device-keys-unreadable", "device-key-store-error", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "redirect-unavailable", "sign-in-denied", "sign-in-unavailable", "platform-identity-unavailable", "sync-locked", "recovery-code-invalid", "sync-encryption-pinned", "sync-file-invalid", "invalid-options", "invalid-argument", "invoke-not-allowed", "sender-refused", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "connect-unavailable", "peer-cert-invalid", "nearby-permission-denied", "nearby-unsupported", "peer-handshake-failed", "peer-closed", "transfer-cancelled", "link-unknown", "peer_revoked", "peer_expired", "peer_bad_frame", "peer_unknown_critical", "peer_not_allowed", "peer_busy", "peer_timeout", "peer_bye", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected", "attach-declined", "license_required", "license_invalid", "license_stale", "sign_in_required"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "signing_unavailable", "device_keys_invalid", "device_keys_required", "ring_too_large", "relay_disabled", "relay_paused", "relay_quota_exceeded", "connect_links_disabled", "relay_ticket_invalid", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "erasure_ledger_unavailable", "identity_disabled", "unknown_app", "invalid_request", "invalid_client", "invalid_grant", "unsupported_grant_type", "invalid_scope", "redirect_uri_mismatch", "invalid_request_uri", "license_choice_required", "interstitial_required", "not_nearby", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "code_expired", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "cursor_expired", "client_mismatch", "value_invalid", "op_invalid_for_policy", "setting_not_synced", "collection_unknown", "entitlement_required", "quota_exceeded", "writes_paused", "encryption_mismatch", "revision_conflict", "upload_mismatch", "upload_expired", "upload_incomplete", "file_too_large", "keyring_conflict", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "backend-origin-not-allowed", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device-keys-unreadable", "device-key-store-error", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "redirect-unavailable", "sign-in-denied", "sign-in-unavailable", "platform-identity-unavailable", "sync-locked", "recovery-code-invalid", "sync-encryption-pinned", "sync-file-invalid", "sync-merge-closed", "invalid-options", "invalid-argument", "invoke-not-allowed", "sender-refused", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "connect-unavailable", "peer-cert-invalid", "nearby-permission-denied", "nearby-unsupported", "peer-handshake-failed", "peer-closed", "transfer-cancelled", "link-unknown", "peer_revoked", "peer_expired", "peer_bad_frame", "peer_unknown_critical", "peer_not_allowed", "peer_busy", "peer_timeout", "peer_bye", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected", "attach-declined", "license_required", "license_invalid", "license_stale", "sign_in_required"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -385,6 +386,7 @@ const ERROR_CODE_KINDS := {
 	"recovery-code-invalid": "client",
 	"sync-encryption-pinned": "client",
 	"sync-file-invalid": "client",
+	"sync-merge-closed": "client",
 	"invalid-options": "client",
 	"invalid-argument": "client",
 	"invoke-not-allowed": "client",
@@ -1025,6 +1027,52 @@ class TransferEvent:
 const TRANSFER_EVENT_VALUES := ["transferProgress", "transferDone", "transferFailed"]
 
 
+## The one Cloud Sync conflict vocabulary of settings and records (WIRE-CONTRACT-V5 §13.6, plans/U-08.md §2.1). The server applies every policy; `revision` is the only one that asks, through a MergeRequest. Mirrors `SYNC_CONFLICTS` in `@polaris-key/catalog`; a test keeps them equal.
+class SyncConflict:
+	const LASTWRITE := "lastWrite"
+	const MAX := "max"
+	const MIN := "min"
+	const MERGE := "merge"
+	const UNION := "union"
+	const REVISION := "revision"
+
+
+## Every `SyncConflict` value, in source order.
+const SYNC_CONFLICT_VALUES := ["lastWrite", "max", "min", "merge", "union", "revision"]
+
+
+## What a MergeRequest's `keep` takes (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.2): this device's copy (`local`), the cloud's (`remote`), both (`both`, saves only, into a free slot) or a new value (`value`, records only). A request lists the choices it offers in `choices`.
+class MergeChoice:
+	const LOCAL := "local"
+	const REMOTE := "remote"
+	const BOTH := "both"
+	const VALUE := "value"
+
+
+## Every `MergeChoice` value, in source order.
+const MERGE_CHOICE_VALUES := ["local", "remote", "both", "value"]
+
+
+## Why a MergeRequest is open (plans/U-08.md §2.2): `write`, a `revision` write met a newer copy; `accountMerge`, an account merge parked the other account's copy (U-08b).
+class MergeCause:
+	const WRITE := "write"
+	const ACCOUNTMERGE := "accountMerge"
+
+
+## Every `MergeCause` value, in source order.
+const MERGE_CAUSE_VALUES := ["write", "accountMerge"]
+
+
+## The MergeRequest events on the client's `events` stream under the `cloudSync` kind (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.5), in camelCase in every SDK: `conflictOpened` (a request opened, or reopened after its keep failed) and `conflictClosed` (with `how`: `local`, `remote`, `value`, `both` or `superseded`).
+class MergeEvent:
+	const CONFLICTOPENED := "conflictOpened"
+	const CONFLICTCLOSED := "conflictClosed"
+
+
+## Every `MergeEvent` value, in source order.
+const MERGE_EVENT_VALUES := ["conflictOpened", "conflictClosed"]
+
+
 ## The `X-PKey-*` request header names (wire contract v3 §5).
 class HeaderName:
 	const ARCH := "X-PKey-Arch"
@@ -1082,7 +1130,7 @@ const OUTLET_MATRIX_VERSION := 1
 const PLAN_MATRIX_VERSION := 2
 
 ## `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-const SYNC_SCENARIOS_VERSION := 4
+const SYNC_SCENARIOS_VERSION := 5
 
 ## `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
 const DEVICE_LABEL_VERSION := 2
@@ -1524,7 +1572,7 @@ static func capabilities() -> Dictionary:
 		"config.sync": {"status": "implemented", "service": "sync", "na": []},
 		"sync.scenarios": {"status": "implemented", "service": "sync", "na": []},
 		"sync.settings": {"status": "implemented", "service": "sync", "na": []},
-		"sync.conflict": {"status": "planned", "service": "sync", "na": []},
+		"sync.conflict": {"status": "implemented", "service": "sync", "na": []},
 		"sync.saves": {"status": "implemented", "service": "sync", "na": []},
 		"sync.keyring": {"status": "implemented", "service": "sync", "na": []},
 		"sync.records": {"status": "implemented", "service": "sync", "na": []},
@@ -1635,4 +1683,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "7cb4e10972e252382e6c0e41bdd51a6a6063fe37b9262ccf0b5793ee5044f7e0"
+const CAPABILITY_DIGEST := "59c070edd28d7eafcde13ae145859d9d57dcf3d3d99f6e1c88d23701c6b5521c"

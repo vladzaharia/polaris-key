@@ -40,6 +40,8 @@ import {
   type WireMutation,
 } from "@polaris-key/client-core/cloud-sync";
 import {
+  MergeRegistry,
+  hostMergeRegistry,
   collectionDecls,
   openPull,
   sealPush,
@@ -93,6 +95,18 @@ function shapeOf(catalog: ProductCatalog): string {
 function collectionsOf(catalog: ProductCatalog): CollectionDecl[] {
   return collectionDecls(
     (catalog.cloudSync?.collections ?? []).map(resolveCollection),
+  );
+}
+
+let warnedNoListener = false;
+
+/** Once per process, outside production: a request opened and nothing listens (`onConflict`). */
+function noConflictListener(): void {
+  if (warnedNoListener || process.env["NODE_ENV"] === "production") return;
+  warnedNoListener = true;
+  process.emitWarning(
+    "A Cloud Sync conflict is waiting for an answer and nothing listens: register cloudSync.onConflict, or read cloudSync.conflicts() and call request.keep(). The device keeps its copy until then.",
+    "PolarisKeyConflict",
   );
 }
 
@@ -193,10 +207,14 @@ export class CloudSyncHost {
   #bound: string | null = null;
   /** The listener for `putAt` / `removeAt` outcomes; survives a rebuild of the machine. */
   #outcome: ((o: RecordOutcome) => void) | null = null;
+  /** The open MergeRequests of this client: the machine's and the saves layer's (plans/U-08.md).
+   *  It reads whichever machine the host holds, so a rebuild keeps it. */
+  readonly merge: MergeRegistry;
 
   constructor(deps: CloudSyncHostDeps, opts: CloudSyncHostOptions = {}) {
     this.#deps = deps;
     this.#opts = opts;
+    this.merge = hostMergeRegistry(this, noConflictListener);
     this.#file = new CloudSyncStateFile(deps.ctx.dirs.state, deps.ctx.product);
   }
 
@@ -219,6 +237,11 @@ export class CloudSyncHost {
   onOutcome(fn: ((o: RecordOutcome) => void) | null): void {
     this.#outcome = fn;
     this.#machine?.onOutcome(fn);
+  }
+
+  /** The machine held now, or null before `start()` (the merge registry reads it). */
+  held(): CloudSyncMachine | null {
+    return this.#machine;
   }
 
   /** The `saves` settings the app gave, with defaults. */
@@ -555,6 +578,8 @@ export class CloudSyncHost {
   #emitFrom(m: CloudSyncMachine): void {
     const events = m.takeEvents();
     if (events.length === 0) return;
+    // The registry first: a listener that decides inline sees the request already open.
+    this.merge.tryFeed(events);
     for (const fn of this.#listeners) {
       try {
         fn(events);

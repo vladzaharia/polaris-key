@@ -897,6 +897,8 @@
     <!-- SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied. -->
     <string name="saveConflict_chooseAgain">重新选择</string>
     <string name="saveConflict_chooseAgain__macos">重新选择</string>
+    <!-- SaveConflict: shown on the choices when the other copy changed again while the person's choice was being applied. Nothing was applied. -->
+    <string name="saveConflict_reopened">已在另一台设备上再次保存。请重新选择。</string>
     <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
     <string name="saveConflict_failedDeleted">无法应用你的选择。你的存档未更改。</string>
     <!-- SaveConflict: result title after Keep this device's version. -->
@@ -2900,6 +2902,10 @@
     <string name="core_codes_sync_file_invalid_title">无法打开文件</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_file_invalid_message">同步的文件未通过校验，因此未使用。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_title">已做出选择</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_message">已经做出选择，或已被更新的更改取代。未做任何更改。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">应用未设置</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

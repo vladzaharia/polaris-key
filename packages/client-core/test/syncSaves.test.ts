@@ -209,7 +209,7 @@ async function conflictRig(
     { baseVersion: v1.version },
   ).done;
   if (out.state !== "conflict") throw new Error("conflict");
-  return { r, conflict: out.conflict, theirs };
+  return { r, request: out.request, theirs };
 }
 
 describe.each([
@@ -282,14 +282,25 @@ describe.each([
     expect(seen.at(-1)).toBe(1);
   });
 
-  it("turns a stale baseVersion into a conflict that carries the server's copy", async () => {
-    const { conflict } = await conflictRig(e2e, noise(700, 9));
-    expect(conflict).toMatchObject({
-      id: "slot1",
-      bothAvailable: true,
-      remote: { metadata: { chapter: "Two" } },
+  it("saveConflictOpensRequest: a stale baseVersion opens a request that carries the server's copy", async () => {
+    const { r, request } = await conflictRig(e2e, noise(700, 9));
+    expect(request).toMatchObject({
+      id: "w:saves/slot1",
+      cause: "write",
+      collection: "saves",
+      record: "slot1",
+      state: "open",
+      error: null,
+      choices: ["local", "remote", "both"],
+      remote: { value: { chapter: "Two" } },
+      local: { value: { chapter: "Mine" }, file: { size: 700 } },
     });
-    expect(conflict.serverVersion).toBe(conflict.remote!.version);
+    expect(request.remote!.version).toBe(
+      r.records.recs.get(r.records.wireId("slot1"))!.version,
+    );
+    expect(r.saves.merge.conflicts().map((c) => c.id)).toEqual([
+      "w:saves/slot1",
+    ]);
   });
 
   it("a conflict from the server's version describes it, not this device's cached copy", async () => {
@@ -310,17 +321,19 @@ describe.each([
     const serverVersion = r.records.recs.get(
       r.records.wireId("slot1"),
     )!.version;
-    expect(out.conflict.serverVersion).toBe(serverVersion);
-    expect(out.conflict.serverVersion).not.toBe(cached.version);
-    expect(out.conflict.remote!.version).toBe(serverVersion);
+    expect(out.request.remote!.version).toBe(serverVersion);
+    expect(out.request.remote!.version).not.toBe(cached.version);
     // Keeping this device's version succeeds against the server's version.
-    done(await r.saves.resolve(out.conflict, "local", mine).done);
+    expect(await out.request.keep("local")).toMatchObject({
+      ok: true,
+      kept: "local",
+    });
     // Writing again does not repeat the old conflict.
     delete (r.records as { get?: unknown }).get;
     done(await r.saves.write("slot1", noise(800, 5), meta).done);
   });
 
-  it("a save deleted elsewhere is a conflict with no remote, and keeping this device's save succeeds", async () => {
+  it("saveKeepAfterDeleteCreates: a save deleted elsewhere is a request with no remote, and keeping this device's save creates it", async () => {
     const r = rig({ e2e });
     done(await r.saves.write("slot1", small, meta).done);
     const cached = (await r.records.get("slot1"))!;
@@ -329,12 +342,17 @@ describe.each([
     const mine = noise(700, 9);
     const out = await r.saves.write("slot1", mine, meta).done;
     if (out.state !== "conflict") throw new Error("conflict");
-    expect(out.conflict.remote).toBeNull();
-    expect(out.conflict.serverVersion).toBe(0);
-    done(await r.saves.resolve(out.conflict, "local", mine).done);
+    expect(out.request.remote).toBeNull();
+    expect(out.request.choices).toEqual(["local", "remote"]);
+    expect(await out.request.keep("local")).toMatchObject({
+      ok: true,
+      kept: "local",
+    });
     delete (r.records as { get?: unknown }).get;
     const read = await r.saves.read("slot1");
-    expect(read.ok).toBe(true);
+    expect(read.ok && Buffer.from(read.bytes!).equals(Buffer.from(mine))).toBe(
+      true,
+    );
   });
 
   it("a conflict pulls first: a save deleted elsewhere (a tombstone's version) reads as deleted", async () => {
@@ -355,12 +373,12 @@ describe.each([
     const out = await r.saves.write("slot1", noise(700, 9), meta).done;
     if (out.state !== "conflict") throw new Error("conflict");
     expect(pulls).toBe(1);
-    expect(out.conflict.remote).toBeNull();
+    expect(out.request.remote).toBeNull();
   });
 
-  it("keeping the other version pulls, so read() returns the chosen server copy", async () => {
+  it("saveKeepRemote: keeping the other version pulls, so read() returns the chosen server copy and nothing is written", async () => {
     const mine = noise(700, 9);
-    const { r, conflict } = await conflictRig(e2e, mine);
+    const { r, request } = await conflictRig(e2e, mine);
     const wire = r.records.wireId("slot1");
     const server = r.records.recs.get(wire)!;
     const stale = { ...(await r.records.get("slot1"))!, version: 1 };
@@ -368,17 +386,16 @@ describe.each([
     r.records.pull = async () => {
       delete (r.records as { get?: unknown }).get;
     };
-    const kept = await r.saves.resolve(conflict, "remote", mine).done;
-    expect(kept).toMatchObject({
-      state: "done",
-      kept: "remote",
-      version: server.version,
-    });
+    const calls = r.server.calls.length;
+    const kept = await request.keep("remote");
+    expect(kept).toEqual({ ok: true, kept: "remote", version: server.version });
+    expect(r.server.calls.length).toBe(calls);
+    expect(r.saves.merge.conflicts()).toEqual([]);
     const read = await r.saves.read("slot1");
     expect(read.ok && read.metadata.chapter).toBe("Two");
   });
 
-  it("every write records savedAt and the device label; a resolve keeps the copy's own", async () => {
+  it("every write records savedAt and the device label; a keep writes the copy's own", async () => {
     let clock = 1_000;
     const r = rig({ e2e, now: () => clock, deviceLabel: () => "Steam Deck" });
     done(await r.saves.write("slot1", small, { ...meta, savedAt: 5 }).done);
@@ -396,42 +413,46 @@ describe.each([
       baseVersion: first.ok ? first.version : 0,
     }).done;
     if (out.state !== "conflict") throw new Error("conflict");
-    expect(out.conflict.local.metadata).toMatchObject({
+    expect(out.request.local).toMatchObject({
+      savedAt: 3_000,
+      device: "Steam Deck",
+    });
+    expect(out.request.local!.value).toMatchObject({
       savedAt: 3_000,
       deviceLabel: "Steam Deck",
     });
-    expect(out.conflict.remote!.metadata.savedAt).toBe(2_000);
+    expect(out.request.remote!.savedAt).toBe(2_000);
+    expect(out.request.newer).toBe("local");
     clock = 4_000;
-    done(await r.saves.resolve(out.conflict, "local", mine).done);
+    expect(await out.request.keep("local")).toMatchObject({ ok: true });
     const read = await r.saves.read("slot1");
     expect(read.ok && read.metadata.savedAt).toBe(3_000);
   });
 
-  it("settles a conflict: keep remote writes nothing", async () => {
+  it("saveKeepLocal: keeping local writes on top of the server's version", async () => {
     const mine = noise(700, 9);
-    const { r, conflict } = await conflictRig(e2e, mine);
-    const calls = r.server.calls.length;
-    const kept = await r.saves.resolve(conflict, "remote", mine).done;
-    expect(kept).toMatchObject({ state: "done", kept: "remote" });
-    expect(r.server.calls.length).toBe(calls);
-  });
-
-  it("settles a conflict: keep local writes on top of the server's version", async () => {
-    const mine = noise(700, 9);
-    const { r, conflict } = await conflictRig(e2e, mine);
-    done(await r.saves.resolve(conflict, "local", mine).done);
+    const { r, request } = await conflictRig(e2e, mine);
+    const theirVersion = request.remote!.version;
+    const kept = await request.keep("local");
+    expect(kept).toMatchObject({ ok: true, kept: "local" });
+    expect(kept.ok && kept.version).toBeGreaterThan(theirVersion!);
     const read = await r.saves.read("slot1");
     expect(read.ok && read.metadata.chapter).toBe("Mine");
     expect(read.ok && Buffer.from(read.bytes!).equals(Buffer.from(mine))).toBe(
       true,
     );
+    expect(r.saves.merge.conflicts()).toEqual([]);
   });
 
-  it("settles a conflict: keep both writes a copy in a free slot", async () => {
+  it("keeping both writes the copy in a free slot", async () => {
     const mine = noise(700, 9);
-    const { r, conflict, theirs } = await conflictRig(e2e, mine);
-    const both = done(await r.saves.resolve(conflict, "both", mine).done);
-    expect(both.copyId).toBe("slot1.copy");
+    const { r, request, theirs } = await conflictRig(e2e, mine);
+    const both = await request.keep("both");
+    expect(both).toMatchObject({
+      ok: true,
+      kept: "both",
+      copyId: "slot1.copy",
+    });
     const a = await r.saves.read("slot1");
     const b = await r.saves.read("slot1.copy");
     expect(a.ok && a.metadata.chapter).toBe("Two");
@@ -452,16 +473,187 @@ describe.each([
       error: { code: "slots-full" },
     });
     done(await r.saves.write("s3", noise(600, 99), meta).done);
-    // And `both` is not offered on a conflict while the slots are full.
+  });
+
+  it("saveKeepBothNeedsFreeSlot: with the 16 slots full `both` is not offered and is refused", async () => {
+    const r = rig({ e2e });
+    for (let i = 0; i < 16; i++)
+      done(await r.saves.write(`s${i}`, noise(500, i + 1), meta).done);
     const stale = await r.saves.write("s4", small, meta, { baseVersion: 1 })
       .done;
     if (stale.state !== "conflict") throw new Error("conflict");
-    expect(stale.conflict.bothAvailable).toBe(false);
-    const both = await r.saves.resolve(stale.conflict, "both", small).done;
-    expect(both).toMatchObject({
-      state: "failed",
-      error: { code: "slots-full" },
+    expect(stale.request.choices).toEqual(["local", "remote"]);
+    const calls = r.server.calls.length;
+    expect(await stale.request.keep("both")).toEqual({
+      ok: false,
+      code: "bad_request",
+      reopened: false,
     });
+    expect(r.server.calls.length).toBe(calls);
+    expect(stale.request.state).toBe("open");
+  });
+
+  it("saveRequestFreezesSlot: while a request is open a write with no base only replaces its local side", async () => {
+    const { r, request } = await conflictRig(e2e, noise(700, 9));
+    const seen: string[] = [];
+    r.saves.merge.onEvent((e) => seen.push(e.type));
+    const calls = r.server.calls.length;
+    const later = noise(750, 4);
+    const out = await r.saves.write("slot1", later, {
+      ...meta,
+      chapter: "Later",
+    }).done;
+    expect(out).toMatchObject({ state: "conflict" });
+    expect(out.state === "conflict" && out.request).toBe(request);
+    expect(request.local!.value).toMatchObject({ chapter: "Later" });
+    expect(request.local!.file!.size).toBe(750);
+    expect(r.server.calls.length).toBe(calls);
+    expect(r.saves.merge.conflicts()).toHaveLength(1);
+    expect(seen).toEqual([]);
+    // The later copy is the one that is kept.
+    expect(await request.keep("local")).toMatchObject({ ok: true });
+    const read = await r.saves.read("slot1");
+    expect(read.ok && read.metadata.chapter).toBe("Later");
+    expect(read.ok && Buffer.from(read.bytes!).equals(Buffer.from(later))).toBe(
+      true,
+    );
+  });
+
+  it("saveRequestFreezesSlot: a delete defaults to the request's base, so it conflicts and the other copy survives", async () => {
+    const { r, request } = await conflictRig(e2e, noise(700, 9));
+    const out = await r.saves.delete("slot1");
+    expect(out).toMatchObject({ ok: false, reason: "conflict" });
+    expect((await r.saves.read("slot1")).ok).toBe(true);
+    expect(r.saves.merge.conflicts()).toEqual([]);
+    expect(await request.keep("local")).toMatchObject({
+      ok: false,
+      code: "sync-merge-closed",
+    });
+  });
+
+  it("saveBaseIsSeenVersion: a pulled version is never a base, and a slot not seen is create-only", async () => {
+    const r = rig({ e2e });
+    done(await r.saves.write("slot1", small, meta).done);
+    // Another device writes; this device's cache is refreshed by a pull.
+    const other = new SavesClient({
+      records: r.records,
+      engine: r.engine,
+      transport: r.server,
+      codec: r.codec,
+      delta: false,
+    });
+    await other.list();
+    done(
+      await other.write("slot1", noise(900, 8), { ...meta, chapter: "Two" })
+        .done,
+    );
+    // Not silently overwritten: the write is based on what this device saw.
+    const mine = await r.saves.write("slot1", noise(700, 9), meta).done;
+    expect(mine).toMatchObject({ state: "conflict" });
+    if (mine.state !== "conflict") return;
+    expect(mine.request.local!.version).not.toBe(mine.request.remote!.version);
+    // A fresh client has not seen the slot: its write is create-only.
+    const fresh = new SavesClient({
+      records: r.records,
+      engine: r.engine,
+      transport: r.server,
+      codec: r.codec,
+      delta: false,
+    });
+    const created = await fresh.write("slot1", noise(600, 2), meta).done;
+    expect(created).toMatchObject({ state: "conflict" });
+    if (created.state !== "conflict") return;
+    expect(created.request.local!.version).toBeNull();
+    // Reading the slot is seeing it.
+    const reader = new SavesClient({
+      records: r.records,
+      engine: r.engine,
+      transport: r.server,
+      codec: r.codec,
+      delta: false,
+    });
+    await reader.read("slot1");
+    expect((await reader.write("slot1", noise(600, 3), meta).done).state).toBe(
+      "done",
+    );
+  });
+
+  it("saveExactWriteSupersedes: a write with a base closes the request and goes as asked", async () => {
+    const { r, request } = await conflictRig(e2e, noise(700, 9));
+    const closed: string[] = [];
+    r.saves.merge.onEvent((e) => {
+      if (e.type === "conflictClosed") closed.push(`${e.id}:${e.how}`);
+    });
+    const server = request.remote!.version!;
+    const out = await r.saves.write("slot1", noise(650, 6), meta, {
+      baseVersion: server,
+    }).done;
+    expect(out.state).toBe("done");
+    expect(closed).toEqual(["w:saves/slot1:superseded"]);
+    expect(r.saves.merge.conflicts()).toEqual([]);
+    expect(await request.keep("local")).toEqual({
+      ok: false,
+      code: "sync-merge-closed",
+      reopened: false,
+    });
+  });
+
+  it("saveKeepOnClosedRequest: keep answers sync-merge-closed and sends nothing", async () => {
+    const { r, request } = await conflictRig(e2e, noise(700, 9));
+    expect(await request.keep("remote")).toMatchObject({ ok: true });
+    const calls = r.server.calls.length;
+    expect(await request.keep("local")).toEqual({
+      ok: false,
+      code: "sync-merge-closed",
+      reopened: false,
+    });
+    expect(r.server.calls.length).toBe(calls);
+  });
+
+  it("saveKeepConflictsAgain: a keep that meets a newer save reopens the request with the new remote", async () => {
+    const { r, request } = await conflictRig(e2e, noise(700, 9));
+    const opened: string[] = [];
+    r.saves.merge.onEvent((e) => {
+      if (e.type === "conflictOpened") opened.push(e.request.id);
+    });
+    const before = request.remote!.version;
+    // Another device writes again before the keep lands.
+    const other = new SavesClient({
+      records: r.records,
+      engine: r.engine,
+      transport: r.server,
+      codec: r.codec,
+      delta: false,
+    });
+    await other.read("slot1");
+    done(
+      await other.write("slot1", noise(880, 2), { ...meta, chapter: "Three" })
+        .done,
+    );
+    expect(await request.keep("local")).toEqual({
+      ok: false,
+      code: "conflict",
+      reopened: true,
+    });
+    expect(request.state).toBe("open");
+    expect(request.remote!.version).toBeGreaterThan(before!);
+    expect(request.remote!.value).toMatchObject({ chapter: "Three" });
+    expect(opened).toEqual(["w:saves/slot1"]);
+    // The person decides again.
+    expect(await request.keep("local")).toMatchObject({ ok: true });
+  });
+
+  it("saveRequestNotJournaled: nothing about the request reaches the transfer journal or a new client", async () => {
+    const { r } = await conflictRig(e2e, noise(700, 9));
+    expect(await r.journal.list()).toEqual([]);
+    const next = new SavesClient({
+      records: r.records,
+      engine: r.engine,
+      transport: r.server,
+      codec: r.codec,
+      delta: false,
+    });
+    expect(next.merge.conflicts()).toEqual([]);
   });
 
   it("refuses what cannot be a save before anything is sent", async () => {

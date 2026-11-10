@@ -459,7 +459,11 @@ func put(collection: String, record_id: String, value: Variant) -> Dictionary:
 	var rk := _record_key(collection, record_id)
 	var target := {"record": [collection, record_id]}
 	if decl["policy"] == "revision":
-		if _in_flight_touches(rk):
+		var open_req: Variant = _conflicts_of(p).get(rk)
+		if open_req != null and not open_req.has("keep"):
+			# Rule 3: an open request freezes the record; the later put replaces the device's copy.
+			open_req["local"] = Types.clone(value)
+		elif _in_flight_touches(rk):
 			p["held"][rk] = Types.clone(value)
 		else:
 			var queued: Variant = null
@@ -586,6 +590,8 @@ func _exact_op(collection: String, record_id: String, base_version: Variant, bod
 	if _s["subject"] == null:
 		return Types.fail("signed-out")
 	var p := _active()
+	# Rule 4: an exact write supersedes the record's open request and is sent as asked.
+	_close_conflict(p, _record_key(collection, record_id), "superseded")
 	var op := {"target": {"record": [collection, record_id]}, "baseVersion": base_version}
 	op.merge(body, true)
 	var full := _enqueue(p, op)
@@ -675,6 +681,8 @@ func _record_states(collection: String) -> Dictionary:
 			keys[_rk_of(op["target"])] = true
 	for rk: String in p["held"]:
 		keys[rk] = true
+	for rk: String in _conflicts_of(p):
+		keys[rk] = true
 	for rk: String in keys:
 		if not rk.begins_with(prefix):
 			continue
@@ -734,15 +742,29 @@ func update(collection: String, record_id: String, change: Dictionary) -> Dictio
 	return Types.ok()
 
 
-## Delete a record of any policy but `revision` (use `remove_at` there). A `union` delete carries no
-## clock stamp.
+## Delete a record: the collection's default delete. A `revision` record is deleted on the version of an
+## open request's local copy, else on the snapshot's, so a delete that conflicts keeps the other copy
+## (rule 3). A `union` delete carries no clock stamp.
 func delete(collection: String, record_id: String) -> Dictionary:
 	var decl: Variant = _collection(collection)
-	if decl == null or decl["policy"] == "revision":
+	if decl == null:
 		return Types.fail("collection-unknown")
 	if _s["subject"] == null:
 		return Types.fail("signed-out")
 	var p := _active()
+	if decl["policy"] == "revision":
+		var drk := _record_key(collection, record_id)
+		var open_req: Variant = _conflicts_of(p).get(drk)
+		var base: Variant
+		if open_req != null:
+			base = open_req["localVersion"] if open_req["localVersion"] != null else "*"
+		else:
+			var prow: Variant = p["records"].get(drk)
+			base = prow["version"] if prow != null else "*"
+		_enqueue(p, {"target": {"record": [collection, record_id]}, "op": "delete", "baseVersion": base})
+		_note_record_changes("local")
+		_kick()
+		return Types.ok()
 	var op := {"target": {"record": [collection, record_id]}, "op": "delete"}
 	if decl["policy"] != "union":
 		op["editedHlc"] = _tick_hlc()
@@ -989,6 +1011,10 @@ func _record(collection: String, record_id: String) -> Variant:
 	var row: Variant = p["records"].get(rk)
 	var value: Variant = row["value"] if row != null and not _row_unreadable(row) else Types.ABSENT
 	var pending := false
+	var open_req: Variant = _conflicts_of(p).get(rk)
+	if open_req != null and not open_req.has("keep"):
+		value = Types.clone(open_req["local"])
+		pending = true
 	for op: Dictionary in p["pending"]:
 		if op["target"].has("record") and _rk_of(op["target"]) == rk:
 			value = _apply_record_op(value, op)
@@ -1002,6 +1028,14 @@ func _record(collection: String, record_id: String) -> Variant:
 
 
 func status() -> Dictionary:
+	var out := _base_status()
+	var open := _subject_conflicts().size()
+	if open > 0:
+		out["conflicts"] = open
+	return out
+
+
+func _base_status() -> Dictionary:
 	var pending := _pending_count()
 	if _pinned_out():
 		return {"state": "unsupported", "pending": pending, "reason": "encryption", "code": PKeyConstants.ErrorCode.SYNC_ENCRYPTION_PINNED}
@@ -1651,12 +1685,17 @@ func _client_mismatch(req: Dictionary) -> bool:
 	p["nextMutationId"] = 1
 	var ops: Array = p["pending"]
 	p["pending"] = []
+	var renumbered := {}
 	for o: Dictionary in ops:
 		var op := {}
 		for k in o:
 			if k != "mutationId":
 				op[k] = o[k]
-		_enqueue(p, op)
+		renumbered[int(o["mutationId"])] = _enqueue(p, op)["mutationId"]
+	for c: Dictionary in _conflicts_of(p).values():
+		if c.has("keep"):
+			var old_id := int(c["keep"]["mutationId"])
+			c["keep"]["mutationId"] = renumbered.get(old_id, old_id)
 	return true
 
 
@@ -1750,6 +1789,19 @@ func _ok(req: Dictionary, body: Dictionary, opened: Dictionary) -> void:
 	if req["cursor"] == 0 and Types.is_number(body.get("cursor")):
 		p["settings"] = {}
 		p["records"] = {}
+	# `empty` (section 13.4): a cursor-0 answer with nothing in it. Anything the cloud then holds clears it.
+	var active := false
+	for r in results:
+		if r is Dictionary and r.get("status") == "ok":
+			active = true
+	if body.get("changes") is Array and not body["changes"].is_empty():
+		active = true
+	if body.get("tombstones") is Array and not body["tombstones"].is_empty():
+		active = true
+	if req["cursor"] == 0 and Types.is_number(body.get("cursor")):
+		p["empty"] = body.get("empty") == true and not active
+	elif active and p.get("empty") == true:
+		p["empty"] = false
 	if _requires_e2e() and Types.is_number(body.get("encryptionSince")):
 		_lower_since(p, body["encryptionSince"])
 	var changes: Array = body["changes"] if body.get("changes") is Array else []
@@ -1964,6 +2016,11 @@ func _result(p: Dictionary, op: Dictionary, r: Dictionary, overrides: Dictionary
 			rebase_on = r["version"]
 			has_rebase = true
 		_emit_outcome(op, {"status": "ok", "version": r["version"]})
+		var kept: Variant = _conflicts_of(p).get(rk, {}).get("keep")
+		if kept != null and int(kept["mutationId"]) == int(op["mutationId"]):
+			_close_conflict(p, rk, kept["choice"])
+		elif op["op"] == "delete" and not op.has("ticket"):
+			_close_conflict(p, rk, "superseded")
 	elif status == "conflict" and r.get("server") is Dictionary:
 		var srv: Dictionary = r["server"]
 		if Types.is_number(srv.get("version")):
@@ -1974,8 +2031,22 @@ func _result(p: Dictionary, op: Dictionary, r: Dictionary, overrides: Dictionary
 				served = {"value": Types.clone(rbad["value"]), "version": rbad["version"], "file": Types.clone(rbad["file"]) if rbad.get("file") != null else null}
 			_emit_outcome(op, {"status": "conflict", "server": served})
 			# The resolution is a NEW mutation on the server's version; N is never resent. Only
-			# `revision` resolves on the device; every other policy took the server's copy.
-			if p["held"].has(rk):
+			# `revision` asks (a MergeRequest); every other policy took the server's copy.
+			var plain_revision: bool = not op.has("ticket") and decl != null and decl["policy"] == "revision"
+			var resolve: Variant = decl.get("resolve") if decl != null else null
+			if plain_revision and op["op"] == "delete":
+				# A delete that conflicts keeps the other copy and opens nothing; it ends the request.
+				_close_conflict(p, rk, "superseded")
+				if p["held"].has(rk):
+					rebase_on = srv["version"]
+					has_rebase = true
+			elif plain_revision and op["op"] == "set" and (resolve == null or resolve == "keepRemote"):
+				if resolve == "keepRemote":
+					# The host's inline decider answered at once: nothing is listed or sent.
+					p["held"].erase(rk)
+				else:
+					_open_conflict(p, rk, c, rid, op)
+			elif p["held"].has(rk):
 				rebase_on = srv["version"]
 				has_rebase = true
 				rebase_value = op.get("value")
@@ -1993,6 +2064,11 @@ func _result(p: Dictionary, op: Dictionary, r: Dictionary, overrides: Dictionary
 		if status == "rejected":
 			_events.append({"type": "rejected", "mutationId": op["mutationId"], "code": _js_string(r, "code")})
 			_emit_outcome(op, {"status": "rejected", "code": _js_string(r, "code")})
+			var failed: Variant = _conflicts_of(p).get(rk)
+			if failed != null and failed.has("keep") and int(failed["keep"]["mutationId"]) == int(op["mutationId"]):
+				# A terminal refusal of the keep reopens the request with the failure.
+				failed.erase("keep")
+				failed["error"] = _js_string(r, "code")
 		if p["held"].has(rk):
 			var row: Variant = p["records"].get(rk)
 			rebase_on = row["version"] if row != null else "*"
@@ -2001,6 +2077,144 @@ func _result(p: Dictionary, op: Dictionary, r: Dictionary, overrides: Dictionary
 		var value2: Variant = p["held"][rk] if p["held"].has(rk) else rebase_value
 		p["held"].erase(rk)
 		_enqueue(p, {"target": {"record": [c, rid]}, "op": "set", "value": Types.clone(value2), "baseVersion": rebase_on})
+
+
+## The open MergeRequests of a partition by `collection/id` (plans/U-08.md section 2.3 rule 7); an older
+## journal has none.
+static func _conflicts_of(p: Dictionary) -> Dictionary:
+	var c: Variant = p.get("conflicts")
+	return c if c is Dictionary else {}
+
+
+## A write request's id: `w:<collection>/<record>` (plans/U-08.md section 2.2).
+static func _conflict_id(collection: String, record_id: String) -> String:
+	return "w:%s/%s" % [collection, record_id]
+
+
+static func _split_key(rk: String) -> Array:
+	var at := rk.find("/")
+	return [rk.substr(0, at), rk.substr(at + 1)]
+
+
+## Open (or, when a keep's own set conflicted, reopen) the request of a `revision` record: the held edit,
+## else the mutation's, is the device's copy; nothing is enqueued (rule 1).
+func _open_conflict(p: Dictionary, rk: String, collection: String, record_id: String, op: Dictionary) -> void:
+	if not p.has("conflicts"):
+		p["conflicts"] = {}
+	var all: Dictionary = p["conflicts"]
+	var held: Variant = Types.clone(p["held"][rk]) if p["held"].has(rk) else Types.ABSENT
+	p["held"].erase(rk)
+	if all.has(rk):
+		var existing: Dictionary = all[rk]
+		existing.erase("keep")
+		existing.erase("error")
+		if not Types.is_absent(held):
+			existing["local"] = held
+	else:
+		all[rk] = {
+			"local": held if not Types.is_absent(held) else Types.clone(op.get("value")),
+			"localVersion": int(op["baseVersion"]) if Types.is_number(op.get("baseVersion")) else null,
+		}
+	_events.append({"type": "conflict", "id": _conflict_id(collection, record_id), "cause": "write", "collection": collection, "record": record_id})
+
+
+func _close_conflict(p: Dictionary, rk: String, how: String) -> void:
+	var all := _conflicts_of(p)
+	if not all.has(rk):
+		return
+	all.erase(rk)
+	if all.is_empty():
+		p.erase("conflicts")
+	var parts := _split_key(rk)
+	_events.append({"type": "conflictClosed", "id": _conflict_id(parts[0], parts[1]), "how": how})
+
+
+func _subject_conflicts() -> Array:
+	if _s["subject"] == null:
+		return []
+	return _sorted(_conflicts_of(_active()).keys())
+
+
+## The open MergeRequests of the signed-in subject (record collections), in id order.
+func conflicts() -> Array:
+	var out: Array = []
+	if _s["subject"] == null:
+		return out
+	var p := _active()
+	for rk: String in _subject_conflicts():
+		var c: Dictionary = p["conflicts"][rk]
+		var parts := _split_key(rk)
+		var row: Variant = p["records"].get(rk)
+		var remote: Variant = null
+		if row != null and not _row_unreadable(row):
+			remote = {"value": Types.clone(row.get("value")), "version": row["version"], "savedAt": null, "device": null, "file": null}
+		out.append({
+			"id": _conflict_id(parts[0], parts[1]),
+			"cause": "write",
+			"collection": parts[0],
+			"record": parts[1],
+			"local": {"value": Types.clone(c["local"]), "version": c["localVersion"], "savedAt": null, "device": null, "file": null},
+			"remote": remote,
+			"choices": ["local", "remote", "value"],
+			"state": "applying" if c.has("keep") else "open",
+			"error": c.get("error"),
+		})
+	return out
+
+
+## Answer an open request (rule 6). `local` and `value` send one `set` on the remote version (`"*"` when it
+## is gone); `remote` sends nothing and reads the server copy. The request is `applying` until the set is
+## answered. A refusal journals nothing. `choice` is "local", "remote" or `{"value": v}`.
+func keep(id: String, choice: Variant) -> Dictionary:
+	var rk := _open_key_of(id)
+	if rk == "":
+		return Types.fail(PKeyConstants.ErrorCode.SYNC_MERGE_CLOSED)
+	var p := _active()
+	var c: Dictionary = p["conflicts"][rk]
+	var name := _keep_name(choice)
+	if c.has("keep") or name == "":
+		return Types.fail("bad_request")
+	if name == "remote":
+		_close_conflict(p, rk, "remote")
+		_note_record_changes("merge")
+		_kick()
+		return Types.ok()
+	var parts := _split_key(rk)
+	var row: Variant = p["records"].get(rk)
+	var base: Variant = row["version"] if row != null and not _row_unreadable(row) else "*"
+	var value: Variant = Types.clone(choice["value"]) if choice is Dictionary else Types.clone(c["local"])
+	var op := _enqueue(p, {"target": {"record": [parts[0], parts[1]]}, "op": "set", "value": value, "baseVersion": base})
+	c.erase("error")
+	c["keep"] = {"choice": name, "mutationId": op["mutationId"]}
+	_note_record_changes("merge")
+	_kick()
+	return Types.ok()
+
+
+## The `collection/id` key of the open request `id` of the signed-in subject, or "".
+func _open_key_of(id: String) -> String:
+	for rk: String in _subject_conflicts():
+		var parts := _split_key(rk)
+		if _conflict_id(parts[0], parts[1]) == id:
+			return rk
+	return ""
+
+
+## "local", "remote" or "value" for a well-formed choice, else "".
+static func _keep_name(choice: Variant) -> String:
+	if choice is Dictionary:
+		return "value" if choice.has("value") and json_bytes(choice["value"]) <= PKeyConstants.SYNC_MAX_VALUE_BYTES else ""
+	if Types.is_string(choice) and ["local", "remote"].has(String(choice)):
+		return String(choice)
+	return ""
+
+
+## Whether the cloud was empty at the subject's first cursor-0 answer: `true` after one that said so,
+## `false` after one that did not or after any change, `null` before any (rule 8).
+func cloud_empty() -> Variant:
+	if _s["subject"] == null:
+		return null
+	return _active().get("empty")
 
 
 ## The number a `max`/`min` record compares: the value, or its `field` member.
@@ -2034,14 +2248,16 @@ func _leave(reason: String, discard: bool) -> void:
 		else:
 			kept.append(o)
 	p["pending"] = kept
-	var unsynced: int = p["pending"].size() + p["held"].size()
+	var unsynced: int = p["pending"].size() + p["held"].size() + _conflicts_of(p).size()
 	if discard:
 		p["pending"] = []
 		p["held"] = {}
+		p.erase("conflicts")
 	if _on_sign_out == "clear" or reason != "signOut":
 		p["settings"] = {}
 		p["records"] = {}
 		p["cursor"] = 0
+		p.erase("empty")
 	p["signedOutAt"] = _now
 	_s["subject"] = null
 	_signing_out = null

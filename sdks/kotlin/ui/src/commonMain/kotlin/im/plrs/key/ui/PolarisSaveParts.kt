@@ -48,7 +48,7 @@ internal fun SaveCard(who: String, whenText: String?, newer: String?, modifier: 
                 ) {
                     Text(
                         newer,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         modifier = Modifier.padding(horizontal = PolarisSpace.tight, vertical = NewerTagVertical),
                     )
                 }

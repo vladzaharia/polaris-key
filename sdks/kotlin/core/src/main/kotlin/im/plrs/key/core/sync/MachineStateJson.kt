@@ -18,6 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+@Suppress("TooManyFunctions")
 public object MachineStateJson {
     public fun encode(s: MachineState): JsonObject = buildJsonObject {
         put("subject", s.subject?.let { JsonPrimitive(it) } ?: JsonNull)
@@ -41,12 +42,37 @@ public object MachineStateJson {
         r.file?.let { put("file", it.toJson()) }
     }
 
+    private fun conflict(c: ConflictRec): JsonObject = buildJsonObject {
+        put("local", c.local)
+        put("localVersion", c.localVersion?.let { JsonPrimitive(it) } ?: JsonNull)
+        c.keepChoice?.let {
+            put(
+                "keep",
+                buildJsonObject {
+                    put("choice", it)
+                    put("mutationId", c.keepMutationId)
+                },
+            )
+        }
+        c.error?.let { put("error", it) }
+    }
+
+    private fun decodeConflict(o: JsonObject): ConflictRec = ConflictRec(o["local"]!!, o["localVersion"].longValue).also {
+        (o["keep"] as? JsonObject)?.let { k ->
+            it.keepChoice = k["choice"].stringValue
+            it.keepMutationId = k["mutationId"].longValue!!
+        }
+        it.error = o["error"].stringValue
+    }
+
     private fun partition(p: SyncPartition): JsonObject = buildJsonObject {
         put("clientId", p.clientId?.let { JsonPrimitive(it) } ?: JsonNull)
         put("nextMutationId", p.nextMutationId)
         put("cursor", p.cursor)
         put("pending", JsonArray(p.pending.map { it.toJson() }))
         put("held", JsonObject(p.held))
+        if (p.conflicts.isNotEmpty()) put("conflicts", JsonObject(p.conflicts.mapValues { conflict(it.value) }))
+        p.empty?.let { put("empty", it) }
         put("settings", JsonObject(p.settings.mapValues { row(it.value) }))
         put("records", JsonObject(p.records.mapValues { row(it.value) }))
         put("device", JsonObject(p.device.mapValues { it.value.toJson() }))
@@ -96,6 +122,8 @@ public object MachineStateJson {
         p.cursor = o["cursor"].longValue!!
         p.pending = o["pending"].arrayValue!!.map { decodeOp(it as JsonObject) }.toMutableList()
         (o["held"] as JsonObject).forEach { (k, v) -> p.held[k] = v }
+        (o["conflicts"] as? JsonObject)?.forEach { (k, v) -> p.conflicts[k] = decodeConflict(v as JsonObject) }
+        p.empty = o["empty"].boolValue
         (o["settings"] as JsonObject).forEach { (k, v) -> p.settings[k] = decodeRow(v) }
         (o["records"] as JsonObject).forEach { (k, v) -> p.records[k] = decodeRow(v) }
         (o["device"] as JsonObject).forEach { (k, v) -> p.device[k] = decodeDevice(v as JsonObject) }

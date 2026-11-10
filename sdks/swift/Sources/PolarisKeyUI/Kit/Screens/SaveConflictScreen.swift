@@ -21,8 +21,9 @@
 //   - a refusal is posted as one announcement after focus moves to the heading; Escape on `kept` is Done;
 //   - a deleted other copy has its own title and lede, and "Delete it here too" is a danger
 //     outline of its own, never a Keep.
-// Not bound to a live client: `SaveConflictModel` takes a `SaveConflictHost`, and the binding to the
-// saves client is the K.3T tail.
+// Bound to a live client through `SaveConflictModel(request:)` (U-08.K3): a `MergeRequest` from
+// `client.cloudSync.onConflict` or `conflicts()` supplies both copies and answers the choice with
+// `request.keep`; the app does not hand back the save's bytes. The view itself only draws a model.
 
 import PolarisKeyUICore
 import SwiftUI
@@ -225,6 +226,14 @@ public struct SaveConflictView: View {
                     if let lede = screen.line("saveConflict.lede") ?? screen.line("saveConflict.deletedLede") {
                         KitText(lede, .body)
                     }
+                    if let note = screen.line("saveConflict.reopened") {
+                        // A choice met a newer copy: nothing was applied, and these are the new versions.
+                        HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
+                            Image(systemName: "info.circle").accessibilityHidden(true)
+                            KitText(note, .body, color: .strong)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
                     card(
                         style, who: screen.lineOrKey("saveConflict.thisDevice"),
                         when: screen.line("saveConflict.savedThis"),
@@ -272,14 +281,7 @@ public struct SaveConflictView: View {
     {
         VStack(alignment: .leading, spacing: style.space(.xxs)) {
             KitText(who, .body, color: .strong)
-            if let newer {
-                // A tag, not a control: the word on a neutral pill, no outline and no accent.
-                KitText(newer, .meta, color: .strong)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, style.space(.xs))
-                    .padding(.vertical, style.space(.xxs))
-                    .background(Capsule().fill(style.palette.page))
-            }
+            if let newer { newerTag(style, newer) }
             if let when { KitText(when, .meta, color: .muted) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -289,6 +291,15 @@ public struct SaveConflictView: View {
                 .fill(style.palette.sunken)
         )
         .accessibilityElement(children: .combine)
+    }
+
+    /// A tag, not a control: the word on a neutral pill, no outline and no accent.
+    private func newerTag(_ style: KitResolvedStyle, _ line: CopyLine) -> some View {
+        KitText(line, .meta, color: .strong)
+            .fontWeight(.semibold)
+            .padding(.horizontal, style.space(.xs))
+            .padding(.vertical, style.space(.xxs))
+            .background(Capsule().fill(style.palette.page))
     }
 
     // MARK: Actions

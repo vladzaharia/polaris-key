@@ -498,13 +498,15 @@ key ring calls on `PolarisKey.keyring` through `PKeyCloudSyncController` unless 
   failed write `transfer-failed` (until the next write starts), and while a conflict is unsettled
   `conflict` with **Review**, which opens `PKeySaveConflict` over the game (`present_screens`).
 - **`PKeySaveConflict`.** The same save changed on two devices. It follows the saves by default
-  (`follow_sdk`, through `PKeySaveScreensHost.of(PolarisKey)`): it shows the first conflict a write ended
-  with and hides while there is none; a choice runs `saves.resolve`, and it moves on to keeping, kept or
-  failed with **Try again**. Cancel and Done drop the conflict without touching either copy. The game's one
-  line gives it the local save's bytes, which the SDK does not keep (**Keep the other version** needs none;
-  without the line, **Keep this device's version** and **Keep both** fail and say so):
-  `PKeySaveScreensHost.of(PolarisKey).local_copy = func(conflict: Dictionary) -> PackedByteArray: return my_bytes(conflict.id)`.
-  `saves.conflicts()` lists what is unsettled and `saves.dismiss_conflict(id)` forgets one. To drive the
+  (`follow_sdk`, through `PKeySaveScreensHost.of(PolarisKey)`): it shows the first open save request (a
+  `PKeyMergeRequest`) and hides while there is none; a choice runs `request.keep`, and it moves on to keeping,
+  kept or failed with **Try again**. Cancel and Done hide the screen without touching either copy. The SDK
+  holds this device's copy of the save while the request is open, so the game hands in nothing; the dates and
+  the other device's name come from the request (`PKeySaveScreensHost.of(PolarisKey).describe`, a Callable
+  taking the request and returning `{local_when, remote_when, remote_device}`, overrides them).
+  `saves.conflicts()` lists every open request. Cancel hides the screen only (the save stays held unsent, the strip says
+  it needs a choice, and Review brings the screen back); it returns by itself only when the other copy changes. A
+  keep that meets a newer copy goes back to the choices on the new versions, with a line saying so. To drive the
   screen yourself, set `follow_sdk = false`, then set
   `step`, `local_when`, `remote_when`, `remote_device`, `remote_deleted`, `both_available`, `keep`,
   `newer` and connect the signals. `newer` (`"local"` or `"remote"`, from your own metadata) tags that
@@ -1371,6 +1373,34 @@ on every write: on Android with the `PolarisKeyAndroid` plugin it sits in the no
 `PolarisKeyApple` plugin it is marked out of backups, and elsewhere nothing is set. The journal never holds the root. The backup table above covers the
 key ring's files.
 
+## Conflicts (`PolarisKey.cloud_sync.conflict_opened`)
+
+`revision` is the only conflict policy that asks. A plain `put` of a record of a `revision` collection, or a
+save write, whose compare-and-set lost to another copy opens a `PKeyMergeRequest`; the device keeps its copy,
+unsent, and reads it, and the cloud keeps the other. Nothing is lost if nobody answers. Every other policy
+(`lastWrite`, `max`, `min`, `merge`, `union`) is applied by the server and never asks.
+
+```gdscript
+func _ready() -> void:
+	var sync: PKeyCloudSync = PolarisKey.cloud_sync
+	sync.conflict_opened.connect(_on_conflict)
+
+func _on_conflict(request: PKeyMergeRequest) -> void:
+	# request.local / request.remote: {value, version, saved_at, device, file}; request.choices; request.newer
+	var kept: PKeyResult = await request.keep("local")   # "remote", "both" (saves), or {"value": merged}
+	if not kept.ok and kept.detail.reopened:
+		print("still open: ", request.error)
+```
+
+`PolarisKey.cloud_sync.on_conflict(fn)` is the listener that may decide inline (return the choice) and is
+replayed the requests already open; `conflicts()` lists them; `cloud_empty()` says whether the cloud was empty
+at the first pull (`true`, `false`, or `null` before any); `status().conflicts` counts them. While a request
+is open, a later `put` replaces the device's copy and is not sent, a `delete` conflicts so the other copy
+survives, and an exact write (`put_at`, a save write with `base_version`) supersedes it. Record requests
+survive a relaunch; save requests live in memory, and the next save write raises the conflict again. `keep`
+answers a `PKeyResult` (`detail`: `kept`, `version`, `copy_id`); a closed request answers `sync-merge-closed`.
+The stream carries `conflictOpened` and `conflictClosed` (ids only, never a value).
+
 ## Synced saves (`PolarisKey.cloud_sync.saves`)
 
 A save is a metadata record and one file, written in that order so a save is never torn: the file
@@ -1386,9 +1416,9 @@ func save_game(bytes: PackedByteArray) -> void:
 	var outcome: Dictionary = await transfer.wait()        # done, cancelled, failed or conflict; never an error value
 	match outcome.state:
 		"done": print("saved at version ", outcome.version)
-		"conflict":                                         # another device wrote first
-			var kept: PKeyTransfer = saves.resolve(outcome.conflict, "local", bytes)   # or "remote" or "both"
-			await kept.wait()
+		"conflict":                                         # another device wrote first; this copy is held, unsent
+			var request: PKeyMergeRequest = outcome.request
+			var kept: PKeyResult = await request.keep("local")   # or "remote" or "both"
 
 func load_game() -> void:
 	var saves: PKeySaves = PolarisKey.cloud_sync.saves
@@ -1397,7 +1427,10 @@ func load_game() -> void:
 ```
 
 `write(id, bytes, metadata, opts)` returns at once. `opts` may carry `base_version` (an int, or `"*"` to
-create only) and `on_progress`. `transfer.pause()`, `resume()` and `cancel()` keep the upload's journal
+create only) and `on_progress`. A write with no `base_version` is based on the version this device last
+listed, read or wrote for that save this session; a save not seen this session is create-only, so another
+device's newer save is a conflict, never an overwrite. A pulled version is never a base. See
+[Conflicts](#conflicts-polariskeycloud_syncconflict_opened) for what a conflict is. `transfer.pause()`, `resume()` and `cancel()` keep the upload's journal
 across a pause or a restart; `cancel()` also ends the wait for the metadata write and reports
 `cancelled`. That wait has no timeout: cancel, a sign-out (the write is dropped) and the host's retries
 end it. `PolarisKey.cloud_sync.transfers()` lists the writes in flight, and `transferProgress`,

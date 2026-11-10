@@ -49,6 +49,8 @@ import {
   type WireMutation,
 } from "@polaris-key/client-core/cloud-sync";
 import {
+  MergeRegistry,
+  hostMergeRegistry,
   collectionDecls,
   openPull,
   sealPush,
@@ -61,6 +63,7 @@ import {
   type ProductCatalog,
 } from "@polaris-key/catalog";
 import { SYNC_KEY_PATTERN } from "../../constants.generated.js";
+import { developerError } from "../../core/devNotice.js";
 import { bindRingToMachine, type KeyringClient } from "../../core/keyring.js";
 import {
   OPEN_KEYS_MAX,
@@ -292,9 +295,19 @@ export class BrowserCloudSyncHost {
   #bound: string | null = null;
   readonly #statusListeners = new Set<() => void>();
 
+  /** The open MergeRequests of this page: the machine's and the saves layer's (plans/U-08.md). It
+   *  reads whichever machine the host holds, so a rebuild keeps it. Only the writer tab keeps. */
+  readonly merge: MergeRegistry;
+
   constructor(deps: BrowserSyncHostDeps, opts: CloudSyncHostOptions = {}) {
     this.#deps = deps;
     this.#opts = opts;
+    this.merge = hostMergeRegistry(this, () =>
+      developerError(
+        "sync-conflict-unheard",
+        "A Cloud Sync conflict is waiting for an answer and nothing listens: register cloudSync.onConflict (or useConflicts) and call request.keep(). The device keeps its copy until then.",
+      ),
+    );
   }
 
   get #now(): number {
@@ -316,6 +329,16 @@ export class BrowserCloudSyncHost {
    *  (a tab just promoted is not the writer until it has, so nothing runs on a stale machine). */
   get isWriter(): boolean {
     return this.#writable && this.#holdsLock;
+  }
+
+  /** The machine held now, or null before `start()` (the merge registry reads it). */
+  held(): CloudSyncMachine | null {
+    return this.#machine;
+  }
+
+  /** Only the writer tab keeps a request. */
+  refuse(): CallResult | null {
+    return this.isWriter ? null : { ok: false, error: "sync-not-writer" };
   }
 
   get #holdsLock(): boolean {
@@ -828,6 +851,8 @@ export class BrowserCloudSyncHost {
   #emitFrom(m: CloudSyncMachine): void {
     const events = m.takeEvents();
     if (events.length === 0) return;
+    // The registry first: a listener that decides inline sees the request already open.
+    this.merge.tryFeed(events);
     // A tab that left the principal drops the ring and the record, whichever tab asked.
     if (
       events.some((e) => e.type === "signedOut" && FORGETTING.has(e.reason))

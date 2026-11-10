@@ -297,6 +297,26 @@
       "name": "transferEvent",
       "description": "The variants of a Cloud Sync file transfer event, on the client's `events` stream under the `cloudSync` kind (U-22, U-23), in camelCase in every SDK: `transferProgress` (bytes done and total), `transferDone`, `transferFailed` (a code; a cancelled transfer is a state, not a failure).",
       "values": ["transferProgress", "transferDone", "transferFailed"]
+    },
+    {
+      "name": "syncConflict",
+      "description": "The one Cloud Sync conflict vocabulary of settings and records (WIRE-CONTRACT-V5 §13.6, plans/U-08.md §2.1). The server applies every policy; `revision` is the only one that asks, through a MergeRequest. Mirrors `SYNC_CONFLICTS` in `@polaris-key/catalog`; a test keeps them equal.",
+      "values": ["lastWrite", "max", "min", "merge", "union", "revision"]
+    },
+    {
+      "name": "mergeChoice",
+      "description": "What a MergeRequest's `keep` takes (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.2): this device's copy (`local`), the cloud's (`remote`), both (`both`, saves only, into a free slot) or a new value (`value`, records only). A request lists the choices it offers in `choices`.",
+      "values": ["local", "remote", "both", "value"]
+    },
+    {
+      "name": "mergeCause",
+      "description": "Why a MergeRequest is open (plans/U-08.md §2.2): `write`, a `revision` write met a newer copy; `accountMerge`, an account merge parked the other account's copy (U-08b).",
+      "values": ["write", "accountMerge"]
+    },
+    {
+      "name": "mergeEvent",
+      "description": "The MergeRequest events on the client's `events` stream under the `cloudSync` kind (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.5), in camelCase in every SDK: `conflictOpened` (a request opened, or reopened after its keep failed) and `conflictClosed` (with `how`: `local`, `remote`, `value`, `both` or `superseded`).",
+      "values": ["conflictOpened", "conflictClosed"]
     }
   ]
 }

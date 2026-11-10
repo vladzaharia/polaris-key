@@ -1536,6 +1536,7 @@
           "copy": [
             "saveConflict.title",
             "saveConflict.lede",
+            "saveConflict.reopened",
             "saveConflict.deletedTitle",
             "saveConflict.deletedLede",
             "saveConflict.thisDevice",

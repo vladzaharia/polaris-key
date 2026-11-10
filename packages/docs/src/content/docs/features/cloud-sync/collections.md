@@ -67,7 +67,7 @@ The policy decides how two devices' edits resolve and which calls the collection
 | `merge`     | `update`, `delete`                 | Each field keeps its latest edit. `update` leaves the fields it does not name as stored  |
 | `union`     | `add`, `remove`, `delete`          | Every element added and not removed stays                                                |
 
-A plain `put` on a `revision` collection that conflicts is dropped in favor of the server copy, with no event. Use `put` with `ifVersion` when a write must not be lost silently.
+A plain `put` on a `revision` collection that conflicts opens a [MergeRequest](/docs/features/cloud-sync/#conflicts) and sends nothing: the device keeps its value, unsent, until `request.keep` answers it. Use `put` with `ifVersion` when a write should report its outcome instead.
 
 `ifVersion` is a number (the exact version you hold) or `"*"` (create only), and only a `revision` collection takes it. `max` and `min` are not anti-cheat: a device can claim a larger value.
 
@@ -152,6 +152,15 @@ export async function claimSlot(client: PolarisKeyClient) {
   const slots = await client.cloudSync.collection("slots");
   // Create only: if the slot exists, the outcome reported to `on` is a conflict.
   return slots.put("one", { name: "Run 2" }, { ifVersion: "*" });
+}
+
+export async function askOnConflict(client: PolarisKeyClient) {
+  // A `revision` conflict on a plain `put` opens a request; answer it here or in a screen.
+  return client.cloudSync.onConflict((request) => {
+    if (request.collection !== "progress") return undefined;
+    // Returning a choice decides it at once; the SDK sends nothing for "remote".
+    return request.remote === null ? "local" : "remote";
+  });
 }
 ```
 

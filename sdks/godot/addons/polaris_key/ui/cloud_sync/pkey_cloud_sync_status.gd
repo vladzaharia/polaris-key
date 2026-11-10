@@ -177,7 +177,7 @@ func _from_host() -> void:
 	_over_saves()
 	refresh_view()
 	# A save conflict that settled (or was dismissed) takes its screen with it.
-	if _save_screen and saves_host != null and saves_host.conflict().is_empty():
+	if _save_screen and saves_host != null and saves_host.conflict() == null:
 		_drop_screen()
 	# A screen is already in front (another strip opened it): draw it here too.
 	if host.screen != "" and _screen == null:
@@ -377,7 +377,7 @@ func _on_action() -> void:
 			review_requested.emit()
 			if state == "ring-changed" and host != null:
 				host.open_review()
-			elif state == "conflict" and saves_host != null and not saves_host.conflict().is_empty():
+			elif state == "conflict" and saves_host != null and saves_host.review():
 				_present_save_conflict()
 		"locked":
 			unlock_requested.emit()

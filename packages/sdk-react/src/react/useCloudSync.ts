@@ -10,11 +10,11 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type { Unsupported } from "@polaris-key/client-core";
 import type { JSONValue } from "@polaris-key/protocol/core";
-import { UnsupportedError } from "../core/caps.js";
 import { safeSignInUrl } from "../core/signInUrl.js";
 import type { SyncStatus } from "../core/cloudSync.js";
 import type { SettingSync } from "../core/localConfig.js";
 import { useConfigSetting, useCtx, type UseConfigSetting } from "./hooks.js";
+import { unsupportedOf } from "./unsupportedOf.js";
 
 /** A setting with its Cloud Sync state. */
 export interface UseSetting<T> extends UseConfigSetting<T> {
@@ -57,6 +57,8 @@ export interface UseCloudSync {
   status: SyncStatus;
   /** Why Cloud Sync is unavailable here, or null when it runs. */
   unsupported: Unsupported | null;
+  /** Whether the cloud held nothing at the person's first pull; null before one. */
+  cloudEmpty: boolean | null;
   /** Set when Cloud Sync needs the person to sign in; cleared by `dismissOffer()` or a sign-in. */
   offer: SignInOffer | null;
   /** Send what is waiting now (bounded) and save the journal. Resolves to the status after. */
@@ -70,24 +72,23 @@ export function useCloudSync(): UseCloudSync {
   const client = adapter.cloudSync;
   const read = useCallback((): {
     status: SyncStatus;
+    cloudEmpty: boolean | null;
     unsupported: Unsupported | null;
   } => {
     if (client.unsupported)
-      return { status: LOCAL, unsupported: client.unsupported };
+      return {
+        status: LOCAL,
+        cloudEmpty: null,
+        unsupported: client.unsupported,
+      };
     try {
-      return { status: client.status(), unsupported: null };
+      return {
+        status: client.status(),
+        cloudEmpty: client.cloudEmpty(),
+        unsupported: null,
+      };
     } catch (e) {
-      if (e instanceof UnsupportedError)
-        return {
-          status: LOCAL,
-          unsupported: {
-            supported: false,
-            feature: e.feature,
-            reason: e.reason,
-            detail: e.detail,
-          },
-        };
-      throw e;
+      return { status: LOCAL, cloudEmpty: null, unsupported: unsupportedOf(e) };
     }
   }, [client]);
   const [view, setView] = useState(read);

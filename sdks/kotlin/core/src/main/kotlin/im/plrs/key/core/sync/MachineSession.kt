@@ -79,15 +79,17 @@ internal class MachineSession(private val p: MachineParts) : SyncSession {
         // An exact write is not retried across a sign-out: its caller is told, and the op goes.
         part.pending.filter { it.ticket != null }.forEach { op -> p.records.emitOutcome(op) { RecordOutcome.Dropped(it) } }
         part.pending = part.pending.filter { it.ticket == null }.toMutableList()
-        val unsynced = part.pending.size + part.held.size
+        val unsynced = part.pending.size + part.held.size + part.conflicts.size
         if (discard) {
             part.pending = mutableListOf()
             part.held = linkedMapOf()
+            part.conflicts = linkedMapOf()
         }
         if (core.opts.onSignOut == "clear" || reason != "signOut") {
             part.settings = linkedMapOf()
             part.records = linkedMapOf()
             part.cursor = 0
+            part.empty = null
         }
         part.signedOutAt = core.now
         core.s.subject = null

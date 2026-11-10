@@ -28,7 +28,7 @@ A save id is 1 to 128 characters of `[A-Za-z0-9._:-]`. Saves need a signed-in pe
 <Tabs syncKey="sdk">
   <TabItem label="Node">
 
-`client.cloudSync.saves` has `list()`, `read(id)`, `write(id, bytes, metadata)`, `resolve(conflict, keep, bytes)`, `delete(id)` and `revisions(id)`. `write` and `resolve` resolve at once with a transfer: `transfer.done` settles on `done`, `cancelled`, `failed` or `conflict`, and never rejects. `transfer.pause()`, `resume()` and `cancel()` control it, and `client.cloudSync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
+`client.cloudSync.saves` has `list()`, `read(id)`, `write(id, bytes, metadata)`, `delete(id)` and `revisions(id)`. `write` resolves at once with a transfer: `transfer.done` settles on `done`, `cancelled`, `failed` or `conflict` (with the `request` to answer), and never rejects. `transfer.pause()`, `resume()` and `cancel()` control it, and `client.cloudSync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
 
 ```ts
 import type { PolarisKeyClient } from "@polaris-key/node";
@@ -45,7 +45,7 @@ export async function saveGame(client: PolarisKeyClient, bytes: Uint8Array) {
   }
   if (outcome.state === "conflict") {
     // Keep this device's copy; "remote" keeps the other, "both" needs a free slot.
-    await client.cloudSync.saves.resolve(outcome.conflict, "local", bytes);
+    await outcome.request.keep("local");
   }
 }
 
@@ -69,7 +69,7 @@ The app's settings go in the client options: `cloudSync: { saves: { saveFormatVe
   </TabItem>
   <TabItem label="React">
 
-`useSaves()` returns `saves` (as `list()` last read them), `list`, `read`, `write`, `resolve`, `delete`, `revisions` and `unsupported`, which says why saves cannot run here, such as on a cookie-only page. `useTransfers()` returns `transfers` (each with `id`, `state` and `progress`), `pause`, `resume` and `cancel`. A hook re-renders on every transfer event. A save's bytes never pass through hook state. The [SaveConflict](/docs/build/ui/components/save-conflict/) screen settles a conflict for you.
+`useSaves()` returns `saves` (as `list()` last read them), `list`, `read`, `write`, `delete`, `revisions` and `unsupported`, which says why saves cannot run here, such as on a cookie-only page. `useTransfers()` returns `transfers` (each with `id`, `state` and `progress`), `pause`, `resume` and `cancel`. A hook re-renders on every transfer event. A save's bytes never pass through hook state. `useConflicts()` lists the open conflicts and settles one with `keep(request, choice)`; the [SaveConflict](/docs/build/ui/components/save-conflict/) screen does it for you.
 
 ```tsx
 import { useSaves, useTransfers } from "@polaris-key/react";
@@ -102,7 +102,7 @@ export function SaveButton({ bytes }: { bytes: Uint8Array }) {
   </TabItem>
   <TabItem label="Python">
 
-`client.cloud_sync.saves` is synchronous: `list()`, `read(id)`, `write(id, data, metadata)`, `resolve(conflict, keep, data)`, `delete(id)`, `revisions(id)` and `transfers()`. Calls return plain dicts with the same members as Node. `write` and `resolve` return a transfer at once; `transfer.wait()` blocks until it settles, and `pause()`, `resume()` and `cancel()` control it. `client.events.on("cloudSync", …)` receives `transferProgress`, `transferDone` and `transferFailed`.
+`client.cloud_sync.saves` is synchronous: `list()`, `read(id)`, `write(id, data, metadata)`, `delete(id)`, `revisions(id)` and `transfers()`. Calls return plain dicts with the same members as Node. `write` returns a transfer at once; `transfer.wait()` blocks until it settles, and `pause()`, `resume()` and `cancel()` control it. `client.events.on("cloudSync", …)` receives `transferProgress`, `transferDone` and `transferFailed`.
 
 ```python
 from polaris_key import PolarisKeyClient
@@ -116,7 +116,7 @@ def save_game(client: PolarisKeyClient, data: bytes) -> None:
         print(outcome["error"].code, outcome["error"].detail)
     if outcome["state"] == "conflict":
         # Keep this device's copy; "remote" keeps the other, "both" needs a free slot.
-        client.cloud_sync.saves.resolve(outcome["conflict"], "local", data).wait()
+        outcome["request"].keep("local")
 
 
 def load_game(client: PolarisKeyClient, id: str) -> object:
@@ -131,7 +131,7 @@ The app's settings go in the client options: `cloud_sync={"saves": {"save_format
   </TabItem>
   <TabItem label="Swift">
 
-`client.cloudSync.saves` has `list()`, `read(_:options:)`, `write(_:bytes:metadata:options:)`, `resolve(_:keep:bytes:options:)`, `delete(_:baseVersion:)` and `revisions(_:)`, all `async throws`. `write` and `resolve` return a `SaveTransfer` at once: `await transfer.outcome()` settles on a `SaveOutcome` (`done`, `keptRemote`, `cancelled`, `failed` or `conflict`) and never throws. `pause()`, `resume()` and `cancel()` control it, `state` and `progress` read it, and `client.cloudSync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
+`client.cloudSync.saves` has `list()`, `read(_:options:)`, `write(_:bytes:metadata:options:)`, `delete(_:baseVersion:)` and `revisions(_:)`, all `async throws`. `write` returns a `SaveTransfer` at once: `await transfer.outcome()` settles on a `SaveOutcome` (`done`, `cancelled`, `failed` or `conflict`, which carries the request to answer) and never throws. `pause()`, `resume()` and `cancel()` control it, `state` and `progress` read it, and `client.cloudSync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
 
 Metadata is a `JSONValue`, or any `Codable` of your own: `write(_:bytes:encoding:options:)` takes an `Encodable`, and `decodeMetadata(_:)` on a `SaveSummary` or `SaveContent` reads it back. A struct ignores the `savedAt` and `deviceLabel` members the SDK adds unless it declares them.
 
@@ -154,11 +154,10 @@ func saveGame(_ client: PolarisKeyClient, bytes: Data) async throws {
     case .failed(let error):
         // .transferFailed with detail "quota_exceeded", or .fileInvalid
         print(error.code.rawValue, error.detail ?? "")
-    case .conflict(let conflict):
+    case .conflict(let request):
         // Keep this device's copy; .remote keeps the other, .both needs a free slot.
-        let kept = try await saves.resolve(conflict, keep: .local, bytes: bytes)
-        _ = await kept.outcome()
-    case .keptRemote, .cancelled:
+        _ = await request.keep(.local)
+    case .cancelled:
         break
     }
 }
@@ -195,14 +194,14 @@ The app's settings go in the client options: `PolarisKeyClientOptions(cloudSync:
   </TabItem>
   <TabItem label="Kotlin">
 
-`client.cloudSync.saves` has `list()`, `read(id)`, `write(id, bytes, metadata)`, `writeAs(id, bytes, metadata)`, `resolve(conflict, keep, bytes)`, `delete(id)` and `revisions(id)`, all `suspend`. There are no Java future forms for saves yet. `write` and `resolve` return a `SaveTransfer` at once: `transfer.await()` settles on a `SaveResult` (`Done`, `KeptRemote`, `Cancelled`, `Failed` or `Conflict`) and never throws. `pause()`, `resume()` and `cancel()` control it, `state`, `done` and `total` read it, and `client.cloudSync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
+`client.cloudSync.saves` has `list()`, `read(id)`, `write(id, bytes, metadata)`, `writeAs(id, bytes, metadata)`, `delete(id)` and `revisions(id)`, all `suspend`. There are no Java future forms for saves yet. `write` returns a `SaveTransfer` at once: `transfer.await()` settles on a `SaveResult` (`Done`, `Cancelled`, `Failed` or `Conflict`, which carries the request to answer) and never throws. `pause()`, `resume()` and `cancel()` control it, `state`, `done` and `total` read it, and `client.cloudSync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
 
 Metadata is a `JsonObject`, or a `@Serializable` type of your own: `writeAs` encodes one and `metadataAs<T>()` on a `SaveRead.Ok` decodes it. The SDK's `savedAt` and `deviceLabel` members are in the object, so decode with `ignoreUnknownKeys` or declare them.
 
 ```kotlin
+import im.plrs.key.core.sync.MergeKeep
 import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
-import im.plrs.key.sdk.SaveKeep
 import im.plrs.key.sdk.SaveRead
 import im.plrs.key.sdk.SaveResult
 import kotlinx.serialization.json.buildJsonObject
@@ -222,9 +221,9 @@ suspend fun saveGame(client: PolarisKeyClient, bytes: ByteArray) {
         is SaveResult.Done -> println("saved ${result.id} ${result.version}")
         // "transfer-failed" with detail "quota_exceeded", or "sync-file-invalid"
         is SaveResult.Failed -> println("${result.error.code} ${result.error.detail}")
-        // Keep this device's copy; REMOTE keeps the other, BOTH needs a free slot.
-        is SaveResult.Conflict -> saves.resolve(result.conflict, SaveKeep.LOCAL, bytes).await()
-        is SaveResult.KeptRemote, SaveResult.Cancelled -> Unit
+        // Keep this device's copy; Remote keeps the other, Both needs a free slot.
+        is SaveResult.Conflict -> result.request.keep(MergeKeep.Local)
+        SaveResult.Cancelled -> Unit
     }
 }
 
@@ -248,7 +247,7 @@ A product whose catalog declares no `saves` collection gets the typed product re
   </TabItem>
   <TabItem label="Godot">
 
-`PolarisKey.cloud_sync.saves` is a `PKeySaves`. `list()`, `read(id, opts)`, `delete(id, base_version)` and `revisions(id)` are coroutines that answer a `PKeyResult`; the data is in `detail`. `write(id, bytes, metadata, opts)` and `resolve(conflict, keep, bytes, opts)` return a `PKeyTransfer` at once: `await transfer.wait()` (or the `finished` signal) settles on an outcome Dictionary with a `state` of `done`, `cancelled`, `failed` or `conflict`, and is never an error value. `pause()`, `resume()` and `cancel()` control it, and `PolarisKey.cloud_sync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
+`PolarisKey.cloud_sync.saves` is a `PKeySaves`. `list()`, `read(id, opts)`, `delete(id, base_version)` and `revisions(id)` are coroutines that answer a `PKeyResult`; the data is in `detail`. `write(id, bytes, metadata, opts)` returns a `PKeyTransfer` at once: `await transfer.wait()` (or the `finished` signal) settles on an outcome Dictionary with a `state` of `done`, `cancelled`, `failed` or `conflict` (with the `request` to answer), and is never an error value. `pause()`, `resume()` and `cancel()` control it, and `PolarisKey.cloud_sync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
 
 Metadata is a Dictionary. `bytes` is a `PackedByteArray`, held whole in memory. A failed call has `code` `sync-file-invalid`, `sync-locked`, `invalid-argument` (a bad id or metadata) or `sync-failed`, with the saves code in `detail.reason`. A write's outcome carries `error.code` as in [Errors](#errors).
 
@@ -266,8 +265,8 @@ func save_game(bytes: PackedByteArray) -> void:
 			print(outcome["error"]["code"])
 		"conflict":
 			# Keep this device's copy; "remote" keeps the other, "both" needs a free slot.
-			var kept: PKeyTransfer = saves.resolve(outcome["conflict"], "local", bytes)
-			await kept.wait()
+			var request: PKeyMergeRequest = outcome["request"]
+			await request.keep("local")
 
 
 func load_game(id: String) -> PackedByteArray:
@@ -317,7 +316,7 @@ A `savedAt` or `deviceLabel` of your own is overwritten.
 
 ## Conflicts
 
-Two devices that save from the same version conflict. `transfer.done` settles on `conflict`, and the SDK pulls the server's copy first so the other version has its details. Show both versions and let the person choose, which the [SaveConflict](/docs/build/ui/components/save-conflict/) screen does:
+Two devices that save from the same version conflict. The write is not sent: `transfer.done` settles on `conflict` with a `request`, and the SDK pulls the server's copy first so the other version has its details. A [MergeRequest](/docs/features/cloud-sync/#conflicts) is open for the slot until it is answered, in `cloudSync.conflicts()` and to `onConflict`. Show both versions and let the person choose, which the [SaveConflict](/docs/build/ui/components/save-conflict/) screen does, then call `request.keep`. The SDK holds this device's copy, so the app hands in no bytes.
 
 | Keep     | Result                                                                                        |
 | -------- | --------------------------------------------------------------------------------------------- |
@@ -325,7 +324,9 @@ Two devices that save from the same version conflict. `transfer.done` settles on
 | `remote` | Nothing is written. The SDK pulls the server copy, so the next `read` returns it              |
 | `both`   | This device's save is written as a new save in a free slot. Without one it fails `slots-full` |
 
-`conflict.bothAvailable` (`both_available` in Godot) says whether a slot is free. A save deleted on another device conflicts too: there is then no other version (`remote` is nil or null), and keeping this device's copy creates the save again.
+`request.choices` offers `both` only while a slot is free and the other version exists. A save deleted on another device conflicts too: there is then no other version (`remote` is nil or null), and keeping this device's copy creates the save again.
+
+While a request is open, a write with no base only replaces its local copy and settles `conflict` again without uploading. A write with a base supersedes the request, and `delete()` defaults to the request's base, so it conflicts and the other copy survives. A write with no base is based on the version this device last listed, read or wrote for that slot in this session; a slot not seen this session is create-only. A version learned by a pull is never a base, so another device's newer save is a conflict and not an overwrite; once the app calls `list()`, the versions it lists (the cache a pull refreshed included) are the ones it has seen. Save requests live in memory: a relaunch drops them, and the app's next write raises the conflict again.
 
 ## Errors
 
@@ -345,21 +346,11 @@ A failed write or read carries one of these codes. A call that throws carries th
 
 ## Save screens
 
-The kits draw the conflict and the transfer strip for you. The [SaveConflict](/docs/build/ui/components/save-conflict/) page has the screen in each kit.
+The kits draw the conflict and the transfer strip for you. The [SaveConflict](/docs/build/ui/components/save-conflict/) page has the screen in each kit. Each binds to the saves request, so none asks the app for the save's bytes.
 
-- **SwiftUI** has `SaveConflictView` over `SaveConflictModel`, and the Cloud Sync row shows a running, waiting or failed transfer. They are not wired to the client yet: give `SaveConflictHost` a closure that calls `saves.resolve` with this device's bytes, as the [SaveConflict](/docs/build/ui/components/save-conflict/) page shows.
-- **Compose** has `PolarisSaveConflict` over `PolarisSaveConflictState`, and `PolarisCloudSyncTransfer` for the strip. They are not wired to the client yet: give the state a `PolarisSaveResolver` that calls `saves.resolve` with this device's bytes.
-- **Godot** wires itself. `PKeySaveConflict` and the Cloud Sync strip follow `PolarisKey.cloud_sync.saves` through `PKeySaveScreensHost`. The game gives the host the one thing the SDK does not keep, this device's bytes:
-
-```gdscript
-func _ready() -> void:
-	var host: PKeySaveScreensHost = PKeySaveScreensHost.of(PolarisKey)
-	if host != null:
-		host.local_copy = func(conflict: Dictionary) -> PackedByteArray:
-			return FileAccess.get_file_as_bytes("user://%s.sav" % conflict["id"])
-```
-
-Without `local_copy`, Keep this version and Keep both fail and say so; Keep the other version needs no bytes. `saves.conflicts()` lists what is unsettled.
+- **SwiftUI** has `SaveConflictView` over `SaveConflictModel(request:)`, and the Cloud Sync row shows a running, waiting or failed transfer.
+- **Compose** has `PolarisSaveConflict` over `PolarisSaveConflictState.of(request, …)`, and `PolarisCloudSyncTransfer` for the strip.
+- **Godot** wires itself. `PKeySaveConflict` and the Cloud Sync strip follow `PolarisKey.cloud_sync.saves` through `PKeySaveScreensHost`, and `saves.conflicts()` lists what is unsettled.
 
 ## What the SDK keeps
 

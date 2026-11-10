@@ -76,6 +76,14 @@ __all__ = [
     "EVENT_KIND_VALUES",
     "TransferEvent",
     "TRANSFER_EVENT_VALUES",
+    "SyncConflict",
+    "SYNC_CONFLICT_VALUES",
+    "MergeChoice",
+    "MERGE_CHOICE_VALUES",
+    "MergeCause",
+    "MERGE_CAUSE_VALUES",
+    "MergeEvent",
+    "MERGE_EVENT_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -362,6 +370,7 @@ class ErrorCode:
     RECOVERY_CODE_INVALID: Final = "recovery-code-invalid"
     SYNC_ENCRYPTION_PINNED: Final = "sync-encryption-pinned"
     SYNC_FILE_INVALID: Final = "sync-file-invalid"
+    SYNC_MERGE_CLOSED: Final = "sync-merge-closed"
     INVALID_OPTIONS: Final = "invalid-options"
     INVALID_ARGUMENT: Final = "invalid-argument"
     INVOKE_NOT_ALLOWED: Final = "invoke-not-allowed"
@@ -593,6 +602,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "recovery-code-invalid",
     "sync-encryption-pinned",
     "sync-file-invalid",
+    "sync-merge-closed",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -826,6 +836,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "recovery-code-invalid": "client",
         "sync-encryption-pinned": "client",
         "sync-file-invalid": "client",
+        "sync-merge-closed": "client",
         "invalid-options": "client",
         "invalid-argument": "client",
         "invoke-not-allowed": "client",
@@ -1854,6 +1865,74 @@ TRANSFER_EVENT_VALUES: Tuple[str, ...] = (
 )
 
 
+class SyncConflict:
+    """The one Cloud Sync conflict vocabulary of settings and records (WIRE-CONTRACT-V5 §13.6, plans/U-08.md §2.1). The server applies every policy; `revision` is the only one that asks, through a MergeRequest. Mirrors `SYNC_CONFLICTS` in `@polaris-key/catalog`; a test keeps them equal."""
+
+    LASTWRITE: Final = "lastWrite"
+    MAX: Final = "max"
+    MIN: Final = "min"
+    MERGE: Final = "merge"
+    UNION: Final = "union"
+    REVISION: Final = "revision"
+
+
+#: Every ``SyncConflict`` value, in source order.
+SYNC_CONFLICT_VALUES: Tuple[str, ...] = (
+    "lastWrite",
+    "max",
+    "min",
+    "merge",
+    "union",
+    "revision",
+)
+
+
+class MergeChoice:
+    """What a MergeRequest's `keep` takes (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.2): this device's copy (`local`), the cloud's (`remote`), both (`both`, saves only, into a free slot) or a new value (`value`, records only). A request lists the choices it offers in `choices`."""
+
+    LOCAL: Final = "local"
+    REMOTE: Final = "remote"
+    BOTH: Final = "both"
+    VALUE: Final = "value"
+
+
+#: Every ``MergeChoice`` value, in source order.
+MERGE_CHOICE_VALUES: Tuple[str, ...] = (
+    "local",
+    "remote",
+    "both",
+    "value",
+)
+
+
+class MergeCause:
+    """Why a MergeRequest is open (plans/U-08.md §2.2): `write`, a `revision` write met a newer copy; `accountMerge`, an account merge parked the other account's copy (U-08b)."""
+
+    WRITE: Final = "write"
+    ACCOUNTMERGE: Final = "accountMerge"
+
+
+#: Every ``MergeCause`` value, in source order.
+MERGE_CAUSE_VALUES: Tuple[str, ...] = (
+    "write",
+    "accountMerge",
+)
+
+
+class MergeEvent:
+    """The MergeRequest events on the client's `events` stream under the `cloudSync` kind (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.5), in camelCase in every SDK: `conflictOpened` (a request opened, or reopened after its keep failed) and `conflictClosed` (with `how`: `local`, `remote`, `value`, `both` or `superseded`)."""
+
+    CONFLICTOPENED: Final = "conflictOpened"
+    CONFLICTCLOSED: Final = "conflictClosed"
+
+
+#: Every ``MergeEvent`` value, in source order.
+MERGE_EVENT_VALUES: Tuple[str, ...] = (
+    "conflictOpened",
+    "conflictClosed",
+)
+
+
 class HeaderName:
     """The `X-PKey-*` request header names (wire contract v3 §5)."""
 
@@ -1941,7 +2020,7 @@ PLAN_MATRIX_VERSION: Final[int] = 2
 
 
 #: `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-SYNC_SCENARIOS_VERSION: Final[int] = 4
+SYNC_SCENARIOS_VERSION: Final[int] = 5
 
 
 #: `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
@@ -2532,7 +2611,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "config.sync": CapabilityRow("implemented", "sync", ()),
         "sync.scenarios": CapabilityRow("implemented", "sync", ()),
         "sync.settings": CapabilityRow("implemented", "sync", ()),
-        "sync.conflict": CapabilityRow("planned", "sync", ()),
+        "sync.conflict": CapabilityRow("implemented", "sync", ()),
         "sync.saves": CapabilityRow("implemented", "sync", ()),
         "sync.keyring": CapabilityRow("implemented", "sync", ()),
         "sync.records": CapabilityRow("implemented", "sync", ()),
@@ -2644,4 +2723,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "3590548d43b19864430432e33d45cd27833277155e04f0336400fbcc64517abe"
+CAPABILITY_DIGEST: Final[str] = "51cbfa048598798b0e7691da29dd1ade7b5ecdd3d7aead8aefbd4729a409cc5b"

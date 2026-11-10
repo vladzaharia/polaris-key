@@ -27,85 +27,22 @@ import {
   SUBJECT,
   World,
   open,
+  rowsWorld,
+  serverWorld,
+  startSignedIn,
   type Body,
 } from "./cloudSyncFixtures.js";
 
 const sha = (b: Uint8Array): string =>
   createHash("sha256").update(b).digest("hex");
 
-interface Row {
-  value: unknown;
-  version: number;
-  file?: { version: number; size: number; sha256: string; format: "whole" };
-}
-
 /** The Worker's saves, as far as a whole-file save needs. */
 function savesWorld() {
-  const w = new World();
-  w.body = ((over: Body = {}) => ({
-    subject: SUBJECT,
-    serverNow: 1_700_000_000_000,
-    cursor: 0,
-    more: false,
-    lastMutationId: 0,
-    catalogVersion: 1,
-    aliases: {},
-    usage: { files: 0, records: 0, settings: 0, bytes: 0 },
-    quota: { files: true, bytes: 2 ** 28 },
-    encryption: "server",
-    changes: [],
-    tombstones: [],
-    ...over,
-  })) as typeof w.body;
-  const rows = new Map<string, Row>();
+  const w = serverWorld();
+  const { rows } = rowsWorld(w, "saves");
   const stored = new Map<number, Uint8Array>();
   const uploads = new Map<string, { id: string; bytes?: Uint8Array }>();
   const files: string[] = [];
-  const change = (id: string, r: Row): Body => ({
-    record: ["saves", id],
-    version: r.version,
-    ...(r.value === undefined ? {} : { value: r.value }),
-    ...(r.file ? { file: r.file } : {}),
-  });
-  w.pull = () =>
-    w.body({
-      cursor: w.version,
-      changes: [...rows].map(([id, r]) => change(id, r)),
-    });
-  w.push = (body) => {
-    const results: Body[] = [];
-    const changes: Body[] = [];
-    const tombstones: Body[] = [];
-    for (const m of body.mutations as Array<Record<string, any>>) {
-      const id = m.target.record[1] as string;
-      const row = rows.get(id);
-      const base = m.baseVersion as number | "*";
-      const stale = base === "*" ? row !== undefined : row?.version !== base;
-      if (stale) {
-        results.push({
-          mutationId: m.mutationId,
-          status: "conflict",
-          server: row ? change(id, row) : { version: w.version },
-        });
-        continue;
-      }
-      const version = ++w.version;
-      if (m.op === "delete") {
-        rows.delete(id);
-        tombstones.push({ record: ["saves", id], version });
-      } else {
-        const next: Row = {
-          value: m.value,
-          version,
-          ...(row?.file ? { file: row.file } : {}),
-        };
-        rows.set(id, next);
-        changes.push(change(id, next));
-      }
-      results.push({ mutationId: m.mutationId, status: "ok", version });
-    }
-    return w.body({ cursor: w.version, results, changes, tombstones });
-  };
   const inner = w.fetch;
   const json = (b: unknown, status = 200): Response =>
     new Response(JSON.stringify(b), { status });
@@ -189,9 +126,7 @@ async function signedIn(w: World) {
       cloudSync: { collections: [{ name: "saves", conflict: "revision" }] },
     },
   });
-  await client.cloudSyncHost.start();
-  client.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });
-  await client.cloudSync.flush();
+  await startSignedIn(client);
   return { client, stateDir };
 }
 
@@ -297,7 +232,7 @@ describe("cloudSync.saves", () => {
     client.close();
   });
 
-  it("reports a stale write as a conflict that carries the server copy", async () => {
+  it("saveConflictOpensRequest: a stale write is a request that carries the server copy", async () => {
     const { w, rows } = savesWorld();
     rows.set("slot-1", {
       value: { chapter: "two" },
@@ -317,15 +252,18 @@ describe("cloudSync.saves", () => {
     const out = await t.done;
     expect(out.state).toBe("conflict");
     if (out.state !== "conflict") return;
-    expect(out.conflict.remote).toMatchObject({
-      id: "slot-1",
-      metadata: { chapter: "two" },
+    expect(out.request).toMatchObject({
+      id: "w:saves/slot-1",
+      collection: "saves",
+      record: "slot-1",
+      remote: { version: 7, value: { chapter: "two" } },
     });
-    expect(out.conflict.serverVersion).toBe(7);
+    expect(client.cloudSync.conflicts()).toHaveLength(1);
+    expect(client.cloudSync.status().conflicts).toBe(1);
     client.close();
   });
 
-  it("pulls on a conflict and on keeping the other version, so the cache holds the server's copy", async () => {
+  it("saveKeepRemote: keeping the other version pulls, so the cache holds the server's copy", async () => {
     const { w, rows } = savesWorld();
     const file = (v: number) => ({
       version: v,
@@ -354,16 +292,51 @@ describe("cloudSync.saves", () => {
       })
     ).done;
     if (out.state !== "conflict") throw new Error(out.state);
-    expect(out.conflict.serverVersion).toBe(9);
-    expect(out.conflict.remote?.metadata).toMatchObject({ chapter: "theirs" });
-    expect(out.conflict.local.metadata).toMatchObject({ chapter: "mine" });
-    expect(typeof out.conflict.local.metadata.savedAt).toBe("number");
-    const kept = await (
-      await client.cloudSync.saves.resolve(out.conflict, "remote", bytes(1))
-    ).done;
-    expect(kept).toMatchObject({ state: "done", kept: "remote", version: 9 });
+    expect(out.request.remote?.version).toBe(9);
+    expect(out.request.remote?.value).toMatchObject({ chapter: "theirs" });
+    expect(out.request.local?.value).toMatchObject({ chapter: "mine" });
+    expect(typeof (out.request.local?.value as any).savedAt).toBe("number");
+    expect(out.request.choices).toEqual(["local", "remote", "both"]);
+    const kept = await out.request.keep("remote");
+    expect(kept).toMatchObject({ ok: true, kept: "remote", version: 9 });
+    expect(client.cloudSync.conflicts()).toEqual([]);
     const [row] = await client.cloudSync.saves.list();
     expect(row).toMatchObject({ version: 9, metadata: { chapter: "theirs" } });
+    client.close();
+  });
+
+  it("saveKeepLocal: keeping this device's save writes it on top of the server's, from the retained bytes", async () => {
+    const { w, rows } = savesWorld();
+    rows.set("slot-1", {
+      value: { chapter: "one" },
+      version: 3,
+      file: { version: 3, size: 5, sha256: "a".repeat(64), format: "whole" },
+    });
+    w.version = 3;
+    const { client } = await signedIn(w);
+    await client.cloudSync.saves.list();
+    rows.set("slot-1", {
+      value: { chapter: "theirs" },
+      version: 9,
+      file: { version: 9, size: 5, sha256: "a".repeat(64), format: "whole" },
+    });
+    w.version = 9;
+    const mine = bytes(700);
+    const out = await (
+      await client.cloudSync.saves.write("slot-1", mine, { chapter: "mine" })
+    ).done;
+    if (out.state !== "conflict") throw new Error(out.state);
+    // The listener sees the request that is already open, and a later write only replaces it.
+    const listed: string[] = [];
+    client.cloudSync.onConflict((r) => void listed.push(r.id));
+    expect(listed).toEqual(["w:saves/slot-1"]);
+    const kept = await out.request.keep("local");
+    expect(kept).toMatchObject({ ok: true, kept: "local" });
+    expect(rows.get("slot-1")).toMatchObject({
+      value: { chapter: "mine" },
+      file: { size: 700, sha256: sha(mine) },
+    });
+    expect(client.cloudSync.conflicts()).toEqual([]);
     client.close();
   });
 

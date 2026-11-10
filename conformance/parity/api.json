@@ -4093,6 +4093,147 @@
       "layer": "client"
     },
     {
+      "id": "cloudSync.onConflict",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "python": {},
+        "godot": {
+          "spelling": "conflict_opened",
+          "shape": "signal",
+          "reason": "Godot observes a signal; on_conflict(fn) is the listener that may decide inline"
+        },
+        "node": {},
+        "react": {
+          "spelling": "useConflicts",
+          "shape": "hook",
+          "reason": "the hook is a listener while mounted and re-renders as requests open; adapter.cloudSync.onConflict is the listener itself"
+        },
+        "swift": {
+          "spelling": "CloudSyncClient.onConflict",
+          "labels": ["_"]
+        },
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.conflicts",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "sdks": {
+        "python": {},
+        "godot": {},
+        "node": {},
+        "react": {
+          "spelling": "useConflicts().conflicts",
+          "shape": "hook",
+          "reason": "the hook carries the open requests"
+        },
+        "swift": {
+          "spelling": "CloudSyncClient.conflicts"
+        },
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.cloudEmpty",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "sdks": {
+        "python": {},
+        "godot": {},
+        "node": {},
+        "react": {
+          "spelling": "useCloudSync().cloudEmpty",
+          "shape": "hook",
+          "reason": "the hook carries the value"
+        },
+        "swift": {
+          "spelling": "CloudSyncClient.cloudEmpty"
+        },
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.mergeRequest.keep",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "args": [
+        {
+          "name": "choice",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "python": {
+          "spelling": "MergeRequest.keep"
+        },
+        "godot": {
+          "spelling": "PKeyMergeRequest.keep"
+        },
+        "node": {
+          "spelling": "MergeRequest.keep"
+        },
+        "react": {
+          "spelling": "useConflicts().keep",
+          "shape": "hook",
+          "reason": "the hook carries the method; a request also has its own keep"
+        },
+        "swift": {
+          "spelling": "MergeRequest.keep",
+          "labels": ["_"]
+        },
+        "kotlin": {
+          "spelling": "MergeRequest.keep"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.conflictEvent",
+      "kind": "stream",
+      "feature": "sync.conflict",
+      "enum": "mergeEvent",
+      "sdks": {
+        "python": {
+          "spelling": "events.subscribe(\"cloudSync\")",
+          "reason": "one event stream on the client bus, kind cloudSync: conflictOpened and conflictClosed"
+        },
+        "godot": {
+          "spelling": "client.event",
+          "shape": "signal",
+          "reason": "Godot observes the one event signal, kinds conflictOpened and conflictClosed"
+        },
+        "node": {
+          "spelling": "events.on(\"cloudSync\")",
+          "reason": "one event stream on the client emitter, kind cloudSync (type conflictOpened, conflictClosed)"
+        },
+        "react": {
+          "spelling": "useConflicts().conflicts",
+          "shape": "hook",
+          "reason": "the hook re-renders on each event, so no event listener is exposed"
+        },
+        "swift": {
+          "spelling": "events",
+          "reason": "one event stream on the client, case cloudSync, with conflictOpened and conflictClosed"
+        },
+        "kotlin": {
+          "spelling": "client.events",
+          "reason": "one event stream on the client (client.events), PolarisEvent.CloudSync, with ConflictOpened and ConflictClosed"
+        }
+      },
+      "layer": "client"
+    },
+    {
       "id": "cloudSync.saves",
       "kind": "property",
       "feature": "sync.saves",
@@ -8975,6 +9116,12 @@
       "from": "identity.accept_sign_in",
       "to": "identity.signIn.session.wait",
       "package": "I-10a"
+    },
+    {
+      "sdk": "godot",
+      "from": "PKeySaves.resolve",
+      "to": "cloudSync.mergeRequest.keep",
+      "package": "U-08"
     }
   ]
 }

@@ -2452,6 +2452,11 @@ msgctxt "macos"
 msgid "saveConflict.chooseAgain"
 msgstr "Erneut wählen"
 
+#. Saved again on another device. Choose again.
+#. SaveConflict: shown on the choices when the other copy changed again while the person's choice was being applied. Nothing was applied.
+msgid "saveConflict.reopened"
+msgstr "Auf einem anderen Gerät erneut gespeichert. Wählen Sie noch einmal."
+
 #. Couldn't keep your choice. Your save is unchanged.
 #. SaveConflict: the choice failed after the other copy was deleted; only this device's save exists.
 msgid "saveConflict.failedDeleted"
@@ -7655,6 +7660,16 @@ msgstr "Datei nicht geöffnet"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-file-invalid.message"
 msgstr "Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut."
+
+#. Already decided
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.title"
+msgstr "Bereits entschieden"
+
+#. The choice was already made, or a newer change replaced it. Nothing changed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.message"
+msgstr "Die Auswahl wurde bereits getroffen oder durch eine neuere Änderung ersetzt. Es wurde nichts geändert."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

@@ -683,15 +683,16 @@
       "service": "sync",
       "proof": [
         {
-          "kind": "unit"
+          "kind": "corpus",
+          "file": "sync-scenarios.json",
+          "wp": "U-08"
         },
         {
-          "kind": "transcript",
-          "wp": "U-08"
+          "kind": "unit"
         }
       ],
       "allowedNa": [],
-      "note": "revision is the only policy that prompts; every other one is applied by the server (plans/U-01b.md §2.2)."
+      "note": "revision is the only policy that prompts; every other one is applied by the server (plans/U-01b.md §2.2, plans/U-08.md §2). sync-scenarios.json v5 pins the request lifecycle and the saves layer is proven by the ten named saves unit tests (plans/U-08.md §6, D9). No transcript of its own: cloudsync-records-cas and cloudsync-files-conflict already pin the compare-and-swap."
     },
     {
       "id": "sync.saves",

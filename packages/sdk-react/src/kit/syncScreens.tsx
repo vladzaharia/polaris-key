@@ -24,10 +24,7 @@ import type { RingCode, RingIdentity, RingStatus } from "../core/keyring.js";
 import type { KitAction } from "./component.js";
 import { kitComponent, type SyncScreenProps } from "./kitComponent.js";
 import { useSyncLock } from "../react/useKeyring.js";
-import type {
-  RangedSource,
-  SaveConflict as SaveConflictInfo,
-} from "@polaris-key/client-core/sync";
+import type { MergeRequest as SaveConflictInfo } from "@polaris-key/client-core/sync";
 import { useBoundConflict, type ConflictDescription } from "./saveScreens.js";
 
 export type { SyncScreenProps };
@@ -316,12 +313,6 @@ function DrivenRing(props: RingChangeProps & { ring: Ring }): ReactNode {
 export type SaveKeep = "local" | "remote" | "both";
 
 export interface SaveConflictProps extends SyncScreenProps {
-  /** The local copy's bytes, for Keep this and Keep both (the host holds them; none is needed to
-   *  keep the other copy). Used when the screen follows the saves client itself; without it
-   *  those two choices cannot run (a warning says so in development). */
-  bytes?: (
-    conflict: SaveConflictInfo,
-  ) => Uint8Array | RangedSource | Promise<Uint8Array | RangedSource>;
   /** Overrides for the cards: each copy's time (`when`), the other device's name and which is
    *  `newer`. Optional: every SDK records `savedAt` and `deviceLabel` with a save, and the cards
    *  read them. */
@@ -348,9 +339,9 @@ const KEEPS: Readonly<Record<string, SaveKeep>> = {
 
 /** The same save changed on two devices: pick the copy to keep. Given `input.saveConflict` it is
  *  the plain part and the host drives it; inside `<PolarisKeyProvider>` with a conflict pending,
- *  it follows the first conflict `adapter.cloudSync.saves` holds and settles it with `resolve`
- *  (the local copy's bytes come from `bytes`, the cards' times from `describe`; a host
- *  `input.saveConflict` is merged over them). With no conflict it draws nothing. On close, focus
+ *  it follows the first request `adapter.cloudSync.saves` holds and settles it with
+ *  `request.keep` (the client holds the device's copy; the cards' times come from the request, or
+ *  from `describe`; a host `input.saveConflict` is merged over them). With no conflict it draws nothing. On close, focus
  *  returns to what held it and `onDismiss` is called. */
 export function SaveConflict(props: SaveConflictProps): ReactNode {
   const {
@@ -359,11 +350,10 @@ export function SaveConflict(props: SaveConflictProps): ReactNode {
     onChooseAgain,
     onCancel,
     onDone,
-    bytes,
     describe,
     ...rest
   } = props;
-  const bound = useBoundConflict(rest.input, bytes, describe);
+  const bound = useBoundConflict(rest.input, describe);
   // Focus goes back to what held it when the screen opened (the dialog does so itself).
   const opener = useRef<HTMLElement | null>(null);
   const shown = bound.input !== undefined;

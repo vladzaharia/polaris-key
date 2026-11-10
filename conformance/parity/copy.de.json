@@ -565,6 +565,10 @@
       "title": "Datei nicht geöffnet",
       "message": "Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut."
     },
+    "sync-merge-closed": {
+      "title": "Bereits entschieden",
+      "message": "Die Auswahl wurde bereits getroffen oder durch eine neuere Änderung ersetzt. Es wurde nichts geändert."
+    },
     "invalid-options": {
       "title": "App nicht eingerichtet",
       "message": "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler."

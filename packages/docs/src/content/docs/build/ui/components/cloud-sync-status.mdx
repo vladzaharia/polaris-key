@@ -41,12 +41,12 @@ A small Cloud Sync status. It shows only while Cloud Sync is on and never implie
     ```tsx
     import { CloudSyncStatus, SaveConflict } from "@polaris-key/react/kit";
 
-    export function SavesBar(props: { local: () => Uint8Array; retry: () => void }) {
+    export function SavesBar(props: { retry: () => void }) {
       const describe = () => ({ local: { when: "today 9:00" }, newer: "local" as const });
       return (
         <>
-          <CloudSyncStatus bytes={props.local} describe={describe} onRetry={props.retry} />
-          <SaveConflict bytes={props.local} describe={describe} />
+          <CloudSyncStatus describe={describe} onRetry={props.retry} />
+          <SaveConflict describe={describe} />
         </>
       );
     }

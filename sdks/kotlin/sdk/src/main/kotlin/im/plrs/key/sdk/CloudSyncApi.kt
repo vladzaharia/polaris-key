@@ -52,6 +52,7 @@ import im.plrs.key.core.TransferEvent
 import im.plrs.key.core.Unsupported
 import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.sync.CallResult
+import im.plrs.key.core.sync.MergeKeep
 import im.plrs.key.core.sync.ReadResult
 import im.plrs.key.core.sync.SyncDiscovery
 import im.plrs.key.core.sync.SyncEvent
@@ -93,6 +94,16 @@ public sealed interface CloudSyncEvent {
     /** The synced data could not be deleted from disk (no values, no path): the app may warn the person. */
     public data object PurgeFailed : CloudSyncEvent
 
+    /** A MergeRequest opened, or reopened after its keep failed (the `conflictOpened` event). Names the request; [request] holds the copies. */
+    public data class ConflictOpened(val request: MergeRequest) : CloudSyncEvent {
+        public val type: String get() = im.plrs.key.core.MergeEvent.conflictopened
+    }
+
+    /** A MergeRequest closed; [how] is `local`, `remote`, `value`, `both` or `superseded` (the `conflictClosed` event). */
+    public data class ConflictClosed(val id: String, val how: String) : CloudSyncEvent {
+        public val type: String get() = im.plrs.key.core.MergeEvent.conflictclosed
+    }
+
     /** A file transfer moved: [done] of [total] plaintext bytes (the `transferProgress` event). */
     public data class TransferProgress(val id: String, val done: Long, val total: Long) : CloudSyncEvent {
         public val type: String get() = TransferEvent.transferprogress
@@ -115,11 +126,19 @@ public sealed interface CloudSyncEvent {
         /** The event for app code, or null for a machine event that has its own listener (a collection's `records`). */
         internal fun of(e: SyncEvent): CloudSyncEvent? = when (e) {
             is SyncEvent.Records -> null
+
             is SyncEvent.Change -> Change(e.keys, e.origin)
+
             is SyncEvent.Rejected -> Rejected(e.mutationId, e.code)
+
             is SyncEvent.SignedOut -> SignedOut(e.reason, e.unsynced)
+
             is SyncEvent.UnsyncedData -> UnsyncedData(e.count)
+
             is SyncEvent.SignInOffered -> SignInOffered(e.signInUrl)
+
+            // The registry turns these into [ConflictOpened] and [ConflictClosed], which carry the request.
+            is SyncEvent.Conflict, is SyncEvent.ConflictClosed -> null
         }
     }
 }
@@ -146,8 +165,20 @@ public class CloudSyncClient internal constructor(private val api: CloudSyncApi)
     /** The recovery-code screen's model. */
     public val recoveryCode: RecoveryCodeModel = RecoveryCodeModel { api.newRecoveryCode() }
 
-    /** Saves: `list`, `read`, `write`, `delete`, `revisions` and `resolve` (U-22.5). A product with no `saves` collection gets the typed N/A. */
+    /** Saves: `list`, `read`, `write`, `delete` and `revisions` (U-22.5). A product with no `saves` collection gets the typed N/A. */
     public val saves: SavesClient get() = api.saves
+
+    /**
+     * Listen for MergeRequests as they open (plans/U-08.md section 2.5); the ones already open are replayed. A listener that
+     * returns a [MergeKeep] decides the request at once. Returns the subscription to cancel.
+     */
+    public suspend fun onConflict(listener: ConflictListener): MergeSubscription = api.merge.onConflict(listener)
+
+    /** The open requests, in id order: `revision` collection records and saves. */
+    public suspend fun conflicts(): List<MergeRequest> = api.merge.conflicts()
+
+    /** Whether the cloud was empty at the first pull of the signed-in person; null before any pull. */
+    public suspend fun cloudEmpty(): Boolean? = api.cloudEmpty()
 
     /**
      * The records handle of a collection the product's catalog declares (an exact name, or one a `prefix.*` pattern
@@ -257,9 +288,48 @@ internal class CloudSyncApi(
         },
     )
 
-    internal val saves: SavesClient = SavesClient(transferScope, savesHooks) { savesDeps() }
+    /** The open MergeRequests of this client: the machine's record requests and the saves layer's (plans/U-08.md section 2). */
+    internal val merge: MergeRegistry = MergeRegistry(
+        transferScope,
+        MachinePort(),
+        notice = {
+            java.util.logging.Logger.getLogger("im.plrs.key.sdk")
+                .warning("Cloud Sync: a MergeRequest opened with no onConflict listener; it stays open until keep().")
+        },
+    )
+
+    internal val saves: SavesClient = SavesClient(transferScope, savesHooks, merge) { savesDeps() }
+
+    /** The machine as the registry reads and answers it. */
+    private inner class MachinePort : MergeMachinePort {
+        private suspend fun host(): CloudSyncHost? = withContext(dispatcher) { startedHost() }
+
+        override suspend fun conflicts() = host()?.withMachine { it.conflicts() } ?: emptyList()
+
+        override suspend fun keep(id: String, choice: MergeKeep): CallResult {
+            val h = host() ?: return CallResult.Failed(ErrorCode.syncMergeClosed)
+            val r = h.withMachine { it.keep(id, choice) }
+            h.kick()
+            return r
+        }
+
+        override suspend fun records(collection: String) = host()?.withMachine { it.records(collection) } ?: emptyList()
+    }
+
+    suspend fun cloudEmpty(): Boolean? {
+        core.requireService(ServiceSlug.sync, Feature.syncSettings)
+        return withContext(dispatcher) { startedHost()?.withMachine { it.cloudEmpty() } }
+    }
 
     init {
+        merge.onEvent { e ->
+            emit(
+                when (e) {
+                    is MergeStreamEvent.Opened -> CloudSyncEvent.ConflictOpened(e.request)
+                    is MergeStreamEvent.Closed -> CloudSyncEvent.ConflictClosed(e.id, e.how)
+                },
+            )
+        }
         background?.attach { idHash, owner -> backgroundRun(idHash, owner) }
     }
 
@@ -282,7 +352,7 @@ internal class CloudSyncApi(
     }
 
     private fun settledEvent(id: String, result: SaveResult): CloudSyncEvent = when (result) {
-        is SaveResult.Done, is SaveResult.KeptRemote -> CloudSyncEvent.TransferDone(id, "done")
+        is SaveResult.Done -> CloudSyncEvent.TransferDone(id, "done")
         SaveResult.Cancelled -> CloudSyncEvent.TransferDone(id, "cancelled")
         is SaveResult.Conflict -> CloudSyncEvent.TransferDone(id, "conflict")
         is SaveResult.Failed -> CloudSyncEvent.TransferFailed(id, result.error.code)
@@ -373,7 +443,9 @@ internal class CloudSyncApi(
         core.requireService(ServiceSlug.sync, Feature.syncSettings)
         return withContext(dispatcher) {
             val h = startedHost() ?: return@withContext SyncStatus(im.plrs.key.core.sync.SyncState.Local, 0)
-            h.withMachine { it.status() }
+            val s = h.withMachine { it.status() }
+            val open = s.conflicts + merge.extraCount()
+            if (open > 0) s.copy(conflicts = open) else s
         }
     }
 
@@ -624,6 +696,8 @@ internal class CloudSyncApi(
     // ── the machine's events (A-4, A-5) ──────────────────────────────────────────────────────────
 
     private suspend fun onEvents(events: List<SyncEvent>) {
+        // The registry first: a request is listed and its keep settled before the host hears of the event.
+        merge.feed(events)
         val leftReasons = events.filterIsInstance<SyncEvent.SignedOut>().map { it.reason }
         val left = leftReasons.isNotEmpty()
         // The person is gone before anything else runs, so a forget (and its purge) never takes them for the signed-in one.

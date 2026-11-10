@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { SYNC_CONFLICTS } from "@polaris-key/catalog";
 import {
   STORE_BACKENDS,
   STORE_DEGRADED_REASONS,
@@ -209,6 +210,14 @@ describe("the sources", () => {
     expect(byName.storeDegradedReason).toEqual([...STORE_DEGRADED_REASONS]);
   });
 
+  it("syncConflict equals SYNC_CONFLICTS (@polaris-key/catalog), in its order", () => {
+    // U-08 (plans/U-08.md §5): the SDKs spell the Cloud Sync conflict policies from enums.json.
+    const byName = Object.fromEntries(
+      SOURCES.enums.map((e) => [e.name, e.values]),
+    );
+    expect(byName.syncConflict).toEqual([...SYNC_CONFLICTS]);
+  });
+
   it("licenseStatus equals LicenseStatus (@polaris-key/protocol/license), through an exhaustive map", () => {
     // A LicenseStatus member added or removed fails to compile here, and a value in enums.json
     // that is not a member fails the comparison.
@@ -265,7 +274,7 @@ describe("the sources", () => {
       updateMatrixVersion: 1,
       outletMatrixVersion: 1,
       planMatrixVersion: 2,
-      syncScenariosVersion: 4,
+      syncScenariosVersion: 5,
       deviceLabelVersion: 2,
       presentationMatrixVersion: 1,
       portalMatrixVersion: 1,

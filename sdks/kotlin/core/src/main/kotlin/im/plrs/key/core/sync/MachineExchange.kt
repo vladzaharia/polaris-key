@@ -35,6 +35,7 @@ internal class MachineExchange(private val p: MachineParts) {
             part.settings = linkedMapOf()
             part.records = linkedMapOf()
         }
+        noteEmpty(part, req, body)
         if (core.requiresE2e()) SyncNum.long(body["encryptionSince"])?.let { p.rows.lowerSince(part, it) }
         applyChanges(part, req, body, opened)
         applyTombstones(part, body)
@@ -47,6 +48,17 @@ internal class MachineExchange(private val p: MachineParts) {
         core.needSnapshot = false
         core.pullWanted = (body["more"] as? JsonPrimitive)?.content == "true"
         p.layers.emitChanges(before, overrides, "remote")
+    }
+
+    /** `empty` (section 13.4): a cursor-0 answer with nothing in it; anything the cloud then holds clears it. */
+    private fun noteEmpty(part: SyncPartition, req: InFlight, body: JsonObject) {
+        val active = body["results"].arrayValue.orEmpty().any { (it as? JsonObject)?.get("status").stringValue == "ok" } ||
+            body["changes"].arrayValue.orEmpty().isNotEmpty() || body["tombstones"].arrayValue.orEmpty().isNotEmpty()
+        if (req.cursor == 0L && SyncNum.long(body["cursor"]) != null) {
+            part.empty = (body["empty"] as? JsonPrimitive)?.content == "true" && !active
+        } else if (active && part.empty == true) {
+            part.empty = false
+        }
     }
 
     /** The host could not seal these mutations of the push in flight: each is dropped as a rejected result would be. */

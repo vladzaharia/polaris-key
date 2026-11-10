@@ -492,8 +492,8 @@
       "note": "client.cloudSync: status(), flush(), newRecoveryCode() and recoveryCode, and the cloudSync case of client.events. CloudSyncHost (PolarisKey/CloudSyncHost.swift) owns one machine, the transport (no redirect, 8 MiB cap, 15 s), the state file and the sign-out chain (flush, machine sign-out, key ring forget, purge; a ring that cannot forget stops the sign-out and keeps the data). Cloud Sync is off on Linux (FoundationNetworking). The cloudsync-* transcripts replay in TranscriptTests; CloudSyncHostTests, CloudSyncHostBoundsTests, CloudSyncHostFixesTests and CloudSyncSettingsTests."
     },
     "sync.conflict": {
-      "status": "planned",
-      "wp": "U-08"
+      "status": "implemented",
+      "note": "MergeRequest (plans/U-08.md): client.cloudSync.onConflict / conflicts() / cloudEmpty() and request.keep(.local | .remote | .both | .value(_)) over the machine's revision records and the saves layer (S1 to S5). SyncScenariosTests replays sync-scenarios.json v5 with no skip list; CloudSyncSavesTests carries the ten saves cases and CloudSyncMergeTests the registry; the SwiftUI kit binds SaveConflictModel(request:) to request.keep."
     },
     "sync.saves": {
       "status": "implemented",

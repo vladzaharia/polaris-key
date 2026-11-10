@@ -235,7 +235,7 @@ describe("cloudSync.saves in the browser host", () => {
     await r.host.close();
   });
 
-  it("reports a stale base version as a conflict, and resolve settles it", async () => {
+  it("saveConflictOpensRequest and saveKeepLocal: a stale base version opens a request, and keep settles it", async () => {
     const r = await rig();
     await (
       await r.saves.write("slot1", bytes(900, 1), { n: 1 })
@@ -245,14 +245,14 @@ describe("cloudSync.saves in the browser host", () => {
     ).done;
     expect(stale.state).toBe("conflict");
     if (stale.state !== "conflict") return;
-    expect(stale.conflict.remote?.metadata).toMatchObject({
+    expect(stale.request.remote?.value).toMatchObject({
       n: 1,
       savedAt: expect.any(Number),
     });
-    const kept = await (
-      await r.saves.resolve(stale.conflict, "local", bytes(900, 2))
-    ).done;
-    expect(kept.state).toBe("done");
+    expect(r.saves.conflicts().map((c) => c.id)).toEqual(["w:saves/slot1"]);
+    const kept = await stale.request.keep("local");
+    expect(kept).toMatchObject({ ok: true, kept: "local" });
+    expect(r.saves.conflicts()).toEqual([]);
     expect(r.world.recs.get("slot1")?.value).toMatchObject({ n: 2 });
     expect(hexOf(await readAll(r, "slot1"))).toBe(hexOf(bytes(900, 2)));
     await r.host.close();

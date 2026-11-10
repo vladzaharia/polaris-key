@@ -130,6 +130,22 @@ public class RecordFile(public val version: Long, public val size: Long, public 
     }
 }
 
+/** An open MergeRequest of a `revision` record (plans/U-08.md section 2.3): the device's copy, held unsent. The remote side is the snapshot row. */
+internal class ConflictRec(var local: JsonElement, val localVersion: Long?) {
+    /** A keep is applying: the choice (`local` or `value`) and the mutation that carries it. */
+    var keepChoice: String? = null
+    var keepMutationId: Long = 0
+
+    /** The failure code of the last keep. */
+    var error: String? = null
+
+    fun copy(): ConflictRec = ConflictRec(local, localVersion).also {
+        it.keepChoice = keepChoice
+        it.keepMutationId = keepMutationId
+        it.error = error
+    }
+}
+
 /** A server row held in a partition's snapshot (a setting or a record). */
 internal class SyncRow(
     val value: JsonElement?,
@@ -146,6 +162,12 @@ internal class SyncPartition(var clientId: String?) {
     var cursor: Long = 0
     var pending: MutableList<Op> = mutableListOf()
     var held: MutableMap<String, JsonElement> = linkedMapOf()
+
+    /** Open MergeRequests by `collection/id` (rule 7); a relaunch keeps them. */
+    var conflicts: MutableMap<String, ConflictRec> = linkedMapOf()
+
+    /** Whether the last cursor-0 answer said the cloud is empty; null before any. */
+    var empty: Boolean? = null
     var settings: MutableMap<String, SyncRow> = linkedMapOf()
     var records: MutableMap<String, SyncRow> = linkedMapOf()
     val device: MutableMap<String, DeviceEntry> = linkedMapOf()
@@ -171,6 +193,8 @@ internal class SyncPartition(var clientId: String?) {
             }
         }.toMutableList()
         c.held = LinkedHashMap(held)
+        c.conflicts = LinkedHashMap(conflicts.mapValues { it.value.copy() })
+        c.empty = empty
         c.settings = LinkedHashMap(settings)
         c.records = LinkedHashMap(records)
         device.forEach { (k, d) -> c.device[k] = DeviceEntry(d.value, d.cleared, d.editedHlc, d.preContact) }

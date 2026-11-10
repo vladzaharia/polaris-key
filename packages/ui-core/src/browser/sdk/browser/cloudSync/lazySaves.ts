@@ -33,12 +33,10 @@ export function lazySaves(
     list: async () => (await ready()).list(),
     read: async (id, o) => (await ready()).read(id, o),
     write: async (id, b, m, o) => (await ready()).write(id, b, m, o),
-    resolve: async (c, k, b, o) => (await ready()).resolve(c, k, b, o),
     delete: async (id, v) => (await ready()).delete(id, v),
     revisions: async (id) => (await ready()).revisions(id),
     transfers: () => real?.transfers() ?? [],
     conflicts: () => real?.conflicts() ?? [],
-    dismissConflict: (id) => real?.dismissConflict(id),
     onTransfers: (l) => (listeners.add(l), () => listeners.delete(l)),
     async purge() {
       // A load in flight is waited for, so its layer is not built after the purge.

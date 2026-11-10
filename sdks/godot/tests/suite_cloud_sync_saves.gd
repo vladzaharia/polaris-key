@@ -1,9 +1,10 @@
 extends RefCounted
 # @pkey-feature sync.saves
+# @pkey-feature sync.conflict
 # Cloud Sync saves (U-22.5, U-23): PolarisKey.cloud_sync.saves over the records binding and the file transport.
 #
 #   * PKeySaves (saves.gd) against an in-memory Worker for the file routes and a records port: write, read,
-#     list, the E2E `$file` binding, the format check (D-11), conflicts and resolve, delete, pause, resume and
+#     list, the E2E `$file` binding, the format check (D-11), conflicts and keep, delete, pause, resume and
 #     cancel, the 16-slot cap, events;
 #   * the guarded file codec: once the ring locks, every method and every piece refuses (sync-locked);
 #   * the records binding (saves_records.gd) over a real host and a loopback Worker: the machine's rows, put_at
@@ -23,7 +24,13 @@ const SavesRecords := preload("res://addons/polaris_key/services/cloud_sync/save
 const CloudSync := preload("res://addons/polaris_key/services/cloud_sync.gd")
 
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
+const Machine := preload("res://addons/polaris_key/core/sync/cloud_sync_machine.gd")
 
+const PULL := {
+	"subject": "sub_alice", "serverNow": 1760000000000, "cursor": 9, "more": false, "lastMutationId": 0, "catalogVersion": 1, "aliases": {},
+	"quota": {"bytes": 268435456, "files": true}, "usage": {"bytes": 0, "settings": 0, "records": 0, "files": 0},
+	"changes": [{"record": ["progress", "main"], "value": {"level": 3}, "version": 7}], "tombstones": [],
+}
 const PRODUCT := "diceroll"
 const MIB := 1048576
 
@@ -276,6 +283,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _format_and_binding(t)
 	await _finalize_answer(t)
 	await _conflicts(t)
+	await _record_requests(t)
 	await _delete(t)
 	await _pause_cancel(t)
 	await _interrupted(t)
@@ -325,7 +333,7 @@ func _rig(e2e_mode: bool, over := {}) -> Dictionary:
 	}
 	deps.merge(over, true)
 	var saves := PKeySaves.new(deps)
-	return {"files": files, "records": records, "ring": ring, "journal": journal, "engine": engine, "events": events, "saves": saves}
+	return {"files": files, "records": records, "ring": ring, "journal": journal, "engine": engine, "events": events, "saves": saves, "deps": deps}
 
 
 ## The app's metadata, without the SDK's own savedAt / deviceLabel stamps.
@@ -556,7 +564,7 @@ func _format_and_binding(t: PKeyTestContext) -> void:
 	t.check("format: with no app version the check is off", (await off["saves"].read("new")).ok)
 
 
-# ── conflicts and resolve ───────────────────────────────────────────────────────────────────────
+# ── conflicts and keep ───────────────────────────────────────────────────────────────────────
 
 func _finalize_answer(t: PKeyTestContext) -> void:
 	for e2e_mode: bool in [false, true]:
@@ -572,68 +580,115 @@ func _finalize_answer(t: PKeyTestContext) -> void:
 		t.check("finalize answer: the other save is untouched (e2e %s)" % e2e_mode, (await rig["saves"].list()).detail.size() == listed_before)
 
 
+## S1: open the request of a slot whose explicit base is stale (the server holds version 2 after one write).
+func _stale_request(rig: Dictionary, id: String, meta: Dictionary) -> PKeyMergeRequest:
+	var out: Dictionary = await _write(rig, id, _noise(100), meta, {"base_version": 1})
+	return out.get("request")
+
+
 func _conflicts(t: PKeyTestContext) -> void:
-	var rig = _rig(false)
+	var events: Array = []
+	var reg := PKeyMergeRegistry.new({"event": func(e: Dictionary) -> void: events.append(e)})
+	var rig = _rig(false, {"merge": reg})
 	var saves: PKeySaves = rig["saves"]
 	await _write(rig, "slot1", _noise(100), {"who": "a"})
 	# another device wrote since: this device's explicit base is stale
 	var stale = await _write(rig, "slot1", _noise(100), {"who": "b"}, {"base_version": 1})
-	t.check("conflict: a stale base_version is a conflict outcome, not an error", stale["state"] == "conflict", str(stale))
-	var c: Dictionary = stale["conflict"]
+	t.check("saveConflictOpensRequest: a stale base_version is a conflict outcome, not an error", stale["state"] == "conflict", str(stale))
+	var req: PKeyMergeRequest = stale["request"]
 	t.check(
-			"conflict: the local metadata, the server's copy, the slots",
-			c["id"] == "slot1"
-				and _bare(c["local"]["metadata"]) == {"who": "b"}
-				and c["local"]["metadata"].has("savedAt")
-				and _bare(c["remote"]["metadata"]) == {"who": "a"}
-				and c["server_version"] == 2
-				and c["both_available"],
-			str(c)
+			"saveConflictOpensRequest: one request per slot: id, cause, sides, choices",
+			req.id == "w:saves/slot1" and req.cause == "write" and req.collection == "saves" and req.record == "slot1"
+				and _bare(req.local["value"]) == {"who": "b"} and req.local["saved_at"] != null and req.local["version"] == 1 and req.local["file"]["size"] == 100
+				and _bare(req.remote["value"]) == {"who": "a"} and req.remote["version"] == 2
+				and req.choices == ["local", "remote", "both"] and req.state == "open" and req.error == null,
+			"%s | %s" % [str(req.local), str(req.remote)]
+	)
+	t.check(
+			"saveConflictOpensRequest: the registry lists it and announces it once",
+			saves.conflicts() == [req] and reg.count() == 1 and events.size() == 1 and events[0]["type"] == "conflictOpened" and events[0]["request"] == req
 	)
 	var types := _types(rig["events"])
-	t.check("conflict: the transfer ends with transferDone state conflict", types.back() == "transferDone" and rig["events"].back()["state"] == "conflict")
+	t.check("saveConflictOpensRequest: the transfer ends with transferDone state conflict", types.back() == "transferDone" and rig["events"].back()["state"] == "conflict")
+	# S3: while it is open a write with no base only replaces the local copy and sends nothing
 	var calls_before: int = rig["files"].calls.size()
-	var kept: Dictionary = await saves.resolve(c, "remote", _noise(100)).wait()
+	var frozen: Dictionary = await _write(rig, "slot1", _noise(77), {"who": "c"})
 	t.check(
-			"resolve remote: writes nothing, keeps the server's copy",
-			kept["state"] == "done" and kept["kept"] == "remote" and kept["version"] == 2 and rig["files"].calls.size() == calls_before and rig["files"].records[rig["records"].wire_id("slot1")]["version"] == 2
+			"saveRequestFreezesSlot: a write with no base settles conflict without uploading and replaces the local side",
+			frozen["state"] == "conflict" and frozen["request"] == req and rig["files"].calls.size() == calls_before
+				and _bare(req.local["value"]) == {"who": "c"} and req.local["file"]["size"] == 77 and reg.count() == 1,
+			str(frozen)
 	)
-	var local: Dictionary = await saves.resolve(c, "local", _noise(100)).wait()
-	t.check("resolve local: writes on top of the server's version", local["state"] == "done" and _bare((await saves.read("slot1")).detail["metadata"]) == {"who": "b"}, str(local))
-	var both: Dictionary = await saves.resolve(c, "both", _noise(100)).wait()
-	t.check("resolve both: a new save under <id>.copy", both["state"] == "done" and both["copy_id"] == "slot1.copy" and (await saves.list()).detail.size() == 2, str(both))
-	var both2: Dictionary = await saves.resolve(c, "both", _noise(100)).wait()
-	t.check("resolve both again: the next free copy id", both2["copy_id"] == "slot1.copy2")
-	var bad: Dictionary = await saves.resolve(c, "sideways", _noise(100)).wait()
-	t.check("resolve: a keep that is not one is invalid-save", bad["state"] == "failed" and bad["error"]["code"] == "invalid-save")
-	c["both_available"] = false
-	var none: Dictionary = await saves.resolve(c, "both", _noise(100)).wait()
-	t.check("resolve both with no free slot is slots-full", none["state"] == "failed" and none["error"]["code"] == "slots-full")
-	# a conflict from the metadata set (not the file begin)
-	var raced = _rig(false)
-	await _write(raced, "s", _noise(30), {"n": 1})
-	# bump the record's version behind the metadata set: finalize lands, then the set sees a newer record
-	raced["records"].before_set = func() -> void:
-		raced["files"].records[raced["records"].wire_id("s")]["version"] += 5
-	var race: Dictionary = await _write(raced, "s", _noise(30), {"n": 2})
-	t.check("conflict: a metadata set that finds a newer record is a conflict with the server's copy", race["state"] == "conflict" and race["conflict"]["remote"] != null, str(race))
-	# the conflict describes the server's version, not this device's cached copy
-	var two = _rig(false)
-	await _write(two, "s", _noise(30), {"n": 1})
-	var cached: Dictionary = two["records"].get_record("s")
-	two["files"].records[two["records"].wire_id("s")]["version"] = 40
-	two["records"].stale_row = cached
-	var theirs: Dictionary = await _write(two, "s", _noise(30), {"n": 2}, {"base_version": cached["version"]})
+	var gone_delete: PKeyResult = await saves.delete("slot1")
 	t.check(
-			"conflict: the server's version wins over this device's cached copy",
-			theirs["state"] == "conflict" and theirs["conflict"]["server_version"] == 40 and theirs["conflict"]["remote"]["version"] == 40,
-			str(theirs)
+			"saveRequestFreezesSlot: a delete defaults to the request's base, so it conflicts and the other copy survives",
+			not gone_delete.ok and gone_delete.detail["reason"] == "conflict" and reg.count() == 0 and rig["files"].records.has("slot1"),
+			str(gone_delete.detail)
 	)
-	var kept_mine: Dictionary = await two["saves"].resolve(theirs["conflict"], "local", _noise(30)).wait()
-	t.check("resolve local after another device's write succeeds", kept_mine["state"] == "done", str(kept_mine))
-	two["records"].stale_row = null
-	var again: Dictionary = await _write(two, "s", _noise(30), {"n": 3})
-	t.check("a write after resolving does not repeat the conflict", again["state"] == "done", str(again))
+	t.check("saveRequestFreezesSlot: that delete closed the request as superseded", events.back()["type"] == "conflictClosed" and events.back()["how"] == "superseded")
+
+	# keep remote: writes nothing, keeps the server's copy
+	var r1: PKeyMergeRequest = await _stale_request(rig, "slot1", {"who": "b"})
+	calls_before = rig["files"].calls.size()
+	var kept: PKeyResult = await r1.keep("remote")
+	t.check(
+			"saveKeepRemote: sends nothing and answers the version held",
+			kept.ok and kept.detail["kept"] == "remote" and kept.detail["version"] == 2 and rig["files"].calls.size() == calls_before
+				and rig["files"].records[rig["records"].wire_id("slot1")]["version"] == 2 and reg.count() == 0,
+			str(kept.detail)
+	)
+	t.check("saveKeepRemote: the request closed as remote", events.back()["type"] == "conflictClosed" and events.back()["how"] == "remote")
+	var closed: PKeyResult = await r1.keep("remote")
+	t.check(
+			"saveKeepOnClosedRequest: keep on a closed request is sync-merge-closed",
+			not closed.ok and closed.code == PKeyConstants.ErrorCode.SYNC_MERGE_CLOSED and closed.detail["reopened"] == false,
+			str(closed.detail)
+	)
+
+	# keep local: writes on top of the server's version
+	var r2: PKeyMergeRequest = await _stale_request(rig, "slot1", {"who": "b"})
+	var local: PKeyResult = await r2.keep("local")
+	t.check(
+			"saveKeepLocal: writes this device's save on the server's version",
+			local.ok and local.detail["kept"] == "local" and _bare((await saves.read("slot1")).detail["metadata"]) == {"who": "b"} and reg.count() == 0 and events.back()["how"] == "local",
+			str(local.detail)
+	)
+	var after: Dictionary = await _write(rig, "slot1", _noise(100), {"who": "d"})
+	t.check("saveKeepLocal: a write after keeping does not repeat the conflict", after["state"] == "done", str(after))
+	var bad: PKeyResult = await (await _stale_request(rig, "slot1", {"who": "e"})).keep("sideways")
+	t.check("saveKeepOnClosedRequest: an answer that is not a choice is bad_request and opens nothing", not bad.ok and bad.code == PKeyConstants.ErrorCode.BAD_REQUEST and reg.count() == 1)
+	await (saves.conflicts()[0] as PKeyMergeRequest).keep("remote")
+
+	# keep both: a new save under <id>.copy, then the next free id
+	var r3: PKeyMergeRequest = await _stale_request(rig, "slot1", {"who": "f"})
+	var both: PKeyResult = await r3.keep("both")
+	t.check("saveKeepBothNeedsFreeSlot: a new save under <id>.copy", both.ok and both.detail["copy_id"] == "slot1.copy" and (await saves.list()).detail.size() == 2, str(both.detail))
+	var both2: PKeyResult = await (await _stale_request(rig, "slot1", {"who": "g"})).keep("both")
+	t.check("saveKeepBothNeedsFreeSlot: the next free copy id", both2.ok and both2.detail["copy_id"] == "slot1.copy2", str(both2.detail))
+	# full: no `both` among the choices, and a keep of it is refused
+	var full = _rig(false)
+	for n in 16:
+		await _write(full, "s%d" % n, _noise(40), {"n": n})
+	var fr: PKeyMergeRequest = (await _write(full, "s0", _noise(40), {"n": 99}, {"base_version": 1}))["request"]
+	var none: PKeyResult = await fr.keep("both")
+	t.check(
+			"saveKeepBothNeedsFreeSlot: with the 16 slots in use `both` is not offered",
+			fr.choices == ["local", "remote"] and not none.ok and none.code == PKeyConstants.ErrorCode.BAD_REQUEST,
+			str(none.detail)
+	)
+	# a slot that filled after the request opened: the keep fails slots-full and the request reopens with the failure
+	var late = _rig(false)
+	await _write(late, "s0", _noise(40), {"n": 0})
+	var lr: PKeyMergeRequest = (await _write(late, "s0", _noise(40), {"n": 1}, {"base_version": 1}))["request"]
+	for n in range(1, 16):
+		await _write(late, "s%d" % n, _noise(40), {"n": n})
+	var filled: PKeyResult = await lr.keep("both")
+	t.check(
+			"saveKeepBothNeedsFreeSlot: a slot taken meanwhile is slots-full and the request reopens",
+			not filled.ok and filled.detail["code"] == "slots-full" and filled.detail["reopened"] == true and lr.state == "open" and lr.error == "slots-full",
+			str(filled.detail)
+	)
+
 	# a save deleted elsewhere: no remote, and keeping this device's save uses the must-not-exist precondition
 	var gone = _rig(false)
 	await _write(gone, "s", _noise(30), {"n": 1})
@@ -641,10 +696,36 @@ func _conflicts(t: PKeyTestContext) -> void:
 	gone["files"].records.erase(gone["records"].wire_id("s"))
 	gone["records"].stale_row = old_row
 	var del: Dictionary = await _write(gone, "s", _noise(30), {"n": 2})
-	t.check("conflict: a save deleted elsewhere has no remote", del["state"] == "conflict" and del["conflict"]["remote"] == null and del["conflict"]["server_version"] == 0, str(del))
+	var dr: PKeyMergeRequest = del["request"]
+	t.check("saveKeepAfterDeleteCreates: a save deleted elsewhere has no remote and no `both`", del["state"] == "conflict" and dr.remote == null and dr.choices == ["local", "remote"], str(del))
 	gone["records"].stale_row = null
-	var kept_gone: Dictionary = await gone["saves"].resolve(del["conflict"], "local", _noise(30)).wait()
-	t.check("resolve local after a deletion elsewhere sends *", kept_gone["state"] == "done" and gone["files"].bases.back() == "*", str(kept_gone))
+	var kept_gone: PKeyResult = await dr.keep("local")
+	t.check("saveKeepAfterDeleteCreates: keep local sends *", kept_gone.ok and gone["files"].bases.back() == "*", str(kept_gone.detail))
+
+	# a conflict from the metadata set (not the file begin)
+	var raced = _rig(false)
+	await _write(raced, "s", _noise(30), {"n": 1})
+	raced["records"].before_set = func() -> void:
+		raced["files"].records[raced["records"].wire_id("s")]["version"] += 5
+	var race: Dictionary = await _write(raced, "s", _noise(30), {"n": 2})
+	t.check("saveConflictOpensRequest: a metadata set that finds a newer record opens a request with the server's copy", race["state"] == "conflict" and race["request"].remote != null, str(race))
+	# the request describes the server's version, not this device's cached copy
+	var two = _rig(false)
+	await _write(two, "s", _noise(30), {"n": 1})
+	var cached: Dictionary = two["records"].get_record("s")
+	two["files"].records[two["records"].wire_id("s")]["version"] = 40
+	two["records"].stale_row = cached
+	var theirs: Dictionary = await _write(two, "s", _noise(30), {"n": 2}, {"base_version": cached["version"]})
+	t.check(
+			"saveConflictOpensRequest: the server's version wins over this device's cached copy",
+			theirs["state"] == "conflict" and theirs["request"].remote["version"] == 40,
+			str(theirs)
+	)
+	var kept_mine: PKeyResult = await theirs["request"].keep("local")
+	t.check("saveKeepLocal: after another device's write succeeds", kept_mine.ok, str(kept_mine.detail))
+	two["records"].stale_row = null
+	var again: Dictionary = await _write(two, "s", _noise(30), {"n": 3})
+	t.check("saveKeepLocal: a write after keeping does not repeat the conflict", again["state"] == "done", str(again))
 	# a conflict and keeping the other version pull first; saves record when and where
 	var pulled = _rig(false, {"device_label": func() -> String: return "Steam Deck", "now": func() -> int: return 1000})
 	await _write(pulled, "s", _noise(30), {"n": 1})
@@ -655,15 +736,16 @@ func _conflicts(t: PKeyTestContext) -> void:
 	pulled["records"].stale_row = old_cache
 	pulled["records"].on_pull = func() -> void: pulled["records"].stale_row = null
 	var pc: Dictionary = await _write(pulled, "s", _noise(30), {"n": 2}, {"base_version": old_cache["version"]})
-	t.check("conflict: pulls first, so the other card is the server's copy", pulled["records"].pulls == 1 and pc["state"] == "conflict" and pc["conflict"]["remote"]["metadata"] == {"n": 9}, str(pc))
+	var pr: PKeyMergeRequest = pc["request"]
+	t.check("saveConflictOpensRequest: pulls first, so the other card is the server's copy", pulled["records"].pulls == 1 and pc["state"] == "conflict" and pr.remote["value"] == {"n": 9}, str(pc))
 	t.check(
-			"conflict: this device's card carries when and where it was saved",
-			pc["conflict"]["local"]["metadata"].get("savedAt") == 1000 and pc["conflict"]["local"]["metadata"].get("deviceLabel") == "Steam Deck",
-			str(pc["conflict"]["local"])
+			"saveConflictOpensRequest: this device's card carries when and where it was saved, and which is newer",
+			pr.local["saved_at"] == 1000 and pr.local["device"] == "Steam Deck" and pr.local["value"].get("deviceLabel") == "Steam Deck" and pr.newer == null,
+			str(pr.local)
 	)
 	pulled["records"].stale_row = old_cache
-	var pk: Dictionary = await pulled["saves"].resolve(pc["conflict"], "remote", _noise(30)).wait()
-	t.check("resolve remote: pulls again and answers the version held", pulled["records"].pulls == 2 and pk["state"] == "done" and pk["kept"] == "remote" and pk["version"] == 40, str(pk))
+	var pk: PKeyResult = await pr.keep("remote")
+	t.check("saveKeepRemote: pulls again and answers the version held", pulled["records"].pulls == 2 and pk.ok and pk.detail["kept"] == "remote" and pk.detail["version"] == 40, str(pk.detail))
 	# a save deleted elsewhere under a tombstone's version reads as deleted after the pull
 	var tomb = _rig(false)
 	await _write(tomb, "s", _noise(30), {"n": 1})
@@ -675,12 +757,188 @@ func _conflicts(t: PKeyTestContext) -> void:
 		tomb["files"].records.erase(tw)
 		tomb["records"].stale_row = null
 	var tc: Dictionary = await _write(tomb, "s", _noise(30), {"n": 2}, {"base_version": tomb_row["version"]})
-	t.check("conflict: a tombstone's version after the pull is a deleted save", tc["state"] == "conflict" and tc["conflict"]["remote"] == null, str(tc))
+	t.check("saveConflictOpensRequest: a tombstone's version after the pull is a deleted save", tc["state"] == "conflict" and tc["request"].remote == null, str(tc))
 	# a rejected set
 	var rej = _rig(false)
 	rej["records"].rejected_code = "quota_exceeded"
 	var denied = await _write(rej, "s", _noise(30))
 	t.check("rejected: the code travels, no conflict", denied["state"] == "failed" and denied["error"]["code"] == "rejected" and denied["error"]["detail"] == "quota_exceeded", str(denied))
+	await _seen_and_exact(t)
+
+
+# ── the registry over the machine's record requests ─────────────────────────────────────────────
+
+## A machine on a `revision` collection with a registry fed by its events, as the host does.
+func _record_rig() -> Dictionary:
+	var ids := ["c_000000000000000client1"]
+	var m: Variant = Machine.new({
+		"product": "demo", "catalog": {"settings": [], "collections": [{"name": "progress", "policy": "revision"}]}, "document": {"values": {}},
+		"now": 1760000000000, "offsetMs": 0, "contacted": true, "subject": "sub_alice", "network": "online", "onSignOut": "clear",
+		"encryption": "server", "hasRoot": false, "newClientId": func() -> String: return ids.pop_front(),
+	})
+	var rig := {"m": m, "events": [], "reg": null}
+	rig["reg"] = PKeyMergeRegistry.new({
+		"machine": func() -> Variant: return m,
+		"poke": func() -> void: rig["reg"].feed(m.take_events()),
+		"event": func(e: Dictionary) -> void: rig["events"].append(e),
+	})
+	m.take_requests()
+	m.receive({"status": 200, "body": PULL})
+	rig["reg"].feed(m.take_events())
+	return rig
+
+
+## Put on a stale base and answer the push with a conflict: one open request.
+func _record_conflict(rig: Dictionary) -> void:
+	var m: Variant = rig["m"]
+	m.put("progress", "main", {"level": 4})
+	m.take_requests()
+	var body := PULL.duplicate(true)
+	body["cursor"] = 10
+	body["lastMutationId"] = 1
+	body["changes"] = [{"record": ["progress", "main"], "value": {"level": 5}, "version": 8}]
+	body["results"] = [{"mutationId": 1, "status": "conflict", "server": {"value": {"level": 5}, "version": 8}}]
+	m.receive({"status": 200, "body": body})
+	rig["reg"].feed(m.take_events())
+
+
+func _record_requests(t: PKeyTestContext) -> void:
+	var rig := _record_rig()
+	var reg: PKeyMergeRegistry = rig["reg"]
+	var m: Variant = rig["m"]
+	_record_conflict(rig)
+	var open: Array = reg.conflicts()
+	t.check(
+			"merge: a plain put that lost its compare-and-set opens one request, announced once",
+			open.size() == 1 and rig["events"].size() == 1 and rig["events"][0]["type"] == "conflictOpened" and rig["events"][0]["request"] == open[0] and not reg.has_listeners()
+	)
+	var r: PKeyMergeRequest = open[0]
+	t.check(
+			"merge: the request reads both copies",
+			r.id == "w:progress/main" and r.collection == "progress" and r.record == "main" and r.local["value"] == {"level": 4} and r.local["version"] == 7
+				and r.remote["value"] == {"level": 5} and r.remote["version"] == 8 and r.choices == ["local", "remote", "value"] and r.state == "open" and r.newer == null,
+			str(r.local)
+	)
+	var bad: PKeyResult = await r.keep("both")
+	t.check("merge: a choice the request does not offer is bad_request", not bad.ok and bad.code == PKeyConstants.ErrorCode.BAD_REQUEST and r.state == "open")
+	# keep local: applying until the set is answered, then closed
+	var done := {"r": null}
+	var run := func() -> void: done["r"] = await r.keep("local")
+	run.call()
+	t.check("merge: a keep is applying until its set is answered, and a second keep is refused", r.state == "applying" and (await r.keep("remote")).code == PKeyConstants.ErrorCode.BAD_REQUEST)
+	var posts: Array = m.take_requests()
+	var ok_body := PULL.duplicate(true)
+	ok_body["cursor"] = 11
+	ok_body["lastMutationId"] = 2
+	ok_body["changes"] = [{"record": ["progress", "main"], "value": {"level": 4}, "version": 9}]
+	ok_body["results"] = [{"mutationId": 2, "status": "ok", "version": 9}]
+	m.receive({"status": 200, "body": ok_body})
+	reg.feed(m.take_events())
+	t.check(
+			"merge: keep local sends one set on the remote version and settles with the new version",
+			posts.size() == 1 and posts[0]["body"]["mutations"][0]["baseVersion"] == 8
+				and done["r"] is PKeyResult and done["r"].ok and done["r"].detail == {"kept": "local", "version": 9} and reg.conflicts().is_empty(),
+			str(done["r"])
+	)
+	t.check("merge: the close is announced with how", rig["events"].back() == {"type": "conflictClosed", "id": "w:progress/main", "how": "local"})
+	var closed: PKeyResult = await r.keep("local")
+	t.check("merge: keep on a closed request is sync-merge-closed", not closed.ok and closed.code == PKeyConstants.ErrorCode.SYNC_MERGE_CLOSED)
+
+	# a listener that returns a choice decides inline; one registered late is replayed what is open
+	var inline := _record_rig()
+	var seen: Array = []
+	var off: Callable = inline["reg"].on_conflict(func(req: PKeyMergeRequest) -> Variant:
+		seen.append(req.id)
+		return "remote")
+	_record_conflict(inline)
+	t.check(
+			"merge: a returned choice decides the request at once: nothing listed, closed as remote",
+			seen == ["w:progress/main"] and inline["reg"].conflicts().is_empty() and inline["m"].conflicts().is_empty() and inline["events"].back()["how"] == "remote"
+	)
+	off.call()
+	var late := _record_rig()
+	_record_conflict(late)
+	var replayed: Array = []
+	late["reg"].on_conflict(func(req: PKeyMergeRequest) -> void: replayed.append(req.id))
+	t.check("merge: a listener is replayed the requests already open", replayed == ["w:progress/main"] and late["reg"].count() == 1)
+	var value_run := {"r": null}
+	var req2: PKeyMergeRequest = late["reg"].conflicts()[0]
+	var run2 := func() -> void: value_run["r"] = await req2.keep({"value": {"level": 9}})
+	run2.call()
+	var push: Array = late["m"].take_requests()
+	t.check(
+			"merge: keep with a value sends that value on the remote version",
+			push.size() == 1 and push[0]["body"]["mutations"][0]["value"] == {"level": 9} and push[0]["body"]["mutations"][0]["baseVersion"] == 8
+	)
+	# the keep's set conflicts again: the request reopens and the keep settles as reopened
+	var again := PULL.duplicate(true)
+	again["cursor"] = 11
+	again["lastMutationId"] = 2
+	again["changes"] = [{"record": ["progress", "main"], "value": {"level": 6}, "version": 10}]
+	again["results"] = [{"mutationId": 2, "status": "conflict", "server": {"value": {"level": 6}, "version": 10}}]
+	late["m"].receive({"status": 200, "body": again})
+	late["reg"].feed(late["m"].take_events())
+	t.check(
+			"merge: a keep that conflicts again reopens the request on the new remote",
+			value_run["r"] is PKeyResult and not value_run["r"].ok and value_run["r"].detail["reopened"] == true and req2.state == "open" and req2.remote["version"] == 10,
+			str(value_run["r"])
+	)
+
+
+## S2, the exact write that supersedes (S3) and S5 (memory only).
+func _seen_and_exact(t: PKeyTestContext) -> void:
+	var events: Array = []
+	var reg := PKeyMergeRegistry.new({"event": func(e: Dictionary) -> void: events.append(e)})
+	var rig = _rig(false, {"merge": reg})
+	var first = await _write(rig, "slot1", _noise(100), {"who": "a"})
+	# S2: a fresh session has seen nothing, so the write is create-only and meets the other device's save
+	var fresh := PKeySaves.new(rig["deps"])
+	var blind: Dictionary = await fresh.write("slot1", _noise(100), {"who": "b"}).wait()
+	t.check(
+			"saveBaseIsSeenVersion: a slot not seen this session is create-only and conflicts with an existing save",
+			blind["state"] == "conflict" and blind["request"].local["version"] == null and blind["request"].remote["version"] == first["version"],
+			str(blind)
+	)
+	await blind["request"].keep("remote")
+	# listing (or reading) the slot makes its version the base
+	var listing := PKeySaves.new(rig["deps"])
+	await listing.list()
+	var listed: Dictionary = await listing.write("slot1", _noise(100), {"who": "c"}).wait()
+	t.check("saveBaseIsSeenVersion: a listed version is the base", listed["state"] == "done" and listed["version"] > first["version"], str(listed))
+	var reading := PKeySaves.new(rig["deps"])
+	await reading.read("slot1")
+	var read_then: Dictionary = await reading.write("slot1", _noise(100), {"who": "d"}).wait()
+	t.check(
+			"saveBaseIsSeenVersion: a read version is the base, and this device's own write moves it",
+			read_then["state"] == "done" and (await reading.write("slot1", _noise(100), {"who": "e"}).wait())["state"] == "done"
+	)
+	# another device writes behind this one: the seen version is stale, and a pull never refreshes it
+	var wire: String = rig["records"].wire_id("slot1")
+	rig["files"].records[wire]["version"] += 3
+	var behind: Dictionary = await reading.write("slot1", _noise(100), {"who": "f"}).wait()
+	t.check("saveBaseIsSeenVersion: another device's newer save is a conflict, not an overwrite", behind["state"] == "conflict", str(behind))
+	# an exact write (a base) supersedes the open request and is sent as asked
+	var req: PKeyMergeRequest = behind["request"]
+	var current: int = rig["files"].records[wire]["version"]
+	var exact: Dictionary = await reading.write("slot1", _noise(100), {"who": "g"}, {"base_version": current}).wait()
+	t.check(
+			"saveExactWriteSupersedes: a write with a base closes the request as superseded and is sent",
+			exact["state"] == "done" and reading.conflicts().is_empty() and events.back()["type"] == "conflictClosed" and events.back()["id"] == req.id and events.back()["how"] == "superseded",
+			str(exact)
+	)
+	var gone: PKeyResult = await req.keep("local")
+	t.check("saveExactWriteSupersedes: keep on the superseded request is sync-merge-closed", not gone.ok and gone.code == PKeyConstants.ErrorCode.SYNC_MERGE_CLOSED)
+	# S5: a request is memory only
+	var held: Dictionary = await _write(rig, "slot1", _noise(100), {"who": "h"}, {"base_version": 1})
+	var journaled: Array = rig["journal"].list()
+	t.check("saveRequestNotJournaled: the transfer journal holds no request", held["state"] == "conflict" and journaled.all(func(k: String) -> bool: return not k.begins_with("w:")), str(journaled))
+	var fresh_deps: Dictionary = rig["deps"].duplicate()
+	fresh_deps["merge"] = PKeyMergeRegistry.new()
+	var relaunched := PKeySaves.new(fresh_deps)
+	t.check(
+			"saveRequestNotJournaled: a relaunch holds none, and the next write raises the conflict again through S2",
+			relaunched.conflicts().is_empty() and (await relaunched.write("slot1", _noise(100), {"who": "i"}).wait())["state"] == "conflict"
+	)
 
 
 func _delete(t: PKeyTestContext) -> void:
@@ -991,8 +1249,6 @@ func _unsupported(t: PKeyTestContext) -> void:
 			"unsupported: a write is over at once, failed unsupported, nothing sent",
 			h.outcome != null and h.outcome["state"] == "failed" and h.outcome["error"]["code"] == "unsupported" and rig["files"].calls.is_empty()
 	)
-	var res: PKeyTransfer = saves.resolve({"id": "a", "local": {"metadata": {}, "size": 1}, "remote": null, "server_version": 1, "both_available": true}, "local", _noise(10))
-	t.check("unsupported: resolve local too", res.outcome != null and res.outcome["error"]["code"] == "unsupported")
 	var na: Array = PKeyConstants.capabilities()["sync.saves"].get("na", [])
 	t.check("unsupported: the capability table has no N/A runtime for sync.saves", na.is_empty(), str(na))
 	await _mobile_matrix(t)
@@ -1435,7 +1691,7 @@ func _through_the_sdk(t: PKeyTestContext) -> void:
 	var read = await saves.read("slot1")
 	t.check("sdk: read downloads through the file transport", read.ok and read.detail["bytes"] == data, str(read.detail.get("reason")))
 	var stale = await saves.write("slot1", _noise(10), {"chapter": "stale"}, {"base_version": 1}).wait()
-	t.check("sdk: a stale base is a conflict outcome with the server's copy", stale["state"] == "conflict" and stale["conflict"]["remote"]["metadata"]["chapter"] == "two", str(stale))
+	t.check("sdk: a stale base is a conflict outcome with the server's copy", stale["state"] == "conflict" and stale["request"].remote["value"]["chapter"] == "two", str(stale))
 	var types := _types(events)
 	t.check("sdk: the transfer events reach the cloudSync stream", types.has("transferProgress") and types.has("transferDone") and events.back()["state"] == "conflict", str(types))
 	t.check(

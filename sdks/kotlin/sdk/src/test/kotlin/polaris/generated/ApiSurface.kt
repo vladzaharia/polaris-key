@@ -82,6 +82,10 @@ internal suspend fun apiSurface() {
     CloudSyncClient::flush  // cloudSync.flush
     CloudSyncHostOptions::encryption  // cloudSync.encryption
     PolarisKeyClient::events  // cloudSync.event
+    CloudSyncClient::onConflict  // cloudSync.onConflict
+    CloudSyncClient::conflicts  // cloudSync.conflicts
+    CloudSyncClient::cloudEmpty  // cloudSync.cloudEmpty
+    PolarisKeyClient::events  // cloudSync.conflictEvent
     CloudSyncClient::saves  // cloudSync.saves
     SavesClient::list  // cloudSync.saves.list
     SavesClient::read  // cloudSync.saves.read

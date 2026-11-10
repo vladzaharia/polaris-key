@@ -20,8 +20,15 @@ import {
   type SyncEvent,
   type SyncStatus,
 } from "@polaris-key/client-core/cloud-sync";
-import { SyncCollection } from "@polaris-key/client-core/sync";
+import {
+  SyncCollection,
+  type ConflictListener,
+  type MergeRequest,
+  mergeStreamEvent,
+  mergedStatus,
+} from "@polaris-key/client-core/sync";
 import { Feature } from "../constants.generated.js";
+import type { ConflictStreamEvent } from "../core/events.js";
 import type {
   ConfigClient,
   ConfigSyncPort,
@@ -43,7 +50,7 @@ export interface CloudSyncApiDeps {
   /** The persisted subject of the signed-in account, or null. */
   subject: () => Promise<string | null>;
   /** `client.events.safeEmit("cloudSync", …)`. */
-  emit: (e: SyncEvent) => void;
+  emit: (e: SyncEvent | ConflictStreamEvent) => void;
   /** Diagnostics; never given a value or a secret. */
   log?: (message: string) => void;
   /** Told whenever the person the machine is signed in as changes (null: nobody). */
@@ -72,6 +79,9 @@ export class CloudSyncApi {
 
   constructor(deps: CloudSyncApiDeps) {
     this.#d = deps;
+    // `conflictOpened` / `conflictClosed` on the stream come from the registry, which covers the
+    // machine's requests and the saves layer's; ids and names only (S7).
+    deps.host.merge.onEvent((e) => this.#d.emit(mergeStreamEvent(e)));
   }
 
   // ── What app code calls ──────────────────────────────────────────────────────────────────
@@ -80,9 +90,30 @@ export class CloudSyncApi {
    *  N/A when the product does not run the Sync service. */
   status(): SyncStatus {
     this.#d.ctx.requireService("sync", Feature.syncSettings);
-    return this.#d.host.started
-      ? this.#d.host.machine.status()
-      : { state: "local", pending: 0 };
+    return mergedStatus(this.#d.host);
+  }
+
+  /**
+   * Listen for requests as they open (`revision` conflicts the app has not decided). The ones
+   * already open are replayed. A listener that returns a choice (`"local"`, `"remote"`, `"both"` or
+   * `{ value }`) decides the request at once. Returns the remover.
+   */
+  onConflict(fn: ConflictListener): () => void {
+    this.#d.ctx.requireService("sync", Feature.syncConflict);
+    return this.#d.host.merge.onConflict(fn);
+  }
+
+  /** The requests open now, in id order. Each holds the device's copy unsent until `keep`. */
+  conflicts(): MergeRequest[] {
+    this.#d.ctx.requireService("sync", Feature.syncConflict);
+    return this.#d.host.merge.conflicts();
+  }
+
+  /** Whether the cloud held nothing at the person's first pull: `true`, `false`, or `null` before
+   *  any first pull (or with nobody signed in). */
+  cloudEmpty(): boolean | null {
+    this.#d.ctx.requireService("sync", Feature.syncConflict);
+    return this.#d.host.started ? this.#d.host.machine.cloudEmpty() : null;
   }
 
   /** Send what is waiting now (bounded by the sign-out flush window) and save the journal. */
@@ -233,6 +264,8 @@ export class CloudSyncApi {
     const offers = events.filter((e) => e.type === "signInOffered");
     try {
       for (const e of events) {
+        // The registry reports these, for both kinds of request (`#onMerge`).
+        if (e.type === "conflict" || e.type === "conflictClosed") continue;
         if (e.type === "signedOut") this.#subject = null;
         if (e.type === "change")
           this.#d.config.noteSyncChange(e.keys, e.origin);

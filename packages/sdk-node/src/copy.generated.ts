@@ -637,6 +637,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "File not opened",
     message: "The synced file failed its check, so it wasn't used. Try again.",
   },
+  "sync-merge-closed": {
+    title: "Already decided",
+    message:
+      "The choice was already made, or a newer change replaced it. Nothing changed.",
+  },
   "invalid-options": {
     title: "App not set up",
     message:

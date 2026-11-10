@@ -683,8 +683,8 @@
       "note": "PolarisKey.cloud_sync (PKeyCloudSync: status(), flush(), the cloudSync event) over services/cloud_sync/ (host, sealed state file, transport with no redirects, a 15 s timeout and an 8 MiB cap, the codec port) and the machine. Sign-out runs flush, machine sign-out, ring forget, purge in that order and stops when the ring cannot forget (suite_cloud_sync_host, suite_cloud_sync_settings). The journal is sealed by the platform lane or the engine-encrypted file keyed from the device id; with neither a sealer nor a device id it is not written."
     },
     "sync.conflict": {
-      "status": "planned",
-      "wp": "U-08"
+      "status": "implemented",
+      "note": "U-08: one conflict vocabulary. revision is the only policy that asks: a plain put of a record, or a save write, that lost its compare-and-set opens a PKeyMergeRequest (services/cloud_sync/merge_request.gd, over the PKeyMergeRegistry in merge_registry.gd) and the device keeps its copy unsent until `await request.keep(\"local\" | \"remote\" | \"both\" | {\"value\": v})` (a PKeyResult: kept, version, copy_id; sync-merge-closed on a closed request, bad_request on a choice not offered). The machine (core/sync/cloud_sync_machine.gd: conflicts(), keep(), cloud_empty()) journals record requests in the partition (rules 36-40); the saves layer (saves.gd) keeps save requests in memory (S1-S5), bases a write with no base_version on the version seen this session and freezes a slot while its request is open. PolarisKey.cloud_sync: signal conflict_opened(request) and conflict_closed(id, how), conflicts(), on_conflict(fn) (a listener may return a choice to decide inline and is replayed the open requests), cloud_empty() and status().conflicts; the stream carries conflictOpened and conflictClosed. PKeySaves.resolve and the SaveConflict dictionary are removed. Every sync-scenarios.json v5 scenario replays with no skip (tests/suite_sync_scenarios.gd) and the ten named saves tests are in tests/suite_cloud_sync_saves.gd."
     },
     "sync.saves": {
       "status": "implemented",

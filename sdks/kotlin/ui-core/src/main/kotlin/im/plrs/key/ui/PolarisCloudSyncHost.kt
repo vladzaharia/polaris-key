@@ -185,6 +185,9 @@ public class PolarisCloudSyncHost(
 
             // A file transfer is not the row's state: the saves screens follow it.
             is CloudSyncEvent.TransferProgress, is CloudSyncEvent.TransferDone, is CloudSyncEvent.TransferFailed -> Unit
+
+            // A MergeRequest is the conflict screen's, bound through PolarisSaveConflictState.of; the row does not change.
+            is CloudSyncEvent.ConflictOpened, is CloudSyncEvent.ConflictClosed -> Unit
         }
     }
 

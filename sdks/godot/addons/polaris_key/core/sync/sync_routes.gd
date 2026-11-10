@@ -78,7 +78,7 @@ static func synced_settings(catalog: Dictionary) -> Array:
 
 
 ## The machine's declaration of a catalog collection: `name`, `policy` (its `conflict`, else its
-## template's, else `revision`), `field` (`conflictField`) and, for `revision`, `resolve`.
+## template's, else `revision`), `field` (`conflictField`). A `revision` record has no resolution here: its conflict opens a MergeRequest.
 static func resolve_collection(c: Dictionary) -> Dictionary:
 	var conflict: Variant = c.get("conflict")
 	if not Types.is_string(conflict) or String(conflict) == "":
@@ -88,8 +88,6 @@ static func resolve_collection(c: Dictionary) -> Dictionary:
 	var field: Variant = c.get("conflictField")
 	if Types.is_string(field):
 		out["field"] = String(field)
-	if out["policy"] == "revision":
-		out["resolve"] = "keepServer"
 	return out
 
 

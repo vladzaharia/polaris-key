@@ -61,6 +61,11 @@ const ROWS := [
 	["cloudSync.flush", "res://addons/polaris_key/services/cloud_sync.gd", "method", "flush"],
 	["cloudSync.encryption", "res://addons/polaris_key/core/options.gd", "property", "cloud_sync_encryption"],
 	["cloudSync.event", SDK, "signal", "event"],
+	["cloudSync.onConflict", "res://addons/polaris_key/services/cloud_sync.gd", "signal", "conflict_opened"],
+	["cloudSync.conflicts", "res://addons/polaris_key/services/cloud_sync.gd", "method", "conflicts"],
+	["cloudSync.cloudEmpty", "res://addons/polaris_key/services/cloud_sync.gd", "method", "cloud_empty"],
+	["cloudSync.mergeRequest.keep", "res://addons/polaris_key/services/cloud_sync/merge_request.gd", "method", "keep"],
+	["cloudSync.conflictEvent", SDK, "signal", "event"],
 	["cloudSync.saves", "res://addons/polaris_key/services/cloud_sync.gd", "property", "saves"],
 	["cloudSync.saves.list", "res://addons/polaris_key/services/cloud_sync/saves.gd", "method", "list"],
 	["cloudSync.saves.read", "res://addons/polaris_key/services/cloud_sync/saves.gd", "method", "read"],
@@ -254,6 +259,7 @@ const REMOVED := [
 	["identity.sign_in_pending", "res://addons/polaris_key/services/identity.gd", "sign_in_pending"],
 	["identity.sign_in_confirm", "res://addons/polaris_key/services/identity.gd", "sign_in_confirm"],
 	["identity.sign_in_finished", "res://addons/polaris_key/services/identity.gd", "sign_in_finished"],
+	["PKeySaves.resolve", "res://addons/polaris_key/services/cloud_sync/saves.gd", "resolve"],
 ]
 
 

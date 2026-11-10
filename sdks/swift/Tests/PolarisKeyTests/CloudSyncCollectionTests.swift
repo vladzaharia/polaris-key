@@ -35,7 +35,7 @@ final class CloudSyncMachineCollectionTests: XCTestCase {
         SyncCollectionDecl(name: "notes.*", policy: "lastWrite"),
         SyncCollectionDecl(name: "notes.deep.*", policy: "merge"),
         SyncCollectionDecl(name: "notes.exact", policy: "union"),
-        SyncCollectionDecl(name: "docs", policy: "revision", resolve: "keepServer"),
+        SyncCollectionDecl(name: "docs", policy: "revision"),
     ]
 
     private func machine(contacted: Bool = true) throws -> CloudSyncMachine {
@@ -85,11 +85,17 @@ final class CloudSyncMachineCollectionTests: XCTestCase {
         XCTAssertTrue(pushed(m).isEmpty)
     }
 
-    func testDeleteStampsEveryPolicyButUnionAndRefusesRevision() throws {
+    func testDeleteStampsEveryPolicyButUnionAndIsACompareAndSetForRevision() throws {
         let m = try machine()
-        XCTAssertEqual(m.delete("docs", "d"), .failed("collection-unknown"))
         XCTAssertEqual(m.delete("nope", "d"), .failed("collection-unknown"))
         XCTAssertTrue(pushed(m).isEmpty)
+        // A `revision` delete is the collection's default delete: based on what the snapshot holds, else `*`.
+        let r = try machine()
+        XCTAssertEqual(r.delete("docs", "d"), .ok)
+        let revision = pushed(r)
+        XCTAssertEqual(revision.map { $0["op"] }, [.string("delete")])
+        XCTAssertEqual(revision.first?["baseVersion"], .string("*"))
+        XCTAssertNil(revision.first?["editedHlc"])
         XCTAssertEqual(m.delete("notes.work", "n"), .ok)
         let stamped = pushed(m)
         XCTAssertEqual(stamped.map { $0["op"] }, [.string("delete")])

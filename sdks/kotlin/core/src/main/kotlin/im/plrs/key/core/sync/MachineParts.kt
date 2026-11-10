@@ -22,6 +22,7 @@ internal class MachineParts(val core: MachineCore) {
     val exchange = MachineExchange(this)
     val receiver = MachineReceive(this)
     val records = MachineRecords(this)
+    val merge = MachineMerge(this)
     val puts = MachineRecordPuts(this)
     val contact = MachineContact(this)
     val recordResults = MachineRecordResults(this)
@@ -43,7 +44,8 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
     SyncExchange by parts.receiver,
     SyncRecords by parts.records,
     SyncCollections by parts.records,
-    SyncExactRecords by parts.records {
+    SyncExactRecords by parts.records,
+    SyncMerge by parts.merge {
     /** A machine for [opts], restored from [persisted] (a relaunch) when given. */
     public constructor(opts: CloudSyncOptions, persisted: MachineState? = null) : this(
         MachineParts(

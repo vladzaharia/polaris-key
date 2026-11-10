@@ -128,6 +128,96 @@ export class World {
   }) as typeof fetch;
 }
 
+/** A World that answers in server mode (nothing sealed); `base` is merged into every answer. */
+export function serverWorld(base: Body = {}): World {
+  const w = new World();
+  w.body = ((over: Body = {}) => ({
+    subject: SUBJECT,
+    serverNow: 1_700_000_000_000,
+    cursor: 0,
+    more: false,
+    lastMutationId: 0,
+    catalogVersion: 1,
+    aliases: {},
+    ...ROOM,
+    encryption: "server",
+    changes: [],
+    tombstones: [],
+    ...base,
+    ...over,
+  })) as typeof w.body;
+  return w;
+}
+
+/** The pushes the Worker saw. */
+export const pushes = (w: World) =>
+  w.syncReqs.filter((r) => r.method === "POST" && r.body?.mutations);
+
+/** A record the fake Worker holds: its value and, for a save, the file. */
+export interface Row {
+  value: unknown;
+  version: number;
+  file?: { version: number; size: number; sha256: string; format: "whole" };
+}
+
+/** The records of one collection on the fake Worker: pulls list them, pushes refuse a stale base
+ *  with `conflict`, store a `set` (a save keeps its file) and drop a `delete`. */
+export function rowsWorld(w: World, collection: string) {
+  const rows = new Map<string, Row>();
+  const change = (id: string, r: Row): Body => ({
+    record: [collection, id],
+    version: r.version,
+    ...(r.value === undefined ? {} : { value: r.value }),
+    ...(r.file ? { file: r.file } : {}),
+  });
+  w.pull = () =>
+    w.body({
+      cursor: w.version,
+      changes: [...rows].map(([id, r]) => change(id, r)),
+    });
+  w.push = (body) => {
+    const results: Body[] = [];
+    const changes: Body[] = [];
+    const tombstones: Body[] = [];
+    for (const m of body.mutations as Array<Record<string, any>>) {
+      const id = m.target.record[1] as string;
+      const row = rows.get(id);
+      const base = m.baseVersion as number | "*";
+      if (base === "*" ? row !== undefined : row?.version !== base) {
+        results.push({
+          mutationId: m.mutationId,
+          status: "conflict",
+          server: row ? change(id, row) : { version: w.version },
+        });
+        continue;
+      }
+      const version = ++w.version;
+      if (m.op === "delete") {
+        rows.delete(id);
+        tombstones.push({ record: [collection, id], version });
+      } else {
+        const next: Row = {
+          value: m.value,
+          version,
+          ...(row?.file ? { file: row.file } : {}),
+        };
+        rows.set(id, next);
+        changes.push(change(id, next));
+      }
+      results.push({ mutationId: m.mutationId, status: "ok", version });
+    }
+    return w.body({ cursor: w.version, results, changes, tombstones });
+  };
+  return { rows, change };
+}
+
+/** Start the host and sign the person in. */
+export async function startSignedIn(client: Awaited<ReturnType<typeof open>>) {
+  await client.cloudSyncHost.start();
+  client.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });
+  await client.cloudSync.flush();
+}
+
 /** A client over `stateDir`; `keys` gives it a key ring (a relaunch passes none). */
 export async function open(
   w: World,

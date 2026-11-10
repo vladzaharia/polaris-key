@@ -44,6 +44,8 @@ from ..core.sync_crypto import is_blinded_name
 
 #: The client code for the pin (``conformance/parity/errors.json``).
 SYNC_ENCRYPTION_PINNED: str = ErrorCode.SYNC_ENCRYPTION_PINNED
+#: ``keep`` on a request that has closed (or never existed): the client code of plans/U-08.md §2.3.
+SYNC_MERGE_CLOSED: str = ErrorCode.SYNC_MERGE_CLOSED
 
 _HLC_RE = re.compile(SYNC_HLC_PATTERN)
 _CLIENT_ID_RE = re.compile(SYNC_CLIENT_ID_PATTERN)
@@ -267,6 +269,16 @@ def _file_mark(v: Any) -> Obj:
 
 def _record_key(c: str, i: str) -> str:
     return f"{c}/{i}"
+
+
+def _split_key(rk: str) -> Tuple[str, str]:
+    i = rk.index("/")
+    return rk[:i], rk[i + 1 :]
+
+
+def _conflict_id(collection: str, record: str) -> str:
+    """A write request's id: ``w:<collection>/<record>`` (plans/U-08.md §2.2)."""
+    return f"w:{collection}/{record}"
 
 
 def _decidable(b: Obj) -> bool:
@@ -524,7 +536,11 @@ class CloudSyncMachine:
             return "record" in o["target"] and _record_key(*o["target"]["record"]) == rk
 
         if decl["policy"] == "revision":
-            if self._in_flight_touches(rk):
+            open_req = (p.get("conflicts") or {}).get(rk)
+            if open_req is not None and "keep" not in open_req:
+                # Rule 3: an open request freezes the record; the later put replaces the device's copy.
+                open_req["local"] = _clone(value)
+            elif self._in_flight_touches(rk):
                 p["held"][rk] = _clone(value)
             else:
                 queued = next((o for o in p["pending"] if is_record(o) and "ticket" not in o), None)
@@ -636,6 +652,8 @@ class CloudSyncMachine:
         if self._s["subject"] is None:
             return _fail("signed-out")
         p = self._active()
+        # Rule 4: an exact write supersedes the record's open request and is sent as asked.
+        self._close_conflict(p, _record_key(collection, record_id), "superseded")
         op = self._enqueue(
             p, {"target": {"record": [collection, record_id]}, **body, "baseVersion": base_version}
         )
@@ -731,6 +749,7 @@ class CloudSyncMachine:
             if "record" in op["target"] and op["target"]["record"][0] == collection:
                 keys.add(_record_key(*op["target"]["record"]))
         keys.update(p["held"].keys())
+        keys.update((p.get("conflicts") or {}).keys())
         for rk in keys:
             if not rk.startswith(prefix):
                 continue
@@ -789,13 +808,29 @@ class CloudSyncMachine:
         return _OK()
 
     def delete(self, collection: str, record_id: str) -> CallResult:
-        """Delete a record of any policy but ``revision`` (use :meth:`remove_at` there)."""
+        """Delete a record: the collection's default delete. A ``revision`` record is deleted on the
+        version of an open request's local copy, else on the snapshot's, so a delete that conflicts
+        keeps the other copy (plans/U-08.md §2.3 rule 3)."""
         decl = self._collection(collection)
-        if decl is None or decl["policy"] == "revision":
+        if decl is None:
             return _fail("collection-unknown")
         if self._s["subject"] is None:
             return _fail("signed-out")
         p = self._active()
+        if decl["policy"] == "revision":
+            rk = _record_key(collection, record_id)
+            open_req = (p.get("conflicts") or {}).get(rk)
+            if open_req is not None:
+                base: Any = open_req["localVersion"] if open_req["localVersion"] is not None else "*"
+            else:
+                row = p["records"].get(rk)
+                base = row["version"] if row is not None else "*"
+            self._enqueue(
+                p, {"target": {"record": [collection, record_id]}, "op": "delete", "baseVersion": base}
+            )
+            self._note_record_changes("local")
+            self._kick()
+            return _OK()
         op: Obj = {"target": {"record": [collection, record_id]}, "op": "delete"}
         if decl["policy"] != "union":
             op["editedHlc"] = self._tick_hlc()
@@ -1011,6 +1046,10 @@ class CloudSyncMachine:
         row = p["records"].get(rk)
         value = row["value"] if row is not None and not self._row_unreadable(row) else _ABSENT
         pending = False
+        open_req = (p.get("conflicts") or {}).get(rk)
+        if open_req is not None and "keep" not in open_req:
+            value = _clone(open_req["local"])
+            pending = True
         for op in p["pending"]:
             if "record" in op["target"] and _record_key(*op["target"]["record"]) == rk:
                 value = _apply_record_op(value, op)
@@ -1023,6 +1062,11 @@ class CloudSyncMachine:
         return {"value": _clone(value), "from": "pending" if pending else "cloud"}
 
     def status(self) -> Obj:
+        base = self._base_status()
+        open_count = len(self._subject_conflicts())
+        return {**base, "conflicts": open_count} if open_count > 0 else base
+
+    def _base_status(self) -> Obj:
         pending = self._pending_count()
         if self._pinned_out():
             return {"state": "unsupported", "pending": pending, "reason": "encryption", "code": SYNC_ENCRYPTION_PINNED}
@@ -1547,8 +1591,14 @@ class CloudSyncMachine:
         p["clientId"] = self._fresh_client_id()
         p["nextMutationId"] = 1
         ops, p["pending"] = p["pending"], []
+        renumbered: Dict[int, int] = {}
         for o in ops:
-            self._enqueue(p, {k: v for k, v in o.items() if k != "mutationId"})
+            renumbered[o["mutationId"]] = self._enqueue(p, {k: v for k, v in o.items() if k != "mutationId"})[
+                "mutationId"
+            ]
+        for c in (p.get("conflicts") or {}).values():
+            if "keep" in c:
+                c["keep"]["mutationId"] = renumbered.get(c["keep"]["mutationId"], c["keep"]["mutationId"])
 
     def _first_contact(self, server_now: int) -> None:
         self._s["offsetMs"] = server_now - self._now
@@ -1632,6 +1682,16 @@ class CloudSyncMachine:
         if req["cursor"] == 0 and _is_number(body.get("cursor")):
             p["settings"] = {}
             p["records"] = {}
+        # ``empty`` (§13.4): a cursor-0 answer with nothing in it. Anything the cloud then holds clears it.
+        active = (
+            any(_is_object(r) and r.get("status") == "ok" for r in results)
+            or (isinstance(body.get("changes"), list) and len(body["changes"]) > 0)
+            or (isinstance(body.get("tombstones"), list) and len(body["tombstones"]) > 0)
+        )
+        if req["cursor"] == 0 and _is_number(body.get("cursor")):
+            p["empty"] = body.get("empty") is True and not active
+        elif active and p.get("empty") is True:
+            p["empty"] = False
         if self._requires_e2e() and _is_number(body.get("encryptionSince")):
             self._lower_since(p, body["encryptionSince"])
         changes = body["changes"] if isinstance(body.get("changes"), list) else []
@@ -1855,6 +1915,11 @@ class CloudSyncMachine:
             if rk in p["held"]:
                 rebase_on, has_rebase = r["version"], True
             self._emit_outcome(op, {"status": "ok", "version": r["version"]})
+            kept = ((p.get("conflicts") or {}).get(rk) or {}).get("keep")
+            if kept is not None and kept["mutationId"] == op["mutationId"]:
+                self._close_conflict(p, rk, kept["choice"])
+            elif op["op"] == "delete" and "ticket" not in op:
+                self._close_conflict(p, rk, "superseded")
         elif status == "conflict" and _is_object(r.get("server")):
             server = r["server"]
             if _is_number(server.get("version")):
@@ -1875,7 +1940,24 @@ class CloudSyncMachine:
                 )
                 # The resolution is a NEW mutation on the server's version; N is never resent. Only
                 # ``revision`` resolves on the device; every other policy took the server's copy.
-                if rk in p["held"]:
+                plain_revision = decl is not None and "ticket" not in op and decl["policy"] == "revision"
+                if decl is not None and plain_revision and op["op"] == "delete":
+                    # A delete that conflicts keeps the other copy and opens nothing; it ends the request.
+                    self._close_conflict(p, rk, "superseded")
+                    if rk in p["held"]:
+                        rebase_on, has_rebase = server["version"], True
+                elif (
+                    decl is not None
+                    and plain_revision
+                    and op["op"] == "set"
+                    and (decl.get("resolve") is None or decl.get("resolve") == "keepRemote")
+                ):
+                    if decl.get("resolve") == "keepRemote":
+                        # The host's inline decider answered at once: nothing is listed or sent.
+                        p["held"].pop(rk, None)
+                    else:
+                        self._open_conflict(p, rk, c, rid, op)
+                elif rk in p["held"]:
                     rebase_on, has_rebase = server["version"], True
                 elif (
                     "ticket" not in op
@@ -1907,6 +1989,11 @@ class CloudSyncMachine:
                     {"type": "rejected", "mutationId": op["mutationId"], "code": _js_string(r, "code")}
                 )
                 self._emit_outcome(op, {"status": "rejected", "code": _js_string(r, "code")})
+                cr = (p.get("conflicts") or {}).get(rk)
+                if cr is not None and "keep" in cr and cr["keep"]["mutationId"] == op["mutationId"]:
+                    # A terminal refusal of the keep reopens the request with the failure.
+                    del cr["keep"]
+                    cr["error"] = _js_string(r, "code")
             if rk in p["held"]:
                 row = p["records"].get(rk)
                 rebase_on, has_rebase = (row["version"] if row is not None else "*"), True
@@ -1916,6 +2003,139 @@ class CloudSyncMachine:
             self._enqueue(
                 p, {"target": {"record": [c, rid]}, "op": "set", "value": _clone(value), "baseVersion": rebase_on}
             )
+
+    def _open_conflict(self, p: Obj, rk: str, collection: str, record: str, op: Obj) -> None:
+        """Open (or, when a keep's own set conflicted, reopen) the request of a ``revision`` record: the
+        held edit, else the mutation's, is the device's copy; nothing is enqueued (rule 1)."""
+        conflicts = p.setdefault("conflicts", {})
+        existing = conflicts.get(rk)
+        held = _clone(p["held"][rk]) if rk in p["held"] else _ABSENT
+        p["held"].pop(rk, None)
+        if existing is not None:
+            existing.pop("keep", None)
+            existing.pop("error", None)
+            if held is not _ABSENT:
+                existing["local"] = held
+        else:
+            base = op.get("baseVersion")
+            conflicts[rk] = {
+                "local": held if held is not _ABSENT else _clone(op.get("value")),
+                "localVersion": base if _is_number(base) else None,
+            }
+        self._events.append(
+            {
+                "type": "conflict",
+                "id": _conflict_id(collection, record),
+                "cause": "write",
+                "collection": collection,
+                "record": record,
+            }
+        )
+
+    def _close_conflict(self, p: Obj, rk: str, how: str) -> None:
+        conflicts = p.get("conflicts")
+        if not conflicts or rk not in conflicts:
+            return
+        del conflicts[rk]
+        if not conflicts:
+            del p["conflicts"]
+        collection, record = _split_key(rk)
+        self._events.append({"type": "conflictClosed", "id": _conflict_id(collection, record), "how": how})
+
+    def _subject_conflicts(self) -> List[str]:
+        if self._s["subject"] is None:
+            return []
+        return _sorted((self._active().get("conflicts") or {}).keys())
+
+    def conflicts(self) -> List[Obj]:
+        """The open MergeRequests of the signed-in subject (record collections), in id order."""
+        if self._s["subject"] is None:
+            return []
+        p = self._active()
+        out: List[Obj] = []
+        for rk in self._subject_conflicts():
+            c = p["conflicts"][rk]
+            collection, record = _split_key(rk)
+            row = p["records"].get(rk)
+            remote: Optional[Obj] = (
+                {
+                    "value": _clone(row["value"]),
+                    "version": row["version"],
+                    "savedAt": None,
+                    "device": None,
+                    "file": None,
+                }
+                if row is not None and not self._row_unreadable(row)
+                else None
+            )
+            out.append(
+                {
+                    "id": _conflict_id(collection, record),
+                    "cause": "write",
+                    "collection": collection,
+                    "record": record,
+                    "local": {
+                        "value": _clone(c["local"]),
+                        "version": c["localVersion"],
+                        "savedAt": None,
+                        "device": None,
+                        "file": None,
+                    },
+                    "remote": remote,
+                    "choices": ["local", "remote", "value"],
+                    "state": "applying" if "keep" in c else "open",
+                    "error": c.get("error"),
+                }
+            )
+        return out
+
+    def keep(self, request_id: str, choice: Any) -> CallResult:
+        """Answer an open request (rule 6). ``local`` and ``value`` send one ``set`` on the remote
+        version (``"*"`` when it is gone); ``remote`` sends nothing and reads the server copy. The
+        request is ``applying`` until the set is answered. A refusal journals nothing."""
+        if self._s["subject"] is None:
+            return _fail(SYNC_MERGE_CLOSED)
+        p = self._active()
+        rk = next((k for k in self._subject_conflicts() if _conflict_id(*_split_key(k)) == request_id), None)
+        if rk is None:
+            return _fail(SYNC_MERGE_CLOSED)
+        c = p["conflicts"][rk]
+        if "keep" in c:
+            return _fail("bad_request")
+        name = choice if isinstance(choice, str) else "value"
+        if name not in ("local", "remote", "value"):
+            return _fail("bad_request")
+        if isinstance(choice, dict):
+            if "value" not in choice or json_bytes(choice["value"]) > SYNC_MAX_VALUE_BYTES:
+                return _fail("bad_request")
+        elif not isinstance(choice, str):
+            return _fail("bad_request")
+        if name == "value" and not isinstance(choice, dict):
+            return _fail("bad_request")
+        collection, record = _split_key(rk)
+        if name == "remote":
+            self._close_conflict(p, rk, "remote")
+            self._note_record_changes("merge")
+            self._kick()
+            return _OK()
+        row = p["records"].get(rk)
+        base: Any = row["version"] if row is not None and not self._row_unreadable(row) else "*"
+        value = _clone(choice["value"]) if isinstance(choice, dict) else _clone(c["local"])
+        op = self._enqueue(
+            p, {"target": {"record": [collection, record]}, "op": "set", "value": value, "baseVersion": base}
+        )
+        c.pop("error", None)
+        c["keep"] = {"choice": name, "mutationId": op["mutationId"]}
+        self._note_record_changes("merge")
+        self._kick()
+        return _OK()
+
+    def cloud_empty(self) -> Optional[bool]:
+        """Whether the cloud was empty at the subject's first cursor-0 answer: ``True`` after one that
+        said so, ``False`` after one that did not or after any change, ``None`` before any (rule 8)."""
+        if self._s["subject"] is None:
+            return None
+        return self._active().get("empty")
 
     def _compared(self, v: Any, field: Optional[str]) -> Any:
         """The number a ``max``/``min`` record compares: the value, or its ``field`` member."""
@@ -1941,14 +2161,16 @@ class CloudSyncMachine:
         for op in [o for o in p["pending"] if "ticket" in o]:
             self._emit_outcome(op, {"status": "dropped"})
         p["pending"] = [o for o in p["pending"] if "ticket" not in o]
-        unsynced = len(p["pending"]) + len(p["held"])
+        unsynced = len(p["pending"]) + len(p["held"]) + len(p.get("conflicts") or {})
         if discard:
             p["pending"] = []
             p["held"] = {}
+            p.pop("conflicts", None)
         if self._on_sign_out == "clear" or reason != "signOut":
             p["settings"] = {}
             p["records"] = {}
             p["cursor"] = 0
+            p.pop("empty", None)
         p["signedOutAt"] = self._now
         self._s["subject"] = None
         self._signing_out = None

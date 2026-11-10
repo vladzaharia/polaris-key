@@ -1141,6 +1141,11 @@
       "why": "A file synced from your other devices failed its integrity check, so the app didn't use it.",
       "fix": "Try again. If it keeps happening, open the app on the device that saved the file so it syncs again, or tell the app's developer."
     },
+    "sync-merge-closed": {
+      "page": "accounts",
+      "why": "The app asked which of two versions to keep, but the choice was already made or a newer change replaced it, so your pick wasn't applied.",
+      "fix": "Check that the version you want is the one the app shows. If it isn't, make your change again."
+    },
     "recovery-code-invalid": {
       "page": "accounts",
       "why": "The recovery code you entered doesn't match the one for this account.",

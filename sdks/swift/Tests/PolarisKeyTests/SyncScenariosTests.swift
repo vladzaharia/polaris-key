@@ -3,6 +3,7 @@
 // @pkey-feature sync.e2e
 // @pkey-feature sync.settings
 // @pkey-feature config.sync
+// @pkey-feature sync.conflict
 //
 // The Swift runner for `conformance/corpus/v2/sync-scenarios.json` (U-07.1), read in place through
 // `CorpusLocator`. Mirrors Python's `test_sync_scenarios.py`.
@@ -37,6 +38,9 @@ protocol SyncScenarioMachine: AnyObject {
     func takeOutcomes() -> [JSONValue]
     func status() -> JSONValue
     func encryptionSince() -> JSONValue
+    func keep(request: String, choice: JSONValue) -> CallResult
+    func conflicts() -> JSONValue
+    func cloudEmpty() -> JSONValue
 }
 
 /// The scenario's `init` block, as the machine's constructor takes it.
@@ -128,6 +132,10 @@ final class SyncScenariosTests: XCTestCase {
             case "local":
                 let result = m.call(o["call"]?.stringValue ?? "", o["args"]?.arrayValue ?? [])
                 if let want = o["expect"] { XCTAssertEqual(result, want, at) }
+            case "keep":
+                // Version 5: answer an open request. `expect` is given only for a refusal at once.
+                let result = m.keep(request: o["request"]?.stringValue ?? "", choice: o["choice"] ?? .null)
+                XCTAssertEqual(result.json, o["expect"] ?? .object(["ok": .bool(true)]), at)
             case "advance": m.advance(ms: o["ms"]?.intValue ?? 0)
             case "network": m.setNetwork(o["state"]?.stringValue ?? "")
             case "respond":
@@ -174,6 +182,8 @@ final class SyncScenariosTests: XCTestCase {
         if let want = o["encryptionSince"] {
             XCTAssertTrue(jsonEqual(m.encryptionSince(), want), "\(at): encryptionSince")
         }
+        if let want = o["conflicts"] { XCTAssertTrue(jsonEqual(m.conflicts(), want), "\(at): conflicts") }
+        if let want = o["cloudEmpty"] { XCTAssertTrue(jsonEqual(m.cloudEmpty(), want), "\(at): cloudEmpty") }
         if let want = o["licence"] { XCTAssertTrue(jsonEqual(licence, want), "\(at): licence") }
     }
 
@@ -185,7 +195,7 @@ final class SyncScenariosTests: XCTestCase {
         XCTAssertEqual(family?["calls"], .array([.string("putAt"), .string("removeAt")]))
         XCTAssertEqual(family?["asserts"], .array([.string("rows"), .string("outcomes")]))
         let scenarios = f.fileRecordScenarios
-        XCTAssertEqual(scenarios.count, 19)
+        XCTAssertEqual(scenarios.count, 21)
         for sc in scenarios {
             try runScenario(
                 sc, name: sc["name"]?.stringValue ?? "?", make: Self.makeMachine, product: f.root["product"] ?? .null)
@@ -382,6 +392,7 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
         case "put": r = machine.put(str(0), str(1), a[2])
         case "add": r = machine.add(str(0), str(1), a[2])
         case "remove": r = machine.remove(str(0), str(1), a[2])
+        case "delete": r = machine.delete(str(0), str(1))
         case "flush": r = machine.flush()
         case "refresh": r = machine.refresh()
         default:
@@ -412,4 +423,17 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
     func journal() -> JSONValue { machine.journal() }
     func status() -> JSONValue { machine.status().json }
     func encryptionSince() -> JSONValue { machine.encryptionSince.map { .int($0) } ?? .null }
+    func keep(request: String, choice: JSONValue) -> CallResult {
+        let keep: SyncMergeKeep
+        switch choice {
+        case .string("local"): keep = .local
+        case .string("remote"): keep = .remote
+        case .string("both"): keep = .both
+        case .object(let o) where o["value"] != nil: keep = .value(o["value"]!)
+        default: return .failed("bad_request")
+        }
+        return machine.keep(request, keep)
+    }
+    func conflicts() -> JSONValue { .array(machine.conflicts().map(\.json)) }
+    func cloudEmpty() -> JSONValue { machine.cloudEmpty().map { .bool($0) } ?? .null }
 }

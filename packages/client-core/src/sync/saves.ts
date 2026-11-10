@@ -18,8 +18,12 @@
 // blinding in end-to-end mode (U-22.0). This file owns the order of the steps, the choice of the
 // revision, the format check (D-11), the slot cap, conflicts and the `Transfer` handle.
 //
-// U-08 owns the conflict vocabulary; `SaveConflict` here follows the plan's shape (`keep: local |
-// remote | both`, `both` only with a free slot of the 16) and is replaced by U-08's when it lands.
+// Conflicts (plans/U-08.md §2.4): a write whose base is stale opens one `MergeRequest` per slot
+// (S1), and the device keeps its copy unsent until the person or the app answers with `keep`.
+// A write with no base is based on the version this device last listed, read or wrote for the
+// slot this session (S2); a slot not seen is create-only; a pulled version is never a base. While
+// a request is open a write with no base only replaces its local side (S3). Requests live in
+// memory (S5): a relaunch drops them and the next write raises the conflict again through S2.
 
 import {
   SYNC_FILE_MAX_BYTES,
@@ -27,7 +31,17 @@ import {
   type FileRevision,
   type FinalizeResponse,
 } from "@polaris-key/protocol/sync";
-import type { Json } from "../cloud-sync.js";
+import { SYNC_MERGE_CLOSED, type Json } from "../cloud-sync.js";
+import {
+  MergeRegistry,
+  mergeChoiceName,
+  type MergeChoice,
+  type MergeKeepArg,
+  type MergeOutcome,
+  type MergeRequest,
+  type MergeSide,
+  type MergeView,
+} from "./merge.js";
 import { Sha256 } from "./sha256.js";
 import {
   rangedBytes,
@@ -148,20 +162,6 @@ export type SaveRead =
       supported: number;
     };
 
-/** What a device tried to write when another write got there first. */
-export interface SaveConflict {
-  id: string;
-  /** What this device wrote. */
-  local: { metadata: { [k: string]: Json }; size: number };
-  /** The server's copy; null when it was deleted meanwhile. */
-  remote: SaveSummary | null;
-  serverVersion: number | null;
-  /** `keep: "both"` needs a free slot of the 16. */
-  bothAvailable: boolean;
-}
-
-export type SaveKeep = "local" | "remote" | "both";
-
 export type TransferState =
   | "running"
   | "paused"
@@ -183,7 +183,8 @@ export type SaveOutcome =
   | { state: "done"; id: string; kept: "remote"; version: number | null }
   | { state: "cancelled" }
   | { state: "failed"; error: SavesError }
-  | { state: "conflict"; conflict: SaveConflict };
+  /** The write was not sent: `request` holds it until `keep` (S1, S3). */
+  | { state: "conflict"; request: MergeRequest };
 
 /** A write in flight. A cancelled transfer is a state, not an error (D-8). */
 export interface SaveTransfer {
@@ -200,7 +201,8 @@ export interface SaveTransfer {
 }
 
 export interface WriteOptions {
-  /** The version the caller last saw; absent is the record's current one, or create-only for a new id. */
+  /** The version the caller last saw; absent is the version this device last listed, read or wrote
+   *  for the slot this session, or create-only (`"*"`) for a slot not seen (S2). */
   baseVersion?: number | "*";
   onProgress?: (done: number, total: number) => void;
   signal?: AbortSignal;
@@ -268,6 +270,8 @@ export interface SavesDeps {
   now?: () => number;
   /** A write went running, paused or settled: a host that draws the transfers redraws. */
   onState?: () => void;
+  /** The client's registry of requests; absent: this client keeps its own (`merge`). */
+  merge?: MergeRegistry;
 }
 
 const DEFAULT_MAX_BYTES = 32 * 1024 * 1024;
@@ -311,13 +315,42 @@ function asSavesError(e: unknown): SavesError {
   return new SavesError("transfer-failed", undefined, e);
 }
 
+/** One open save request (S1): the device's copy, retained in memory until `keep`. */
+interface Slot {
+  id: string;
+  /** The stamped metadata of the copy. */
+  metadata: { [k: string]: Json };
+  source: RangedSource;
+  opts: WriteOptions;
+  /** The version the copy was written on; null: create-only. */
+  base: number | null;
+  remote: SaveSummary | null;
+  /** The server's version for `keep: "local"`; `"*"` when the save is gone. */
+  remoteVersion: number | "*";
+  slotsFree: boolean;
+  /** A keep is running: a conflict it meets reopens the request when the keep ends. */
+  keeping: boolean;
+  reopen: boolean;
+}
+
+const numberOf = (v: Json | undefined): number | null =>
+  typeof v === "number" ? v : null;
+const stringOf = (v: Json | undefined): string | null =>
+  typeof v === "string" ? v : null;
+
 export class SavesClient {
   private readonly maxBytes: number;
   private readonly spool: SealSpool;
+  /** The requests of this client's host: the saves layer's are `w:saves/<id>`. */
+  readonly merge: MergeRegistry;
+  private readonly slots = new Map<string, Slot>();
+  /** S2: the version this device last listed, read or wrote for a slot this session. */
+  private readonly seen = new Map<string, number>();
 
   constructor(private readonly d: SavesDeps) {
     this.maxBytes = d.maxBytes ?? DEFAULT_MAX_BYTES;
     this.spool = d.spool ?? memorySpool;
+    this.merge = d.merge ?? new MergeRegistry();
   }
 
   private get e2e(): boolean {
@@ -349,6 +382,7 @@ export class SavesClient {
   /** The saves of this person, by id. */
   async list(): Promise<SaveSummary[]> {
     const all = await this.d.records.list();
+    for (const r of all) this.seen.set(r.id, r.version);
     return all
       .map((r) => this.summary(r))
       .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -371,6 +405,7 @@ export class SavesClient {
     this.checkId(id);
     const rec = await this.d.records.get(id);
     if (rec === null) return { ok: false, reason: "not-found" };
+    this.seen.set(id, rec.version);
     const { metadata, binding } = splitBinding(rec.value);
     const fv = formatOf(metadata);
     const supported = this.d.saveFormatVersion;
@@ -461,7 +496,9 @@ export class SavesClient {
 
   /**
    * Write a save. Resolves at once with a handle; `done` settles when the file is stored and the
-   * metadata is pushed, or on a conflict, a failure or a cancel.
+   * metadata is pushed, or on a conflict, a failure or a cancel. While a request is open for the
+   * slot, a write with no base only replaces the request's local copy and settles `conflict`;
+   * a write with a base supersedes the request (S3).
    */
   write(
     id: string,
@@ -469,65 +506,59 @@ export class SavesClient {
     metadata: { [k: string]: Json },
     opts: WriteOptions = {},
   ): SaveTransfer {
+    const slot = this.slots.get(id);
+    if (slot) {
+      if (opts.baseVersion !== undefined) this.closeSlot(id, "superseded");
+      else {
+        const source = "read" in bytes ? bytes : rangedBytes(bytes);
+        const stamped = this.stamped(metadata);
+        const check = this.precheck(id, source, stamped);
+        if (check) return settled(id, { state: "failed", error: check });
+        slot.metadata = stamped;
+        slot.source = source;
+        slot.opts = opts;
+        this.merge.update(this.requestId(id), {
+          local: this.localSide(slot),
+        });
+        return settled(id, {
+          state: "conflict",
+          request: this.merge.find(this.requestId(id))!,
+        });
+      }
+    }
     return this.run(id, bytes, metadata, opts, null);
   }
 
-  /**
-   * Settle a conflict. `remote` keeps the server's copy and writes nothing; `local` writes this
-   * device's save on top of the server's version; `both` writes it as a new save in a free slot.
-   */
-  resolve(
-    conflict: SaveConflict,
-    keep: SaveKeep,
-    bytes: Uint8Array | RangedSource,
-    opts: WriteOptions = {},
-  ): SaveTransfer {
-    if (keep === "remote")
-      // Pull first, so the cache holds the copy the person chose (not this device's old one).
-      return deferred(conflict.id, async () => {
-        await this.pull();
-        const rec = await this.d.records.get(conflict.id);
-        return {
-          state: "done",
-          id: conflict.id,
-          kept: "remote",
-          version: rec?.version ?? null,
-        } satisfies SaveOutcome;
-      });
-    if (keep === "both" && !conflict.bothAvailable)
-      return settled(conflict.id, {
-        state: "failed",
-        error: new SavesError("slots-full"),
-      });
-    return this.run(
-      conflict.id,
-      bytes,
-      conflict.local.metadata,
-      opts,
-      keep === "both"
-        ? { copy: true }
-        : {
-            // A copy the server no longer holds is replaced on "record must not exist".
-            baseVersion:
-              conflict.remote === null || !conflict.serverVersion
-                ? "*"
-                : conflict.serverVersion,
-          },
-      false,
-    );
-  }
-
-  /** Delete a save; its file is collected with the record. */
+  /** Delete a save; its file is collected with the record. With a request open for the slot the
+   *  default base is the request's, so a delete that conflicts keeps the other copy (S3). */
   async delete(id: string, baseVersion?: number): Promise<SaveSetResult> {
     this.checkId(id);
+    const slot = this.slots.get(id);
     let base = baseVersion;
     if (base === undefined) {
-      const rec = await this.d.records.get(id);
-      if (rec === null)
-        return { ok: false, reason: "rejected", code: "not_found" };
-      base = rec.version;
+      if (slot) {
+        if (slot.base === null) {
+          const server = await this.d.records.get(id);
+          this.closeSlot(id, "superseded");
+          return { ok: false, reason: "conflict", server };
+        }
+        base = slot.base;
+      } else {
+        const rec = await this.d.records.get(id);
+        if (rec === null)
+          return { ok: false, reason: "rejected", code: "not_found" };
+        base = rec.version;
+      }
     }
-    return this.d.records.delete(id, base);
+    const r = await this.d.records.delete(id, base);
+    if (
+      slot &&
+      this.slots.get(id) === slot &&
+      (r.ok || r.reason === "conflict")
+    )
+      this.closeSlot(id, "superseded");
+    if (r.ok) this.seen.delete(id);
+    return r;
   }
 
   // ── internals ─────────────────────────────────────────────────────────────────────────────
@@ -551,8 +582,8 @@ export class SavesClient {
     mode: { baseVersion: number | "*" } | { copy: true } | null,
     stamp = true,
   ): SaveTransfer {
-    // The SDK's own keys: when and where this save was written. A resolve keeps the stamps of the
-    // copy it writes (they are already in `conflict.local.metadata`).
+    // The SDK's own keys: when and where this save was written. A keep re-runs the write with the
+    // stamps of the copy it holds (`stamp` false).
     if (stamp) metadata = this.stamped(metadata);
     const hard = new AbortController();
     const source = "read" in bytes ? bytes : rangedBytes(bytes);
@@ -574,12 +605,18 @@ export class SavesClient {
       } else if (mode !== null) base = mode.baseVersion;
       else if (opts.baseVersion !== undefined) base = opts.baseVersion;
       else {
-        const existing = await this.d.records.get(id);
-        if (existing === null) {
-          if ((await this.d.records.list()).length >= SYNC_SAVE_SLOTS)
+        // S2: the version this device saw this session; else create-only. A pulled version is
+        // never a base, so another device's newer save is a conflict, not an overwrite.
+        const seen = this.seen.get(id);
+        if (seen !== undefined) base = seen;
+        else {
+          if (
+            (await this.d.records.get(id)) === null &&
+            (await this.d.records.list()).length >= SYNC_SAVE_SLOTS
+          )
             return { state: "failed", error: new SavesError("slots-full") };
           base = "*";
-        } else base = existing.version;
+        }
       }
       const wire = await this.d.records.wireId(targetId);
       const onProgress = (done: number, total: number) => {
@@ -620,7 +657,14 @@ export class SavesClient {
         }
       } catch (e) {
         if (e instanceof TransferError && e.reason === "conflict")
-          return this.conflictOutcome(id, metadata, source, e.serverVersion);
+          return this.conflictOutcome(
+            id,
+            metadata,
+            source,
+            opts,
+            base,
+            e.serverVersion,
+          );
         if (e instanceof TransferError && e.reason === "aborted") throw e;
         return { state: "failed", error: asSavesError(e) };
       }
@@ -648,7 +692,8 @@ export class SavesClient {
           format: file.format,
         },
       );
-      if (set.ok)
+      if (set.ok) {
+        this.seen.set(targetId, set.version);
         return {
           state: "done",
           id,
@@ -656,11 +701,14 @@ export class SavesClient {
           file,
           ...(targetId !== id ? { copyId: targetId } : {}),
         };
+      }
       if (set.reason === "conflict")
         return this.conflictOutcome(
           id,
           metadata,
           source,
+          opts,
+          base,
           set.server?.version ?? null,
           set.server,
         );
@@ -749,6 +797,8 @@ export class SavesClient {
     id: string,
     metadata: { [k: string]: Json },
     source: RangedSource,
+    opts: WriteOptions,
+    base: number | "*" | undefined,
     serverVersion: number | undefined | null,
     known?: SaveRecord | null,
   ): Promise<SaveOutcome> {
@@ -791,16 +841,164 @@ export class SavesClient {
         version = serverVersion;
       }
     }
-    return {
-      state: "conflict",
-      conflict: {
+    const request = this.openSlot(
+      {
         id,
-        local: { metadata, size: source.size },
+        metadata,
+        source,
+        opts,
+        base: typeof base === "number" ? base : null,
         remote,
-        serverVersion: version,
-        bothAvailable: slots < SYNC_SAVE_SLOTS,
+        remoteVersion: !remote || !version ? "*" : version,
+        slotsFree: slots < SYNC_SAVE_SLOTS,
+      },
+      version,
+    );
+    return { state: "conflict", request };
+  }
+
+  // ── requests (S1, S3, S4) ─────────────────────────────────────────────────────────────────
+
+  private requestId(id: string): string {
+    return `w:${SAVES_COLLECTION}/${id}`;
+  }
+
+  private localSide(slot: Slot): MergeSide {
+    const plan = planTransfer(
+      this.d.codec.storedSize(slot.source.size),
+      this.d.delta,
+    );
+    return {
+      value: slot.metadata,
+      version: slot.base,
+      savedAt: numberOf(slot.metadata[SAVE_SAVED_AT_KEY]),
+      device: stringOf(slot.metadata[SAVE_DEVICE_KEY]),
+      file: {
+        size: slot.source.size,
+        format: plan.mode === "chunks" ? "chunks" : "whole",
       },
     };
+  }
+
+  private remoteSide(slot: Slot, version: number | null): MergeSide | null {
+    const r = slot.remote;
+    if (r === null) return null;
+    return {
+      value: r.metadata,
+      version: version ?? r.version,
+      savedAt: numberOf(r.metadata[SAVE_SAVED_AT_KEY]),
+      device: stringOf(r.metadata[SAVE_DEVICE_KEY]),
+      file: r.file ? { size: r.file.size, format: r.file.format } : null,
+    };
+  }
+
+  private view(
+    slot: Slot,
+    version: number | null,
+    state: "open" | "applying",
+    error: string | null,
+  ): MergeView {
+    const choices: MergeChoice[] = ["local", "remote"];
+    if (slot.remote !== null && slot.slotsFree) choices.push("both");
+    return {
+      id: this.requestId(slot.id),
+      cause: "write",
+      collection: SAVES_COLLECTION,
+      record: slot.id,
+      local: this.localSide(slot),
+      remote: this.remoteSide(slot, version),
+      choices,
+      state,
+      error,
+    };
+  }
+
+  /** S1: open the slot's request, or (a keep conflicted again) bring the open one up to date. */
+  private openSlot(
+    init: Omit<Slot, "keeping" | "reopen">,
+    version: number | null,
+  ): MergeRequest {
+    const have = this.slots.get(init.id);
+    const slot: Slot = have
+      ? Object.assign(have, init, { reopen: have.keeping })
+      : { ...init, keeping: false, reopen: false };
+    this.slots.set(init.id, slot);
+    const view = this.view(
+      slot,
+      version,
+      slot.keeping ? "applying" : "open",
+      null,
+    );
+    if (slot.keeping) {
+      // The keep ends first; `keepSlot` reopens the request for the person.
+      this.merge.update(init.id, view);
+      return this.merge.find(view.id)!;
+    }
+    return this.merge.open(view, {
+      keep: (choice) => this.keepSlot(init.id, choice),
+    });
+  }
+
+  private closeSlot(id: string, how: MergeChoice | "superseded"): void {
+    this.slots.delete(id);
+    this.merge.close(this.requestId(id), how);
+  }
+
+  /** S4: answer the slot's request; the transfer's outcome settles the promise. */
+  private async keepSlot(
+    id: string,
+    choice: MergeKeepArg,
+  ): Promise<MergeOutcome> {
+    const slot = this.slots.get(id);
+    const rid = this.requestId(id);
+    if (!slot) return { ok: false, code: SYNC_MERGE_CLOSED, reopened: false };
+    const name = mergeChoiceName(choice);
+    slot.keeping = true;
+    slot.reopen = false;
+    this.merge.update(rid, { state: "applying", error: null });
+    const reopen = (code: string): MergeOutcome => {
+      slot.keeping = false;
+      const again = slot.reopen;
+      slot.reopen = false;
+      this.merge.update(rid, {
+        ...this.view(
+          slot,
+          slot.remote?.version ?? null,
+          "open",
+          again ? null : code,
+        ),
+      });
+      if (again) this.merge.reannounce(rid);
+      return { ok: false, code: again ? "conflict" : code, reopened: true };
+    };
+    if (name === "remote") {
+      // Pull first, so the cache holds the copy the person chose (not this device's old one).
+      await this.pull();
+      const rec = await this.d.records.get(id);
+      if (rec) this.seen.set(id, rec.version);
+      this.closeSlot(id, "remote");
+      return { ok: true, kept: "remote", version: rec?.version ?? null };
+    }
+    if (name === "both" && !slot.slotsFree) return reopen("slots-full");
+    const out = await this.run(
+      id,
+      slot.source,
+      slot.metadata,
+      slot.opts,
+      name === "both" ? { copy: true } : { baseVersion: slot.remoteVersion },
+      false,
+    ).done;
+    if (out.state === "done" && !("kept" in out)) {
+      this.closeSlot(id, name as MergeChoice);
+      return {
+        ok: true,
+        kept: name as MergeChoice,
+        version: out.version,
+        ...(out.copyId !== undefined ? { copyId: out.copyId } : {}),
+      };
+    }
+    if (out.state === "conflict") return reopen("conflict");
+    return reopen(out.state === "failed" ? out.error.code : "cancelled");
   }
 }
 

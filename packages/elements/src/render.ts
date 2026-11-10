@@ -1035,21 +1035,27 @@ export function titles(
     )}`;
 }
 
+/** The one line that says what just happened to the screen (a choice met a newer copy). */
+const NOTICE_KEY = "saveConflict.reopened";
+
 export function paragraphs(
   c: RenderCtx,
   keys: string[],
   cls = "body",
 ): TemplateResult | typeof nothing {
   if (keys.length === 0) return nothing;
-  return html`${keys.map(
-    (k, i) =>
-      html`<p
-        class=${i === 0 && cls === "body" ? "lede" : cls}
-        data-part=${cls === "body" ? (i === 0 ? "lede" : "body") : cls}
-        data-key=${k}
-      >
-        ${text(c, k)}
-      </p>`,
+  return html`${keys.map((k, i) =>
+    k === NOTICE_KEY
+      ? html`<p class="body notice" data-part="body" data-key=${k}>
+          ${GLYPHS.info("notice-glyph")}<span>${text(c, k)}</span>
+        </p>`
+      : html`<p
+          class=${i === 0 && cls === "body" ? "lede" : cls}
+          data-part=${cls === "body" ? (i === 0 ? "lede" : "body") : cls}
+          data-key=${k}
+        >
+          ${text(c, k)}
+        </p>`,
   )}`;
 }
 

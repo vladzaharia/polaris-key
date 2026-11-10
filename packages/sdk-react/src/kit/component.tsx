@@ -625,6 +625,12 @@ export function useKit(
   const focusView = drawnOf ? drawnOf(view, input) : view;
   const focusKey = `${focusView.component}.${focusView.state}`;
   const lastFocus = useRef<string | null>(null);
+  // Read while rendering, before the commit swaps the step's controls: a focused button the next step
+  // removes leaves focus on the body, and it was still inside the kit a moment ago (a choice's own step).
+  const heldFocus =
+    typeof document !== "undefined" &&
+    rootRef.current !== null &&
+    rootRef.current.contains(document.activeElement);
   useEffect(() => {
     if (focusKey === lastFocus.current) return;
     lastFocus.current = focusKey;
@@ -647,7 +653,7 @@ export function useKit(
         (LAYOUTS[focusView.component as OwnLayouts]?.kind ?? "screen") ===
         "screen",
       asked: props.autoFocus === true,
-      within: root.contains(document.activeElement),
+      within: heldFocus || root.contains(document.activeElement),
       coldStart:
         props.fill === true && document.activeElement === document.body,
       coarse:

@@ -21,9 +21,9 @@ extends PKeyUiView
 ##
 ## Bound to the saves (K.5T): with `follow_sdk` (the default) the screen follows
 ## `PolarisKey.cloud_sync.saves` through `PKeySaveScreensHost`: it shows the
-## first conflict a write ended with, hidden while there is none, runs the choice (`saves.resolve`) and moves
-## on (keeping, kept, failed with Try again). The game's one line is
-## `PKeySaveScreensHost.of(PolarisKey).local_copy = func(conflict): return <the local save's bytes>`.
+## first open save request (a PKeyMergeRequest), hidden while there is none, runs the choice (`request.keep`) and
+## moves on (keeping, kept, failed with Try again). The SDK holds this device's copy, so the game hands in
+## nothing; `PKeySaveScreensHost.of(PolarisKey).describe` can override the worded dates and the device name.
 ## With `follow_sdk` off the host sets `step` and the display-ready fields and connects the signals itself.
 ## `model` is the ui-core view of the state, so a binding reads it rather than redoing it.
 ## Hidden when the Sync service is off (`sync_on`).
@@ -77,6 +77,11 @@ signal done()
 		newer = value
 		refresh_view()
 ## A free slot of the 16 is left for Keep both. Without it (or unsaid) Keep both is disabled.
+## A choice met a newer copy and nothing was applied: these are the new versions. Adds one line saying so.
+@export var reopened := false:
+	set(value):
+		reopened = value
+		refresh_view()
 @export var both_available := false:
 	set(value):
 		both_available = value
@@ -108,6 +113,9 @@ var _remote_card: PanelContainer
 var _remote_who: Label
 var _remote_newer: Label
 var _remote_when: Label
+var _notice_row: HBoxContainer
+var _notice_glyph: TextureRect
+var _notice: Label
 var _status_row: HBoxContainer
 var _status_glyph: TextureRect
 var _status: Label
@@ -137,7 +145,7 @@ func _exit_tree() -> void:
 
 
 ## Bind to `p_sdk`'s saves: the screen then shows the pending conflict (and hides while there is none), and
-## its choices run `saves.resolve`. The signals are still emitted, for a game that wants to see them.
+## its choices run `request.keep`. The signals are still emitted, for a game that wants to see them.
 func follow(p_sdk: Node) -> void:
 	var h := PKeySaveScreensHost.of(p_sdk)
 	if h == null or h == host:
@@ -184,6 +192,11 @@ func _from_host() -> void:
 	remote_deleted = bool(v["remote_deleted"])
 	both_available = bool(v["both_available"])
 	step = String(v["step"])
+	local_when = String(v["local_when"])
+	remote_when = String(v["remote_when"])
+	remote_device = String(v["remote_device"])
+	newer = String(v["newer"])
+	reopened = bool(v.get("reopened", false))
 	refresh_view()
 
 
@@ -206,6 +219,11 @@ func _build() -> void:
 	right.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	# The lede sits under the title, so both columns start level and a card lines up with its choice.
 	_lede = label(head, "Lede", "PKeyMuted")
+	# A choice met a newer copy: one line right under the lede, above the cards, announced once.
+	var nt := glyph_label(head, "Notice", "info", "PKeyStrong")
+	_notice_row = nt["row"]
+	_notice_glyph = nt["glyph"]
+	_notice = nt["label"]
 	_cards = columns(left, "Cards")
 	_local_card = _save_card(_cards, "Local")
 	_local_who = _local_card.get_node("Words/Head/Who")
@@ -249,14 +267,15 @@ func _save_card(parent: Node, node_name: String) -> PanelContainer:
 	p.set_meta(AUTO_HIDE_META, true)
 	parent.add_child(p)
 	var words := vbox(p, "Words", "PKeyTight")
-	# Who, and the Newer tag when the app names this version (a tag, never a control).
-	var head := hbox(words, "Head")
+	# Who, then the Newer tag under it when the app names this version (a tag, never a control).
+	var head := vbox(words, "Head", "PKeyTight")
 	var who := label(head, "Who", "PKeyStrong")
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Whole words only: a title never breaks inside a word.
+	who.autowrap_mode = TextServer.AUTOWRAP_WORD
 	var tag := label(head, "Newer", "PKeyBadge")
 	tag.autowrap_mode = TextServer.AUTOWRAP_OFF
-	tag.size_flags_horizontal = Control.SIZE_SHRINK_END
-	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	label(words, "When", "PKeyMuted")
 	return p
 
@@ -292,9 +311,11 @@ func _arrange(m: Dictionary) -> void:
 	super(m)
 	_fit_choices()
 	_product.visible = squeeze_level() < 1
+	size_glyph(_notice_glyph, 20.0, get_theme_color("font_color", "PKeyStrong"))
 	size_glyph(_status_glyph, 20.0, get_theme_color("font_color", "PKeyError" if step == "failed" else "PKeyMuted"))
 	size_glyph(_mark, 32.0, _success_colour())
 	_style_delete(_keep_remote, remote_deleted)
+	_quiet_focus(_cancel_button)
 	_body.theme_type_variation = &"PKeyTight" if squeeze_level() >= 2 else &"PKeyStack"
 
 
@@ -314,6 +335,9 @@ func _pitch_cards(two: bool) -> void:
 		if base is StyleBoxFlat:
 			var flat := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
 			flat.set_border_width_all(0)
+			# The same card surface at every size: on a card that does not bleed, the tint would be the page's own.
+			if card_padding_x() > 0.0:
+				flat.bg_color = PKeyBrand.Dark.SURFACE_OVERLAY if PKeyUiTheme.is_dark(self) else PKeyBrand.Light.SURFACE_SUNKEN
 			(card as PanelContainer).add_theme_stylebox_override(&"panel", flat)
 		(card as Control).custom_minimum_size.y = _keep_local.get_combined_minimum_size().y if two else 0.0
 	if two:
@@ -324,6 +348,18 @@ func _pitch_cards(two: bool) -> void:
 
 func _success_colour() -> Color:
 	return PKeyBrand.Dark.SUCCESS if PKeyUiTheme.is_dark(self) else PKeyBrand.Light.SUCCESS
+
+
+## The safe default's focus: a 2 px accent ring, no glow, so Cancel never reads as the primary action.
+func _quiet_focus(b: Button) -> void:
+	var base := b.get_theme_stylebox(&"focus")
+	if not (base is StyleBoxFlat):
+		return
+	var ring := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
+	ring.shadow_size = 0
+	ring.set_border_width_all(2)
+	ring.border_color = get_theme_color(&"font_color", &"PKeyLink")
+	b.add_theme_stylebox_override(&"focus", ring)
 
 
 ## "Delete it here too" in the danger colour, outlined and never filled: the choices stay unfilled.
@@ -404,11 +440,11 @@ func _screen_key() -> String:
 
 
 func _render() -> void:
-	var inp := PKeySaveConflict.input(step, local_when, remote_when, remote_device, remote_deleted, both_available, keep, sync_on, newer)
+	var inp := PKeySaveConflict.input(step, local_when, remote_when, remote_device, remote_deleted, both_available, keep, sync_on, newer, reopened)
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SaveConflict", inp)
 	var state: String = model.get("state", "hidden")
 	# Following the saves, the screen is there only while a conflict is.
-	visible = state != "hidden" and (host == null or not host.conflict().is_empty())
+	visible = state != "hidden" and (host == null or host.conflict() != null)
 	if state != _seen_state:
 		_seen_state = state
 		_moved = false
@@ -450,6 +486,11 @@ func _render() -> void:
 	cat_text(_status, status_key)
 	_status_glyph.set_meta(&"pkey_glyph", "warning")
 	_status_glyph.visible = _status.visible and state == "failed"
+	cat_text(_notice, "saveConflict.reopened" if choose and copy.has("saveConflict.reopened") else "")
+	_notice_glyph.visible = _notice.visible
+	# Live only while it shows, so the screen has one live label at a time (the status line is silent then).
+	if "accessibility_live" in _notice:
+		_notice.set("accessibility_live", 1 if _notice.visible else 0)
 	_status.theme_type_variation = &"PKeyError" if state == "failed" else &"PKeyMuted"
 	fx_error("saveConflict.failedDeleted" if copy.has("saveConflict.failedDeleted") else ("saveConflict.failed" if state == "failed" else ""))
 	cat_text(_keep_local, "saveConflict.keepThis" if choose else "")
@@ -472,7 +513,7 @@ func _render() -> void:
 
 
 ## The model input of a state (ui-matrix `saveConflict`).
-static func input(p_step: String, p_local_when := "", p_remote_when := "", p_device := "", p_deleted := false, p_both := false, p_keep := "", p_sync_on := true, p_newer := "") -> Dictionary:
+static func input(p_step: String, p_local_when := "", p_remote_when := "", p_device := "", p_deleted := false, p_both := false, p_keep := "", p_sync_on := true, p_newer := "", p_reopened := false) -> Dictionary:
 	var c := {"step": p_step}
 	var local := {}
 	if p_local_when != "":
@@ -493,6 +534,8 @@ static func input(p_step: String, p_local_when := "", p_remote_when := "", p_dev
 		c["keep"] = p_keep
 	if p_newer != "":
 		c["newer"] = p_newer
+	if p_reopened:
+		c["reopened"] = true
 	var out := {"saveConflict": c}
 	if not p_sync_on:
 		out["services"] = ["license", "config", "release", "distribution", "update", "identity"]

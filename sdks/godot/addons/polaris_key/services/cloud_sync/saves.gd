@@ -25,7 +25,8 @@ extends RefCounted
 ##   saves.write(id, bytes, metadata, opts)   PKeyTransfer at once (transfer_handle.gd); `bytes` is a
 ##                                    PackedByteArray, `metadata` a Dictionary; `opts` {base_version?: int | "*",
 ##                                    on_progress?: Callable(done, total)}
-##   saves.resolve(conflict, keep, bytes, opts)   PKeyTransfer; `keep` is "local", "remote" or "both"
+##   saves.conflicts()                the open MergeRequests of the saves (PKeyMergeRequest); `await
+##                                    request.keep("local" | "remote" | "both")` settles one
 ##   await saves.delete(id, base_version?)    PKeyResult, detail {id, version}
 ##   await saves.revisions(id)        PKeyResult, detail the kept revisions of the save's file, newest first
 ##   saves.transfers()                the writes in flight (running, paused, or waiting on the network)
@@ -33,6 +34,13 @@ extends RefCounted
 ## Failures are PKeyResults with a `code` of `sync-file-invalid` (a downloaded file failed a check), `sync-locked`
 ## (the key ring locked), `invalid-argument` (invalid-save) or `sync-failed` with detail `{reason, ...}`,
 ## where reason is one of not-found, newer-format, too-large, slots-full, transfer-failed, rejected, conflict.
+##
+## Conflicts (plans/U-08.md section 2.4): a write whose base is stale opens one MergeRequest per slot (S1), and the
+## device keeps its copy, in memory, unsent until the person or the app answers with `keep`. A write with no
+## `base_version` is based on the version this device last listed, read or wrote for the slot this session (S2);
+## a slot not seen is create-only; a pulled version is never a base. While a request is open, a write with no
+## base only replaces its local side and settles `conflict` without uploading (S3). Requests live in memory
+## (S5): a relaunch drops them and the next write raises the conflict again through S2.
 ## A write's outcome carries the same as `error: {code, detail}` with the saves code (`too-large`, `slots-full`,
 ## `invalid-save`, `not-found`, `transfer-failed`, `rejected`, `sync-file-invalid`, `sync-locked`,
 ## `unsupported`). Nothing here puts a key, a plaintext byte or a token in a result, an event or a log.
@@ -63,8 +71,11 @@ const DEFAULT_MAX_BYTES := 33554432
 ## How long `purge` waits for cancelled transfers to settle.
 const PURGE_WAIT_MS := 5000
 
-## id -> the conflict a write ended with that nobody has settled or dismissed (`conflicts()`).
-var _conflicts: Dictionary = {}
+## id -> the retained slot of an open request (S1): the device's copy, held in memory until `keep`.
+var _slots: Dictionary = {}
+## S2: id -> the version this device last listed, read or wrote for the slot this session.
+var _seen: Dictionary = {}
+var _merge: PKeyMergeRegistry
 var _last_failed := false
 ## Journal ids already told as interrupted this session.
 var _surfaced: Dictionary = {}
@@ -82,6 +93,7 @@ static func sealed_gen_of(sealed: Array) -> Variant:
 ##   max_bytes    the collection's `files.maxBytes` (default 32 MiB)
 ##   format_version   the app's `save_format_version`; 0 turns the check off
 ##   emit         Callable(event Dictionary): transferProgress / transferDone / transferFailed
+##   merge        the client's PKeyMergeRegistry (default: its own)
 ##   gate         Callable() -> null | PKeyResult (a coroutine): the refusal when the service is off or the
 ##                host is not up
 ##   supported    Callable() -> bool, whether this runtime runs the GDScript lane (default: `PKeySyncAead.files_supported()`)
@@ -99,6 +111,12 @@ static func _static_init() -> void:
 
 func _init(deps: Dictionary) -> void:
 	_d = deps
+	_merge = deps["merge"] if deps.get("merge") is PKeyMergeRegistry else PKeyMergeRegistry.new()
+
+
+## The registry of the requests the saves open.
+func merge() -> PKeyMergeRegistry:
+	return _merge
 
 
 ## Whether files and saves run on this runtime: always off iOS and Android, there only with a native lane.
@@ -133,16 +151,14 @@ func surface_interrupted(journaled: Array) -> Array:
 	return told
 
 
-## The conflicts a write ended with that nobody has settled or dismissed yet, oldest first. Each is the
-## `conflict` of the write's outcome, the argument `resolve` takes.
+## Every open save request, by save id. Each is a PKeyMergeRequest. A screen's Cancel hides a request in
+## PKeySaveScreensHost; it stays listed here, and the slot stays frozen, until it is kept or superseded.
 func conflicts() -> Array:
-	return _conflicts.values()
-
-
-## Forget a conflict without settling it. Both copies stay as they were.
-func dismiss_conflict(id: String) -> void:
-	if _conflicts.erase(id):
-		changed.emit()
+	var out: Array = []
+	for r: PKeyMergeRequest in _merge.conflicts():
+		if r.collection == COLLECTION:
+			out.append(r)
+	return out
 
 
 ## The last write to end failed, and no write has started since (a cancelled write is not a failure).
@@ -270,7 +286,8 @@ func _gated() -> Variant:
 
 ## null while the ring is locked (end-to-end mode).
 func _codec() -> Variant:
-	return _d["file_codec"].call()
+	var f: Variant = _d.get("file_codec")
+	return (f as Callable).call() if f is Callable and (f as Callable).is_valid() else null
 
 
 func list() -> PKeyResult:
@@ -283,6 +300,7 @@ func list() -> PKeyResult:
 		return _locked_result()
 	var out: Array = []
 	for rec: Dictionary in _d["records"].list():
+		_seen[rec["id"]] = rec["version"]
 		out.append(_summary(rec))
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return String(a["id"]) < String(b["id"]))
 	return PKeyResult.success(out)
@@ -335,6 +353,7 @@ func _read(id: String, opts: Dictionary, tid: String) -> PKeyResult:
 	var rec: Variant = _d["records"].get_record(id)
 	if rec == null:
 		return _failure(_err("not-found"))
+	_seen[id] = rec["version"]
 	var s := _split(rec["value"])
 	var metadata: Dictionary = s["metadata"]
 	var fv: Variant = _format_of(metadata)
@@ -409,8 +428,25 @@ static func _id_ok(id: Variant) -> bool:
 	return id is String and id != "." and id != ".." and _key_re.search(id) != null
 
 
-## Write a save. Returns at once; `await transfer.wait()` settles on the outcome.
+## Write a save. Returns at once; `await transfer.wait()` settles on the outcome. While a request is open for the
+## slot, a write with no `base_version` only replaces the request's local copy and settles `conflict`
+## (`outcome.request`); a write with a base supersedes the request (S3).
 func write(id: String, bytes: PackedByteArray, metadata: Dictionary, opts: Dictionary = {}) -> PKeyTransfer:
+	var slot: Variant = _slots.get(id)
+	if slot != null:
+		if opts.get("base_version") != null:
+			_close_slot(id, "superseded")
+		else:
+			var stamped := _stamped(metadata)
+			var bad: Variant = _precheck(id, bytes.size(), stamped)
+			if bad != null:
+				return _tracked(Handle.settled(id, {"state": "failed", "error": bad}))
+			slot["metadata"] = stamped
+			slot["bytes"] = bytes
+			slot["opts"] = opts
+			_merge.update(_request_id(id), {"local": _local_side(slot)})
+			changed.emit()
+			return _tracked(Handle.settled(id, {"state": "conflict", "request": _merge.find(_request_id(id))}))
 	return _run(id, bytes, _stamped(metadata), opts, null)
 
 
@@ -436,29 +472,6 @@ func _pull() -> bool:
 	return await records.pull_records()
 
 
-## Settle a conflict (the `conflict` of a transfer's outcome). `remote` keeps the server's copy and writes
-## nothing; `local` writes this device's save on top of the server's version; `both` writes it as a new save
-## in a free slot.
-func resolve(conflict: Dictionary, keep: String, bytes: PackedByteArray, opts: Dictionary = {}) -> PKeyTransfer:
-	var id: String = conflict["id"]
-	if keep == "remote":
-		# Pull first, so the cache holds the copy the person chose (not this device's old one).
-		var keep_remote := func(_soft: Transfer.Cancel, _hard: Transfer.Cancel) -> Dictionary:
-			await _pull()
-			var rec: Variant = _d["records"].get_record(id)
-			return {"state": "done", "id": id, "kept": "remote", "version": rec["version"] if rec != null else null}
-		return _tracked(Handle.start("saves:" + id, {"done": 0, "total": 0}, keep_remote, func() -> void: pass))
-	if keep == "both" and not conflict.get("both_available", false):
-		return _tracked(Handle.settled(id, {"state": "failed", "error": _err("slots-full")}))
-	if keep != "local" and keep != "both":
-		return _tracked(Handle.settled(id, {"state": "failed", "error": _err("invalid-save", "keep")}))
-	var sv: Variant = conflict.get("server_version")
-	# A copy the server no longer holds is replaced on "record must not exist".
-	var must_not_exist: bool = conflict.get("remote") == null or sv == null or int(sv) == 0
-	var mode: Variant = {"copy": true} if keep == "both" else {"base_version": "*" if must_not_exist else sv}
-	return _run(id, bytes, conflict["local"]["metadata"], opts, mode)
-
-
 func delete(id: String, base_version: Variant = null) -> PKeyResult:
 	if not _supported():
 		return _unsupported_result()
@@ -470,13 +483,26 @@ func delete(id: String, base_version: Variant = null) -> PKeyResult:
 	if _codec() == null:
 		return _locked_result()
 	var base: Variant = base_version
+	var slot: Variant = _slots.get(id)
 	if base == null:
-		var rec: Variant = _d["records"].get_record(id)
-		if rec == null:
-			return _failure(_err("rejected", {"wire_code": "not_found"}))
-		base = rec["version"]
+		if slot != null:
+			# S3: with a request open the default base is the request's, so a delete that conflicts keeps
+			# the other copy.
+			if slot["base"] == null:
+				var held: Variant = _d["records"].get_record(id)
+				_close_slot(id, "superseded")
+				return PKeyResult.failure(PKeyConstants.ErrorCode.SYNC_FAILED, "saves: conflict", {"reason": "conflict", "server": _summary(held) if held is Dictionary else null})
+			base = slot["base"]
+		else:
+			var rec: Variant = _d["records"].get_record(id)
+			if rec == null:
+				return _failure(_err("rejected", {"wire_code": "not_found"}))
+			base = rec["version"]
 	var r: Dictionary = await _d["records"].delete_record(id, int(base))
+	if slot != null and _slots.get(id) == slot and (r["ok"] or r["reason"] == "conflict"):
+		_close_slot(id, "superseded")
 	if r["ok"]:
+		_seen.erase(id)
 		return PKeyResult.success({"id": id, "version": r["version"]})
 	if r["reason"] == "conflict":
 		var server: Variant = r["server"]
@@ -521,11 +547,6 @@ func _on_finished(_out: Dictionary, t: PKeyTransfer) -> void:
 func _note_outcome(t: PKeyTransfer) -> void:
 	var out: Dictionary = t.outcome
 	var state := String(out["state"])
-	if state == "conflict":
-		var c: Dictionary = out["conflict"]
-		_conflicts[String(c["id"])] = c
-	elif state == "done" and out.has("id"):
-		_conflicts.erase(String(out["id"]))
 	if state == "failed":
 		_last_failed = true
 		_emit({"type": PKeyConstants.TransferEvent.TRANSFERFAILED, "id": t.id, "code": out["error"]["code"]})
@@ -587,14 +608,14 @@ func _attempt(
 		base = mode["base_version"]
 	elif opts.get("base_version") != null:
 		base = opts["base_version"]
+	elif _seen.has(id):
+		# S2: the version this device saw this session. A pulled version is never a base, so another
+		# device's newer save is a conflict, not an overwrite.
+		base = _seen[id]
 	else:
-		var existing: Variant = records.get_record(id)
-		if existing == null:
-			if records.list().size() >= PKeyConstants.SYNC_SAVE_SLOTS:
-				return {"state": "failed", "error": _err("slots-full")}
-			base = "*"
-		else:
-			base = existing["version"]
+		if records.get_record(id) == null and records.list().size() >= PKeyConstants.SYNC_SAVE_SLOTS:
+			return {"state": "failed", "error": _err("slots-full")}
+		base = "*"
 	var wire: String = records.wire_id(target_id)
 	if wire == "":
 		return {"state": "failed", "error": _err("sync-locked")}
@@ -646,7 +667,7 @@ func _attempt(
 	if not r.ok:
 		var mapped := _from_engine(r, codec)
 		if mapped["state"] == "conflict":
-			return await _conflict(id, metadata, bytes.size(), mapped["server_version"], null, false)
+			return await _conflict(id, metadata, bytes, opts, base, mapped["server_version"], null, false)
 		return mapped
 	var file: Dictionary = r.detail
 	var value := metadata.duplicate(true)
@@ -654,6 +675,7 @@ func _attempt(
 		value[BINDING_KEY] = {"sha256": file["sha256"], "size": file["size"], "format": file["format"]}
 	var set_r: Dictionary = await records.set_record(target_id, value, int(file["version"]), hard, file)
 	if set_r["ok"]:
+		_seen[target_id] = set_r["version"]
 		var done := {"state": "done", "id": id, "version": set_r["version"], "file": file}
 		if target_id != id:
 			done["copy_id"] = target_id
@@ -662,7 +684,7 @@ func _attempt(
 		return {"state": "aborted"}
 	if set_r["reason"] == "conflict":
 		var server: Variant = set_r["server"]
-		return await _conflict(id, metadata, bytes.size(), server["version"] if server != null else null, server, true)
+		return await _conflict(id, metadata, bytes, opts, base, server["version"] if server != null else null, server, true)
 	return {"state": "failed", "error": _err("rejected", set_r.get("code", ""))}
 
 
@@ -688,7 +710,7 @@ func _free_id(id: String) -> Variant:
 	return null
 
 
-func _conflict(id: String, metadata: Dictionary, size: int, server_version: Variant, known: Variant, has_known: bool) -> Dictionary:
+func _conflict(id: String, metadata: Dictionary, bytes: PackedByteArray, opts: Dictionary, base: Variant, server_version: Variant, known: Variant, has_known: bool) -> Dictionary:
 	# The cache may be behind the conflict: pull before reading it, so the screen shows what the server
 	# holds (and a save deleted elsewhere reads as deleted).
 	var pulled: bool = await _pull()
@@ -719,13 +741,145 @@ func _conflict(id: String, metadata: Dictionary, size: int, server_version: Vari
 		else:
 			remote = {"id": id, "version": int(server_version), "metadata": {}, "file": null, "newer_format": false}
 			rv = int(server_version)
-	return {"state": "conflict", "conflict": {
+	var request: Variant = _open_slot({
 		"id": id,
-		"local": {"metadata": metadata, "size": size},
+		"metadata": metadata,
+		"bytes": bytes,
+		"opts": opts,
+		"base": int(base) if typeof(base) == TYPE_INT or typeof(base) == TYPE_FLOAT else null,
 		"remote": remote,
-		"server_version": rv,
-		"both_available": slots < PKeyConstants.SYNC_SAVE_SLOTS,
-	}}
+		"remote_version": "*" if remote == null or rv == null or int(rv) == 0 else int(rv),
+		"slots_free": slots < PKeyConstants.SYNC_SAVE_SLOTS,
+	}, rv)
+	changed.emit()
+	return {"state": "conflict", "request": request}
+
+
+# ── Requests (S1, S3, S4) ───────────────────────────────────────────────────────────────────────
+
+static func _request_id(id: String) -> String:
+	return "w:%s/%s" % [COLLECTION, id]
+
+
+static func _num(v: Variant) -> Variant:
+	return v if typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT else null
+
+
+static func _str(v: Variant) -> Variant:
+	return v if v is String else null
+
+
+func _local_side(slot: Dictionary) -> Dictionary:
+	var size: int = (slot["bytes"] as PackedByteArray).size()
+	var format := "whole"
+	var codec: Variant = _codec()
+	if codec != null:
+		var plan := PKeySyncTransferPlan.plan(codec.stored_size(size), bool(_d.get("delta", true)))
+		if not plan.is_empty() and plan["mode"] == PKeySyncTransferPlan.MODE_CHUNKS:
+			format = "chunks"
+	var meta: Dictionary = slot["metadata"]
+	return {"value": meta.duplicate(true), "version": slot["base"], "saved_at": _num(meta.get(SAVED_AT_KEY)), "device": _str(meta.get(DEVICE_KEY)), "file": {"size": size, "format": format}}
+
+
+func _remote_side(slot: Dictionary, version: Variant) -> Variant:
+	var r: Variant = slot["remote"]
+	if r == null:
+		return null
+	var meta: Dictionary = r["metadata"]
+	var file: Variant = null
+	if r["file"] is Dictionary:
+		file = {"size": r["file"]["size"], "format": r["file"]["format"]}
+	return {"value": meta.duplicate(true), "version": version if version != null else r["version"], "saved_at": _num(meta.get(SAVED_AT_KEY)), "device": _str(meta.get(DEVICE_KEY)), "file": file}
+
+
+func _view(slot: Dictionary, version: Variant, state: String, error: Variant) -> Dictionary:
+	var choices: Array = ["local", "remote"]
+	if slot["remote"] != null and slot["slots_free"]:
+		choices.append("both")
+	return {
+		"id": _request_id(slot["id"]), "cause": "write", "collection": COLLECTION, "record": slot["id"],
+		"local": _local_side(slot), "remote": _remote_side(slot, version),
+		"choices": choices, "state": state, "error": error,
+	}
+
+
+## S1: open the slot's request, or (a keep conflicted again) bring the open one up to date.
+func _open_slot(init: Dictionary, version: Variant) -> Variant:
+	var id: String = init["id"]
+	var slot: Dictionary
+	var have: Variant = _slots.get(id)
+	if have != null:
+		slot = have
+		var was_keeping: bool = slot["keeping"]
+		slot.merge(init, true)
+		slot["reopen"] = was_keeping
+	else:
+		slot = init.duplicate()
+		slot["keeping"] = false
+		slot["reopen"] = false
+	_slots[id] = slot
+	var rid := _request_id(id)
+	var view := _view(slot, version, "applying" if slot["keeping"] else "open", null)
+	if slot["keeping"]:
+		# The keep ends first; `_keep_slot` reopens the request for the person.
+		_merge.update(rid, view)
+		return _merge.find(rid)
+	return _merge.open(view, Callable(self, "_keep_slot").bind(id))
+
+
+func _close_slot(id: String, how: String) -> void:
+	_slots.erase(id)
+	_merge.close(_request_id(id), how)
+	changed.emit()
+
+
+## S4: answer the slot's request; the transfer's outcome settles it.
+func _keep_slot(choice: Variant, id: String) -> Dictionary:
+	var slot: Variant = _slots.get(id)
+	if slot == null:
+		return {"ok": false, "code": PKeyConstants.ErrorCode.SYNC_MERGE_CLOSED, "reopened": false}
+	var name := PKeyMergeRegistry.choice_name(choice)
+	# A keep that starts ends the last failure, as a write that starts does.
+	_last_failed = false
+	slot["keeping"] = true
+	slot["reopen"] = false
+	_merge.update(_request_id(id), {"state": "applying", "error": null})
+	changed.emit()
+	if name == "remote":
+		# Pull first, so the cache holds the copy the person chose (not this device's old one).
+		await _pull()
+		var rec: Variant = _d["records"].get_record(id)
+		if rec != null:
+			_seen[id] = rec["version"]
+		_close_slot(id, "remote")
+		return {"ok": true, "kept": "remote", "version": rec["version"] if rec != null else null}
+	if name == "both" and not slot["slots_free"]:
+		return _reopen(slot, "slots-full")
+	var mode: Dictionary = {"copy": true} if name == "both" else {"base_version": slot["remote_version"]}
+	var t := _run(id, slot["bytes"], slot["metadata"], slot["opts"], mode)
+	var out: Dictionary = await t.wait()
+	if String(out["state"]) == "done" and not out.has("kept"):
+		_close_slot(id, name)
+		var ok := {"ok": true, "kept": name, "version": out["version"]}
+		if out.has("copy_id"):
+			ok["copy_id"] = out["copy_id"]
+		return ok
+	if String(out["state"]) == "conflict":
+		return _reopen(slot, "conflict")
+	return _reopen(slot, String(out["error"]["code"]) if String(out["state"]) == "failed" else "cancelled")
+
+
+func _reopen(slot: Dictionary, code: String) -> Dictionary:
+	slot["keeping"] = false
+	var again: bool = slot["reopen"]
+	slot["reopen"] = false
+	var r: Variant = slot["remote"]
+	var rid := _request_id(slot["id"])
+	_merge.update(rid, _view(slot, r["version"] if r != null else null, "open", null if again else code))
+	if again:
+		_merge.reannounce(rid)
+	changed.emit()
+	return {"ok": false, "code": "conflict" if again else code, "reopened": true}
 
 
 ## The person's data is gone: cancel what runs, settle waiting writes, delete the journal and the chunk
@@ -733,7 +887,9 @@ func _conflict(id: String, metadata: Dictionary, size: int, server_version: Vari
 func purge() -> void:
 	var running := _live.duplicate()
 	_live.clear()
-	_conflicts.clear()
+	_slots.clear()
+	_seen.clear()
+	_merge.clear_extra()
 	_last_failed = false
 	changed.emit()
 	_d["records"].drop_all()

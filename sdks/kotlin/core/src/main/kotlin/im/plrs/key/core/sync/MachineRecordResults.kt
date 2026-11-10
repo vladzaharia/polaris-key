@@ -44,6 +44,11 @@ internal class MachineRecordResults(private val p: MachineParts) {
         if (ctx.r["status"].stringValue == "rejected") {
             core.events.add(SyncEvent.Rejected(op.mutationId, SyncNum.jsString(ctx.r, "code")))
             p.records.emitOutcome(op) { RecordOutcome.Rejected(it, SyncNum.jsString(ctx.r, "code")) }
+            // A terminal refusal of the keep reopens the request with the failure.
+            ctx.part.conflicts[rk]?.takeIf { it.keepChoice != null && it.keepMutationId == op.mutationId }?.let {
+                it.keepChoice = null
+                it.error = SyncNum.jsString(ctx.r, "code")
+            }
         }
         if (rk in ctx.part.held) rebase.on = ctx.part.records[rk]?.let { JsonPrimitive(it.version) } ?: JsonPrimitive("*")
     }
@@ -58,9 +63,16 @@ internal class MachineRecordResults(private val p: MachineParts) {
         }
         if (rk in ctx.part.held) rebase.on = JsonPrimitive(version)
         p.records.emitOutcome(op) { RecordOutcome.Ok(it, version) }
+        val kept = ctx.part.conflicts[rk]?.takeIf { it.keepChoice != null && it.keepMutationId == op.mutationId }
+        if (kept != null) {
+            p.merge.close(ctx.part, rk, kept.keepChoice!!)
+        } else if (op.op == "delete" && op.ticket == null) {
+            p.merge.close(ctx.part, rk, "superseded")
+        }
     }
 
     /** The resolution is a NEW mutation on the server's version; N is never resent. */
+    @Suppress("CyclomaticComplexMethod")
     private fun recordConflict(op: Op, ctx: ResultCtx, rk: String, server: JsonObject, rebase: Rebase) {
         val sv = JsonPrimitive(SyncNum.long(server["version"])!!)
         val row = p.rows.copyRow(ctx.part, "r:$rk", server, ctx.opened.conflicts[op.mutationId], ctx.cursor)
@@ -75,10 +87,25 @@ internal class MachineRecordResults(private val p: MachineParts) {
         val clientResolves = op.ticket == null && decl != null && op.op == "set"
         val better = clientResolves && p.rows.decidable(row) && p.pump.clientDecides(policy!!) &&
             p.rows.better(policy, p.rows.compared(op.value, field), p.rows.compared(server["value"], field))
-        val keepLocal = clientResolves && policy == "revision" && decl!!["resolve"].stringValue == "keepLocal"
-        if (rk in ctx.part.held || better || keepLocal) {
-            rebase.on = sv
-            rebase.value = op.value
+        val resolve = decl?.get("resolve").stringValue
+        val plainRevision = op.ticket == null && policy == "revision"
+        when {
+            plainRevision && op.op == "delete" -> {
+                // A delete that conflicts keeps the other copy and opens nothing; it ends the request.
+                p.merge.close(ctx.part, rk, "superseded")
+                if (rk in ctx.part.held) rebase.on = sv
+            }
+
+            plainRevision && op.op == "set" && (resolve == null || resolve == "keepRemote") -> {
+                // keepRemote is the host's inline decider: nothing is listed or sent. Otherwise a request opens.
+                val t = op.target as OpTarget.Record
+                if (resolve == "keepRemote") ctx.part.held.remove(rk) else p.merge.open(ctx.part, rk, t.collection, t.id, op)
+            }
+
+            rk in ctx.part.held || better || (clientResolves && plainRevision && resolve == "keepLocal") -> {
+                rebase.on = sv
+                rebase.value = op.value
+            }
         }
     }
 }

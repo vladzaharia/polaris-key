@@ -1,6 +1,6 @@
-# @pkey-feature sync.scenarios config.sync sync.e2e
+# @pkey-feature sync.scenarios config.sync sync.e2e sync.conflict
 # @pkey-feature sync.settings
-"""``sync-scenarios.json`` (v3): the Cloud Sync client state machine and the setting routes.
+"""``sync-scenarios.json`` (v5): the Cloud Sync client state machine and the setting routes.
 
 Mirrors ``conformance/runners/node/syncScenarios.test.ts``. ``settingCases`` and every scenario run in full;
 nothing is skipped.
@@ -38,7 +38,7 @@ _FILE_RECORD_CASES: List[Dict[str, Any]] = _FILE_RECORDS["scenarios"]
 
 
 def test_corpus_constants() -> None:
-    assert _CORPUS["syncScenariosVersion"] == SYNC_SCENARIOS_VERSION == 4
+    assert _CORPUS["syncScenariosVersion"] == SYNC_SCENARIOS_VERSION == 5
     assert _CORPUS["constants"] == {
         "debounceMs": SYNC_DEBOUNCE_MS,
         "signOutFlushMs": SYNC_SIGNOUT_FLUSH_MS,
@@ -64,6 +64,8 @@ def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
         return m.put_at(args[0], args[1], args[2], args[3], args[4] if len(args) > 4 else None)
     if name == "removeAt":
         return m.remove_at(args[0], args[1], args[2])
+    if name == "delete":
+        return m.delete(args[0], args[1])
     if name == "flush":
         return m.flush()
     if name == "refresh":
@@ -74,7 +76,7 @@ def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
 def test_file_record_family_vocabulary() -> None:
     assert _FILE_RECORDS["calls"] == ["putAt", "removeAt"]
     assert _FILE_RECORDS["asserts"] == ["rows", "outcomes"]
-    assert len(_FILE_RECORD_CASES) == 19
+    assert len(_FILE_RECORD_CASES) == 21
 
 
 _ALL = [*_SCENARIOS, *_FILE_RECORD_CASES]
@@ -125,6 +127,10 @@ def test_scenario(sc: Dict[str, Any]) -> None:
             m.receive(res, raw.get("opened"))
         elif kind == "root":
             m.set_root(raw.get("has") is True)
+        elif kind == "keep":
+            # Version 5: answer an open request. ``expect`` is given only for a refusal at once.
+            result = m.keep(raw["request"], raw["choice"])
+            assert result == raw.get("expect", {"ok": True}), where
         elif kind == "signIn":
             m.sign_in(raw["subject"])
         elif kind == "signOut":
@@ -158,6 +164,10 @@ def test_scenario(sc: Dict[str, Any]) -> None:
                 assert m.status() == raw["status"], f"{where}: status"
             if "encryptionSince" in raw:
                 assert m.encryption_since() == raw["encryptionSince"], f"{where}: encryptionSince"
+            if "conflicts" in raw:
+                assert m.conflicts() == raw["conflicts"], f"{where}: conflicts"
+            if "cloudEmpty" in raw:
+                assert m.cloud_empty() == raw["cloudEmpty"], f"{where}: cloudEmpty"
             if "licence" in raw:
                 assert licence == raw["licence"], f"{where}: licence"
         else:
