@@ -223,6 +223,14 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     // and the devices that signed in by restore.
     "identity_restore_keys",
     "identity_restore_origins",
+    // I-21.2 (plans/I-20.md §6): the product issuer. Registered clients and their secrets, the
+    // RS256 key ring (sealed private keys), each person's decision per client, and refresh tokens.
+    // Only src/services/identity/issuer/ touches them.
+    "identity_clients",
+    "identity_client_secrets",
+    "identity_issuer_keys",
+    "identity_client_grants",
+    "identity_refresh_tokens",
   ],
 };
 
