@@ -15,6 +15,11 @@ flushes (bounded) and signs it out. Rules kept here (plans/U-sync-clients-slices
       ring is forgotten and the synced data deleted, each tried whatever the other did: the root goes
       first, a failure is logged and never replaces the sign-out's own error, and nothing held means
       nothing to fail. The sign-in offer follows the forget.
+* S6b ``account_required`` keeps the machine as it stands (blocked, partition gone) instead of
+      rebuilding it empty, and the subject the Worker refused is not signed in again until a sign-out or
+      a different subject. A key-ring or file ``account_required`` calls :meth:`CloudSyncApi.account_required`,
+      so a device with no ``/sync`` traffic learns it too. The offered ``signInUrl`` is vetted (https on
+      the Worker's origin, else ``None``).
 * S7  No event, log line or error here carries a value or the root; events name keys only.
 
 Licence state is never read or written from this module.
@@ -28,7 +33,8 @@ from __future__ import annotations
 
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from urllib.parse import urlsplit
 
 from ..config.client import ConfigClient
 from ..constants_generated import SYNC_SIGNOUT_FLUSH_MS, Feature, MergeEvent
@@ -36,6 +42,7 @@ from ..core.context import CoreContext
 from .collection import SyncCollection
 from .host import CloudSyncHost
 from .merge import MergeRegistry, MergeRequest
+from .sign_in_url import safe_sign_in_url
 
 __all__ = ["CloudSyncApi", "CloudSyncClient"]
 
@@ -122,8 +129,13 @@ class CloudSyncApi:
         #: Delete the person's save-transfer journal and chunk cache (U-22.5).
         self._purge_saves = purge_saves
         self._ctx = ctx
+        #: The Worker's origin: the only host a sign-in offer may name.
+        parts = urlsplit(ctx.base_url)
+        self._origin = f"{parts.scheme}://{parts.netloc}"
         self._host = host
         self._keyring = keyring
+        # A key-ring route's ``account_required`` reaches the machine like a ``/sync`` one does.
+        keyring.on_account_required = self.account_required
         self._config = config
         #: The persisted subject of the signed-in account, or ``None``.
         self._stored_subject = subject
@@ -292,12 +304,17 @@ class CloudSyncApi:
             subject = None
         if subject is not None:
             self._sign_in(subject)
-        elif self._subject is not None:
-            self._leave()
+        else:
+            host.clear_refused()
+            if self._subject is not None:
+                self._leave()
 
     def _sign_in(self, subject: str) -> None:
         host = self._host
         if not host.started:
+            return
+        # The Worker took this subject's account away: only a sign-out or another subject lifts it.
+        if subject == host.refused:
             return
         # Another person: the first one leaves (unsent edits dropped, then forgotten) before this one
         # starts. The device credential is already the new person's, so nothing is sent for the old one.
@@ -319,6 +336,7 @@ class CloudSyncApi:
             return
         target = None if change == "signed_out" else subject
         if target is None:
+            self._host.clear_refused()
             return self._leave()
         if target != self._subject:
             self._sign_in(target)
@@ -340,6 +358,8 @@ class CloudSyncApi:
         """The identity client's pre-sign-out hook: flush (bounded), sign out, forget."""
         host = self._host
         self._drain_work()
+        if host.started:
+            host.clear_refused()
         if not host.started or self._subject is None:
             return
         self._forgot = False
@@ -364,6 +384,20 @@ class CloudSyncApi:
         host.touch()
         self._join_chain()
 
+    def account_required(self, sign_in_url: Optional[str]) -> None:
+        """A key-ring or file route answered ``account_required`` (V5 §11.5): the machine takes the same
+        transition as for a ``/sync`` 403. Runs on its own thread, so the route that saw it never waits
+        on a pump; never raises into it."""
+
+        def run() -> None:
+            try:
+                self._attach()
+                self._host.account_required(sign_in_url)
+            except Exception:  # noqa: BLE001
+                pass
+
+        self._spawn(run)
+
     def on_deactivated(self) -> None:
         """Called when the licence is deactivated: the principal is gone with the device."""
         self._drain_work()
@@ -378,11 +412,16 @@ class CloudSyncApi:
 
     def _on_events(self, events: List[Obj]) -> None:
         left = any(e.get("type") == "signedOut" and e.get("reason") in FORGETTING for e in events)
+        blocked = any(e.get("type") == "signedOut" and e.get("reason") == "accountRequired" for e in events)
+        was = self._subject
+        if blocked:
+            self._host.mark_refused(was)
         # The machine's `conflict` and `conflictClosed` become the registry's `conflictOpened` and
         # `conflictClosed`; they reach the stream from there, never raw.
         self._merge.feed(events)
         # The root leaves memory before anything else runs.
-        forgotten = self._forget_async() if left else None
+        # ``account_required`` keeps the machine as it stands; every other leave purges it.
+        forgotten = self._forget_async((was,) if blocked else None) if left else None
         offers = [e for e in events if e.get("type") == "signInOffered"]
         try:
             for e in events:
@@ -394,7 +433,7 @@ class CloudSyncApi:
                     self._config.note_sync_change(e["keys"], e["origin"])
                 if left and e.get("type") == "signInOffered":
                     continue
-                self._emit(e)
+                self._emit_vetted(e)
         finally:
             if forgotten is not None:
                 self._after(forgotten, offers)
@@ -406,11 +445,17 @@ class CloudSyncApi:
             forgotten.join()
             for e in offers or [{"type": "signInOffered", "signInUrl": None}]:
                 try:
-                    self._emit(e)
+                    self._emit_vetted(e)
                 except Exception:  # noqa: BLE001
                     pass
 
         self._spawn(run)
+
+    def _emit_vetted(self, e: Obj) -> None:
+        """The Worker's sign-in URL goes to the app only if it is a path or on the Worker's own origin."""
+        if e.get("type") == "signInOffered":
+            e = {"type": "signInOffered", "signInUrl": safe_sign_in_url(e.get("signInUrl"), self._origin)}
+        self._emit(e)
 
     def _spawn(self, fn: Callable[[], None]) -> threading.Thread:
         t = threading.Thread(target=fn, name="polaris-sync-forget", daemon=True)
@@ -449,7 +494,9 @@ class CloudSyncApi:
             # The root is already gone (``forget`` locks first); only the pin file failed to go.
             self._log("cloud sync: the key ring pin could not be removed")
 
-    def _purge(self) -> None:
+    def _purge(self, blocked: Optional[Tuple[Optional[str]]] = None) -> None:
+        """The save transfers, the pin, then the synced data. With ``blocked`` (after
+        ``account_required``) the data is not purged: the machine is saved as it stands."""
         self._tl.purging = True
         if self._purge_saves is not None:
             try:
@@ -459,7 +506,10 @@ class CloudSyncApi:
         # The save transfers are gone before the ring is forgotten.
         self._forget_pin()
         try:
-            self._host.purge()
+            if blocked is None:
+                self._host.purge()
+            else:
+                self._host.save_blocked(blocked[0])
         except Exception:  # noqa: BLE001
             self._log("cloud sync: the synced data could not be deleted")
             # The app hears of it too (no values, no path): it may warn the person.
@@ -487,13 +537,13 @@ class CloudSyncApi:
         if t.is_alive():
             self._log("cloud sync: the purge is still waiting on a request")
 
-    def _forget_async(self) -> threading.Thread:
+    def _forget_async(self, blocked: Optional[Tuple[Optional[str]]] = None) -> threading.Thread:
         """:meth:`_forget` for a caller inside a pump: the ring now, the purge on its own thread (it
         waits for that pump to end). A purge that is itself draining these events covers it."""
         self._forgot = True
         self._forget_ring()
         covered = bool(getattr(self._tl, "purging", False))
-        return self._spawn(lambda: None if covered else self._purge())
+        return self._spawn(lambda: None if covered else self._purge(blocked))
 
 
 class _Port:

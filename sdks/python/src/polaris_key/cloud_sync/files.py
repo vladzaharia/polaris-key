@@ -42,6 +42,7 @@ from ..constants_generated import (
 from ..core.bounded_body import read_capped_bytes, read_capped_text
 from ..core.context import CoreContext
 from ..core.errors import PolarisError
+from .sign_in_url import sign_in_url_of
 from .transfer import FileBody, FileQuery, FileReply, FileTarget, TransferError
 from .transfer_codec import SERVER_CHUNK_MAX_STORED_BYTES
 
@@ -206,9 +207,17 @@ class FileRoutes:
     """The routes of §13.2 as an engine ``FileTransport``. ``token`` is the device bearer now, or ``None``
     when signed out."""
 
-    def __init__(self, ctx: CoreContext, token: Callable[[], Optional[str]]) -> None:
+    def __init__(
+        self,
+        ctx: CoreContext,
+        token: Callable[[], Optional[str]],
+        on_account_required: Optional[Callable[[Optional[str]], None]] = None,
+    ) -> None:
         self._ctx = ctx
         self._token = token
+        #: Told when a route answers ``account_required`` (V5 §11.5), with the answer's ``signInUrl``
+        #: unvetted. The call still returns its refusal.
+        self._on_account_required = on_account_required
 
     # ── Paths ───────────────────────────────────────────────────────────────────────────────
 
@@ -296,14 +305,18 @@ class FileRoutes:
                 raise TransferError("rejected", code=e.code) from None
             raise
 
-    @staticmethod
-    def _refusal(status: int, headers: Dict[str, str], text: Optional[str]) -> FileReply:
+    def _refusal(self, status: int, headers: Dict[str, str], text: Optional[str]) -> FileReply:
         """The refusal an error answer is: the server's code, ``Retry-After``, and the body's extra members."""
         code, parsed = _parse_error_body(text or "")
         err = parsed.get("error")
         nested = err if isinstance(err, dict) else {}
         top = {k: v for k, v in parsed.items() if k != "error"}
         inner = {k: v for k, v in nested.items() if k not in ("code", "message")}
+        if status == 403 and code == ErrorCode.ACCOUNT_REQUIRED and self._on_account_required is not None:
+            try:
+                self._on_account_required(sign_in_url_of(parsed))
+            except Exception:  # noqa: BLE001 - never throws into the route that saw it
+                pass
         return FileReply.failure(
             status,
             code or _code_for_status(status),

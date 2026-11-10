@@ -38,7 +38,7 @@ _FILE_RECORD_CASES: List[Dict[str, Any]] = _FILE_RECORDS["scenarios"]
 
 
 def test_corpus_constants() -> None:
-    assert _CORPUS["syncScenariosVersion"] == SYNC_SCENARIOS_VERSION == 5
+    assert _CORPUS["syncScenariosVersion"] == SYNC_SCENARIOS_VERSION == 6
     assert _CORPUS["constants"] == {
         "debounceMs": SYNC_DEBOUNCE_MS,
         "signOutFlushMs": SYNC_SIGNOUT_FLUSH_MS,
@@ -70,6 +70,9 @@ def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
         return m.flush()
     if name == "refresh":
         return m.refresh()
+    if name == "accountRequired":
+        m.account_required(args[0] if args else None)
+        return {"ok": True}
     raise AssertionError(f"unknown call {name}")
 
 

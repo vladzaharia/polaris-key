@@ -510,6 +510,29 @@ class CloudSyncMachine:
         self._root = present
         self._gate_changed()
 
+    def account_required(self, sign_in_url: Optional[str] = None) -> None:
+        """The host saw ``account_required`` on a route the machine does not drive: a key-ring call or
+        a Cloud Sync file transfer (WIRE-CONTRACT-V5 §11.5). The same transition as the ``/sync`` 403.
+        Nothing happens with no subject, or when already blocked this way. A request in flight is
+        abandoned, so its answer is for the host to drop."""
+        if self._s["subject"] is None or self._s["blocked"] == "account_required":
+            return
+        self._account_required_leave(sign_in_url)
+
+    @property
+    def has_root(self) -> bool:
+        """Whether the device holds the ring's root (``set_root``); a relaunch carries it."""
+        return self._root
+
+    def _account_required_leave(self, sign_in_url: Optional[str]) -> None:
+        """``account_required`` (§11.5): the subject's partition is deleted whole, the root is
+        forgotten, and the device stays blocked, across a relaunch, until ``sign_in``. The unsynced
+        count is reported; its edits are not kept (no ``unsyncedData``)."""
+        self._leave("accountRequired", True)
+        self._root = False
+        self._s["blocked"] = "account_required"
+        self._events.append({"type": "signInOffered", "signInUrl": sign_in_url})
+
     def set_discovery(self, discovery: Optional[Obj]) -> None:
         """What discovery says about ``services.sync.encryption``. A Worker that omits the member is
         ``omitted``, the same refusal as ``server`` for an app that requires E2E. ``None`` forgets it."""
@@ -960,11 +983,7 @@ class CloudSyncMachine:
                 err: Obj = body["error"] if isinstance(body, dict) and isinstance(body.get("error"), dict) else {}
                 if err.get("code") == "account_required":
                     url = err.get("signInUrl")
-                    self._leave("accountRequired", False)
-                    self._s["blocked"] = "account_required"
-                    self._events.append(
-                        {"type": "signInOffered", "signInUrl": url if isinstance(url, str) else None}
-                    )
+                    self._account_required_leave(url if isinstance(url, str) else None)
                     return
                 # The journal is kept; a document refresh lifts either block.
                 self._s["blocked"] = "attestation" if err.get("code") == "attestation_required" else "forbidden"
@@ -2171,7 +2190,10 @@ class CloudSyncMachine:
             p["records"] = {}
             p["cursor"] = 0
             p.pop("empty", None)
-        p["signedOutAt"] = self._now
+        if reason == "accountRequired":
+            del self._s["partitions"][name]
+        else:
+            p["signedOutAt"] = self._now
         self._s["subject"] = None
         self._signing_out = None
         self._in_flight = None
@@ -2202,6 +2224,7 @@ def relaunch(machine: CloudSyncMachine, opts: Obj, journal: str = "kept") -> Clo
                 **opts,
                 "now": machine.now,
                 "network": machine.network_state,
+                "hasRoot": machine.has_root,
                 "offsetMs": 0,
                 "contacted": False,
                 "subject": saved["subject"],
@@ -2209,4 +2232,6 @@ def relaunch(machine: CloudSyncMachine, opts: Obj, journal: str = "kept") -> Clo
                 "imported": saved["imported"],
             }
         )
-    return CloudSyncMachine({**opts, "now": machine.now, "network": machine.network_state}, saved)
+    return CloudSyncMachine(
+        {**opts, "now": machine.now, "network": machine.network_state, "hasRoot": machine.has_root}, saved
+    )
