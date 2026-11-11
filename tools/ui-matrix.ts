@@ -149,6 +149,9 @@ export interface Row {
   input: Obj;
   expect: Expect;
   mustNot?: MustNot;
+  /** The SDKs and kits that cannot do what the row shows. They check the view the shared rules
+   *  give and draw nothing for it (CC-29K.3: a camera scan has no web, desktop or game surface). */
+  notApplicable?: { sdks: string[]; reason: string };
 }
 export interface ThemeRow {
   name: string;
@@ -866,6 +869,8 @@ interface Opts {
   /** Copy keys of the controls the row draws disabled (`expect.disabled`). */
   disabled?: string[];
   mustNot?: Omit<MustNot, "invariant"> & { invariant?: string };
+  /** SDKs that cannot draw this row (Row.notApplicable). */
+  notApplicable?: Row["notApplicable"];
 }
 
 function authoring(S: UiMatrixSources) {
@@ -905,6 +910,7 @@ function authoring(S: UiMatrixSources) {
     if (o.actions) d.extraActions = o.actions;
     if (o.dropActions) d.dropActions = o.dropActions;
     if (o.disabled) d.expect.disabled = [...o.disabled].sort();
+    if (o.notApplicable) d.notApplicable = o.notApplicable;
     if (o.mustNot)
       d.mustNot = {
         ...o.mustNot,
@@ -3952,6 +3958,7 @@ function finish(d: Draft): Row {
       if (d.mustNot[k]?.length) m[k] = [...d.mustNot[k]!].sort();
     out.mustNot = m;
   }
+  if (d.notApplicable) out.notApplicable = d.notApplicable;
   return out;
 }
 
@@ -7198,6 +7205,278 @@ function localFamily(a: A): Draft[] {
   const list = (step: string, extra: Obj, n: Obj[]): Obj => ({
     pairedDevices: { step, devices: n, ...extra },
   });
+  // Scanning needs a camera: the SwiftUI kit on iOS and iPadOS and the Compose kit's Play build.
+  const SCAN_NA = {
+    sdks: ["react", "elements", "node", "python", "godot"],
+    reason:
+      "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere.",
+  };
+  const SCAN_SHARES = ["linkPairing.shares"];
+  const scanRows = (): Draft[] => [
+    row(
+      `${LP}/choose: Scan a code leads where the device can scan`,
+      pair("choose", { canScan: true }),
+      LP,
+      "choose",
+      [
+        "localPairing.title",
+        "localPairing.chooseBody",
+        "localPairing.scan",
+        "localPairing.show",
+        "common.cancel",
+      ],
+      {
+        notApplicable: SCAN_NA,
+        mustNot: {
+          invariant:
+            "Typing is reached from the scan screens: choose has no Enter a code beside Scan a code.",
+          copy: ["localPairing.enter"],
+        },
+      },
+    ),
+    row(
+      `${LP}/choose: a scanner sheet of the host's own, typing is a link`,
+      pair("choose", { canScan: true, sheetScan: true }),
+      LP,
+      "choose",
+      [
+        "localPairing.title",
+        "localPairing.chooseBody",
+        "localPairing.scan",
+        "localPairing.show",
+        "localPairing.enterInstead",
+        "common.cancel",
+      ],
+      { notApplicable: SCAN_NA },
+    ),
+    row(
+      `${LP}/choose: another app's code, the scan entry stays`,
+      pair("choose", { canScan: true, otherApp: true }),
+      LP,
+      "choose",
+      [
+        "localPairing.title",
+        "localPairing.chooseBody",
+        "localPairing.otherApp",
+        "localPairing.scan",
+        "localPairing.show",
+        "common.cancel",
+      ],
+      { notApplicable: SCAN_NA },
+    ),
+    row(
+      `${LP}/choose: Scan a code with the network prompt not yet answered`,
+      pair("choose", { canScan: true, prePrompt: true }),
+      LP,
+      "choose",
+      [
+        "localPairing.title",
+        "localPairing.chooseBody",
+        "localPairing.scan",
+        "localPairing.show",
+        "localPairing.prePrompt",
+        "common.cancel",
+      ],
+      { notApplicable: SCAN_NA },
+    ),
+    row(
+      `${LP}/choose: no room, Scan a code drawn disabled`,
+      pair("choose", { canScan: true, full: true, prePrompt: true }),
+      LP,
+      "choose",
+      [
+        "localPairing.title",
+        "localPairing.chooseBody",
+        "localPairing.scan",
+        "localPairing.show",
+        "core.codes.local-links-full.title",
+        "core.codes.local-links-full.message",
+        "localPairing.pairedDevices",
+        "common.cancel",
+      ],
+      {
+        disabled: ["localPairing.scan", "localPairing.show"],
+        notApplicable: SCAN_NA,
+      },
+    ),
+    row(
+      `${LP}/scan-prompt: once, before the system asks for the camera`,
+      pair("scan-prompt", { canScan: true }),
+      LP,
+      "scan-prompt",
+      [
+        "localPairing.cameraPromptTitle",
+        "localPairing.cameraPrePrompt",
+        "common.continue",
+        "localPairing.enterInstead",
+      ],
+      {
+        notApplicable: SCAN_NA,
+        mustNot: {
+          invariant:
+            "The pre-prompt asks nothing of the camera: no view, no digits, no Pair.",
+          copy: [
+            "a11y.cameraView",
+            "localPairing.pair",
+            "localPairing.codeLabel",
+          ],
+        },
+      },
+    ),
+    row(
+      `${LP}/scan: the camera view, one quiet link to typing`,
+      pair("scan", { canScan: true, categories: CATS }),
+      LP,
+      "scan",
+      [
+        "localPairing.title",
+        "localPairing.scanBody",
+        "a11y.cameraView",
+        ...SCAN_SHARES,
+        "localPairing.enterInstead",
+        "common.cancel",
+      ],
+      {
+        notApplicable: SCAN_NA,
+        mustNot: {
+          invariant:
+            "A scan screen shows no digits and no Pair: a code that reads pairs, which is the person's yes.",
+          copy: [
+            "localPairing.pair",
+            "localPairing.codeLabel",
+            "localPairing.otherApp",
+          ],
+        },
+      },
+    ),
+    row(
+      `${LP}/scan: nothing shared`,
+      pair("scan", { canScan: true, categories: [] }),
+      LP,
+      "scan",
+      [
+        "localPairing.title",
+        "localPairing.scanBody",
+        "a11y.cameraView",
+        "linkPairing.sharesNone",
+        "localPairing.enterInstead",
+        "common.cancel",
+      ],
+      { notApplicable: SCAN_NA },
+    ),
+    row(
+      `${LP}/scan: another app's code, scanning goes on`,
+      pair("scan", { canScan: true, categories: CATS, otherApp: true }),
+      LP,
+      "scan",
+      [
+        "localPairing.title",
+        "localPairing.scanBody",
+        "a11y.cameraView",
+        "localPairing.otherApp",
+        ...SCAN_SHARES,
+        "localPairing.enterInstead",
+        "common.cancel",
+      ],
+      {
+        notApplicable: SCAN_NA,
+        mustNot: {
+          invariant:
+            "Another app's code is not dialled, is not an error screen and never ends the scan.",
+          copy: ["localPairing.notACode", "linkPairing.failedTitle"],
+          states: ["failed", "enter"],
+        },
+      },
+    ),
+    row(
+      `${LP}/camera-off: access denied, Open Settings and typing`,
+      pair("camera-off", {
+        canScan: true,
+        canOpenSettings: true,
+        categories: CATS,
+      }),
+      LP,
+      "camera-off",
+      [
+        "localPairing.title",
+        "localPairing.cameraOffTitle",
+        "localPairing.cameraOffBody",
+        "localPairing.openSettings",
+        ...SCAN_SHARES,
+        "localPairing.enterInstead",
+        "common.cancel",
+      ],
+      {
+        notApplicable: SCAN_NA,
+        mustNot: {
+          invariant:
+            "A denied camera is a state of its own, never a blank view.",
+          copy: ["a11y.cameraView"],
+        },
+      },
+    ),
+    row(
+      `${LP}/camera-off: nothing shared`,
+      pair("camera-off", {
+        canScan: true,
+        canOpenSettings: true,
+        categories: [],
+      }),
+      LP,
+      "camera-off",
+      [
+        "localPairing.title",
+        "localPairing.cameraOffTitle",
+        "localPairing.cameraOffBody",
+        "localPairing.openSettings",
+        "linkPairing.sharesNone",
+        "localPairing.enterInstead",
+        "common.cancel",
+      ],
+      { notApplicable: SCAN_NA },
+    ),
+    row(
+      `${LP}/enter: Scan the code instead replaces Show a code instead`,
+      pair("enter", {
+        canScan: true,
+        entry: "4812 3456",
+        categories: CATS,
+        triesLeft: 2,
+      }),
+      LP,
+      "enter",
+      [
+        ...ENTER.filter((k) => k !== "localPairing.toShow"),
+        "localPairing.scanInstead",
+      ],
+      { notApplicable: SCAN_NA, mustNot: { copy: ["localPairing.toShow"] } },
+    ),
+    row(
+      `${LP}/opening: Scan a code instead while the window opens`,
+      pair("opening", { canScan: true }),
+      LP,
+      "opening",
+      [
+        "localPairing.title",
+        "localPairing.showBody",
+        "a11y.busy",
+        "localPairing.toScan",
+        "common.cancel",
+      ],
+      { notApplicable: SCAN_NA },
+    ),
+    row(
+      `${LP}/show: Scan a code instead of typing on the other device`,
+      pair("show", { ...WINDOW, canScan: true }),
+      LP,
+      "show",
+      [
+        ...SHOW.filter((k) => k !== "localPairing.toEnter"),
+        "localPairing.toScan",
+      ],
+      { notApplicable: SCAN_NA },
+    ),
+  ];
   return [
     row(
       `${LP}/choose: either device can show the code`,
@@ -8039,6 +8318,7 @@ function localFamily(a: A): Draft[] {
       "hidden",
       [],
     ),
+    ...scanRows(),
   ];
 }
 

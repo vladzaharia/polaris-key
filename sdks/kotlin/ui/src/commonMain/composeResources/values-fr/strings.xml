@@ -2420,6 +2420,32 @@
     <string name="localPairing_tooManyAgainBody">Quelqu’un à proximité essaie peut-être de deviner des codes.</string>
     <!-- Pair with a Code: network blocked: where the system can deep-link. -->
     <string name="localPairing_openSettings">Ouvrir les réglages</string>
+    <!-- Pair with a Code: choose: this device scans the other device's code (phones with a camera; first). -->
+    <string name="localPairing_scan">Scanner un code</string>
+    <string name="localPairing_scan__macos">Scanner un code</string>
+    <!-- Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera. -->
+    <string name="localPairing_cameraPromptTitle">Scanner le code</string>
+    <!-- Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name. Arguments: 1=app. -->
+    <string name="localPairing_cameraPrePrompt">Autorisez ensuite %1$s à utiliser l’appareil photo pour scanner le code.</string>
+    <!-- Pair with a Code: scan: the lede over the camera view. -->
+    <string name="localPairing_scanBody">Visez le code affiché sur l’autre appareil.</string>
+    <!-- Pair with a Code: scan: the camera view's accessible name. -->
+    <string name="a11y_cameraView">Vue de l’appareil photo</string>
+    <!-- Pair with a Code: scan, camera pre-prompt and camera off: the link back to typing the code. -->
+    <string name="localPairing_enterInstead">Saisir le code à la place</string>
+    <string name="localPairing_enterInstead__macos">Saisir le code à la place</string>
+    <!-- Pair with a Code: scan: a QR for another app; scanning goes on. -->
+    <string name="localPairing_otherApp">Ce code est destiné à une autre app.</string>
+    <!-- Pair with a Code: camera off: the title when camera access is denied. -->
+    <string name="localPairing_cameraOffTitle">L’accès à l’appareil photo est désactivé</string>
+    <!-- Pair with a Code: camera off: where to allow it; Open Settings follows. -->
+    <string name="localPairing_cameraOffBody">Autorisez-le dans les Réglages.</string>
+    <!-- Pair with a Code: enter: the link to scanning. -->
+    <string name="localPairing_scanInstead">Scanner le code à la place</string>
+    <string name="localPairing_scanInstead__macos">Scanner le code à la place</string>
+    <!-- Pair with a Code: show: the link to scanning. -->
+    <string name="localPairing_toScan">Scanner un code à la place</string>
+    <string name="localPairing_toScan__macos">Scanner un code à la place</string>
     <!-- Pair with a Code: enter: the lede. -->
     <string name="localPairing_enterBody">Saisissez le code affiché sur l’autre appareil.</string>
     <!-- Pair with a Code: enter: the field's label. -->

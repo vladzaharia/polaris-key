@@ -348,7 +348,19 @@ export interface LocalPairingInput {
     | "paired"
     | "failed"
     | "network-blocked"
-    | "off";
+    | "off"
+    | "scan-prompt"
+    | "scan"
+    | "camera-off";
+  /** choose, opening, show and enter: this device can scan a code (a phone with a camera, or the
+   *  Play build's scanner). Scan a code leads on choose and replaces the typing and showing links. */
+  canScan?: boolean;
+  /** choose: the scanner is the host's own sheet (Google's on Android), with no scan screens of ours, so
+   *  the way to typing is a link on choose. */
+  sheetScan?: boolean;
+  /** scan, and choose where Google's scanner has no screen of ours: the last code read was
+   *  another app's; scanning goes on (the scan entry stays). */
+  otherApp?: boolean;
   /** choose: the system has not asked about the local network yet. */
   prePrompt?: boolean;
   /** choose: this device holds the most pairings, so neither button works. */

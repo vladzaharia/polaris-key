@@ -48,6 +48,9 @@ export type LocalPairingState =
   | "failed"
   | "network-blocked"
   | "off"
+  | "scan-prompt"
+  | "scan"
+  | "camera-off"
   | "hidden";
 
 /** The categories line: the heading, or the words that nothing is shared. */
@@ -73,8 +76,11 @@ export function localPairingView(
         copy: [
           "localPairing.title",
           "localPairing.chooseBody",
+          p.otherApp && "localPairing.otherApp",
+          p.canScan && "localPairing.scan",
           "localPairing.show",
-          "localPairing.enter",
+          !p.canScan && "localPairing.enter",
+          p.canScan && p.sheetScan && "localPairing.enterInstead",
           p.prePrompt && !p.full && "localPairing.prePrompt",
           p.full && "core.codes.local-links-full.title",
           p.full && "core.codes.local-links-full.message",
@@ -82,7 +88,12 @@ export function localPairingView(
           "common.cancel",
         ],
         args: { app },
-        disabled: p.full ? ["localPairing.show", "localPairing.enter"] : [],
+        disabled: p.full
+          ? [
+              p.canScan ? "localPairing.scan" : "localPairing.enter",
+              "localPairing.show",
+            ]
+          : [],
         tone: p.full ? "neutral" : null,
         // Neither way is the primary: either device can show the code.
         focus: "heading",
@@ -96,7 +107,7 @@ export function localPairingView(
           "localPairing.title",
           "localPairing.showBody",
           "a11y.busy",
-          "localPairing.toEnter",
+          p.canScan ? "localPairing.toScan" : "localPairing.toEnter",
           "common.cancel",
         ],
         focus: "heading",
@@ -113,7 +124,7 @@ export function localPairingView(
           "a11y.qrPairing",
           "localPairing.expires",
           "localPairing.waitingDevice",
-          "localPairing.toEnter",
+          p.canScan ? "localPairing.toScan" : "localPairing.toEnter",
           "common.cancel",
           (n === "rotated" || n === "guessing") && "localPairing.rotatedTitle",
           n === "rotated" && "localPairing.rotatedBody",
@@ -160,6 +171,51 @@ export function localPairingView(
         focus: cooling ? "heading" : shown,
       });
     }
+    case "scan-prompt":
+      // Once, before the system asks for the camera: the person's own words come first.
+      return makeView(ctx, C, {
+        state: "scan-prompt",
+        copy: [
+          "localPairing.cameraPromptTitle",
+          "localPairing.cameraPrePrompt",
+          "common.continue",
+          "localPairing.enterInstead",
+        ],
+        args: { app },
+        primary: "common.continue",
+        focus: "heading",
+      });
+    case "scan":
+      // Pairs as soon as a code reads: a QR is this person's yes, so the categories come first.
+      return makeView(ctx, C, {
+        state: "scan",
+        copy: [
+          "localPairing.title",
+          "localPairing.scanBody",
+          "a11y.cameraView",
+          p.otherApp && "localPairing.otherApp",
+          sharesKey(p.categories),
+          "localPairing.enterInstead",
+          "common.cancel",
+        ],
+        tone: p.otherApp ? "danger" : null,
+        focus: "heading",
+      });
+    case "camera-off":
+      return makeView(ctx, C, {
+        state: "camera-off",
+        copy: [
+          "localPairing.title",
+          "localPairing.cameraOffTitle",
+          "localPairing.cameraOffBody",
+          p.canOpenSettings !== false && "localPairing.openSettings",
+          sharesKey(p.categories),
+          "localPairing.enterInstead",
+          "common.cancel",
+        ],
+        tone: "neutral",
+        focus: "heading",
+      });
     case "enter":
     case "joining": {
       const busy = p.step === "joining";
@@ -174,7 +230,11 @@ export function localPairingView(
           !busy && !p.entry && "localPairing.codePlaceholder",
           sharesKey(p.categories),
           "localPairing.pair",
-          busy ? "a11y.busy" : "localPairing.toShow",
+          busy
+            ? "a11y.busy"
+            : p.canScan
+              ? "localPairing.scanInstead"
+              : "localPairing.toShow",
           busy ? "common.cancel" : "common.back",
           !busy && e === "wrong" && "localPairing.wrongCode",
           !busy &&

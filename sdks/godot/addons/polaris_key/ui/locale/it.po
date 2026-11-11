@@ -6419,6 +6419,81 @@ msgstr "Qualcuno nelle vicinanze potrebbe stare provando dei codici."
 msgid "localPairing.openSettings"
 msgstr "Apri impostazioni"
 
+#. Scan a code
+#. Pair with a Code: choose: this device scans the other device's code (phones with a camera; first).
+msgid "localPairing.scan"
+msgstr "Scansiona un codice"
+
+#. macos: Scan a Code
+msgctxt "macos"
+msgid "localPairing.scan"
+msgstr "Scansiona un codice"
+
+#. Scan the code
+#. Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera.
+msgid "localPairing.cameraPromptTitle"
+msgstr "Scansiona il codice"
+
+#. Next, allow {app} to use the camera, so you can scan the code.
+#. Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name.
+msgid "localPairing.cameraPrePrompt"
+msgstr "Ora consenti a {app} di usare la fotocamera, così puoi scansionare il codice."
+
+#. Point at the code on the other device.
+#. Pair with a Code: scan: the lede over the camera view.
+msgid "localPairing.scanBody"
+msgstr "Inquadra il codice sull’altro dispositivo."
+
+#. Camera view
+#. Pair with a Code: scan: the camera view's accessible name.
+msgid "a11y.cameraView"
+msgstr "Vista della fotocamera"
+
+#. Enter the code instead
+#. Pair with a Code: scan, camera pre-prompt and camera off: the link back to typing the code.
+msgid "localPairing.enterInstead"
+msgstr "Inserisci invece il codice"
+
+#. macos: Enter the Code Instead
+msgctxt "macos"
+msgid "localPairing.enterInstead"
+msgstr "Inserisci invece il codice"
+
+#. This code is for another app.
+#. Pair with a Code: scan: a QR for another app; scanning goes on.
+msgid "localPairing.otherApp"
+msgstr "Questo codice è per un’altra app."
+
+#. Camera access is off
+#. Pair with a Code: camera off: the title when camera access is denied.
+msgid "localPairing.cameraOffTitle"
+msgstr "L’accesso alla fotocamera è disattivato"
+
+#. Allow it in Settings.
+#. Pair with a Code: camera off: where to allow it; Open Settings follows.
+msgid "localPairing.cameraOffBody"
+msgstr "Consentilo in Impostazioni."
+
+#. Scan the code instead
+#. Pair with a Code: enter: the link to scanning.
+msgid "localPairing.scanInstead"
+msgstr "Scansiona invece il codice"
+
+#. macos: Scan the Code Instead
+msgctxt "macos"
+msgid "localPairing.scanInstead"
+msgstr "Scansiona invece il codice"
+
+#. Scan a code instead
+#. Pair with a Code: show: the link to scanning.
+msgid "localPairing.toScan"
+msgstr "Scansiona invece un codice"
+
+#. macos: Scan a Code Instead
+msgctxt "macos"
+msgid "localPairing.toScan"
+msgstr "Scansiona invece un codice"
+
 #. Enter the code from the other device.
 #. Pair with a Code: enter: the lede.
 msgid "localPairing.enterBody"

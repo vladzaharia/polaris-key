@@ -9566,6 +9566,61 @@
       "role": "button",
       "note": "Pair with a Code: network blocked: where the system can deep-link."
     },
+    "localPairing.scan": {
+      "value": "Scan a code",
+      "role": "button",
+      "note": "Pair with a Code: choose: this device scans the other device's code (phones with a camera; first)."
+    },
+    "localPairing.cameraPromptTitle": {
+      "value": "Scan the code",
+      "role": "title",
+      "note": "Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera."
+    },
+    "localPairing.cameraPrePrompt": {
+      "value": "Next, allow {app} to use the camera, so you can scan the code.",
+      "role": "body",
+      "note": "Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name."
+    },
+    "localPairing.scanBody": {
+      "value": "Point at the code on the other device.",
+      "role": "body",
+      "note": "Pair with a Code: scan: the lede over the camera view."
+    },
+    "a11y.cameraView": {
+      "value": "Camera view",
+      "role": "a11y",
+      "note": "Pair with a Code: scan: the camera view's accessible name."
+    },
+    "localPairing.enterInstead": {
+      "value": "Enter the code instead",
+      "role": "button",
+      "note": "Pair with a Code: scan, camera pre-prompt and camera off: the link back to typing the code."
+    },
+    "localPairing.otherApp": {
+      "value": "This code is for another app.",
+      "role": "body",
+      "note": "Pair with a Code: scan: a QR for another app; scanning goes on."
+    },
+    "localPairing.cameraOffTitle": {
+      "value": "Camera access is off",
+      "role": "label",
+      "note": "Pair with a Code: camera off: the title when camera access is denied."
+    },
+    "localPairing.cameraOffBody": {
+      "value": "Allow it in Settings.",
+      "role": "body",
+      "note": "Pair with a Code: camera off: where to allow it; Open Settings follows."
+    },
+    "localPairing.scanInstead": {
+      "value": "Scan the code instead",
+      "role": "button",
+      "note": "Pair with a Code: enter: the link to scanning."
+    },
+    "localPairing.toScan": {
+      "value": "Scan a code instead",
+      "role": "button",
+      "note": "Pair with a Code: show: the link to scanning."
+    },
     "localPairing.enterBody": {
       "value": "Enter the code from the other device.",
       "role": "body",

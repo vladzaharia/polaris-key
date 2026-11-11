@@ -2420,6 +2420,32 @@
     <string name="localPairing_tooManyAgainBody">Alguém por perto pode estar tentando adivinhar códigos.</string>
     <!-- Pair with a Code: network blocked: where the system can deep-link. -->
     <string name="localPairing_openSettings">Abrir ajustes</string>
+    <!-- Pair with a Code: choose: this device scans the other device's code (phones with a camera; first). -->
+    <string name="localPairing_scan">Escanear um código</string>
+    <string name="localPairing_scan__macos">Escanear um código</string>
+    <!-- Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera. -->
+    <string name="localPairing_cameraPromptTitle">Escanear o código</string>
+    <!-- Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name. Arguments: 1=app. -->
+    <string name="localPairing_cameraPrePrompt">Agora, permita que %1$s use a câmera para escanear o código.</string>
+    <!-- Pair with a Code: scan: the lede over the camera view. -->
+    <string name="localPairing_scanBody">Aponte para o código no outro dispositivo.</string>
+    <!-- Pair with a Code: scan: the camera view's accessible name. -->
+    <string name="a11y_cameraView">Visualização da câmera</string>
+    <!-- Pair with a Code: scan, camera pre-prompt and camera off: the link back to typing the code. -->
+    <string name="localPairing_enterInstead">Digitar o código</string>
+    <string name="localPairing_enterInstead__macos">Digitar o código</string>
+    <!-- Pair with a Code: scan: a QR for another app; scanning goes on. -->
+    <string name="localPairing_otherApp">Este código é de outro app.</string>
+    <!-- Pair with a Code: camera off: the title when camera access is denied. -->
+    <string name="localPairing_cameraOffTitle">O acesso à câmera está desativado</string>
+    <!-- Pair with a Code: camera off: where to allow it; Open Settings follows. -->
+    <string name="localPairing_cameraOffBody">Permita nos Ajustes.</string>
+    <!-- Pair with a Code: enter: the link to scanning. -->
+    <string name="localPairing_scanInstead">Escanear o código</string>
+    <string name="localPairing_scanInstead__macos">Escanear o código</string>
+    <!-- Pair with a Code: show: the link to scanning. -->
+    <string name="localPairing_toScan">Escanear um código</string>
+    <string name="localPairing_toScan__macos">Escanear um código</string>
     <!-- Pair with a Code: enter: the lede. -->
     <string name="localPairing_enterBody">Insira o código do outro dispositivo.</string>
     <!-- Pair with a Code: enter: the field's label. -->

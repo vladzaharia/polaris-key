@@ -6393,6 +6393,81 @@ msgstr "附近可能有人在猜测验证码。"
 msgid "localPairing.openSettings"
 msgstr "打开设置"
 
+#. Scan a code
+#. Pair with a Code: choose: this device scans the other device's code (phones with a camera; first).
+msgid "localPairing.scan"
+msgstr "扫描代码"
+
+#. macos: Scan a Code
+msgctxt "macos"
+msgid "localPairing.scan"
+msgstr "扫描代码"
+
+#. Scan the code
+#. Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera.
+msgid "localPairing.cameraPromptTitle"
+msgstr "扫描代码"
+
+#. Next, allow {app} to use the camera, so you can scan the code.
+#. Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name.
+msgid "localPairing.cameraPrePrompt"
+msgstr "接下来，请允许 {app} 使用相机，以便扫描代码。"
+
+#. Point at the code on the other device.
+#. Pair with a Code: scan: the lede over the camera view.
+msgid "localPairing.scanBody"
+msgstr "将相机对准另一台设备上的代码。"
+
+#. Camera view
+#. Pair with a Code: scan: the camera view's accessible name.
+msgid "a11y.cameraView"
+msgstr "相机取景"
+
+#. Enter the code instead
+#. Pair with a Code: scan, camera pre-prompt and camera off: the link back to typing the code.
+msgid "localPairing.enterInstead"
+msgstr "改为输入代码"
+
+#. macos: Enter the Code Instead
+msgctxt "macos"
+msgid "localPairing.enterInstead"
+msgstr "改为输入代码"
+
+#. This code is for another app.
+#. Pair with a Code: scan: a QR for another app; scanning goes on.
+msgid "localPairing.otherApp"
+msgstr "此代码属于其他应用。"
+
+#. Camera access is off
+#. Pair with a Code: camera off: the title when camera access is denied.
+msgid "localPairing.cameraOffTitle"
+msgstr "相机访问已关闭"
+
+#. Allow it in Settings.
+#. Pair with a Code: camera off: where to allow it; Open Settings follows.
+msgid "localPairing.cameraOffBody"
+msgstr "请在“设置”中允许。"
+
+#. Scan the code instead
+#. Pair with a Code: enter: the link to scanning.
+msgid "localPairing.scanInstead"
+msgstr "改为扫描代码"
+
+#. macos: Scan the Code Instead
+msgctxt "macos"
+msgid "localPairing.scanInstead"
+msgstr "改为扫描代码"
+
+#. Scan a code instead
+#. Pair with a Code: show: the link to scanning.
+msgid "localPairing.toScan"
+msgstr "改为扫描代码"
+
+#. macos: Scan a Code Instead
+msgctxt "macos"
+msgid "localPairing.toScan"
+msgstr "改为扫描代码"
+
 #. Enter the code from the other device.
 #. Pair with a Code: enter: the lede.
 msgid "localPairing.enterBody"

@@ -2394,6 +2394,32 @@
     <string name="localPairing_tooManyAgainBody">근처의 누군가가 코드를 추측하고 있을 수 있습니다.</string>
     <!-- Pair with a Code: network blocked: where the system can deep-link. -->
     <string name="localPairing_openSettings">설정 열기</string>
+    <!-- Pair with a Code: choose: this device scans the other device's code (phones with a camera; first). -->
+    <string name="localPairing_scan">코드 스캔</string>
+    <string name="localPairing_scan__macos">코드 스캔</string>
+    <!-- Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera. -->
+    <string name="localPairing_cameraPromptTitle">코드 스캔</string>
+    <!-- Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name. Arguments: 1=app. -->
+    <string name="localPairing_cameraPrePrompt">이제 코드를 스캔할 수 있도록 %1$s에서 카메라를 사용하도록 허용하세요.</string>
+    <!-- Pair with a Code: scan: the lede over the camera view. -->
+    <string name="localPairing_scanBody">다른 기기의 코드를 향해 카메라를 맞추세요.</string>
+    <!-- Pair with a Code: scan: the camera view's accessible name. -->
+    <string name="a11y_cameraView">카메라 보기</string>
+    <!-- Pair with a Code: scan, camera pre-prompt and camera off: the link back to typing the code. -->
+    <string name="localPairing_enterInstead">대신 코드 입력</string>
+    <string name="localPairing_enterInstead__macos">대신 코드 입력</string>
+    <!-- Pair with a Code: scan: a QR for another app; scanning goes on. -->
+    <string name="localPairing_otherApp">이 코드는 다른 앱용입니다.</string>
+    <!-- Pair with a Code: camera off: the title when camera access is denied. -->
+    <string name="localPairing_cameraOffTitle">카메라 접근이 꺼져 있음</string>
+    <!-- Pair with a Code: camera off: where to allow it; Open Settings follows. -->
+    <string name="localPairing_cameraOffBody">설정에서 허용하세요.</string>
+    <!-- Pair with a Code: enter: the link to scanning. -->
+    <string name="localPairing_scanInstead">대신 코드 스캔</string>
+    <string name="localPairing_scanInstead__macos">대신 코드 스캔</string>
+    <!-- Pair with a Code: show: the link to scanning. -->
+    <string name="localPairing_toScan">대신 코드 스캔</string>
+    <string name="localPairing_toScan__macos">대신 코드 스캔</string>
     <!-- Pair with a Code: enter: the lede. -->
     <string name="localPairing_enterBody">다른 기기의 코드를 입력하세요.</string>
     <!-- Pair with a Code: enter: the field's label. -->

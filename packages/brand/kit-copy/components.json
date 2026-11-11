@@ -1745,7 +1745,10 @@
           "copy": [
             "localPairing.title",
             "localPairing.chooseBody",
+            "localPairing.otherApp",
+            "localPairing.scan",
             "localPairing.show",
+            "localPairing.enterInstead",
             "localPairing.enter",
             "localPairing.prePrompt",
             "localPairing.pairedDevices",
@@ -1760,6 +1763,7 @@
             "localPairing.showBody",
             "a11y.busy",
             "localPairing.toEnter",
+            "localPairing.toScan",
             "common.cancel"
           ]
         },
@@ -1772,6 +1776,7 @@
             "localPairing.expires",
             "localPairing.waitingDevice",
             "localPairing.toEnter",
+            "localPairing.toScan",
             "localPairing.rotatedTitle",
             "localPairing.rotatedBody",
             "localPairing.notPairedWith",
@@ -1806,6 +1811,7 @@
             "linkPairing.sharesNone",
             "localPairing.pair",
             "localPairing.toShow",
+            "localPairing.scanInstead",
             "localPairing.wrongCode",
             "localPairing.triesLeft",
             "localPairing.cooldownTitle",
@@ -1888,6 +1894,38 @@
             "core.codes.local-pairing-off.title",
             "core.codes.local-pairing-off.message",
             "common.close"
+          ]
+        },
+        "scan-prompt": {
+          "copy": [
+            "localPairing.cameraPromptTitle",
+            "localPairing.cameraPrePrompt",
+            "common.continue",
+            "localPairing.enterInstead"
+          ]
+        },
+        "scan": {
+          "copy": [
+            "localPairing.title",
+            "localPairing.scanBody",
+            "a11y.cameraView",
+            "localPairing.otherApp",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "localPairing.enterInstead",
+            "common.cancel"
+          ]
+        },
+        "camera-off": {
+          "copy": [
+            "localPairing.title",
+            "localPairing.cameraOffTitle",
+            "localPairing.cameraOffBody",
+            "localPairing.openSettings",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "localPairing.enterInstead",
+            "common.cancel"
           ]
         }
       }
