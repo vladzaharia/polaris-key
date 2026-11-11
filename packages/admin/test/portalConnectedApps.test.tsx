@@ -412,6 +412,32 @@ describe("Account → Connected apps", () => {
       await waitFor(() => expect(reads).toBeGreaterThan(before));
     });
 
+    it("a gone app (404) leaves the list and closes the panel", async () => {
+      let clients: unknown[] = [COMPANION];
+      mockFetch(
+        signedIn([], {
+          "/api/me/connected-apps": () => group(clients),
+          [`PATCH ${URL_OF("cl_companion")}`]: () => {
+            clients = [MAPS];
+            return { status: 404, body: { error: "not_found" } };
+          },
+        }),
+      );
+      renderPortal();
+      const card = await region();
+      await open(card);
+      await userEvent.click(
+        within(card).getByRole("switch", {
+          name: "Share your picture with Quill Companion",
+        }),
+      );
+      await userEvent.click(within(card).getByRole("button", { name: "Save" }));
+      await waitFor(() =>
+        expect(within(card).queryByText("Quill Companion")).toBeNull(),
+      );
+      expect(within(card).getByText("Hexside Maps")).toBeTruthy();
+    });
+
     it("a rate limit on Save names the wait and nothing about Disconnect", async () => {
       mockFetch(
         signedIn([], {

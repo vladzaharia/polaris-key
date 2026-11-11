@@ -347,6 +347,13 @@ function ChangePanel({
           announce(t("locker.apps.savedAnnounce", { app: app.name }));
           close();
         },
+        // The grant is gone (disconnected in another tab): the list is read again and the row leaves.
+        onError: (err) => {
+          if (err instanceof HttpError && err.status === 404) {
+            void apps.refetch();
+            close();
+          }
+        },
       },
     );
   return (
