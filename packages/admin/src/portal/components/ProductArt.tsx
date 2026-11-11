@@ -52,6 +52,34 @@ export function artTint(color: string): React.CSSProperties {
   return { "--pk-art": color } as React.CSSProperties;
 }
 
+const INK_LIGHT = "#ffffff";
+const INK_DARK = "#060912";
+
+function luminance(hex: string): number | null {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const h = m[1]!;
+  const full = h.length === 3 ? [...h].map((c) => c + c).join("") : h;
+  const lin = [0, 2, 4].map((i) => {
+    const v = parseInt(full.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * lin[0]! + 0.7152 * lin[1]! + 0.0722 * lin[2]!;
+}
+
+/**
+ * The letter's colour on a tint: white or the brand's near-black, whichever reads better on it, in
+ * either theme (the theme's `--pk-brand-text` flips with the theme, the developer's tint does not,
+ * so a dark tint in the light theme read as dark on dark). `null` for a colour that is not a hex.
+ */
+export function inkFor(color: string): string | null {
+  const l = luminance(color);
+  if (l === null) return null;
+  const onLight = 1.05 / (l + 0.05);
+  const onDark = (l + 0.05) / (luminance(INK_DARK)! + 0.05);
+  return onLight >= onDark ? INK_LIGHT : INK_DARK;
+}
+
 /** `icon` is `ProductIcon`. */
 export type ArtVariant = "banner" | "tile" | "thumb";
 
@@ -192,8 +220,9 @@ export function ProductArt({
       {showLetter ? (
         <span
           aria-hidden
+          style={{ color: inkFor(background) ?? "var(--pk-brand-text)" }}
           className={cn(
-            "absolute start-1/2 top-1/2 inline-flex -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-(--polaris-key-page-dark)/25 font-medium text-(--pk-brand-text)",
+            "absolute start-1/2 top-1/2 inline-flex -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-(--polaris-key-page-dark)/25 font-medium",
             variant === "banner" && "size-28 text-6xl",
             variant === "tile" && "size-16 text-3xl",
             variant === "thumb" && "size-9 text-lg",

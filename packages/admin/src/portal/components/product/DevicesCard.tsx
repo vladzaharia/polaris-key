@@ -4,7 +4,6 @@ import * as React from "react";
 import { flushSync } from "react-dom";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { Keep } from "../Keep.js";
-import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import {
   CountUp,
@@ -383,18 +382,19 @@ export function DeviceRow({
               // Said once, with the count as it is when the removal lands (S-23 §6.5: a
               // freed seat is counted in text), never as it was at the click.
               const left = seatsLeftAfter(device.deviceId);
-              toast.success(t("locker.methods.removed", { name }), {
-                description: t("locker.devices.removedFree", {
-                  product: productName,
-                }),
-              });
-              announce(
+              // One announcement, the toast's: the title carries the seat count as text.
+              toast.success(
                 showCount
                   ? t("locker.devices.removedCount", {
                       name,
                       detail: devicesText(left, seatLimit),
                     })
-                  : t("locker.devices.removedPlain", { name }),
+                  : t("locker.methods.removed", { name }),
+                {
+                  description: t("locker.devices.removedFree", {
+                    product: productName,
+                  }),
+                },
               );
               // Focus never falls to `body` (FLOWS.md P-7): it goes to the Devices
               // heading, without scrolling away from the list, which closes up where

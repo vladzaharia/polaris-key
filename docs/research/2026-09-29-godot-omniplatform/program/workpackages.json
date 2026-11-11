@@ -4642,7 +4642,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1.9, 2.6],
-      "deps": ["I-20", "I-34"],
+      "deps": ["I-20"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -5163,13 +5163,13 @@
     },
     {
       "id": "I-34",
-      "title": "Granular consent and Connected apps",
+      "title": "Granular consent for the product's own apps",
       "phase": "I",
       "stage": "DX consolidation F: Identity",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.8, 1.2],
-      "deps": ["I-08b", "I-11", "I-35"],
+      "deps": ["I-08b", "I-11", "I-35", "I-21"],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
@@ -5181,7 +5181,8 @@
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
         "consolidation alias IX-09",
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md",
-        "plans/I-20.md §3.5, §8 (Connected apps groups issuer clients; Disconnect takes a cl_ id)"
+        "plans/I-20.md §3.5, §8 (Connected apps groups issuer clients; Disconnect takes a cl_ id)",
+        "plans/I-34-I-21.15.md (approved 2026-11-10): client rows of Connected apps ship as I-21.15; this package keeps the own-app rows (Change opens PX-14b's toggles; Disconnect via I-11's hook)"
       ],
       "brief": "wp/I-34-granular-consent-connected-apps.md",
       "status": "todo"
@@ -17647,9 +17648,9 @@
     },
     {
       "id": "PX-31b",
-      "title": "Account Packages section and Connected apps with disconnect (split of PX-31)",
+      "title": "Dropped (plans/I-34-I-21.15.md D9, 2026-11-10): Account Packages section and Connected apps with disconnect (split of PX-31); Packages shipped as PX-31a and F-33, client rows are I-21.15, own-app rows are I-34",
       "phase": "PX",
-      "stage": "Locker UX waves (2026-10-19)",
+      "stage": "dropped",
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.2, 0.3],
@@ -17665,7 +17666,7 @@
         "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §4"
       ],
       "brief": "wp/PX-31b-account-packages-connected-apps.md",
-      "status": "todo"
+      "status": "dropped"
     },
     {
       "id": "PX-32",

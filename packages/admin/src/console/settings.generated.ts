@@ -2418,7 +2418,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "keys",
     label: "Sign in with this product",
     description:
-      "Lets websites and apps you register sign people in with this product (OpenID Connect). Registering a client needs it on.",
+      "Lets websites and apps you register sign people in with this product (OpenID Connect). Registering a client needs it on. Turning it off ends sign-in at once; people stay signed in to your clients for 10 minutes at most and sign in again after you turn it back on.",
     keywords: ["openid", "oidc", "sign in with", "clients", "issuer"],
     docs: "/docs/features/sign-in/",
     ownership: "claimable",

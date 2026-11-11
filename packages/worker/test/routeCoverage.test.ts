@@ -188,6 +188,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/signin/passkey/options", ["post"]],
     ["/api/signin/passkey/verify", ["post"]],
     // DEVICE-REMOVAL: the account's licence-less devices, and removing one.
+    ["/api/me/connected-apps", ["get"]],
+    ["/api/me/connected-apps/{product}/{clientId}", ["patch", "delete"]],
     ["/api/me/devices", ["get"]],
     ["/api/me/devices/{product}/{deviceId}", ["delete"]],
     ["/api/me/passkeys", ["get", "post"]],
@@ -912,6 +914,8 @@ function concrete(template: string): string {
   const samples: Record<string, string> = {
     product: "acme",
     deviceId: "dev-1",
+    // I-21.15: a registered client's id.
+    clientId: `cl_${"A".repeat(22)}`,
     mintId: "applemusic",
     version: "1.2.3",
     asset: "acme-arm64",

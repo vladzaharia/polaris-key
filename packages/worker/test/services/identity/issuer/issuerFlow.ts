@@ -9,6 +9,7 @@ import { SETTINGS } from "../../../../src/mount.js";
 import type { ClientRecord } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import { handleSignInContinue } from "../../../../src/services/identity/passthrough/continue.js";
 import { addClientSecret } from "../../../../src/services/identity/issuer/clientsRepo.js";
+import { signIn as accountSignIn } from "../../../../src/services/identity/accounts/signIn.js";
 import { NOW } from "../../../seed.js";
 import { issuerWorld, mkClient } from "./issuerWorld.js";
 import { BASE, SLUG, type World } from "../../connect/connectFixture.js";
@@ -25,6 +26,13 @@ export interface IssuerSuite extends FlowCtx {
   spa: ClientRecord;
   web: ClientRecord;
   secret: string;
+}
+
+/** What a code redemption answers a client that asked for `offline_access`. */
+export interface IssuerTokens {
+  access_token: string;
+  id_token: string;
+  refresh_token: string;
 }
 
 /**
@@ -65,7 +73,45 @@ export function issuerSuite(pepper: string) {
         flow.grantForm(s.web, code, { client_secret: s.secret, ...extra }),
       ),
     );
-  return { s, webRedeemError, ...flow };
+  /** The signed-in account signs in to `c` (the public client by default) and redeems its code. */
+  const signIn = async (c: ClientRecord = s.spa): Promise<IssuerTokens> => {
+    const res = await flow.token(
+      flow.grantForm(
+        c,
+        await flow.codeFor(c),
+        c.type === "web" ? { client_secret: s.secret } : {},
+      ),
+    );
+    expect(res.status).toBe(200);
+    return (await res.json()) as IssuerTokens;
+  };
+  /** A second account (`grace`) signs in to the public client; its id and tokens. */
+  const signInSecondAccount = async (): Promise<{
+    accountId: string;
+    tokens: IssuerTokens;
+  }> => {
+    const b = await accountSignIn(
+      s.w.db,
+      { issuerKey: "email", subject: "grace@example.com", kind: "email" },
+      NOW,
+      { unfenced: true },
+    );
+    if (b.status !== "signed_in") throw new Error("sign-in");
+    const theirs = issuerFlow(() => ({
+      w: s.w,
+      accountId: b.account.id,
+      pair: s.pair,
+    }));
+    const res = await theirs.token(
+      theirs.grantForm(s.spa, await theirs.codeFor(s.spa)),
+    );
+    expect(res.status).toBe(200);
+    return {
+      accountId: b.account.id,
+      tokens: (await res.json()) as IssuerTokens,
+    };
+  };
+  return { s, webRedeemError, signIn, signInSecondAccount, ...flow };
 }
 
 export function issuerFlow(ctx: () => FlowCtx) {

@@ -347,10 +347,12 @@ export function contributedDeviceChangeListeners(): DeviceChangeListener[] {
   );
 }
 
-/** Every mounted service's service-enablement listeners, in canonical slug order. */
-export function contributedServicesChangeListeners(): ServicesChangeListener[] {
+/** Every mounted service's service-enablement listeners by stable name, in canonical slug order. */
+export function contributedServicesChangeListeners(): Array<
+  [string, ServicesChangeListener]
+> {
   return contributionsOf().flatMap(([, c]) =>
-    Object.values(c.onServicesChange ?? {}),
+    Object.entries(c.onServicesChange ?? {}),
   );
 }
 

@@ -3043,6 +3043,191 @@
       "role": "body",
       "note": "Callout of the sign-out page when it could not send the person back to the client; the button beside it is Back to the client. Arguments: {app} = the client's name, or the product's when none (never translated)."
     },
+    "locker.apps.title": {
+      "value": "Connected Apps",
+      "role": "title",
+      "note": "Title of the Account section that lists the apps the person signed in to with a product's account, and its entry in the section nav."
+    },
+    "locker.apps.subtitle": {
+      "value": "Apps you've signed in to, and what each one gets.",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Line under the section title."
+    },
+    "locker.apps.group": {
+      "value": "Signed in with {product}",
+      "role": "title",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Heading of one product's group of apps. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.apps.by": {
+      "value": "by {developer}",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). The developer of a partner app, after its name. Arguments: {developer} = the developer's name (never translated)."
+    },
+    "locker.apps.lastUsed": {
+      "value": "last used {when}",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Meta line: when the app last used the sign-in, after a dot (lowercase). Arguments: {when} = a relative time such as '3 hours ago' (already localized)."
+    },
+    "locker.apps.connected": {
+      "value": "Connected {date}",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Meta line: the day the app was connected. Arguments: {date} = a short date such as 'Aug 12, 2026' (already localized)."
+    },
+    "locker.apps.off": {
+      "value": "{product} turned this app off",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Row of an app that cannot sign anyone in now (its client, its product's sign-in or the issuer is off). Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.apps.neverUsed": {
+      "value": "never used",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Meta line of an app that never used the sign-in, after the connected date; lowercase, follows a dot."
+    },
+    "locker.apps.offPill": {
+      "value": "Turned off",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Small pill after the name of an app that cannot sign anyone in now."
+    },
+    "locker.apps.chip.name": {
+      "value": "Screen name",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip: the screen name an app gets."
+    },
+    "locker.apps.chip.picture": {
+      "value": "Picture",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip: the picture an app gets."
+    },
+    "locker.apps.chip.email": {
+      "value": "Email",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip: the email address an app gets."
+    },
+    "locker.apps.chip.entitlements": {
+      "value": "{product} features",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip or item in the Also line: which of a product's features the person has. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.apps.chip.offline": {
+      "value": "Stays signed in",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip or item in the Also line: the app keeps the person signed in while they are away."
+    },
+    "locker.apps.also": {
+      "value": "Also: {detail}",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Muted line listing the items an app always gets (the person cannot switch them off). Arguments: {detail} = the item labels, comma separated."
+    },
+    "locker.apps.none": {
+      "value": "No connected apps.",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Shown after the last app was disconnected."
+    },
+    "locker.error.loadFailedApps": {
+      "value": "Couldn't load your connected apps.",
+      "role": "body",
+      "note": "Account, Connected apps failed to load; the Try again button is separate."
+    },
+    "locker.apps.gets": {
+      "value": "What {app} gets",
+      "role": "label",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Name of the list of what an app gets, and the heading of the Change panel. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.not.name": {
+      "value": "Not your screen name",
+      "role": "label",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Chip for the screen name the person declined."
+    },
+    "locker.apps.not.picture": {
+      "value": "Not your picture",
+      "role": "label",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Chip for the picture the person declined."
+    },
+    "locker.apps.not.email": {
+      "value": "Not your email",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip for the email address the person declined."
+    },
+    "locker.apps.change": {
+      "value": "Change",
+      "role": "button",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Opens the panel that switches the optional items an app gets."
+    },
+    "locker.apps.changeName": {
+      "value": "Change what {app} gets",
+      "role": "a11y",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Accessible name of Change. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.needed": {
+      "value": "Needed",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Marks an item the app needs and the person cannot switch off; Disconnect removes it. The heading names the app."
+    },
+    "locker.apps.saved": {
+      "value": "Saved what {app} gets",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Toast after Save; the toast region is the one announcement. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.saveFailed": {
+      "value": "Couldn't save. Try again.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Callout when Save was refused."
+    },
+    "locker.apps.disconnect": {
+      "value": "Disconnect",
+      "role": "button",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). The row's Disconnect button."
+    },
+    "locker.apps.disconnectName": {
+      "value": "Disconnect {app}",
+      "role": "a11y",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Accessible name of the row's Disconnect and the confirm's danger button. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnectAsk": {
+      "value": "Disconnect {app}?",
+      "role": "title",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Heading of the Disconnect confirm. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnectBody": {
+      "value": "{app} loses access within 10 minutes. It keeps what it already received; ask {developer} to delete it.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). What Disconnect does, for an app with a named developer. Arguments: {app} = the app's name, {developer} = its developer (never translated)."
+    },
+    "locker.apps.disconnectBodyNoDev": {
+      "value": "{app} loses access within 10 minutes. It keeps what it already received; ask its developer to delete it.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). What Disconnect does, for an app with no named developer. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnectAgain": {
+      "value": "Signing in again asks what to share.",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Second line of the Disconnect confirm."
+    },
+    "locker.apps.keep": {
+      "value": "Keep {app}",
+      "role": "button",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Closes the Disconnect confirm. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnected": {
+      "value": "{app} is disconnected",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Toast and announcement after Disconnect. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnectFailed": {
+      "value": "Couldn't disconnect {app}. Try again.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Callout when Disconnect failed. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.conflict": {
+      "value": "This app's access changed. Reload to see it.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Callout when Change was refused because the app's access changed underneath (a concurrent change or a new consent); Reload is the button beside it."
+    },
+    "locker.apps.reload": {
+      "value": "Reload",
+      "role": "button",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Button beside the conflict callout: reads the list again."
+    },
     "signin.unreachable.network": {
       "value": "Check your connection.",
       "role": "body",

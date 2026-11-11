@@ -17777,6 +17777,136 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
   # ── The account's passkeys (I-16, PORTAL.md §4.26): the settings list, adding and removing.
   # Session-authenticated by the portal cookie; mutations need the `X-PKey-Portal-CSRF` header.
+  /api/me/connected-apps:
+    get:
+      operationId: listConnectedApps
+      tags: [portal]
+      summary: The registered clients the person signed in to with a product
+      description: >
+        Polaris Locker's Connected apps: one group per product, each with the registered clients
+        (Sign in with <Product>) the account holds a grant for, most recently used first. A client
+        the product turned off, or one whose issuer or Identity is off, is still listed with
+        `available: false` and can only be disconnected. Never carries a scope hash, a token, a
+        redirect URI or a secret.
+      responses:
+        "200":
+          description: The groups, newest use first. Empty when the person signed in to none.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [products]
+                properties:
+                  products:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConnectedProduct" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/connected-apps/{product}/{clientId}:
+    patch:
+      operationId: changeConnectedApp
+      tags: [portal]
+      summary: Change what a connected client gets
+      description: >
+        Switches optional claims (`name`, `picture`, `email`) the person already decided for this
+        client. A required claim, a line (`entitlements`, `offline`), a claim the person was never
+        asked and an unknown member are `400 bad_request`. The grant's scopes and `grantedAt`
+        never change, so existing sign-ins continue; the next refresh and `userinfo` carry the new
+        claims. Spends the `portalClientChange` budget (20 per 60 s per account, failing closed;
+        Disconnect has its own). The write lands only if the grant is as it was read: when another
+        Change or a new consent got there first it is `409 revision_conflict` ("This app's access
+        changed. Reload to see it.") and nothing is written. Another person's, an unknown or a
+        malformed client id answers the same 404.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: clientId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [claims]
+              properties:
+                claims:
+                  type: object
+                  additionalProperties: false
+                  minProperties: 1
+                  properties:
+                    name: { type: boolean }
+                    picture: { type: boolean }
+                    email: { type: boolean }
+      responses:
+        "200":
+          description: The client as it is now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectedClient" }
+        "400":
+          description: Not a changeable item, or a malformed body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: >
+            The grant changed between the read and the write (another Change or a new consent).
+            Nothing was written; reload the list. Code `revision_conflict`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many changes (the `portalClientChange` budget).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    delete:
+      operationId: disconnectConnectedApp
+      tags: [portal]
+      summary: Disconnect a client
+      description: >
+        Deletes the account's grant for the client and revokes every refresh family of that
+        account and client, in one batch. `userinfo` and refresh refuse at once; an access token
+        already issued ends within 10 minutes. The client keeps what it already received. A
+        second Disconnect, another person's client, an unknown one and a malformed id answer the
+        same 404. Spends the `portalClientDisconnect` budget (20 per 60 s per account), which fails
+        open when the limiter cannot be read.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: clientId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Disconnected. }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Too many changes (the `portalClientDisconnect` budget).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /api/me/devices:
     get:
       operationId: listAccountDevices
@@ -29382,6 +29512,71 @@ components:
                 kind: { type: string, enum: [connection] }
                 connectionId: { type: string }
             - { type: "null" }
+    ConnectedClient:
+      type: object
+      additionalProperties: false
+      description: >
+        A registered client the person signed in to (`GET /api/me/connected-apps`). `gets` lists
+        what it receives, in consent order; an optional claim the person never decided is not
+        listed.
+      required:
+        [
+          clientId,
+          name,
+          developer,
+          partner,
+          iconUrl,
+          returnHost,
+          available,
+          gets,
+          grantedAt,
+          lastUsedAt,
+        ]
+      properties:
+        clientId: { type: string, pattern: "^cl_[A-Za-z0-9_-]{22}$" }
+        name: { type: string }
+        developer: { type: [string, "null"] }
+        partner:
+          type: boolean
+          description: Another company's client, which names a developer of its own.
+        iconUrl:
+          type: [string, "null"]
+          description: A same-origin `/media/` path, or null.
+        returnHost:
+          type: [string, "null"]
+          description: The host of the client's `https` redirect; null for an app on the same device.
+        available:
+          type: boolean
+          description: False while the client is disabled or the issuer or Identity is off for its product.
+        gets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [item, granted, fixed]
+            properties:
+              item:
+                {
+                  type: string,
+                  enum: [name, picture, email, entitlements, offline],
+                }
+              granted: { type: boolean }
+              fixed:
+                type: boolean
+                description: A required claim or a line. It has no switch; Disconnect removes it.
+        grantedAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+    ConnectedProduct:
+      type: object
+      additionalProperties: false
+      required: [product, name, iconUrl, clients]
+      properties:
+        product: { type: string }
+        name: { type: string }
+        iconUrl: { type: [string, "null"] }
+        clients:
+          type: array
+          items: { $ref: "#/components/schemas/ConnectedClient" }
     PortalAccountExport:
       type: object
       additionalProperties: false
@@ -29399,6 +29594,7 @@ components:
           passkeys,
           sessions,
           connectedApps,
+          signedInWith,
           termsAcceptances,
           library,
           packageTokens,
@@ -29463,6 +29659,10 @@ components:
         connectedApps:
           type: array
           items: { $ref: "#/components/schemas/PortalExportConsent" }
+        signedInWith:
+          type: array
+          description: The registered clients the person signed in to (Sign in with a product), across products.
+          items: { $ref: "#/components/schemas/PortalExportSignedInWith" }
         termsAcceptances:
           type: array
           items: { $ref: "#/components/schemas/PortalExportTerms" }
@@ -29545,6 +29745,45 @@ components:
             properties:
               label: { type: string }
               lastSyncAt: { type: integer, description: Epoch seconds. }
+    PortalExportSignedInWith:
+      type: object
+      additionalProperties: false
+      description: >
+        A registered client the person signed in to with a product's account, and what it may
+        get. Never a scope hash, token, redirect URI or secret.
+      required:
+        [
+          product,
+          clientId,
+          clientName,
+          developer,
+          granted,
+          declined,
+          lines,
+          grantedAt,
+          changedAt,
+          lastUsedAt,
+        ]
+      properties:
+        product: { type: string }
+        clientId: { type: string }
+        clientName: { type: string }
+        developer: { type: [string, "null"] }
+        granted:
+          type: array
+          description: The optional claims the person allowed.
+          items: { type: string, enum: [name, picture, email] }
+        declined:
+          type: array
+          description: The optional claims the person declined.
+          items: { type: string, enum: [name, picture, email] }
+        lines:
+          type: array
+          description: What signing in gives that has no switch. Disconnect ends it.
+          items: { type: string, enum: [entitlements, offline] }
+        grantedAt: { type: integer }
+        changedAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
     PortalProductExport:
       type: object
       additionalProperties: false
@@ -29564,6 +29803,7 @@ components:
           events,
           stores,
           consent,
+          signedInWith,
           termsAcceptances,
           libraryEntry,
           removedLicenses,
@@ -29599,6 +29839,10 @@ components:
           oneOf:
             - type: "null"
             - { $ref: "#/components/schemas/PortalExportConsent" }
+        signedInWith:
+          type: array
+          description: The registered clients the person signed in to with this product.
+          items: { $ref: "#/components/schemas/PortalExportSignedInWith" }
         termsAcceptances:
           type: array
           items: { $ref: "#/components/schemas/PortalExportTerms" }

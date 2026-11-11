@@ -1,6 +1,6 @@
 /**
- * I-21.2: migrations 0162_a to 0165_d (provisional numbers) rehearsed on a scratch SQLite: every
- * earlier migration, a populated fixture, then the four files, then their down scripts. The tables
+ * I-21.2, I-21.15: migrations 0162_a to 0166_a (provisional numbers) rehearsed on a scratch SQLite: every
+ * earlier migration, a populated fixture, then the five files, then their down scripts. The tables
  * are additive, so the fixture's rows must survive both ways and the new tables start empty.
  */
 import Database from "better-sqlite3";
@@ -16,7 +16,7 @@ const FILES = readdirSync(DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
 const MINE = FILES.filter((f) =>
-  /^016[2-5]_[a-d]_identity_(clients|issuer_keys|client_grants|refresh_tokens)\.sql$/.test(
+  /^016[2-6]_[a-d]_identity_(clients|issuer_keys|client_grants|refresh_tokens|client_grants_account)\.sql$/.test(
     f,
   ),
 );
@@ -52,12 +52,13 @@ const tables = (raw: Database.Database) =>
   ).map((r) => r.name);
 
 describe("issuer migrations", () => {
-  it("are four files in order", () => {
+  it("are five files in order", () => {
     expect(MINE).toEqual([
       "0162_a_identity_clients.sql",
       "0163_b_identity_issuer_keys.sql",
       "0164_c_identity_client_grants.sql",
       "0165_d_identity_refresh_tokens.sql",
+      "0166_a_identity_client_grants_account.sql",
     ]);
   });
 

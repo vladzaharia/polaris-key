@@ -9,6 +9,7 @@ import {
   type PortalMethods,
   type PortalSession,
   type PortalAccountDevice,
+  type PortalConnectedProduct,
   type PortalCloudSync,
 } from "./api.js";
 
@@ -43,6 +44,7 @@ export const qk = {
   methods: () => ["portal", "methods"] as const,
   sessions: () => ["portal", "sessions"] as const,
   accountDevices: () => ["portal", "accountDevices"] as const,
+  connectedApps: () => ["portal", "connectedApps"] as const,
   link: () => ["portal", "link"] as const,
   // The app card's reads (PX-14a): under the request's handle, so a new request never shows the
   // last one's answer.
@@ -272,6 +274,14 @@ export const pq = {
       queryKey: qk.accountDevices(),
       queryFn: (): Promise<PortalAccountDevice[] | null> =>
         orNull(async () => (await portalApi.accountDevices()).devices),
+    }),
+
+  /** The client apps the account signed in to, or `null` on a Worker without the route. */
+  connectedApps: () =>
+    queryOptions({
+      queryKey: qk.connectedApps(),
+      queryFn: (): Promise<PortalConnectedProduct[] | null> =>
+        orNull(async () => (await portalApi.connectedApps()).products),
     }),
 
   /** The app asking (works before sign-in: the binder cookie, not a session). */

@@ -43,6 +43,8 @@ import {
 } from "../../../src/core/accounts/subjectHooks.js";
 import { hashKey } from "../../../src/platform/crypto.js";
 import { attachLicense } from "../../../src/services/identity/accounts/claim.js";
+import { createClient } from "../../../src/services/identity/issuer/clientsRepo.js";
+import { putClientGrant } from "../../../src/services/identity/issuer/grantsRepo.js";
 import {
   ACCOUNT_DELETION_GRACE_SECONDS,
   scheduleAccountDeletion,
@@ -1802,5 +1804,98 @@ describe("GET /api/products/<product>/export?format=zip", () => {
         "SELECT 1 FROM portal_audit WHERE action = 'portal.product.export'",
       ),
     ).toBeNull();
+  });
+});
+
+describe("signedInWith (I-21.15)", () => {
+  /** A client of `djdl`, and a grant for each person named; the scope hash is a planted secret. */
+  async function clients(w: World, people: Person[]) {
+    const made = await createClient(
+      w.db,
+      {
+        product: "djdl",
+        key: "forum",
+        origin: "console",
+        name: "Forum",
+        developerName: "Partner Games Ltd",
+        type: "spa",
+        redirectUris: ["https://forum.example.net/cb"],
+        postLogoutRedirectUris: [],
+        scopes: ["openid", "profile", "email", "offline_access"],
+        claimsRequired: ["name"],
+        iconUrl: null,
+      },
+      NOW,
+    );
+    if (!made.ok) throw new Error(made.reason);
+    for (const [i, who] of people.entries())
+      await putClientGrant(
+        w.db,
+        {
+          accountId: who.accountId,
+          clientId: made.client.clientId,
+          product: "djdl",
+          claimsGranted: i === 0 ? ["name", "email"] : ["name"],
+          claimsDeclined: i === 0 ? ["picture"] : [],
+          scopes: ["offline_access"],
+          scopeHash: SECRETS.scopeHash,
+        },
+        NOW - 50 + i,
+      );
+    return made.client;
+  }
+
+  it("lists the person's clients in both exports, schema-valid, with no hash, redirect or other person's grant", async () => {
+    const w = await world();
+    const { ada, bob } = await seed(w);
+    const client = await clients(w, [ada, bob]);
+    const expected = {
+      product: "djdl",
+      clientId: client.clientId,
+      clientName: "Forum",
+      developer: "Partner Games Ltd",
+      granted: ["name", "email"],
+      declined: ["picture"],
+      lines: ["offline"],
+      grantedAt: NOW - 50,
+      changedAt: NOW - 50,
+      lastUsedAt: null,
+    };
+    const full = await body<Record<string, any>>(await exportAccount(w, ada));
+    expect(validateAgainst("PortalAccountExport", full)).toEqual([]);
+    expect(full.signedInWith).toEqual([expected]);
+    const one = await body<Record<string, any>>(
+      await exportProduct(w, ada, "djdl"),
+    );
+    expect(validateAgainst("PortalProductExport", one)).toEqual([]);
+    expect(one.signedInWith).toEqual([expected]);
+    const other = await body<Record<string, any>>(
+      await exportProduct(w, ada, "acme"),
+    );
+    expect(other.signedInWith).toEqual([]);
+    for (const doc of [full, one]) {
+      const text = JSON.stringify(doc);
+      expect(text).not.toContain(SECRETS.scopeHash);
+      expect(text).not.toContain("forum.example.net");
+      expect(text).not.toContain("scope_hash");
+    }
+    // Bob's own export names his grant, and only his.
+    const bobs = await body<Record<string, any>>(await exportAccount(w, bob));
+    expect(bobs.signedInWith).toEqual([
+      {
+        ...expected,
+        granted: ["name"],
+        declined: [],
+        grantedAt: NOW - 49,
+        changedAt: NOW - 49,
+      },
+    ]);
+  });
+
+  it("is empty without a grant", async () => {
+    const w = await world();
+    const { ada } = await seed(w);
+    const full = await body<Record<string, any>>(await exportAccount(w, ada));
+    expect(full.signedInWith).toEqual([]);
   });
 });
