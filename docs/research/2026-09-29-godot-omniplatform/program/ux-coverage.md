@@ -268,7 +268,7 @@ Additional structural fixes made while merging: 30 screens had no owner that car
 | -------------------------------- | ------- | --------------------------------------------------------------- | -------- | ----------- | --- |
 | `identity.app-sign-in`           | console | I-29, I-32, I-34, I-35, I-14, I-33, ST-45; +ST-48, ST-50, UK-58 | no       | partial     |     |
 | `identity.app-sign-in-changes`   | console | I-29, I-34, I-35; +ST-48, ST-50, UK-58                          | no       | partial     |     |
-| `identity.connected-apps`        | portal  | I-34, I-11, PX-31                                               | no       | mockup-only |     |
+| `identity.connected-apps`        | portal  | I-21, I-34, I-11, PX-31                                         | no       | partial     |     |
 | `identity.connection`            | console | I-30, I-31; +ST-48, ST-50, UK-58                                | no       | mockup-only |     |
 | `identity.connection-audience`   | dialog  | I-30, I-31; +ST-48                                              | no       | mockup-only |     |
 | `identity.connection-enforce`    | dialog  | I-30, I-29, I-31; +ST-48                                        | no       | mockup-only |     |
@@ -280,7 +280,7 @@ Additional structural fixes made while merging: 30 screens had no owner that car
 | `identity.device-code`           | portal  | PX-14, P0-38, I-37, I-38                                        | no       | partial     |     |
 | `identity.device-code-states`    | dialog  | PX-14, P0-38, I-37, I-38                                        | no       | partial     |     |
 | `identity.device-confirm`        | portal  | I-37, PX-14, P0-38, I-38                                        | no       | partial     |     |
-| `identity.disconnect`            | dialog  | I-34, I-11; +ST-48                                              | no       | mockup-only |     |
+| `identity.disconnect`            | dialog  | I-21, I-34, I-11; +ST-48                                        | no       | partial     |     |
 | `identity.finish`                | portal  | I-33, PX-21, I-37, I-38, P0-38                                  | no       | mockup-only |     |
 | `identity.key-step`              | portal  | PX-14, I-08, P0-38, I-37, I-38                                  | no       | partial     |     |
 | `identity.refusals`              | dialog  | P0-38, PX-14, I-08, I-15, I-37, I-38                            | no       | partial     |     |

@@ -1764,7 +1764,7 @@ export const SHIPPED: ShippedState[] = [
       scenario: "three",
       path: "/#/account/apps",
       routes: { "GET /api/me/connected-apps": { body: CONNECTED_APPS } },
-      ready: (p) => ready(p.getByRole("region", { name: "Connected apps" })),
+      ready: (p) => ready(p.getByRole("region", { name: "Connected Apps" })),
     }),
   ),
   {
@@ -1775,7 +1775,7 @@ export const SHIPPED: ShippedState[] = [
     path: "/#/account/apps",
     routes: { "GET /api/me/connected-apps": SERVER_ERROR },
     ready: async (p) => {
-      const region = p.getByRole("region", { name: "Connected apps" });
+      const region = p.getByRole("region", { name: "Connected Apps" });
       await region.getByText("Couldn't load your connected apps.").waitFor();
       await region.getByRole("button", { name: "Try again" }).waitFor();
     },

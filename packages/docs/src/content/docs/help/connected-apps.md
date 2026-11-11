@@ -1,5 +1,5 @@
 ---
-title: "Connected apps"
+title: "Connected Apps"
 description: "See the apps you signed in to with another app's account, what each one gets, change the optional items and disconnect one."
 type: "help"
 status: "shipped"
@@ -8,24 +8,24 @@ sidebar:
   order: 9
 ---
 
-Some apps and websites offer **Sign in with** an app you already use, such as "Sign in with Quill". Polaris Locker holds the account behind it. The first time, a card shows who is asking and what it would get, and you choose. **Connected apps** in your account lists each app you agreed to.
+Some apps and websites offer **Sign in with** an app you already use, such as "Sign in with Quill". Polaris Locker holds the account behind it. The first time, a card shows who is asking and what it would get, and you choose. **Connected Apps** in your account lists each app you agreed to.
 
-Open the account menu, select **Account**, then **Connected apps**. The section appears once you have signed in to an app this way.
+Open the account menu, select **Account**, then **Connected Apps**. The section appears once you have signed in to an app this way.
 
 ## What you see
 
-Apps are grouped under **Signed in with** and the name of the app whose account you used. Each row shows the app's name, where it sends you back to and when you last used it. An app you never used since you agreed shows **Connected** and the date instead. If another company makes the app, its name follows **by**.
+Apps are grouped under **Signed in with** and the name of the app whose account you used. Each row shows the app's name, where it sends you back to, the date you connected it and when you last used it. If another company makes the app, its name follows **by**.
 
-The chips show what the app gets: your screen name, your picture, your email address, which features you have, and staying signed in while you're away. What you declined has a dashed outline and reads **Not your picture**.
+The chips show the items you decided on the sign-in card: your screen name, your picture or your email address. What you declined has a dashed outline and reads **Not your picture**. A line starting **Also** lists what the app always gets, such as which features you have and staying signed in while you're away.
 
-An app whose maker turned it off stays in the list as "Quill turned this app off". It can't sign anyone in. You can still disconnect it.
+If Quill turns an app off, the app stays in the list with **Turned off** and "Quill turned this app off". It can't sign anyone in. You can still disconnect it.
 
 ## Change what an app gets
 
-Select **Change** on a row. The panel lists what the app gets:
+Select **Change** on a row. It isn't offered when nothing on the app can be switched, or when the app is turned off. The panel lists what the app gets:
 
 - A switch for each of your screen name, picture and email address that you already decided on the sign-in card. Switch one, then select **Save**.
-- **Needed by** the app on everything else. The app can't work without it, and you can't switch it here. To remove it, disconnect the app.
+- **Needed** on everything else. The app can't work without it, and you can't switch it here. To remove it, disconnect the app.
 
 **Cancel**, or Escape, closes the panel and keeps what you had. An app that asks for something new asks you the next time you sign in to it, not here. If the app's access changed while the panel was open, the panel says so and offers **Reload**.
 

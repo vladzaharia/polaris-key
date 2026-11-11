@@ -32,9 +32,9 @@ Adding or removing a method asks you to **Confirm it's you first**. See
 Locker emails every verified address on your account. To add a method again, use the same
 steps. If you didn't make a change, read [Secure your account](/docs/help/secure-your-account/).
 
-## Connected apps
+## Connected Apps
 
-Apps you signed in to with another app's account are listed here, with what each gets. Change the optional items or disconnect one. See [Connected apps](/docs/help/connected-apps/).
+Apps you signed in to with another app's account are listed here, with what each gets. Change the optional items or disconnect one. See [Connected Apps](/docs/help/connected-apps/).
 
 ## Where you're signed in
 

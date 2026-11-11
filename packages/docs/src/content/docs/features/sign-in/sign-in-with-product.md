@@ -76,7 +76,7 @@ People see each item on the sign-in card and can decline the optional ones. A de
 
 ## What people can do in Polaris Locker
 
-Under **Account → Connected apps** a person sees each client they signed in to, what it gets, and when it was last used. They can switch the optional profile items they already decided on, and **Disconnect** a client: it loses access within 10 minutes and a new sign-in asks for consent again. A client you or the product turned off stays listed as turned off, with Disconnect only. You change none of this for them: ask them to open the page.
+Under **Account → Connected Apps** a person sees each client they signed in to, what it gets, and when it was last used. They can switch the optional profile items they already decided on, and **Disconnect** a client: it loses access within 10 minutes and a new sign-in asks for consent again. A client you or the product turned off stays listed as turned off, with Disconnect only. You change none of this for them: ask them to open the page.
 
 ## The sign-in
 
@@ -225,7 +225,7 @@ The key set changes on a schedule: a new key is published 7 days before it signs
 
 ## Ending a sign-in
 
-A person ends a client in Polaris Locker under **Connected apps**: its refresh tokens end at once and `userinfo` refuses; an access token already issued lasts at most 10 minutes. Disabling or deleting a client in the console does the same for everyone. Turning the setting off revokes every refresh token and keeps the grants, so turning it back on asks nobody again. An end-session address is planned.
+A person ends a client in Polaris Locker under **Connected Apps**: its refresh tokens end at once and `userinfo` refuses; an access token already issued lasts at most 10 minutes. Disabling or deleting a client in the console does the same for everyone. Turning the setting off revokes every refresh token and keeps the grants, so turning it back on asks nobody again. An end-session address is planned.
 
 ## Not served
 

@@ -223,10 +223,13 @@ export function RemovePanel({
   onRemove,
   copy,
   note,
+  level = 3,
 }: {
   id: string;
   open: boolean;
   name: string;
+  /** The heading's level: 3 under a card's h2 (Devices), 4 under a group's h3 (Connected Apps). */
+  level?: 3 | 4;
   headingRef: React.RefObject<HTMLHeadingElement | null>;
   consequences?: React.ReactNode;
   error: boolean;
@@ -244,16 +247,17 @@ export function RemovePanel({
   };
   note?: string;
 }): React.ReactElement {
+  const Heading = level === 4 ? "h4" : "h3";
   return (
     <InlinePanel id={id} open={open} headingRef={headingRef} onEscape={onKeep}>
       <div className="space-y-3 rounded-lg border border-danger-border bg-danger-subtle p-4 @container">
-        <h3
+        <Heading
           ref={headingRef}
           tabIndex={-1}
           className="font-medium text-fg-strong outline-none"
         >
           {copy?.title ?? t("locker.devices.removeAsk", { name })}
-        </h3>
+        </Heading>
         {copy?.body ? (
           <p className="text-sm text-fg">{copy.body}</p>
         ) : (

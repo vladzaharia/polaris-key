@@ -72,9 +72,9 @@ const savePicture = async (card: HTMLElement) => {
 const accountSettled = () =>
   screen.findByRole("heading", { level: 1, name: "Account" });
 const absent = () =>
-  screen.queryByRole("region", { name: "Connected apps" }) === null;
+  screen.queryByRole("region", { name: "Connected Apps" }) === null;
 
-const region = () => screen.findByRole("region", { name: "Connected apps" });
+const region = () => screen.findByRole("region", { name: "Connected Apps" });
 
 describe("Account → Connected apps", () => {
   it("lists each app under its product, with who made it, where it returns, and what it gets", async () => {
@@ -87,22 +87,27 @@ describe("Account → Connected apps", () => {
       within(card).getByRole("heading", { name: "Signed in with Quill" }),
     ).toBeTruthy();
     const row = within(card).getByText("Quill Companion").closest("li")!;
-    expect(within(row).getByText(/companion\.quill\.example · Last used/));
+    expect(row.textContent).toMatch(
+      /companion\.quill\.example.· Connected [A-Z][a-z]{2} \d{1,2}, \d{4}.· last used /,
+    );
     expect(within(row).queryByText("by Quill Studio")).toBeNull();
     const chips = within(row).getByRole("list", {
       name: "What Quill Companion gets",
     });
-    expect(within(chips).getByText("Your screen name")).toBeTruthy();
+    expect(within(chips).getByText("Screen name")).toBeTruthy();
     expect(within(chips).getByText("Not your picture")).toBeTruthy();
+    // What the app always gets is one muted line, not chips.
+    expect(within(chips).queryByText("Email")).toBeNull();
     expect(
-      within(chips).getByText("Which Quill features you have"),
+      within(row).getByText("Also: Email, Quill features, Stays signed in"),
     ).toBeTruthy();
     const maps = within(card).getByText("Hexside Maps").closest("li")!;
     expect(within(maps).getByText("by Hexside Ltd")).toBeTruthy();
     expect(within(maps).getByText(/^Connected /)).toBeTruthy();
+    expect(within(maps).getByText("never used")).toBeTruthy();
     const nav = screen.getByRole("navigation", { name: "On this page" });
     expect(
-      within(nav).getByRole("link", { name: "Connected apps" }),
+      within(nav).getByRole("link", { name: "Connected Apps" }),
     ).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
   });
@@ -127,11 +132,12 @@ describe("Account → Connected apps", () => {
     renderPortal();
     const card = await region();
     expect(within(card).getByText("Quill turned this app off")).toBeTruthy();
+    expect(within(card).getByText("Turned off")).toBeTruthy();
     expect(
       within(card).getByRole("button", { name: "Disconnect Old Companion" }),
     ).toBeTruthy();
     expect(within(card).queryByRole("button", { name: /^Change/ })).toBeNull();
-    expect(within(card).queryByText("Your screen name")).toBeNull();
+    expect(within(card).queryByText("Screen name")).toBeNull();
   });
 
   it("a failed load keeps the section, with the error and Try again", async () => {
@@ -177,6 +183,7 @@ describe("Account → Connected apps", () => {
         }),
       );
       const heading = await within(card).findByRole("heading", {
+        level: 4,
         name: "Disconnect Hexside Maps?",
       });
       await waitFor(() => expect(document.activeElement).toBe(heading));
@@ -236,7 +243,7 @@ describe("Account → Connected apps", () => {
       );
       expect(await within(card).findByText("No connected apps.")).toBeTruthy();
       const heading = within(card).getByRole("heading", {
-        name: "Connected apps",
+        name: "Connected Apps",
       });
       await waitFor(() => expect(document.activeElement).toBe(heading));
     });
@@ -312,9 +319,7 @@ describe("Account → Connected apps", () => {
           })
           .getAttribute("aria-checked"),
       ).toBe("false");
-      expect(
-        within(card).getAllByText("Needed by Quill Companion"),
-      ).toHaveLength(3);
+      expect(within(card).getAllByText("Needed")).toHaveLength(3);
       expect(within(card).queryByRole("switch", { name: /email/ })).toBeNull();
       expect(
         (
@@ -342,7 +347,11 @@ describe("Account → Connected apps", () => {
       const card = await region();
       await open(card);
       await savePicture(card);
-      expect(await screen.findByText("Saved")).toBeTruthy();
+      expect(
+        await screen.findByText("Saved what Quill Companion gets"),
+      ).toBeTruthy();
+      // One announcement: the toast's own region, not a second one through the shared announcer.
+      expect(document.getElementById("pk-announcer")?.textContent).toBe("");
       expect(body).toEqual({ claims: { picture: true } });
       const change = within(card).getByRole("button", {
         name: "Change what Quill Companion gets",
@@ -404,11 +413,27 @@ describe("Account → Connected apps", () => {
           })
           .getAttribute("aria-checked"),
       ).toBe("true");
+      const reload = within(card).getByRole("button", { name: "Reload" });
+      await waitFor(() => expect(document.activeElement).toBe(reload));
       const before = reads;
-      await userEvent.click(
-        within(card).getByRole("button", { name: "Reload" }),
-      );
+      await userEvent.click(reload);
       await waitFor(() => expect(reads).toBeGreaterThan(before));
+      // The panel stays open with the fresh values and focus on its heading.
+      const heading = within(card).getByRole("heading", {
+        level: 4,
+        name: "What Quill Companion gets",
+      });
+      await waitFor(() => expect(document.activeElement).toBe(heading));
+      expect(
+        within(card)
+          .getByRole("switch", {
+            name: "Share your picture with Quill Companion",
+          })
+          .getAttribute("aria-checked"),
+      ).toBe("false");
+      expect(
+        within(card).queryByText(/This app's access changed\./),
+      ).toBeNull();
     });
 
     it("a gone app (404) leaves the list and closes the panel", async () => {

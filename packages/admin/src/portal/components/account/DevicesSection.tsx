@@ -1,5 +1,4 @@
 import * as React from "react";
-import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import { formatRelative } from "../../../lib/format.js";
 import { PORTAL_FMT } from "../../date.js";
@@ -166,7 +165,6 @@ function AccountDeviceRow({
             {
               onSuccess: () => {
                 toast.success(t("locker.methods.removed", { name }));
-                announce(t("locker.devices.removedPlain", { name }));
                 // The row leaves with the refetch; focus never falls to `body`. The card stays,
                 // with a line for the last row, so its heading is always there.
                 focusSectionHeading("devices");

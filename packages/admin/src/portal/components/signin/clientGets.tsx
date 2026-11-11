@@ -30,8 +30,13 @@ export function clientGetText(item: ClientGetItem, product: string): string {
   return t(`locker.issuer.claim.${item}`);
 }
 
+/** An item's terse label for Connected Apps ("Screen name", "Quill features", "Stays signed in"). */
+export function clientChipText(item: ClientGetItem, product: string): string {
+  return t(`locker.apps.chip.${item}`, { product });
+}
+
 /**
- * One item of what an app gets, as a chip (Connected apps). Granted: filled, with a tick. Declined:
+ * One item the person decided, as a chip (Connected Apps). Granted: filled, with a tick. Declined:
  * dashed, with an eye-off and "Not your picture". The icon and the word say it, never the colour.
  */
 export function GetChip({
@@ -49,15 +54,15 @@ export function GetChip({
       data-get={item}
       data-granted={granted ? "" : undefined}
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm/5 [overflow-wrap:anywhere]",
+        "inline-flex h-6 max-w-full items-center gap-1 rounded-full border px-2 text-xs [overflow-wrap:anywhere]",
         granted
           ? "border-border-strong bg-surface-sunken text-fg-strong"
           : "border-dashed border-border-strong text-fg-muted",
       )}
     >
-      <Icon aria-hidden className="size-4 shrink-0" />
+      <Icon aria-hidden className="size-3.5 shrink-0" />
       {granted
-        ? clientGetText(item, product)
+        ? clientChipText(item, product)
         : t(`locker.apps.not.${item as "name" | "picture" | "email"}`)}
     </li>
   );

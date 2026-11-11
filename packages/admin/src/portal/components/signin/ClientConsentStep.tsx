@@ -70,14 +70,14 @@ export function ClientRow({
           aria-label={line.label}
         />
       ) : (
-        <span className="inline-flex shrink-0 items-center gap-1 text-sm/5 text-fg-muted">
+        <span className="inline-flex min-w-0 items-center gap-1 text-sm/5 text-fg-muted">
           <Lock aria-hidden className="size-4" />
           {lock}
         </span>
       )}
     </>
   );
-  const row = "flex min-h-12 items-center gap-x-3 px-4 py-3 text-fg";
+  const row = "flex min-h-12 flex-wrap items-center gap-x-3 px-4 py-3 text-fg";
   return (
     <li>
       {switched ? (

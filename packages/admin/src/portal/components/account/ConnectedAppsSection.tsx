@@ -1,11 +1,12 @@
 import * as React from "react";
+import { PowerOff } from "lucide-react";
+import { cn } from "../../../lib/cn.js";
 import { Button } from "../../../ui/Button.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
-import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import { formatRelative } from "../../../lib/format.js";
 import { t } from "../../../lib/copy.js";
-import { PORTAL_FMT } from "../../date.js";
+import { PORTAL_FMT, formatDay } from "../../date.js";
 import {
   HttpError,
   type PortalConnectedApp,
@@ -19,6 +20,7 @@ import {
 } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
 import { focusSectionHeading } from "../../focus.js";
+import { scrollBehavior } from "../../router.js";
 import {
   InlinePanel,
   RemovePanel,
@@ -26,7 +28,11 @@ import {
 } from "../product/DeviceRowParts.js";
 import { ProductIcon } from "../ProductIcon.js";
 import { ClientRow } from "../signin/ClientConsentStep.js";
-import { GetChip, clientGetText } from "../signin/clientGets.js";
+import {
+  GetChip,
+  clientChipText,
+  clientGetText,
+} from "../signin/clientGets.js";
 import { AccountCard as SectionCard } from "./AccountCard.js";
 import { devicesVisible } from "./DevicesSection.js";
 
@@ -136,23 +142,32 @@ function AppRow({
   const disconnect = useDisconnectConnectedApp();
   const changeable =
     app.available && app.gets.some((g) => !g.fixed && isClaim(g.item));
-  const granted = app.gets.filter((g) => g.granted || isClaim(g.item));
-  const when = formatRelative(
-    (app.lastUsedAt ?? app.grantedAt) * 1000,
-    Date.now(),
-    PORTAL_FMT,
-  );
+  // A reload can take the switches away (the app was turned off, or its items became fixed).
+  React.useEffect(() => {
+    if (!changeable) setChanging(false);
+  }, [changeable]);
+  // What the person decided shows as chips; what the app always gets is one muted line.
+  const decided = app.gets.filter((g) => !g.fixed && isClaim(g.item));
+  const always = app.gets.filter((g) => g.fixed && g.granted);
   const meta = [
-    app.returnHost,
-    t(app.lastUsedAt ? "locker.apps.lastUsed" : "locker.apps.connected", {
-      when,
-    }),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+    app.returnHost ? { text: app.returnHost, wrap: true } : null,
+    {
+      text: t("locker.apps.connected", { date: formatDay(app.grantedAt) }),
+      wrap: false,
+    },
+    {
+      wrap: false,
+      text: app.lastUsedAt
+        ? t("locker.apps.lastUsed", {
+            when: formatRelative(app.lastUsedAt * 1000, Date.now(), PORTAL_FMT),
+          })
+        : t("locker.apps.neverUsed"),
+    },
+  ].filter((m): m is { text: string; wrap: boolean } => m !== null);
   const panelId = `disconnect-${group.product}-${app.clientId}`;
   const changeId = `change-${group.product}-${app.clientId}`;
   const busy = confirming || changing;
+  const off = !app.available;
   return (
     <li className="py-4 @container" data-client={app.clientId}>
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 @[34rem]:grid-cols-[auto_minmax(0,1fr)_auto]">
@@ -162,71 +177,119 @@ function AppRow({
           tint={null}
           size={40}
           src={app.iconUrl ?? group.iconUrl}
+          neutral
+          className={off ? "grayscale" : undefined}
+          tileClassName={off ? "text-fg-muted" : undefined}
         />
-        <div className="min-w-0 space-y-2">
-          <div>
-            <p className="flex flex-wrap items-baseline gap-x-2 break-words font-semibold text-fg-strong">
-              <span className="min-w-0 max-w-full [overflow-wrap:anywhere]">
-                {app.name}
+        <div className="min-w-0">
+          <p
+            className={cn(
+              "flex flex-wrap items-baseline gap-x-2 gap-y-1 break-words font-semibold",
+              off ? "text-fg-muted" : "text-fg-strong",
+            )}
+          >
+            <bdi className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+              {app.name}
+            </bdi>
+            {app.partner && app.developer ? (
+              <span className="text-sm font-normal text-fg-muted">
+                {t("locker.apps.by", { developer: app.developer })}
               </span>
-              {app.partner && app.developer ? (
-                <span className="text-sm font-normal text-fg-muted">
-                  {t("locker.apps.by", { developer: app.developer })}
-                </span>
-              ) : null}
-            </p>
-            <p className="text-sm text-fg-muted [overflow-wrap:anywhere]">
-              {meta}
-            </p>
-          </div>
-          {app.available ? (
-            <ul
-              aria-label={t("locker.apps.gets", { app: app.name })}
-              className="flex flex-wrap gap-2"
-            >
-              {granted.map((g) => (
-                <GetChip
-                  key={g.item}
-                  item={g.item}
-                  granted={g.granted}
-                  product={group.name}
-                />
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-fg" data-app-off="">
-              {t("locker.apps.off", { product: group.name })}
-            </p>
-          )}
-        </div>
-        {busy ? null : (
-          <div className="col-start-2 flex flex-wrap gap-2 @[34rem]:col-start-3 @[34rem]:row-start-1 @[34rem]:justify-end">
-            {changeable ? (
-              <Button
-                ref={changeRef}
-                variant="quiet"
-                size="md"
-                aria-label={t("locker.apps.changeName", { app: app.name })}
-                aria-expanded={false}
-                aria-controls={changeId}
-                onClick={() => setChanging(true)}
-              >
-                {t("locker.apps.change")}
-              </Button>
             ) : null}
-            <Button
-              ref={removeRef}
-              variant="quiet"
-              size="md"
-              aria-label={t("locker.apps.disconnectName", { app: app.name })}
-              aria-expanded={false}
-              aria-controls={panelId}
-              onClick={() => setConfirming(true)}
-            >
-              {t("locker.apps.disconnect")}
-            </Button>
+            {off ? (
+              <span
+                data-app-off-pill=""
+                className="self-center whitespace-nowrap rounded-full border border-border-strong px-2 py-0.5 text-xs font-medium text-fg-muted"
+              >
+                {t("locker.apps.offPill")}
+              </span>
+            ) : null}
+          </p>
+          <p className="text-sm text-fg-muted">
+            {meta.map((m, i) => (
+              <React.Fragment key={i}>
+                {i > 0 ? "\u00a0· " : null}
+                <span
+                  className={
+                    m.wrap ? "[overflow-wrap:anywhere]" : "whitespace-nowrap"
+                  }
+                >
+                  {m.text}
+                </span>
+              </React.Fragment>
+            ))}
+          </p>
+        </div>
+        {off ? (
+          <p
+            data-app-off=""
+            className="col-span-full row-start-3 flex items-start gap-1.5 text-xs text-fg-muted @[34rem]:col-span-2 @[34rem]:col-start-2 @[34rem]:row-start-2"
+          >
+            <PowerOff aria-hidden className="mt-px size-3.5 shrink-0" />
+            {t("locker.apps.off", { product: group.name })}
+          </p>
+        ) : changing ? null : (
+          <div className="col-span-full row-start-3 space-y-1.5 @[34rem]:col-span-2 @[34rem]:col-start-2 @[34rem]:row-start-2">
+            {decided.length > 0 ? (
+              <ul
+                aria-label={t("locker.apps.gets", { app: app.name })}
+                className="flex flex-wrap gap-1.5"
+              >
+                {decided.map((g) => (
+                  <GetChip
+                    key={g.item}
+                    item={g.item}
+                    granted={g.granted}
+                    product={group.name}
+                  />
+                ))}
+              </ul>
+            ) : null}
+            {always.length > 0 ? (
+              <p className="text-xs text-fg-muted">
+                {t("locker.apps.also", {
+                  detail: always
+                    .map((g) => clientChipText(g.item, group.name))
+                    .join(", "),
+                })}
+              </p>
+            ) : null}
           </div>
         )}
+        {/* While a panel is open the column stays (hidden) beside the name, so the name does not
+            reflow; under the name, where it holds no column, it leaves with the panel. */}
+        <div
+          style={busy ? { visibility: "hidden" } : undefined}
+          className={cn(
+            "col-start-2 row-start-2 flex flex-wrap gap-2 @[34rem]:col-start-3 @[34rem]:row-start-1 @[34rem]:justify-end",
+            busy && "@max-[34rem]:hidden",
+          )}
+        >
+          {changeable ? (
+            <Button
+              ref={changeRef}
+              variant="quiet"
+              size="md"
+              aria-label={t("locker.apps.changeName", { app: app.name })}
+              aria-expanded={false}
+              aria-controls={changeId}
+              onClick={() => setChanging(true)}
+            >
+              {t("locker.apps.change")}
+            </Button>
+          ) : null}
+          <Button
+            ref={removeRef}
+            variant="quiet"
+            size="md"
+            aria-label={t("locker.apps.disconnectName", { app: app.name })}
+            aria-expanded={false}
+            aria-controls={panelId}
+            onClick={() => setConfirming(true)}
+          >
+            {t("locker.apps.disconnect")}
+          </Button>
+        </div>
       </div>
       {changeable ? (
         <ChangePanel
@@ -244,6 +307,7 @@ function AppRow({
         id={panelId}
         open={confirming}
         name={app.name}
+        level={4}
         headingRef={headingRef}
         copy={{
           title: t("locker.apps.disconnectAsk", { app: app.name }),
@@ -253,7 +317,7 @@ function AppRow({
               ? portalErrorCopy(disconnect.error).line
               : t("locker.apps.disconnectFailed", { app: app.name }),
           keep: t("locker.apps.keep", { app: app.name }),
-          confirm: t("locker.apps.disconnectName", { app: app.name }),
+          confirm: t("locker.apps.disconnect"),
           confirmName: t("locker.apps.disconnectName", { app: app.name }),
           body: app.developer
             ? t("locker.apps.disconnectBody", {
@@ -274,8 +338,8 @@ function AppRow({
             { product: group.product, clientId: app.clientId },
             {
               onSuccess: () => {
+                // The toast's region is the announcement.
                 toast.success(t("locker.apps.disconnected", { app: app.name }));
-                announce(t("locker.apps.disconnected", { app: app.name }));
                 // The row leaves with the refetch; the card stays, so its heading is always there.
                 focusSectionHeading("apps");
               },
@@ -318,6 +382,7 @@ function ChangePanel({
       ? [[g.item, on(g)] as const]
       : [],
   );
+  const reloadRef = React.useRef<HTMLButtonElement>(null);
   const close = (): void => {
     setDraft({});
     change.reset();
@@ -325,6 +390,24 @@ function ChangePanel({
   };
   const conflict =
     change.error instanceof HttpError && change.error.status === 409;
+  // The refused Save is read again and the panel stays open with the fresh values.
+  const reload = (): void => {
+    setDraft({});
+    change.reset();
+    void apps.refetch().then(() => {
+      if (headingRef.current) headingRef.current.focus({ preventScroll: true });
+      else focusSectionHeading("apps");
+    });
+  };
+  // A refused Save on a phone leaves Save under the docked bar: Reload takes focus and shows.
+  React.useEffect(() => {
+    if (!conflict) return;
+    reloadRef.current?.focus({ preventScroll: true });
+    reloadRef.current?.scrollIntoView?.({
+      block: "center",
+      behavior: scrollBehavior(),
+    });
+  }, [conflict]);
   const failure = change.error
     ? conflict
       ? t("locker.apps.conflict")
@@ -341,8 +424,8 @@ function ChangePanel({
       },
       {
         onSuccess: () => {
-          toast.success(t("locker.apps.saved"));
-          announce(t("locker.apps.savedAnnounce", { app: app.name }));
+          // The toast's region is the announcement.
+          toast.success(t("locker.apps.saved", { app: app.name }));
           close();
         },
         // The grant is gone (disconnected in another tab): the list is read again and the row leaves.
@@ -378,7 +461,7 @@ function ChangePanel({
                 claim: isClaim(g.item),
                 startsOff: false,
               }}
-              lock={t("locker.apps.needed", { app: app.name })}
+              lock={t("locker.apps.needed")}
               on={on(g)}
               onToggle={() =>
                 isClaim(g.item) && setDraft((d) => ({ ...d, [g.item]: !on(g) }))
@@ -390,13 +473,7 @@ function ChangePanel({
           <p role="alert" className="text-sm text-danger">
             {failure}{" "}
             {conflict ? (
-              <Button
-                variant="link"
-                onClick={() => {
-                  void apps.refetch();
-                  close();
-                }}
-              >
+              <Button ref={reloadRef} variant="link" onClick={reload}>
                 {t("locker.apps.reload")}
               </Button>
             ) : null}

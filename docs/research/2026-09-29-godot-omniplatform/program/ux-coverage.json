@@ -15250,10 +15250,10 @@
       "source": "mockups/screens/identity/identity.connected-apps.json",
       "area": "identity",
       "surface": "portal",
-      "owners": ["I-21", "I-21", "I-34", "I-11", "PX-31a", "PX-31b"],
+      "owners": ["I-21", "I-34", "I-11", "PX-31a", "PX-31b"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "built: Account \u2192 Connected apps (portal/components/account/ConnectedAppsSection.tsx): list, chips, Change panel, off rows; e2e states account-apps*, unit portalConnectedApps.test.tsx; own-app rows are I-34"
+      "evidence": "built: Account \u2192 Connected Apps (portal/components/account/ConnectedAppsSection.tsx): list, chips, Change panel, off rows; e2e states account-apps*, unit portalConnectedApps.test.tsx; own-app rows are I-34"
     },
     {
       "id": "identity.connection-audience",
@@ -15405,10 +15405,10 @@
       "area": "identity",
       "surface": "portal",
       "overlays": ["ST-48"],
-      "owners": ["I-21", "I-21", "I-34", "I-11"],
+      "owners": ["I-21", "I-34", "I-11"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "built: Disconnect confirm in the Connected apps row (RemovePanel with the D8 copy); e2e state account-apps-disconnect"
+      "evidence": "built: Disconnect confirm in the Connected Apps row (RemovePanel with the D8 copy); e2e state account-apps-disconnect"
     },
     {
       "id": "identity.finish",
