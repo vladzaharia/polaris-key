@@ -41,6 +41,10 @@
 #   PKEY_KEYRING_TESTS 1 runs the keyring suite's real-keyring contract (the CI keyring job, SP-27)
 #                     and lets default stores use the OS keyring; otherwise every run exports
 #                     PKEY_DESKTOP_KEYRING=0, so no suite touches the developer's or runner's keyring
+#   PKEY_TEST_LEAK_GATE  auto (default: on for 4.7 engines) | 1 | 0: whether a run step fails on the engine's leak report
+#   PKEY_TEST_SEED_LEAK  1 makes the runner leak one object, to prove the leak gate: the run step must then
+#                     fail ("the engine reported a leak at exit"). `run_tests.sh --self-check` tests the gate's
+#                     pattern on seeded logs, without an engine.
 #   Extra arguments are passed to every suite after the selection.
 #
 # Steps: import (retried once on a signal exit), the untracked-.uid check, the f_uid data packs
@@ -51,8 +55,9 @@
 # export_stamps suite in the editor; --export-pack needs no templates), then export + template
 # run. Every step runs under a log watchdog: a fatal line (below) kills and
 # fails it at once, as do the timeout and a non-zero exit, and a run without a final
-# `PKEY-TEST SUMMARY … failed=0` fails. A script parse error is not reliably reported by exit
-# code (`--import` exits 0, and on macOS 4.7 a main loop that fails to load hangs on a modal
+# `PKEY-TEST SUMMARY … failed=0` fails, and so does one whose log has the engine's leak report
+# (`ObjectDB instances were leaked at exit`, `resources still in use at exit`; see LEAK below). A script
+# parse error is not reliably reported by exit code (`--import` exits 0, and on macOS 4.7 a main loop that fails to load hangs on a modal
 # alert), so the log is the authority. Generic `ERROR:` lines are NOT fatal: a slim container
 # prints `ERROR: Unable to load fontconfig` on every run.
 #
@@ -93,6 +98,37 @@ case "$PART:$SUITES" in
   editor-b:ci) SUITES=ci_b ;;
 esac
 FATAL='SCRIPT ERROR|Parse Error|Failed to load script|Cannot get class|Invalid MainLoop'
+# The engine's exit report of a leak: `WARNING: 5 ObjectDB instances were leaked at exit (…)` and
+# `ERROR: 2 resources still in use at exit (…)`; one object reads `1 ObjectDB instance was leaked`, and older engines
+# drop the count or the "were". Anchored, because suite_exit_leaks prints a PASS line that contains the phrase. A
+# `run` step fails on a match.
+LEAK='^(WARNING|ERROR): ([0-9]+ )?ObjectDB instances? (were |was )?leaked at exit|^(WARNING|ERROR): ([0-9]+ )?resources? (is |are )?still in use at exit'
+
+# `run_tests.sh --self-check`: the leak gate against seeded logs, without an engine (tools/godotCiSplit.test.ts
+# runs it). A seeded leak must match, whatever the engine's wording; the suite's own PASS line must not.
+if [ "${1:-}" = --self-check ]; then
+  bad=0
+  expect() { # expect <match|clean> <line>
+    local got=clean
+    printf '%s\n' "$2" | grep -Eq "$LEAK" && got=match
+    if [ "$got" != "$1" ]; then
+      echo "self-check: expected $1 for: $2" >&2
+      bad=1
+    fi
+  }
+  expect match 'WARNING: 5 ObjectDB instances were leaked at exit (run with `--verbose` for details).'
+  expect match 'ERROR: 2 resources still in use at exit (run with --verbose for details).'
+  expect match 'ERROR: 2 resources still in use at exit.'
+  expect match 'WARNING: ObjectDB instances leaked at exit (run with -v for details).'
+  expect match 'ERROR: 1 resources still in use at exit'
+  expect match 'WARNING: 1 ObjectDB instance was leaked at exit (run with `--verbose` for details).'
+  expect clean "PASS exit_leaks quit — no 'ObjectDB instances were leaked' and no 'resources still in use at exit'"
+  expect clean 'PASS exit_leaks ObjectDB instances were leaked at exit'
+  expect clean '    WARNING: 5 ObjectDB instances were leaked at exit'
+  expect clean 'INFO connect resources still in use at exit'
+  [ "$bad" -eq 0 ] && echo "self-check: ok"
+  exit "$bad"
+fi
 
 if [ -n "${GODOT_BIN:-}" ]; then
   GODOT="$GODOT_BIN"
@@ -163,6 +199,14 @@ case "$GODOT_REAL" in
 esac
 : >"$RUN_DIR/editor/._sc_"
 ENGINE_VERSION="$("$GODOT" --version 2>/dev/null | tail -n 1)"
+# The leak gate is on for engines whose runs are clean (4.7); PKEY_TEST_LEAK_GATE=1 forces it on, 0 off. Older engines
+# also report every coroutine still suspended at exit as a leaked object (4.5.2: 11 ci suites, e.g. the boot, ui and
+# identity groups), which is not yet fixed.
+case "${PKEY_TEST_LEAK_GATE:-auto}" in
+  1) LEAK_GATE=1 ;;
+  0) LEAK_GATE=0 ;;
+  *) case "$ENGINE_VERSION" in 4.7*) LEAK_GATE=1 ;; *) LEAK_GATE=0 ;; esac ;;
+esac
 
 rm -rf "$BUILD"
 mkdir -p "$LOGS"
@@ -220,6 +264,8 @@ step() {
       reason="exit $STEP_STATUS"
     elif [ "$kind" = run ] && ! grep -E '^PKEY-TEST SUMMARY ' "$log" | tail -n 1 | grep -Eq ' failed=0$'; then
       reason="no final 'PKEY-TEST SUMMARY … failed=0'"
+    elif [ "$kind" = run ] && [ "$LEAK_GATE" = 1 ] && grep -Eq "$LEAK" "$log"; then
+      reason="the engine reported a leak at exit"
     fi
   fi
   if [ "${STEP_LIVE:-1}" = 1 ]; then
@@ -231,6 +277,7 @@ step() {
   if [ -n "$reason" ]; then
     echo "── $name: FAIL ($reason) in ${took}s; log: $log"
     grep -En "$FATAL" "$log" | head -n 5
+    [ "$kind" = run ] && [ "$LEAK_GATE" = 1 ] && grep -En "$LEAK" "$log" | head -n 5
     return 1
   fi
   echo "── $name: ok in ${took}s"

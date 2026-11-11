@@ -24,6 +24,9 @@ extends RefCounted
 
 const E := preload("res://addons/polaris_key/native/android_export.gd")
 
+## Every facade node `_android` made: a Node is not reference counted, so the suite frees them at its end.
+static var _nodes: Array[PKeyAndroid] = []
+
 
 class ApkHost:
 	extends RefCounted
@@ -69,11 +72,20 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await load("res://tests/native/test_google.gd").new().run(t)
 	await load("res://tests/native/test_play_games.gd").new().run(t)
 	await load("res://tests/native/test_redirect.gd").new().run(t)
+	_free_nodes()
 	return true
+
+
+static func _free_nodes() -> void:
+	for n in _nodes:
+		if is_instance_valid(n):
+			n.free()
+	_nodes.clear()
 
 
 static func _android(p_platform: String, p_native: Object = null) -> PKeyAndroid:
 	var a := PKeyAndroid.new()
+	_nodes.append(a)
 	a.platform = p_platform
 	a.native = p_native
 	a.timeout_s = 2.0

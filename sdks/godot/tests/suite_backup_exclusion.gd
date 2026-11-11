@@ -8,6 +8,21 @@ extends RefCounted
 
 const PRODUCT := "djdl"
 
+## The facade nodes the tests made: a Node is not reference counted, so the suite frees them at its end.
+static var _owned: Array[Node] = []
+
+
+static func _own(n: Node) -> Node:
+	_owned.append(n)
+	return n
+
+
+static func _free_owned() -> void:
+	for n in _owned:
+		if is_instance_valid(n):
+			n.free()
+	_owned.clear()
+
 
 ## A stand-in for the PolarisKeyAndroid / PolarisKeyApple `cmd(json)` surface.
 class FakeNative:
@@ -42,11 +57,12 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_stores(t)
 	_sync_dirs(t)
 	PKeyBackupExclusion.reset_for_tests()
+	_free_owned()
 	return true
 
 
 static func _android_with(native: FakeNative) -> PKeyAndroid:
-	var a := PKeyAndroid.new()
+	var a := _own(PKeyAndroid.new())
 	a.native = native
 	PKeyBackupExclusion.android_override = a
 	return a
@@ -65,7 +81,7 @@ func _android(t: PKeyTestContext) -> void:
 	t.check("android: a root outside user:// is left alone", PKeyBackupExclusion.root("/tmp/x") == "/tmp/x")
 	t.check("android: a dot-dot root is left alone", PKeyBackupExclusion.root("user://../x") == "user://../x")
 	a.native = FakeNative.new()
-	var empty := PKeyAndroid.new()
+	var empty := _own(PKeyAndroid.new())
 	empty.native = FakeNative.new()
 	PKeyBackupExclusion.android_override = empty
 	t.check("android: a plugin that answers no path leaves the root unchanged", PKeyBackupExclusion.root("user://pkey") == "user://pkey")
@@ -78,7 +94,7 @@ func _ios(t: PKeyTestContext) -> void:
 	var dir := PKeyTestFixtures.scratch_dir("bx-ios")
 	t.check("ios: no plugin, nothing to do", PKeyBackupExclusion.exclude(dir))
 	var native := FakeNative.new()
-	var apple := PKeyApple.new()
+	var apple := _own(PKeyApple.new())
 	apple.native = native
 	PKeyBackupExclusion.apple_override = apple
 	t.check("ios: the directory is excluded", PKeyBackupExclusion.exclude(dir) and native.count("exclude_from_backup") == 1)
@@ -133,7 +149,7 @@ func _sync_dirs(t: PKeyTestContext) -> void:
 	# iOS: each directory is excluded once it exists.
 	PKeyBackupExclusion.reset_for_tests()
 	var native := FakeNative.new()
-	var apple := PKeyApple.new()
+	var apple := _own(PKeyApple.new())
 	apple.native = native
 	PKeyBackupExclusion.apple_override = apple
 	var j := Journal.Files.new(scratch.path_join("ios"))

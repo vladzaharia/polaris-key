@@ -109,10 +109,20 @@ func _init(identity: PKeyIdentity, routes: PKeyIdentityNearbyRoutes, started: PK
 	expires_at = p_expires_at
 	interval = started.interval
 	device_name = label
-	_link("approvers_changed", func(list: Array) -> void: approvers_changed.emit(_clean(list)))
-	_link("result", func(status: String) -> void: result.emit(status))
+	# Methods, not lambdas: the request holds these connections and this session holds the request, so a lambda
+	# (which holds `self`) would make a cycle that a session abandoned before `_close_lan` never frees.
+	_link("approvers_changed", _on_approvers_changed)
+	_link("result", _on_result)
 	# The engine hands records over only after `confirm_account()`.
 	_link("record", _on_record)
+
+
+func _on_approvers_changed(list: Array) -> void:
+	approvers_changed.emit(_clean(list))
+
+
+func _on_result(status: String) -> void:
+	result.emit(status)
 
 
 func _to_string() -> String:

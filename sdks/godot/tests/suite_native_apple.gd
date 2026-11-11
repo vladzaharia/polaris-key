@@ -262,6 +262,13 @@ static func _apple(p_platform: String, p_native: Object = null) -> PKeyApple:
 	return a
 
 
+## `_apple`, kept in `made` so the test can free the node.
+static func _made(made: Array[PKeyApple], p_platform: String, p_native: Object = null) -> PKeyApple:
+	var a := _apple(p_platform, p_native)
+	made.append(a)
+	return a
+
+
 func _stubs(t: PKeyTestContext) -> void:
 	var desktop := _apple("linux")
 	var has_plugin_os := OS.get_name() == "iOS" or OS.get_name() == "macOS"
@@ -450,8 +457,9 @@ func _facade(t: PKeyTestContext) -> void:
 
 
 func _backup(t: PKeyTestContext) -> void:
+	var made: Array[PKeyApple] = []
 	var fake := PKeyFakeAppleNative.new()
-	var b := PKeyPlatformBackup.new(_apple("ios", fake))
+	var b := PKeyPlatformBackup.new(_made(made, "ios", fake))
 	t.check("backup: available on iOS with the plugin", b.is_available())
 	var absent := await b.read_restore("diceroll")
 	t.check("backup: an absent restore item reads as null", absent.ok and absent.detail["value"] == null)
@@ -473,22 +481,24 @@ func _backup(t: PKeyTestContext) -> void:
 	var root := await b.read_sync_root("diceroll", "sub1", "ring1")
 	t.check("backup: the sync root round trips as a Dictionary", root.ok and root.detail["value"] is Dictionary and int(root.detail["value"]["v"]) == 1 and root.detail["value"]["k"] == "x")
 	t.check("backup: an oversized sync root is refused before the plugin", not (await b.write_sync_root("diceroll", "sub1", "ring1", {"v": 1, "x": "a".repeat(PKeyPlatformBackup.MAX_VALUE_BYTES)})).ok)
-	var grouped := PKeyPlatformBackup.new(_apple("ios", fake), "TEAM.group.x")
+	var grouped := PKeyPlatformBackup.new(_made(made, "ios", fake), "TEAM.group.x")
 	await grouped.read_restore("diceroll")
 	t.check("backup: the access group is sent when set", fake.calls[-1].get("accessGroup") == "TEAM.group.x")
 	fake.backup_status = -34018
 	var gone := await b.read_restore("diceroll")
 	t.check("backup: no entitlement is Unsupported, not a failure", not gone.ok and gone.code == &"unsupported" and gone.detail["feature"] == PKeyConstants.Feature.IDENTITY_RESTORE \
 			and not str(gone.message).contains("rs_"))
-	var mac := PKeyPlatformBackup.new(_apple("macos", PKeyFakeAppleNative.new()))
+	var mac := PKeyPlatformBackup.new(_made(made, "macos", PKeyFakeAppleNative.new()))
 	t.check("backup: macOS with the dylib answers", (await mac.read_restore("diceroll")).ok)
-	var linux := PKeyPlatformBackup.new(_apple("linux"))
+	var linux := PKeyPlatformBackup.new(_made(made, "linux"))
 	var lr := await linux.read_restore("diceroll")
 	t.check("backup: Linux is Unsupported (runtime)", not lr.ok and lr.code == &"unsupported" and lr.detail["reason"] == "runtime")
-	var missing := _apple("ios")
+	var missing := _made(made, "ios")
 	missing.native_class = "PolarisKeyAppleMissingForTests"
 	var nr := await PKeyPlatformBackup.new(missing).write_restore("diceroll", "rk_x", "rs_y")
 	t.check("backup: iOS without the extension is Unsupported (dependency)", not nr.ok and nr.detail["reason"] == "dependency")
+	for a in made:
+		a.free()
 
 
 func _keychain(t: PKeyTestContext) -> void:

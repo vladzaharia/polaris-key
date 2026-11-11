@@ -8,14 +8,21 @@ extends PKeyPackTransport
 ## with one change: 401 or 403 is `pack-not-entitled` (the content route is entitlement-gated;
 ## PKeyPackEngine.object_refusal), 5xx `server-error`.
 
-var core: PKeyCore
+## Weak: the core holds the packs, the packs hold the engine and the engine holds this transport, so a strong
+## reference here would make a cycle that outlives the SDK.
+var core: PKeyCore:
+	get:
+		return _core_ref.get_ref() as PKeyCore
 ## One wall-clock deadline per object request (every hop and the whole body), seconds.
 var object_timeout := 600.0
 var record_limit := PKeyConstants.MAX_RECORD_JWS_BYTES
 
 
+var _core_ref: WeakRef
+
+
 func _init(p_core: PKeyCore) -> void:
-	core = p_core
+	_core_ref = weakref(p_core)
 
 
 func id() -> String:

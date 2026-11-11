@@ -171,3 +171,5 @@ func run(t: PKeyTestContext) -> void:
 	server.queue_free()
 	other.queue_free()
 	S.remove_tree(root)
+	# The plan holds lambdas that read this group: let go of them, or the group holds itself.
+	plan.clear()

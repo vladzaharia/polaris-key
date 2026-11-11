@@ -93,6 +93,11 @@ class Bed extends PKeyIdentityTestBed:
 	var discovery: Dictionary = {}
 	var nearby_on := true
 
+	func free_all() -> void:
+		super()
+		starts_n.clear()
+		polls_n.clear()
+
 	func _answer(req: Dictionary) -> Dictionary:
 		var path := String(req["path"])
 		if path.ends_with("/.well-known/polaris.json"):
@@ -192,6 +197,9 @@ class Rig extends RefCounted:
 
 	func free_all() -> void:
 		bed.free_all()
+		# The timers hold the session's callbacks and the events hold what it said: let go of them.
+		timers.clear()
+		events.clear()
 
 
 ## The proof a route sent, as the verifier takes it.
@@ -538,6 +546,8 @@ func _races(t: PKeyTestContext) -> void:
 		cs.cancel()
 		c.bed.clock[0] += seconds
 	var co: PKeySignInOutcome = await cs.wait()
+	# The sleeper holds the session and the session holds the identity that holds the sleeper.
+	c.sdk.identity.sleeper = Callable()
 	t.check("nearby: cancel during the pause answers cancelled and sends no poll", co.kind == PKeySignInOutcome.KIND_CANCELLED and c.bed.sent("/poll").is_empty())
 
 	# Another sign-in replaced the token: the confirm checks the held token, and nothing of the other is touched.

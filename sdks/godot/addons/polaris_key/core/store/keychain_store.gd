@@ -34,9 +34,14 @@ func _init(p_product: String, p_apple: PKeyApple = null, root := "user://pkey") 
 	product = p_product
 	apple = p_apple if p_apple != null else PKeyApple.shared()
 	files = PKeyFileStore.new(p_product, root)
-	files.failed.connect(func(err: Dictionary) -> void:
-		last_error = err
-		failed.emit(err))
+	# A method, not a lambda: a lambda would hold `self` and `files` holds the connection, a cycle
+	# that outlives the SDK's exit.
+	files.failed.connect(_on_files_failed)
+
+
+func _on_files_failed(err: Dictionary) -> void:
+	last_error = err
+	failed.emit(err)
 
 
 ## The store PKeyCore uses when PKeyOptions.store is null: this one on iOS with the Apple plugin,

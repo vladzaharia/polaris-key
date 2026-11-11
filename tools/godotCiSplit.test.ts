@@ -6,6 +6,7 @@
  * so every suite runs exactly once per engine and every matrix case runs.
  */
 
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -252,5 +253,24 @@ describe("godot legs split every Linux engine", () => {
     expect(ci).toContain('PKEY_UI_MATRIX_SHARDS="${{ matrix.ui_shards }}"');
     expect(ci).toContain('PKEY_UI_MATRIX_SHARD_RANGE="${{ matrix.ui_range }}"');
     expect(ci).toContain("export PKEY_TEST_PARALLEL=1");
+  });
+
+  it("has run_tests.sh fail a run step on the engine's leak report, and prove the pattern on seeded logs", () => {
+    const sh = readFileSync(
+      new URL("../sdks/godot/tools/run_tests.sh", import.meta.url),
+      "utf8",
+    );
+    expect(sh).toContain(
+      'elif [ "$kind" = run ] && [ "$LEAK_GATE" = 1 ] && grep -Eq "$LEAK" "$log"; then',
+    );
+    // The seeded lines match, the suite's own PASS line does not (the pattern is anchored).
+    const script = new URL("../sdks/godot/tools/run_tests.sh", import.meta.url)
+      .pathname;
+    const out = execFileSync("bash", [script, "--self-check"], {
+      encoding: "utf8",
+    });
+    expect(out).toContain("self-check: ok");
+    // The runner can seed a leak, so a real engine run proves the gate end to end.
+    expect(runner).toContain('OS.get_environment("PKEY_TEST_SEED_LEAK")');
   });
 });
