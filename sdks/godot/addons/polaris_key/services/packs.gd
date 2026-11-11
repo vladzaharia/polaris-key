@@ -279,7 +279,6 @@ static func stamp_named_packs(bytes: PackedByteArray, content: Dictionary) -> Di
 	return out
 
 
-## The licence's granted boolean flags, or null when the product runs no License service.
 func _product_trust() -> Dictionary:
 	var core := _core()
 	return core.trust.effective() if core != null else {}
@@ -290,6 +289,7 @@ func _entitlements() -> Variant:
 	return _granted(core) if core != null else null
 
 
+## The licence's granted boolean flags, or null when the product runs no License service.
 static func _granted(core: PKeyCore) -> Variant:
 	if not core.enabled("license"):
 		return null
@@ -863,5 +863,3 @@ func background(pack_ids: Array = []) -> Dictionary:
 		else:
 			out["failed"].append({"packId": id, "code": String(r.code)})
 	return out
-
-
