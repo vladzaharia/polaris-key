@@ -33,7 +33,8 @@ function fixture(
 }
 
 /**
- * The component registry's rows without a ui-matrix family. Keep every input direct: these are
+ * The component registry's rows without a ui-matrix family (CloudSyncStatus.error comes from the
+ * signed-out row of the cloudSync family). Keep every input direct: these are
  * state fixtures, not host-service fakes. `About` relies on the matrix defaults for the product's
  * identity. Each fixture carries the display facts its strings name (the sync time, the app's
  * version, the store that fixes the channel): ui-core never invents one, so a fixture without it
@@ -56,10 +57,6 @@ export const DIRECT_COMPONENT_STATE_FIXTURES: readonly ComponentStateFixture[] =
     fixture("CloudSyncStatus", "conflict", {
       services: ["sync"],
       cloudSync: { state: "conflict" },
-    }),
-    fixture("CloudSyncStatus", "error", {
-      services: ["sync"],
-      cloudSync: { state: "error", signedIn: false },
     }),
     fixture("About", "default", {
       bundle: { slug: "tidewater", name: "Tidewater Studio", version: "2.4.1" },
