@@ -5,6 +5,7 @@
 // the viewfinder's corners. Everywhere else (a Mac, a simulator, a preview) the viewfinder is a dark
 // panel: the camera never starts, and `AVScanSource.status` is `unavailable` with no camera.
 
+import Observation
 import PolarisKeyUICore
 import SwiftUI
 
@@ -13,18 +14,37 @@ import SwiftUI
 
     /// Reads QR codes with `AVCaptureMetadataOutput` (`.qr` only).
     @MainActor
+    @Observable
     public final class AVScanSource: KitScanSource {
-        public let session = AVCaptureSession()
+        @ObservationIgnored public let session = AVCaptureSession()
         /// The session is started and stopped on the capture queue only.
-        private let runner = SessionRunner()
-        private let queue = DispatchQueue(label: "im.plrs.key.scan")
-        private let reader = QRReader()
-        private var configured = false
+        @ObservationIgnored private let runner = SessionRunner()
+        @ObservationIgnored private let queue = DispatchQueue(label: "im.plrs.key.scan")
+        @ObservationIgnored private let reader = QRReader()
+        @ObservationIgnored private var configured = false
+        @ObservationIgnored private var tokens: [NSObjectProtocol] = []
+        /// True while Split View, Slide Over or another app has the camera.
+        public private(set) var interrupted = false
 
-        public init() {}
+        public init() {
+            let center = NotificationCenter.default
+            for (name, value) in [
+                (AVCaptureSession.wasInterruptedNotification, true),
+                (AVCaptureSession.interruptionEndedNotification, false),
+            ] {
+                tokens.append(
+                    center.addObserver(forName: name, object: session, queue: .main) { [weak self] _ in
+                        MainActor.assumeIsolated { self?.interrupted = value }
+                    })
+            }
+        }
 
         public var status: KitCameraStatus {
-            guard AVCaptureDevice.default(for: .video) != nil else { return .unavailable }
+            // Without the usage string the system ends the app at the first camera request: say there
+            // is no camera instead, and the entry stays hidden.
+            guard Bundle.main.object(forInfoDictionaryKey: "NSCameraUsageDescription") != nil,
+                AVCaptureDevice.default(for: .video) != nil
+            else { return .unavailable }
             switch AVCaptureDevice.authorizationStatus(for: .video) {
             case .authorized: return .authorized
             case .notDetermined: return .notDetermined
@@ -89,6 +109,7 @@ import SwiftUI
             let view = PreviewView()
             view.previewLayer.session = session
             view.previewLayer.videoGravity = .resizeAspectFill
+            view.followRotation()
             return view
         }
         func updateUIView(_ view: PreviewView, context: Context) {}
@@ -96,6 +117,30 @@ import SwiftUI
 
     private final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        private var coordinator: AVCaptureDevice.RotationCoordinator?
+        private var observation: NSKeyValueObservation?
+
+        /// The preview turns with the interface (iPad, landscape): the coordinator says which way is up.
+        func followRotation() {
+            guard let device = AVCaptureDevice.default(for: .video) else { return }
+            let coordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: previewLayer)
+            self.coordinator = coordinator
+            apply()
+            observation = coordinator.observe(\.videoRotationAngleForHorizonLevelPreview) { [weak self] _, _ in
+                DispatchQueue.main.async { self?.apply() }
+            }
+        }
+
+        private func apply() {
+            guard let angle = coordinator?.videoRotationAngleForHorizonLevelPreview else { return }
+            previewLayer.connection?.videoRotationAngle = angle
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            apply()
+        }
+
         var previewLayer: AVCaptureVideoPreviewLayer {
             // The layer class is fixed above, so the cast always holds.
             layer as? AVCaptureVideoPreviewLayer ?? AVCaptureVideoPreviewLayer()
@@ -104,10 +149,15 @@ import SwiftUI
 #endif
 
 /// The camera view with the viewfinder's corners: dark in both schemes, named for VoiceOver. It
-/// pairs as soon as a code reads, so there is no shutter.
+/// pairs as soon as a code reads, so there is no shutter. With the camera taken away it says so
+/// inside the panel instead of showing a black square.
 struct ScanViewfinder: View {
     let source: KitScanSource?
     let label: String
+    /// The largest side, so the actions stay in view.
+    var side: CGFloat = 360
+    /// Why there is no picture (the camera is in use elsewhere), or nil.
+    var message: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var settled = false
 
@@ -115,19 +165,26 @@ struct ScanViewfinder: View {
         ZStack {
             Color.black
             #if os(iOS) && canImport(AVFoundation)
-                if let av = source as? AVScanSource { CameraPreview(session: av.session) }
+                if message == nil, let av = source as? AVScanSource { CameraPreview(session: av.session) }
             #endif
             Corners()
                 .stroke(Color.white.opacity(0.9), style: StrokeStyle(lineWidth: 4, lineCap: .round))
                 .padding(28)
                 .scaleEffect(settled || reduceMotion ? 1 : 1.06)
                 .accessibilityHidden(true)
+            if let message {
+                Text(message)
+                    .font(.body)
+                    .foregroundStyle(Color.white)
+                    .multilineTextAlignment(.center)
+                    .padding(40)
+            }
         }
         .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: 360)
+        .frame(maxWidth: side, maxHeight: side)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(label)
+        .accessibilityLabel(message.map { "\(label). \($0)" } ?? label)
         .onAppear {
             if reduceMotion { settled = true } else { withAnimation(.easeOut(duration: 0.4)) { settled = true } }
         }

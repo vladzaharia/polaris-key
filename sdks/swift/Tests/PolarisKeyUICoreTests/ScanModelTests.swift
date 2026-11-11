@@ -15,6 +15,9 @@ final class FakeScanner: KitScanSource {
     var allow = true
     var asked = 0
     var sink: AsyncStream<String>.Continuation?
+    var starts = 0
+    var stops = 0
+    var running: Bool { starts > stops }
     init(_ status: KitCameraStatus) { self.status = status }
     func requestAccess() async -> Bool {
         asked += 1
@@ -22,7 +25,11 @@ final class FakeScanner: KitScanSource {
         return allow
     }
     func codes() -> AsyncStream<String> {
-        AsyncStream { sink = $0 }
+        starts += 1
+        return AsyncStream { continuation in
+            sink = continuation
+            continuation.onTermination = { _ in Task { @MainActor in self.stops += 1 } }
+        }
     }
 }
 
@@ -104,7 +111,6 @@ final class ScanModelTests: XCTestCase {
         await settle()
         XCTAssertEqual(fake.joined, ["PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"])
         XCTAssertEqual(fake.confirms, 1)
-        XCTAssertEqual(m.scanHits, 1)
         try? await Task.sleep(nanoseconds: 120_000_000)
         await settle()
         XCTAssertEqual(m.state.step, .paired)
@@ -119,9 +125,9 @@ final class ScanModelTests: XCTestCase {
         scanner.sink?.yield("PKP1:OTHER:P1-AAAAAAAAAAAAAAAA:7KQ2M5TXNRB4WV3Y")
         await settle()
         XCTAssertEqual(m.state.step, .scan)
-        XCTAssertEqual(m.state.otherApp, true)
+        XCTAssertEqual(m.state.scanNotice, .otherApp)
         XCTAssertNotNil(m.screen.line("localPairing.otherApp"))
-        XCTAssertEqual(m.scanHits, 0)
+        XCTAssertEqual(scanner.starts, 2)
         // The same frame again right away is ignored; a later read tries again.
         scanner.sink?.yield("PKP1:OTHER:P1-AAAAAAAAAAAAAAAA:7KQ2M5TXNRB4WV3Y")
         await settle()
@@ -132,7 +138,44 @@ final class ScanModelTests: XCTestCase {
         XCTAssertEqual(fake.joined.count, 2)
     }
 
-    func testCancelWhileWaitingReturnsToTheCamera() async {
+    func testAReadGoesStraightToWaitingAndStopsTheCamera() async {
+        let fake = FakeLinks()
+        fake.joinOffer = fake.offer()
+        let (m, _, scanner, _) = make(.authorized, fake)
+        await m.start()
+        await m.scan()
+        XCTAssertTrue(scanner.running)
+        scanner.sink?.yield("PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y")
+        await Task.yield()
+        XCTAssertEqual(m.state.step, .waiting)
+        await settle()
+        XCTAssertFalse(scanner.running)
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        await settle()
+        XCTAssertEqual(m.state.step, .paired)
+        XCTAssertFalse(scanner.running)
+    }
+
+    func testAFailedScanStaysOnScanWithAShortLineNeverTyping() async {
+        for (error, notice) in [
+            (KitLocalError(code: ErrorCode.pairingNotFound), KitLocalPairing.ScanNotice.notFound),
+            (KitLocalError(code: ErrorCode.pairingCodeFailed, reason: PairingCodeFailedReason.wrong), .stale),
+        ] {
+            let fake = FakeLinks()
+            fake.joinError = error
+            let (m, _, scanner, _) = make(.authorized, fake)
+            await m.start()
+            await m.scan()
+            scanner.sink?.yield("PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y")
+            await settle()
+            XCTAssertEqual(m.state.step, .scan)
+            XCTAssertEqual(m.state.scanNotice, notice)
+            XCTAssertNotEqual(m.state.step, .enter)
+            XCTAssertTrue(scanner.running)
+        }
+    }
+
+    func testCancelAfterAReadStopsTheCameraAndNeverRestartsIt() async {
         let fake = FakeLinks()
         fake.joinOffer = fake.offer()
         let (m, _, scanner, _) = make(.authorized, fake)
@@ -142,8 +185,42 @@ final class ScanModelTests: XCTestCase {
         await settle()
         XCTAssertEqual(m.state.step, .waiting)
         await m.cancel()
-        XCTAssertEqual(m.state.step, .scan)
+        XCTAssertEqual(m.state.step, .choose)
         XCTAssertEqual(fake.declines, 1)
+        XCTAssertEqual(scanner.starts, 1)
+        XCTAssertFalse(scanner.running)
+    }
+
+    func testTheViewGoingAwayStopsTheCamera() async {
+        let (m, _, scanner, _) = make(.authorized)
+        await m.start()
+        await m.scan()
+        XCTAssertTrue(scanner.running)
+        // A sheet dismissal runs the view's onDisappear, which cancels.
+        await m.cancel()
+        await settle()
+        XCTAssertFalse(scanner.running)
+        XCTAssertEqual(scanner.starts, 1)
+    }
+
+    func testTheCameraStopsWhenTheStepLeavesScan() async {
+        let (m, _, scanner, _) = make(.authorized)
+        await m.start()
+        await m.scan()
+        await m.enterInstead()
+        await settle()
+        XCTAssertEqual(m.state.step, .enter)
+        XCTAssertFalse(scanner.running)
+    }
+
+    func testAnInterruptedCameraSaysSo() async {
+        let (m, _, _, _) = make(.authorized)
+        await m.start()
+        await m.scan()
+        m.setCameraBusy(true)
+        XCTAssertNotNil(m.screen.line("localPairing.cameraBusy"))
+        m.setCameraBusy(false)
+        XCTAssertNil(m.screen.line("localPairing.cameraBusy"))
     }
 
     func testTypingAndScanningReachEachOther() async {

@@ -1162,6 +1162,13 @@ public struct KitLocalPairing: Sendable, Codable, Equatable, Hashable {
         case cameraOff = "camera-off"
     }
     public enum Notice: String, Sendable, Codable { case rotated, declined, blocked, guessing }
+    public enum ScanNotice: String, Sendable, Codable {
+        case otherApp = "other-app"
+        case notFound = "not-found"
+        case stale
+        case notReady = "not-ready"
+        case preparing
+    }
     public enum Busy: String, Sendable, Codable {
         case pair
         case newCode = "new-code"
@@ -1184,10 +1191,14 @@ public struct KitLocalPairing: Sendable, Codable, Equatable, Hashable {
     public var full: Bool?
     /// This device can scan a code: Scan a code leads on choose and replaces the typing and showing links.
     public var canScan: Bool?
-    /// scan: the last code read was another app's; scanning goes on.
-    public var otherApp: Bool?
     /// choose: the scanner is the host's own sheet, so typing is a link on choose.
     public var sheetScan: Bool?
+    /// choose, with `sheetScan`: what each shares comes before the sheet opens.
+    public var scanShares: Bool?
+    /// scan (and choose with `sheetScan`): why the last scan did not pair; scanning goes on.
+    public var scanNotice: ScanNotice?
+    /// scan: the camera is in use elsewhere or interrupted.
+    public var cameraBusy: Bool?
     public var code: String?
     public var qr: String?
     public var secondsLeft: Int?

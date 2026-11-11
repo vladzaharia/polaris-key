@@ -21,8 +21,14 @@ public enum KitCameraStatus: String, Sendable, Equatable {
 public protocol KitScanSource: AnyObject {
     var status: KitCameraStatus { get }
     /// Raises the system's camera prompt; true when the person allowed it.
+    /// True while the camera is taken away (Split View, another app using it): the screen says so.
+    var interrupted: Bool { get }
     func requestAccess() async -> Bool
     /// The texts of the QR codes read while the stream is iterated. The capture starts with the
     /// iteration and stops when it ends or the task is cancelled.
     func codes() -> AsyncStream<String>
+}
+
+extension KitScanSource {
+    public var interrupted: Bool { false }
 }
