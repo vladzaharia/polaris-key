@@ -230,10 +230,21 @@ func _build_keyring(opts: PKeyOptions) -> Object:
 	identity.restore.state = opts.restore_state if opts.restore_state != null else PKeyRestoreState.new(core.product, sensitive_root)
 	var vault: PKeySyncRingVault = opts.ring_vault if opts.ring_vault != null else PKeySyncRingVault.new(core.product, sensitive_root)
 	keyring = PKeySyncRing.for_core(core, keys, vault)
+	keyring.backup_enabled = opts.cloud_sync_root_backup
+	keyring.backup = opts.ring_backup if opts.ring_backup != null else _platform_ring_backup(opts.cloud_sync_backup_access_group)
 	if not _ring_hook_added:
 		_ring_hook_added = true
 		identity.add_before_sign_out(_forget_ring)
 	return keys
+
+
+## The platform's backup store for the root (iCloud Keychain, Block Store), or null where there is none
+## (Linux, Windows, web). An app without the entitlement or Play services answers unsupported on the first call.
+func _platform_ring_backup(access_group: String) -> PKeyPlatformBackup:
+	if not (OS.has_feature("ios") or OS.has_feature("macos") or OS.has_feature("android")):
+		return null
+	var b := PKeyPlatformBackup.new(null, access_group, PKeyAndroid.shared() if OS.has_feature("android") else null)
+	return b if b.is_available() else null
 
 
 ## Cloud Connect over this Core: the same device keys as the key ring, and the state record under

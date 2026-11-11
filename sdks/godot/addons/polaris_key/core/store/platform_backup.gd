@@ -8,8 +8,8 @@ extends RefCounted
 ##
 ## Apple (iOS, and macOS with the desktop dylib): a synchronizable Keychain item (iCloud Keychain)
 ## through PolarisKeyPlatform's `bk_*` ops. Android: Block Store through the plugin's `bk_*` ops
-## (I-49.14), the restore item only (the sync root's subject and ring ride inside its value there,
-## which is U-39's). Anywhere else, or when the app has no backup store (no keychain-access-groups
+## (I-49.14): one entry per product for each item, so the sync root's value carries the subject and the
+## ring id itself (`{"v":1,"subject","ringId","epoch","kid","root"}`, as Kotlin's). Anywhere else, or when the app has no backup store (no keychain-access-groups
 ## entitlement, no iCloud Keychain, a direct Android build, no Play services), every call answers the
 ## typed Unsupported result (PARITY §2.2) and the caller goes on to the next rung. Windows, Linux and
 ## web have none. Every call is a coroutine (the Android ops are asynchronous): await it.
@@ -122,29 +122,52 @@ func delete_restore(product: String) -> PKeyResult:
 
 # ── Sync root item ───────────────────────────────────────────────────────────────────────────
 
-## detail.value: the item's Dictionary, or null when absent.
+## detail.value: the item's Dictionary, or null when absent, unreadable as an object, or (Android, where
+## one entry holds one person's one ring) for another subject or ring. The caller wipes what it decodes.
 func read_sync_root(product: String, subject: String, ring_id: String) -> PKeyResult:
 	var r := await _transport("get", ITEM_SYNC, product, subject, ring_id, "")
 	if not r.ok:
 		return r
-	var text = r.detail.get("value") if r.detail is Dictionary else null
-	if not (text is String):
-		return PKeyResult.success({"value": null})
-	var json := JSON.new()
-	if json.parse(text) != OK or not (json.data is Dictionary):
-		return PKeyResult.success({"value": null})
-	return PKeyResult.success({"value": json.data})
+	var item := _sync_object(r.detail.get("value") if r.detail is Dictionary else null)
+	if item != null and _uses_android() and (item.get("subject") != subject or item.get("ringId") != ring_id):
+		item = null
+	return PKeyResult.success({"value": item})
 
 
+## Writes the item. On Android the entry is the product's only one, so another person's entry is left
+## alone (success, nothing written), and a failed write removes an entry for another ring (it names a
+## ring that no longer stands).
 func write_sync_root(product: String, subject: String, ring_id: String, value: Dictionary) -> PKeyResult:
-	var text := JSON.stringify(value, "", true)
+	var body := value
+	var current: Variant = null
+	if _uses_android():
+		var held := await _transport("get", ITEM_SYNC, product, subject, ring_id, "")
+		current = _sync_object(held.detail.get("value") if held.ok and held.detail is Dictionary else null)
+		if current != null and current.get("subject") != subject:
+			return PKeyResult.success()
+		body = value.duplicate()
+		body["subject"] = subject
+		body["ringId"] = ring_id
+	var text := JSON.stringify(body, "", true)
 	if text.to_utf8_buffer().size() > MAX_VALUE_BYTES:
 		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The backup item is over %d bytes." % MAX_VALUE_BYTES)
-	return await _transport("set", ITEM_SYNC, product, subject, ring_id, text)
+	var w := await _transport("set", ITEM_SYNC, product, subject, ring_id, text)
+	if not w.ok and current != null and current.get("ringId") != ring_id:
+		await _transport("delete", ITEM_SYNC, product, subject, ring_id, "")
+	return w
 
 
 func delete_sync_root(product: String, subject: String, ring_id: String) -> PKeyResult:
 	return await _transport("delete", ITEM_SYNC, product, subject, ring_id, "")
+
+
+static func _sync_object(text: Variant) -> Variant:
+	if not (text is String):
+		return null
+	var json := JSON.new()
+	if json.parse(text) != OK or not (json.data is Dictionary):
+		return null
+	return json.data
 
 
 # ── Transport ────────────────────────────────────────────────────────────────────────────────
@@ -169,10 +192,8 @@ func _transport(verb: String, item: String, product: String, subject: String, ri
 	return PKeyResult.success() if r.ok else r
 
 
-## The Android plugin's ops: the restore item only (one Block Store entry per product).
+## The Android plugin's ops: one Block Store entry per product for each item (`kind` "restore" or "sync").
 func _android_transport(verb: String, item: String, product: String, value: String) -> PKeyResult:
-	if item != ITEM_RESTORE:
-		return PKeyResult.unsupported(FEATURE, PKeyConstants.UnsupportedReason.RUNTIME, "The sync root's backup item is not stored on Android by this layer.")
 	match verb:
 		"get":
 			var r := await android.backup_get(item, product)

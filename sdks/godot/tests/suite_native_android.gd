@@ -304,8 +304,16 @@ func _backup(t: PKeyTestContext) -> void:
 	t.check("backup: the item round trips", v != null and v.restore_id == "rk_abcdefghijklmnopqrstuv" and v.secret_bytes().get_string_from_utf8() == "rs_secret")
 	var gone := await b.delete_restore("diceroll")
 	t.check("backup: delete removes it", gone.ok and f.backup.is_empty())
-	var sync_root := await b.write_sync_root("diceroll", "s", "r", {"v": 1})
-	t.check("backup: the sync root is Unsupported on Android here", not sync_root.ok and sync_root.code == &"unsupported")
+	var sync_root := await b.write_sync_root("diceroll", "ps_A", "rg_A", {"v": 1})
+	var sync_sent: Dictionary = f.last_call("bk_set")
+	var sync_named: bool = sync_sent["kind"] == "sync" and sync_sent["product"] == "diceroll"
+	t.check("backup: the sync root is the product's \"sync\" entry, its value base64", sync_root.ok and sync_named and not str(sync_sent["value"]).contains("ps_A"))
+	var sync_read := await b.read_sync_root("diceroll", "ps_A", "rg_A")
+	var sync_item: Variant = sync_read.detail["value"] if sync_read.ok else null
+	t.check("backup: the sync root round trips with the subject and the ring in its value", sync_item is Dictionary and sync_item["subject"] == "ps_A" and sync_item["ringId"] == "rg_A")
+	var sync_other := await b.read_sync_root("diceroll", "ps_B", "rg_A")
+	t.check("backup: another subject or ring reads nothing", sync_other.ok and sync_other.detail["value"] == null and (await b.read_sync_root("diceroll", "ps_A", "rg_B")).detail["value"] == null)
+	t.check("backup: delete removes the sync entry", (await b.delete_sync_root("diceroll", "ps_A", "rg_A")).ok and f.backup.is_empty())
 	f.garbage_for = "bk_get"
 	f.garbage_text = "garbled rk_abcdefghijklmnopqrstuv rs_secret"
 	var garbled := await b.read_restore("diceroll")

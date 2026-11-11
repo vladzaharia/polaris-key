@@ -20,6 +20,12 @@ extends RefCounted
 ##    sign-out hook calls it. The stored root is used only while it matches the pin. With no pin,
 ##    the stored root's `{ring_id, epoch, kid}` is the pin.
 ##  * A bad recovery code is refused before any request.
+##  * The platform backup (U-40.R, ring_backup.gd): the root also goes into `backup`, scoped to the signed-in
+##    subject and the ring, when the ring is created, reset, recovered or unlocked. A device with no local
+##    root reads it (it must derive the served `kid`) before its own wrap and the recovery code, then
+##    deposits its own wrap. A backup that cannot be read or written is a miss, never a failure. Sign-out
+##    keeps the item (a synchronizable delete reaches every device); `reset()` replaces it and
+##    `delete_backup()` removes it. `backup_enabled = false` stops reading and writing, not removing.
 ##  * Host misuse (locked, a bad argument, no device keys) is a failure result, never an assert.
 ##
 ## The wire: `requester` is a coroutine `(method: String, path: String, body: Variant) -> PKeyResult`,
@@ -60,6 +66,10 @@ var codec: Codec
 var on_account_required: Callable = Callable()
 ## The person Cloud Sync is signed in as now (`Callable() -> Variant`); read when a call starts.
 var subject_now: Callable = Callable()
+## The platform backup of the root (a PKeyPlatformBackup); null where the platform has none.
+var backup: PKeyPlatformBackup = null
+## The developer's switch (`PKeyOptions.cloud_sync_root_backup`): false stops reading and writing the backup.
+var backup_enabled := true
 
 var _device_id := ""
 var _device_source: Callable = Callable()
@@ -90,6 +100,9 @@ class _Held extends RefCounted:
 		epoch = p_epoch
 		kid = p_kid
 		root = p_root
+
+	func wipe() -> void:
+		root.fill(0)
 
 	func matches(p_ring_id: String, p_epoch: int, p_kid: PackedByteArray) -> bool:
 		return ring_id == p_ring_id and epoch == p_epoch and PKeySyncAesGcm.equal_constant_time(kid, p_kid)
@@ -273,12 +286,31 @@ func _status_locked() -> PKeyResult:
 		"root_stored": stored.ok and stored.detail != null,
 		"root_persistence": _vault.persistence(),
 		"root_protection": _vault.protection(),
+		"root_backup": backup_state(),
 	})
 
 
 ## The pinned ring, or ok with a null detail before this client first acquired a root.
 func pin() -> PKeyResult:
 	return _vault.read_pin()
+
+
+## "platform" (the root is backed up), "off" (the developer's switch) or "unavailable" (this platform has no
+## backup store: Linux, Windows, web, or an app without the entitlement or Play services).
+func backup_state() -> String:
+	if backup == null or not backup.is_available():
+		return "unavailable"
+	return "platform" if backup_enabled else "off"
+
+
+## Removes the platform backup of every ring this client knows of: call it from start over and account
+## deletion, never from a sign-out (R-11). It removes whatever the opt-out. A store that cannot delete is a
+## failure, so the caller can say so; no store, or no signed-in subject, has nothing to remove.
+func delete_backup() -> PKeyResult:
+	await _enter()
+	var r := await _remove_backups(_known_ring_ids())
+	_leave()
+	return r
 
 
 ## Forgets every root held in memory (quit). The stored root, the pin and the server's rows and
@@ -324,7 +356,7 @@ func _read_state() -> PKeyResult:
 	var res := await _call("GET", "devices/keyring", null)
 	if not res.ok:
 		return res
-	var parsed := _parse_state(res.detail)
+	var parsed: Variant = PKeySyncRingState.parse(res.detail)
 	if parsed == null:
 		return _bad_response("The key ring answer is not in the contract shape.")
 	_ring = parsed["ring"] if parsed["ring"] != null else {}
@@ -406,8 +438,22 @@ func _unlock_with(accept: Variant, offered: Variant = null) -> PKeyResult:
 		var sr_hold := _hold(stored, false)
 		if not sr_hold.ok:
 			return sr_hold
+		await _back_up(stored)
 		return unlocked_r
 	var wrap: Variant = st.detail["wrap"]
+	if offered == null:
+		var backed := await _backed_up_root(served, kid)
+		if backed != null:
+			var bh := _hold(backed, true)
+			if not bh.ok:
+				backed.wipe()
+				return bh
+			# Like recover(): this device now holds the root, so it stores its own wrap and the next start no
+			# longer depends on the backup. Best effort; a wrap that already stands has nothing to deposit.
+			var has: bool = wrap != null and wrap["kid"] == ring["root_kid"] and wrap["epoch"] == ring["epoch"]
+			if not has:
+				await _deposit_own_wrap()
+			return unlocked_r
 	if offered != null:
 		wrap = {"epoch": offered["epoch"], "kid": offered["kid"], "kem": offered["kem"], "enc": offered["enc"], "ct": offered["ct"], "by": null}
 	if wrap == null:
@@ -421,6 +467,7 @@ func _unlock_with(accept: Variant, offered: Variant = null) -> PKeyResult:
 	var hr := _hold(held, true)
 	if not hr.ok:
 		return hr
+	await _back_up(held)
 	return unlocked_r
 
 
@@ -514,7 +561,7 @@ func _seal_wrap(p_device_id: String, agree_key: Variant) -> PKeyResult:
 func put_wrap(p_device_id: String, wrap: Dictionary) -> PKeyResult:
 	if not _device_id_ok(p_device_id):
 		return _bad_arg("A device id is required.")
-	if _parse_wrap_members(wrap) == null:
+	if PKeySyncRingState.wrap_members(wrap) == null:
 		return _bad_arg("Not a wrap.")
 	await _enter()
 	var r := await _call("PUT", "devices/keyring/wraps/%s" % p_device_id.uri_encode(), _put_body(wrap))
@@ -547,42 +594,7 @@ static func parse_wrap_record(body: Variant) -> Variant:
 	for k: String in WRAP_RECORD_KEYS:
 		if not raw.has(k):
 			return null
-	return _parse_wrap_members({"ring_id": raw["ringId"], "epoch": raw["epoch"], "kid": raw["kid"], "kem": raw["kem"], "enc": raw["enc"], "ct": raw["ct"]})
-
-
-## The wrap with every member checked (type, shape, size), as a fresh Dictionary; null when any is not.
-static func _parse_wrap_members(w: Dictionary) -> Variant:
-	var ring_id: Variant = w.get("ring_id")
-	var epoch: Variant = w.get("epoch")
-	var kid: Variant = w.get("kid")
-	var kem: Variant = w.get("kem")
-	var enc: Variant = w.get("enc")
-	var ct: Variant = w.get("ct")
-	if not (ring_id is String) or RegEx.create_from_string(RING_ID_RE).search(ring_id) == null:
-		return null
-	if not _is_num(epoch) or float(epoch) != floorf(float(epoch)) or float(epoch) < 1.0 or float(epoch) > 9007199254740991.0:
-		return null
-	if not (kid is String) or (kid as String).length() != 32 or not _is_lower_hex(kid):
-		return null
-	if not ((kem is String and kem == "x25519") or (_is_num(kem) and float(kem) == float(PKeySyncHpke.KEM_X25519))):
-		return null
-	if not (enc is String) or not (ct is String):
-		return null
-	var enc_bytes: Variant = PKeyB64Url.decode_strict(enc)
-	var ct_bytes: Variant = PKeyB64Url.decode_strict(ct)
-	if enc_bytes == null or (enc_bytes as PackedByteArray).size() != PKeySyncHpke.ENC_BYTES:
-		return null
-	if ct_bytes == null or (ct_bytes as PackedByteArray).size() != PKeySyncWrap.WRAP_CT_BYTES:
-		return null
-	return {"ring_id": ring_id, "epoch": int(epoch), "kid": kid, "kem": kem, "enc": enc, "ct": ct}
-
-
-static func _is_lower_hex(s: String) -> bool:
-	for i in s.length():
-		var c := s.unicode_at(i)
-		if not ((c >= 48 and c <= 57) or (c >= 97 and c <= 102)):
-			return false
-	return true
+	return PKeySyncRingState.wrap_members({"ring_id": raw["ringId"], "epoch": raw["epoch"], "kid": raw["kid"], "kem": raw["kem"], "enc": raw["enc"], "ct": raw["ct"]})
 
 
 ## `DELETE .../wraps/{deviceId}`: the Worker removes a device's own wrap only.
@@ -673,13 +685,12 @@ func _recover(code: PackedByteArray) -> PKeyResult:
 	var root: Variant = PKeySyncWrap.unwrap_recovery(code, ring["ring_id"], ring["epoch"], kid, bytes) if bytes != null else null
 	if root == null or not PKeySyncAesGcm.equal_constant_time(PKeySyncHkdf.derive_kid(root), kid):
 		return _invalid_code()
-	var hr := _hold(_Held.new(ring["ring_id"], ring["epoch"], kid, root), true)
+	var recovered := _Held.new(ring["ring_id"], ring["epoch"], kid, root)
+	var hr := _hold(recovered, true)
 	if not hr.ok:
 		return hr
-	var deposited := false
-	var pub := _agree_public()
-	if pub.ok:
-		deposited = (await _put_wrap(device_id, pub.detail)).ok
+	await _back_up(recovered)
+	var deposited := await _deposit_own_wrap()
 	return PKeyResult.success({"ring_id": ring["ring_id"], "epoch": ring["epoch"], "wrap_deposited": deposited})
 
 
@@ -780,12 +791,20 @@ func _make_ring(path: String, with_recovery: bool) -> PKeyResult:
 	if with_recovery:
 		code = PKeySyncRecoveryCode.new_code()
 		body["recovery"] = {"ct": PKeyB64Url.encode(PKeySyncWrap.wrap_recovery(code, ring_id, epoch, kid, root))}
+	var before := _known_ring_ids()
 	var res := await _call("POST", path, body)
 	if not res.ok:
 		root.fill(0)
 		code.fill(0)
 		return res
-	var hr := _hold(_Held.new(ring_id, epoch, kid, root), true)
+	# Start over: the old ring's backup item goes (the server keeps `previous` for 30 days, and this client
+	# keeps the old root in memory for `adopt`). A create has no old ring to remove.
+	if path != "devices/keyring":
+		await _remove_backups(before.filter(func(id: String) -> bool: return id != ring_id))
+	var made := _Held.new(ring_id, epoch, kid, root)
+	var hr := _hold(made, true)
+	if hr.ok:
+		await _back_up(made)
 	_ring = {}
 	var text := PKeySyncRecoveryCode.encode(code) if with_recovery else ""
 	code.fill(0)
@@ -848,6 +867,46 @@ func _restore_stored() -> PKeyResult:
 	return PKeyResult.success()
 
 
+# ── The platform backup (core/sync/ring_backup.gd) ───────────────────────────────────────
+
+## The signed-in subject the backup is scoped to, or "" (no subject, no backup).
+func _backup_subject() -> String:
+	var s: Variant = subject_now.call() if subject_now.is_valid() else null
+	return s if s is String else ""
+
+
+## The root backed up for the served ring, as a held root, or null (see PKeySyncRingBackup.find).
+func _backed_up_root(served: Dictionary, kid: PackedByteArray) -> _Held:
+	var root := await PKeySyncRingBackup.find(backup if backup_enabled else null, _backup_subject(), product, served, kid)
+	return _Held.new(served["ring_id"], int(served["epoch"]), kid, root) if root != null else null
+
+
+## Writes the root to the backup unless the same record is already there. Best effort.
+func _back_up(h: _Held) -> void:
+	await PKeySyncRingBackup.save(backup if backup_enabled else null, _backup_subject(), product, h.ring_id, h.epoch, h.kid, h.root)
+
+
+## The rings this client knows of: held, pinned or last served.
+func _known_ring_ids() -> Array:
+	var ids: Array = []
+	var pin_r := _vault.read_pin()
+	for id: Variant in [_memory.held.ring_id if _memory.held != null else null, pin_r.detail.get("ring_id") if pin_r.ok and pin_r.detail != null else null, _ring.get("ring_id")]:
+		if id is String and id != "" and not ids.has(id):
+			ids.append(id)
+	return ids
+
+
+## Removes the backup items of `ring_ids` for the signed-in subject, whatever the developer's switch.
+func _remove_backups(ring_ids: Array) -> PKeyResult:
+	return await PKeySyncRingBackup.remove(backup, _backup_subject(), product, ring_ids)
+
+
+## After a recovery or a backup unlock: stores this device's own wrap. Never fails a call; false when it could not.
+func _deposit_own_wrap() -> bool:
+	var pub := _agree_public()
+	return pub.ok and (await _put_wrap(device_id, pub.detail)).ok
+
+
 ## ok with this device's 32-byte agreement public key, or a failure.
 func _agree_public() -> PKeyResult:
 	if _keys == null:
@@ -898,57 +957,6 @@ static func _json(body: Variant) -> Variant:
 
 static func _is_num(v: Variant) -> bool:
 	return v is int or v is float
-
-
-## `{ring: Dictionary|null, wrap: Dictionary|null}` from the served body, or null for a body that is
-## not in the contract shape.
-static func _parse_state(body: Variant) -> Variant:
-	var b: Variant = _json(body)
-	if b == null or not b.has("ring") or not b.has("wrap"):
-		return null
-	var ring: Variant = null
-	var wrap: Variant = null
-	if b["ring"] != null:
-		ring = _parse_ring(b["ring"])
-		if ring == null:
-			return null
-	if b["wrap"] != null:
-		wrap = _parse_wrap(b["wrap"])
-		if wrap == null:
-			return null
-	return {"ring": ring, "wrap": wrap}
-
-
-static func _parse_ring(r: Variant) -> Variant:
-	if not (r is Dictionary):
-		return null
-	var rec: Variant = r.get("recovery")
-	var adopted_in: Variant = r.get("adopted")
-	if not (rec is Dictionary) or not (rec.get("set") is bool) or not (adopted_in is Array):
-		return null
-	if not (r.get("ringId") is String) or not _is_num(r.get("epoch")) or not (r.get("rootKid") is String) or not (r.get("state") is String) or not _is_num(r.get("createdAt")):
-		return null
-	var adopted: Array = []
-	for a in adopted_in:
-		if not (a is Dictionary) or not (a.get("ringId") is String) or not _is_num(a.get("epoch")) or not (a.get("kid") is String) or not (a.get("ct") is String):
-			return null
-		adopted.append({"ring_id": a["ringId"], "epoch": int(a["epoch"]), "kid": a["kid"], "ct": a["ct"]})
-	var prev: Variant = null
-	var p: Variant = r.get("previous")
-	if p != null:
-		if not (p is Dictionary) or not (p.get("ringId") is String) or not (p.get("kid") is String) or not _is_num(p.get("until")):
-			return null
-		prev = {"ring_id": p["ringId"], "kid": p["kid"], "until": int(p["until"])}
-	return {"ring_id": r["ringId"], "epoch": int(r["epoch"]), "root_kid": r["rootKid"], "state": r["state"], "created_at": int(r["createdAt"]), "recovery_set": rec["set"], "adopted": adopted, "previous": prev}
-
-
-static func _parse_wrap(w: Variant) -> Variant:
-	if not (w is Dictionary):
-		return null
-	var kem: Variant = w.get("kem")
-	if not (kem is String or _is_num(kem)) or not _is_num(w.get("epoch")) or not (w.get("kid") is String) or not (w.get("enc") is String) or not (w.get("ct") is String):
-		return null
-	return {"epoch": int(w["epoch"]), "kid": w["kid"], "kem": kem, "enc": w["enc"], "ct": w["ct"], "by": w.get("by") if w.get("by") is String else null}
 
 
 ## `n` bytes from `n * 2` hex characters, or null.
