@@ -14,15 +14,10 @@ import {
 } from "../services/identity/issuer/connectedAppsKit.js";
 import { issuerSuite } from "../services/identity/issuer/issuerFlow.js";
 
-const { s, codeFor, token, grantForm } = issuerSuite("attack-apps-pepper");
+const { s, signIn } = issuerSuite("attack-apps-pepper");
 
 const path = (clientId: string, product = SLUG) =>
   `/api/me/connected-apps/${product}/${clientId}`;
-const signIn = async () => {
-  const res = await token(grantForm(s.spa, await codeFor(s.spa)));
-  expect(res.status).toBe(200);
-  return (await res.json()) as { refresh_token: string };
-};
 const mallory = async () => {
   await s.w.db.run(
     "INSERT INTO accounts (id, status, created_at, modified_at) VALUES ('acct_mallory', 'active', ?, ?)",

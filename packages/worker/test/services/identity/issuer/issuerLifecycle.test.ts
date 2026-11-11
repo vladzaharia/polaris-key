@@ -24,7 +24,6 @@ import { mergeAccounts } from "../../../../src/services/identity/accounts/merge.
 import { undoMerge } from "../../../../src/services/identity/accounts/mergeUndo.js";
 import { removeProductData } from "../../../../src/services/identity/accounts/productRemoval.js";
 import { scheduleAccountDeletion } from "../../../../src/services/identity/accounts/lifecycle.js";
-import { signIn as accountSignIn } from "../../../../src/services/identity/accounts/signIn.js";
 import {
   deleteClient,
   setClientStatus,
@@ -42,27 +41,13 @@ import { asR2, R2Mock } from "../../../r2Mock.js";
 import { NOW } from "../../../seed.js";
 import { BASE, SLUG } from "../../connect/connectFixture.js";
 import { ingestIdentity } from "./issuerHelpers.js";
-import { issuerFlow, issuerSuite } from "./issuerFlow.js";
+import { issuerSuite, type IssuerTokens } from "./issuerFlow.js";
 
 const ISSUER = `${BASE}/${SLUG}/identity`;
-const { s, codeFor, token, grantForm, err } = issuerSuite("lifecycle-pepper");
+const { s, codeFor, token, grantForm, err, signIn, signInSecondAccount } =
+  issuerSuite("lifecycle-pepper");
 
-type Tokens = {
-  access_token: string;
-  id_token: string;
-  refresh_token: string;
-};
-const signIn = async (c: ClientRecord = s.spa): Promise<Tokens> => {
-  const res = await token(
-    grantForm(
-      c,
-      await codeFor(c),
-      c.type === "web" ? { client_secret: s.secret } : {},
-    ),
-  );
-  expect(res.status).toBe(200);
-  return (await res.json()) as Tokens;
-};
+type Tokens = IssuerTokens;
 const refresh = (c: ClientRecord, rt: string, at = NOW) =>
   token(
     {
@@ -89,6 +74,15 @@ const refreshRefused = async (t: Tokens, c: ClientRecord = s.spa) =>
 const cutOff = async (t: Tokens, c: ClientRecord = s.spa) => {
   await refreshRefused(t, c);
   expect((await info(t)).status).toBe(401);
+};
+/** The person narrows what the public client gets: only `name`, the rest declined. */
+const narrow = async (at: number) => {
+  const g = (await getClientGrant(s.w.db, SLUG, s.accountId, s.spa.clientId))!;
+  await putClientGrant(
+    s.w.db,
+    { ...g, claimsGranted: ["name"], claimsDeclined: ["picture", "email"] },
+    at,
+  );
 };
 const count = async (table: string, where = "1 = 1", ...p: unknown[]) =>
   (await s.w.db.first<{ n: number }>(
@@ -177,21 +171,8 @@ describe("Disconnect", () => {
 
   it("another account's families for the same client are untouched", async () => {
     const mine = await signIn(s.spa);
-    const b = await accountSignIn(
-      s.w.db,
-      { issuerKey: "email", subject: "grace@example.com", kind: "email" },
-      NOW,
-      { unfenced: true },
-    );
-    if (b.status !== "signed_in") throw new Error("sign-in");
-    const flowB = issuerFlow(() => ({
-      w: s.w,
-      accountId: b.account.id,
-      pair: s.pair,
-    }));
-    const res = await token(flowB.grantForm(s.spa, await flowB.codeFor(s.spa)));
-    expect(res.status).toBe(200);
-    const theirs = (await res.json()) as Tokens;
+    const second = await signInSecondAccount();
+    const theirs = second.tokens;
     await disconnectClient(s.w.db, SLUG, s.accountId, s.spa.clientId, NOW);
     await cutOff(mine);
     expect((await refresh(s.spa, theirs.refresh_token)).status).toBe(200);
@@ -266,17 +247,7 @@ describe("the grant epoch", () => {
 describe("Change what <Client> gets", () => {
   it("a Change within the code's 60 seconds never reaches its id_token or its family", async () => {
     const code = await codeFor(s.spa, {}, ["name", "email"]);
-    const g = (await getClientGrant(
-      s.w.db,
-      SLUG,
-      s.accountId,
-      s.spa.clientId,
-    ))!;
-    await putClientGrant(
-      s.w.db,
-      { ...g, claimsGranted: ["name"], claimsDeclined: ["picture", "email"] },
-      NOW,
-    );
+    await narrow(NOW);
     const res = await token(grantForm(s.spa, code));
     expect(res.status).toBe(200);
     const t = (await res.json()) as Tokens;
@@ -296,17 +267,7 @@ describe("Change what <Client> gets", () => {
 
   it("refresh recomputes the claims and userinfo is live; the families are kept", async () => {
     const t = await signIn();
-    const g = (await getClientGrant(
-      s.w.db,
-      SLUG,
-      s.accountId,
-      s.spa.clientId,
-    ))!;
-    await putClientGrant(
-      s.w.db,
-      { ...g, claimsGranted: ["name"], claimsDeclined: ["picture", "email"] },
-      NOW + 5,
-    );
+    await narrow(NOW + 5);
     expect(
       ((await (await info(t, NOW + 5)).json()) as Record<string, unknown>)
         .email,
@@ -492,29 +453,20 @@ describe("the account", () => {
 
   it("a merge deletes the absorbed account's grants and revokes its families; the survivor's stay; undo restores neither", async () => {
     const survivor = await signIn(s.spa);
-    const b = await accountSignIn(
-      s.w.db,
-      { issuerKey: "email", subject: "grace@example.com", kind: "email" },
-      NOW,
-      { unfenced: true },
-    );
-    if (b.status !== "signed_in") throw new Error("sign-in");
-    const flowB = issuerFlow(() => ({
-      w: s.w,
-      accountId: b.account.id,
-      pair: s.pair,
-    }));
-    const res = await token(flowB.grantForm(s.spa, await flowB.codeFor(s.spa)));
-    expect(res.status).toBe(200);
-    const absorbed = (await res.json()) as Tokens;
+    const second = await signInSecondAccount();
+    const absorbed = second.tokens;
     const merged = await mergeAccounts(ctx(), {
       survivor: { accountId: s.accountId, authenticatedAt: NOW },
-      absorbed: { accountId: b.account.id, authenticatedAt: NOW },
+      absorbed: { accountId: second.accountId, authenticatedAt: NOW },
     });
     expect(merged.ok).toBe(true);
-    expect(await grants(b.account.id)).toBe(0);
+    expect(await grants(second.accountId)).toBe(0);
     expect(
-      await count("identity_refresh_tokens", "account_id = ?", b.account.id),
+      await count(
+        "identity_refresh_tokens",
+        "account_id = ?",
+        second.accountId,
+      ),
     ).toBe(0);
     expect(await err(await refresh(s.spa, absorbed.refresh_token))).toBe(
       "invalid_grant",
@@ -529,8 +481,8 @@ describe("the account", () => {
       merged.ok ? merged.mergeId : "",
     );
     expect(undone.ok).toBe(true);
-    expect(await grants(b.account.id)).toBe(0);
-    expect(await live(b.account.id)).toBe(0);
+    expect(await grants(second.accountId)).toBe(0);
+    expect(await live(second.accountId)).toBe(0);
     expect(await err(await refresh(s.spa, absorbed.refresh_token))).toBe(
       "invalid_grant",
     );

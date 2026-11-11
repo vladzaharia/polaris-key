@@ -16,20 +16,8 @@ import {
 import { issuerSuite } from "./issuer/issuerFlow.js";
 import { mkClient } from "./issuer/issuerWorld.js";
 
-const { s, codeFor, token, grantForm } = issuerSuite("connected-apps-pepper");
+const { s, token, signIn } = issuerSuite("connected-apps-pepper");
 
-type Tokens = { access_token: string; refresh_token: string };
-const signIn = async (c = s.spa): Promise<Tokens> => {
-  const res = await token(
-    grantForm(
-      c,
-      await codeFor(c),
-      c.type === "web" ? { client_secret: s.secret } : {},
-    ),
-  );
-  expect(res.status).toBe(200);
-  return (await res.json()) as Tokens;
-};
 const me = () => portalSessionFor(s.w, s.accountId);
 const base = (clientId: string) => `/api/me/connected-apps/${SLUG}/${clientId}`;
 const json = async (res: Response) => (await res.json()) as any;
