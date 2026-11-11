@@ -481,6 +481,7 @@ describe("the store", () => {
       store,
       notify: () => undefined,
       onChange: () => () => undefined,
+      onView: () => () => undefined,
     } as LocalSource;
     const a = new Attempt();
     // The gate is judged inside the store call: it clears between the pairing's last check and the write.

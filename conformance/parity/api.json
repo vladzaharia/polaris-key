@@ -2662,7 +2662,7 @@
     {
       "sdk": "node",
       "path": "cloudConnect.localLinks",
-      "reason": "the accessor of the local links namespace (cloudConnect.localLinks.pair, .join, .list, .rename, .remove, .setReachable, .open, .onLink); not a verb"
+      "reason": "the accessor of the local links namespace (cloudConnect.localLinks.pair, .join, .dialsLeft, .list, .rename, .remove, .setReachable, .onChange, .open, .onLink); not a verb"
     },
     {
       "sdk": "python",
@@ -8216,6 +8216,52 @@
         "kotlin": {}
       },
       "layer": "client"
+    },
+    {
+      "id": "cloudConnect.localLinks.dialsLeft",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {},
+        "python": {
+          "planned": "CC-29.15",
+          "reason": "the Python port lands in slice .15e"
+        },
+        "swift": {
+          "planned": "CC-29.15",
+          "reason": "the Swift port lands in slice .15f"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "text",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.localLinks.onChange",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {},
+        "python": {
+          "planned": "CC-29.15",
+          "reason": "the Python port lands in slice .15e"
+        },
+        "swift": {
+          "planned": "CC-29.15",
+          "reason": "the Swift port lands in slice .15f"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ]
     },
     {
       "id": "cloudConnect.transfer.send",

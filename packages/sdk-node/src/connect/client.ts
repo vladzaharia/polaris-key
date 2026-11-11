@@ -714,6 +714,7 @@ export class ConnectClient {
       store: this.localStore(),
       notify: () => this.notifyLocals(),
       onChange: (fn) => this.onLocalsChanged(fn),
+      onView: (fn) => this.onLocalsView(fn),
     };
   }
 
@@ -735,16 +736,38 @@ export class ConnectClient {
     // At most one write an hour per link, and the time is coarsened to the hour: the file does not
     // become a log of when the peer was near (§15.12).
     const hour = Math.floor(this.ctx.now() / 3600) * 3600;
-    await this.localStore().update((rows) =>
-      rows.some(
+    let wrote = false;
+    await this.localStore().update((rows) => {
+      wrote = rows.some(
         (r) =>
           r.id === ref.id &&
           (r.lastSeen === undefined || r.lastSeen < hour) &&
           localTag(base64UrlDecode(r.secret)) === ref.tag,
-      )
+      );
+      return wrote
         ? rows.map((r) => (r.id === ref.id ? { ...r, lastSeen: hour } : r))
-        : null,
-    );
+        : null;
+    });
+    // The host's list shows the time; the adverts and sessions do not depend on it.
+    if (wrote) this.#viewLocals();
+  }
+
+  readonly #onLocalsView = new Set<() => void>();
+
+  /** The host-facing feed of `localLinks.onChange`: the links or the gate changed. @internal */
+  onLocalsView(fn: () => void): () => void {
+    this.#onLocalsView.add(fn);
+    return () => this.#onLocalsView.delete(fn);
+  }
+
+  #viewLocals(): void {
+    for (const f of [...this.#onLocalsView]) {
+      try {
+        f();
+      } catch {
+        // a host's listener cannot stop the others
+      }
+    }
   }
 
   readonly #onLocals = new Set<() => void>();
@@ -757,6 +780,7 @@ export class ConnectClient {
 
   /** Tell the listeners the local links or the gate moved. @internal */
   notifyLocals(): void {
+    this.#viewLocals();
     for (const f of [...this.#onLocals]) {
       try {
         f();

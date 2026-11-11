@@ -14,7 +14,8 @@
 //    session does not own are ignored.
 
 import type { Socket } from "node:net";
-import { PolarisError } from "@polaris-key/client-core";
+import { platform } from "node:os";
+import { PolarisError, canonicalPlatform } from "@polaris-key/client-core";
 import { ErrorCode } from "../constants.generated.js";
 import { printAs } from "../core/redact.js";
 import {
@@ -38,6 +39,19 @@ export const nearbyHello = (
   ...(label !== undefined ? { label } : {}),
   platform: process.platform,
   app: slug,
+});
+
+/**
+ * The `HELLO` of a pairing with a code (mode `q`): the same, with the platform as its canonical
+ * `X-PKey-Platform` spelling (`macos`, not `darwin`) so the other device, which keeps only such a
+ * spelling (§15.12), can show a glyph. A platform with no spelling goes as the OS reports it.
+ */
+export const pairingHello = (
+  slug: string,
+  label?: string,
+): PeerSessionOptions["hello"] => ({
+  ...nearbyHello(slug, label),
+  platform: canonicalPlatform(platform()) ?? process.platform,
 });
 
 export const HANDSHAKE_FRAME_MAX = 16_384;

@@ -3,10 +3,13 @@
 // and dials it, at most 2 dials a join and, for a typed code, at most 2 per nameplate in 300 s
 // across joins (the host's `DialBudget`, spent when the dial is made). It never retries a failed
 // code by itself, and a QR is never limited. The choices over one browse are client-core's
-// `JoinPlan`.
+// `JoinPlan`, which also says why a `pairing-code-failed` was one.
+//
+// Cancelling (`LocalJoinOptions.signal`, the gate going off) closes the dial, stops the browse and
+// wipes the QR secret, the generator, the scalar, the ISK and the PSK of the dial in flight. It
+// refunds no dial: the budget was spent when the dial was made.
 
 import type { Socket } from "node:net";
-import { PolarisError } from "@polaris-key/client-core";
 import {
   DialBudget,
   FrameReader,
@@ -30,6 +33,8 @@ import {
   parseTxt,
   peerPrologue,
   productTag,
+  type LocalPairFailureReason,
+  type PairingCodeFailedReason,
   type SessionEvent,
 } from "@polaris-key/client-core/peer";
 import { ErrorCode } from "../constants.generated.js";
@@ -37,6 +42,8 @@ import { dialRaceTo } from "./dial.js";
 import { textVerdict } from "./lanGate.js";
 import {
   Attempt,
+  LocalPairingError,
+  cancelled,
   envOf,
   full,
   offerOf,
@@ -48,7 +55,12 @@ import {
   type LocalSource,
 } from "./localCommon.js";
 import type { MdnsFound, MdnsHandle } from "./mdns.js";
-import { SocketLink, guarded, nearbyHello } from "./session.js";
+import {
+  SocketLink,
+  guarded,
+  pairingHello,
+  type SessionClosed,
+} from "./session.js";
 
 interface Candidate {
   hosts: string[];
@@ -77,9 +89,8 @@ export class Joiner {
     resolve: (l: LocalPaired) => void;
     reject: (e: Error) => void;
   };
-  #qrInvalidDetail: string | null = null;
-  /** A code whose dials are spent answers with the hint to wait or ask for a new code. */
-  #budgetSpent = false;
+  /** Key material of the dial in flight (the scalar, the generator, the ISK, the PSK): wiped when the join ends. */
+  readonly #secrets: Uint8Array[] = [];
 
   constructor(
     private readonly src: LocalSource,
@@ -92,6 +103,7 @@ export class Joiner {
     let input:
       | { kind: "code"; nameplate: string }
       | { kind: "qr"; instance: string }
+      | { kind: "other-app" }
       | { kind: "invalid" } = { kind: "invalid" };
     let password: string | null = null;
     let nameplate: string | null = null;
@@ -108,7 +120,7 @@ export class Joiner {
         input = { kind: "qr", instance: q.instance };
         this.#qr = { instance: q.instance, secret: q.secret };
       } else if (q.result === "other-app") {
-        this.#qrInvalidDetail = "This code is for another app.";
+        input = { kind: "other-app" };
       }
     }
     this.#password = password;
@@ -116,9 +128,16 @@ export class Joiner {
     this.#plan = new JoinPlan(input);
   }
 
-  cancel(): void {
+  /** Stop the join: `cancelled` is the host's `signal`, `closed` the gate going off. */
+  cancel(why: "cancelled" | "closed" = "closed"): void {
     this.#finish(
-      new PolarisError(ErrorCode.peerClosed, "The pairing was closed."),
+      why === "cancelled"
+        ? cancelled()
+        : new LocalPairingError(
+            ErrorCode.peerClosed,
+            "The pairing was closed.",
+            { reason: "closed" },
+          ),
     );
   }
 
@@ -136,7 +155,7 @@ export class Joiner {
       this.#nameplate !== null &&
       !this.budget.check(this.#nameplate, this.#env.mono()).allowed
     ) {
-      this.#budgetSpent = true;
+      this.#plan.startSpent();
       this.#finish(this.#failed("pairing-code-failed"));
       return done;
     }
@@ -178,17 +197,24 @@ export class Joiner {
     return done;
   }
 
-  #failed(code: "pairing-code-failed" | "pairing-not-found"): PolarisError {
-    return new PolarisError(
-      code === "pairing-code-failed"
-        ? ErrorCode.pairingCodeFailed
-        : ErrorCode.pairingNotFound,
-      code === "pairing-code-failed"
-        ? (this.#qrInvalidDetail ??
-            (this.#budgetSpent
-              ? "That code did not work. Wait a few minutes, or ask the other device for a new code."
-              : "That code did not work."))
-        : "The other device was not found on this network.",
+  /** The error of a code that did not work, with the plan's reason; or of no device found. */
+  #failed(
+    code: "pairing-code-failed" | "pairing-not-found",
+  ): LocalPairingError {
+    if (code === "pairing-not-found")
+      return new LocalPairingError(
+        ErrorCode.pairingNotFound,
+        "The other device was not found on this network.",
+      );
+    const reason: PairingCodeFailedReason = this.#plan.reason() ?? "wrong";
+    return new LocalPairingError(
+      ErrorCode.pairingCodeFailed,
+      reason === "other-app"
+        ? "This code is for another app."
+        : reason === "spent"
+          ? "That code did not work. Wait a few minutes, or ask the other device for a new code."
+          : "That code did not work.",
+      { reason },
     );
   }
 
@@ -199,6 +225,13 @@ export class Joiner {
     this.#finish(
       this.#failed(r === "pairing-not-found" ? r : "pairing-code-failed"),
     );
+  }
+
+  /** Why a session that reached the transport ended without a link (`peer-closed`'s reason). */
+  #closeReason(a: Attempt, c: SessionClosed): LocalPairFailureReason {
+    // This person said no, or the other device did (a `peer_bye` before any link was exchanged).
+    if (a.declined || (c.byPeer && c.code === "peer_bye")) return "declined";
+    return c.code === "peer_timeout" ? "timeout" : "closed";
   }
 
   #found(f: MdnsFound, tags: readonly string[]): void {
@@ -242,8 +275,7 @@ export class Joiner {
     if (this.#nameplate !== null) {
       // Spent when the dial is made, so joins that overlap cannot multiply the dials.
       if (!this.budget.check(this.#nameplate, t).allowed) {
-        this.#budgetSpent = true;
-        this.#plan.ended("before-c2");
+        this.#plan.ended("budget");
         this.#browseOver = true;
         return;
       }
@@ -257,8 +289,11 @@ export class Joiner {
         ? this.#qrGen
         : await cpaceGenerator(cpacePrsCode(this.#password!), this.#ci, sid);
     const y = cpaceScalar(this.#env.random);
+    this.#secrets.push(y);
+    if (this.#qrGen === null) this.#secrets.push(gen);
     const ya = await cpaceShare(y, gen);
     if (ya === null) return this.#plan.ended("before-c2");
+    if (this.#done) return;
     let socket: Socket;
     try {
       ({ socket } = await dialRaceTo(c.hosts, c.port, {
@@ -293,7 +328,12 @@ export class Joiner {
       return this.#plan.ended("before-c2");
     }
     const psk = await cpacePsk(isk, this.src.slug);
+    this.#secrets.push(isk, psk);
     const held = await this.src.store.count();
+    if (this.#done) {
+      socket.destroy();
+      return;
+    }
     await this.#session(socket, psk, isk, held, this.#env.mono() - at);
   }
 
@@ -359,7 +399,7 @@ export class Joiner {
             ...(this.o.label !== undefined ? { label: this.o.label } : {}),
             elapsed,
           },
-          hello: nearbyHello(this.src.slug, this.o.label),
+          hello: pairingHello(this.src.slug, this.o.label),
           timer: this.#env.timer,
         },
         onEvent: (e) => {
@@ -383,17 +423,20 @@ export class Joiner {
             for (const f of [...a.closers]) guarded(() => f(c));
             if (!up) this.#plan.ended("after-c2");
             if (!a.linked && !this.#done) {
-              if (up)
+              if (up) {
+                const reason = this.#closeReason(a, c);
                 this.#finish(
                   a.failure === "full"
                     ? full()
-                    : new PolarisError(
+                    : new LocalPairingError(
                         ErrorCode.peerClosed,
-                        a.declined
+                        reason === "declined"
                           ? "The pairing was declined."
                           : "The pairing ended before it finished.",
+                        { reason },
                       ),
                 );
+              }
             }
             resolve();
           })();
@@ -428,6 +471,7 @@ export class Joiner {
     this.#browse = null;
     this.#qr?.secret.fill(0);
     this.#qrGen?.fill(0);
+    for (const k of this.#secrets.splice(0)) k.fill(0);
     if (ok !== undefined) this.#settle.resolve(ok);
     else {
       this.#settle.reject(err ?? new Error("pairing failed"));

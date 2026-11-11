@@ -39,6 +39,7 @@ function setup(rows: LocalLinkRow[] = [row()]) {
     store: { rows: async () => state.rows },
     notify: () => undefined,
     onChange: () => () => undefined,
+    onView: () => () => undefined,
   };
   const links = new LocalLinks(src as never, {
     adopt: (s) => adopted.push(s),
