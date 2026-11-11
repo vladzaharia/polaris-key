@@ -321,6 +321,30 @@ def test_a_worker_that_answers_a_range_with_another_range_ends_the_file_short(tm
     c.close()
 
 
+def test_a_worker_that_serves_one_byte_ranges_ends_the_file_short_and_the_export_goes_on(tmp_path: Path) -> None:
+    w, c = rig(tmp_path)
+    blob = data(3000)
+    w.add("slot-1", [blob])
+    asked: List[str] = []
+
+    def one_byte(r: httpx.Request) -> Optional[httpx.Response]:
+        m = re.match(r"bytes=(\d+)-", r.headers.get("range", ""))
+        if m is None or r.url.path.endswith("/revisions"):
+            return None
+        asked.append(r.headers["range"])
+        a = int(m.group(1))
+        return httpx.Response(206, content=blob[a : a + 1], headers={"content-range": f"bytes {a}-{a}/{len(blob)}"})
+
+    w.file_hook = one_byte
+    dest = tmp_path / "out.zip"
+    result = c.cloud_sync.export(str(dest))
+    # ceil(3000 / 65536) + 8 requests at most, then the file is short and the export is written.
+    assert len(asked) <= 9
+    assert [(s["kind"], s["code"], s["partial"]) for s in result["skipped"]] == [("file", "sync-file-invalid", True)]
+    assert result["records"] == 1
+    c.close()
+
+
 def test_a_pull_that_never_ends_fails_as_network_after_the_bound(tmp_path: Path) -> None:
     w, c = rig(tmp_path)
     w.add("slot-1", [data(100)])

@@ -943,19 +943,30 @@ def export_to_sink(inp: ExportInput, sink: ZipSink) -> ExportSummary:
 _PIECE = 1_048_576
 
 
+#: A file may take ``ceil(planned / this) + 8`` requests of its source: a Worker serving one-byte
+#: ranges ends the file as partial instead of holding the export for ever.
+_PIECE_FLOOR = 65_536
+
+
 class _Limited:
-    """A source that yields at most ``limit`` bytes in all, hashing what it yields."""
+    """A source that yields at most ``limit`` bytes in all, hashing what it yields, and is asked for
+    at most ``ceil(limit / 64 KiB) + 8`` pieces."""
 
     def __init__(self, src: Iterable[bytes], limit: int, cancel: Optional[threading.Event]) -> None:
         self._it = iter(src)
         self._limit = limit
         self._cancel = cancel
+        self._asked = 0
+        self._cap = -(-limit // _PIECE_FLOOR) + 8
         self.total = 0
         self.hash = hashlib.sha256()
 
     def pieces(self) -> Iterator[bytes]:
         while self.total < self._limit:
             _check_cancel(self._cancel)
+            self._asked += 1
+            if self._asked > self._cap:
+                return
             try:
                 piece = next(self._it)
             except StopIteration:
