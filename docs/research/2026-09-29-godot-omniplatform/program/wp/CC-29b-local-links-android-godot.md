@@ -1,16 +1,16 @@
 # CC-29b Local links on Android and Godot
 
-| Field       | Value                                                                                                                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CC                                                                                                                                                                                           |
-| Size        | 0.15–0.2 engineer-weeks                                                                                                                                                                      |
-| Depends on  | [CC-29](CC-29-local-links.md), [CC-19](CC-19-inter-account-links.md), [CC-20](CC-20-direct-transfer.md), [CC-23L](CC-23L-local-links-plan.md), [CC-29.15](CC-29.15-local-pairing-kit-api.md) |
-| Unblocks    | [CC-29K](CC-29K-local-links-kit-screens.md), [CC-29S](CC-29S-local-links-signoff.md)                                                                                                         |
-| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                                                                                     |
-| Plan mode   | yes                                                                                                                                                                                          |
-| Gates       | plan-mode, drift-gate, all-sdks                                                                                                                                                              |
-| Human input | none                                                                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | CC                                                                                                                                                                                               |
+| Size        | 0.15–0.2 engineer-weeks                                                                                                                                                                          |
+| Depends on  | [CC-29](CC-29-local-links.md), [CC-19](CC-19-inter-account-links.md), [CC-20](CC-20-direct-transfer.md), [CC-23L](CC-23L-local-links-plan.md), [CC-29.15](CC-29.15-local-pairing-kit-api.md)     |
+| Unblocks    | [CC-29K](CC-29K-local-links-kit-screens.md), [CC-29S](CC-29S-local-links-signoff.md), [CC-29X](CC-29X-live-pairing-test.md), [CC-31U](CC-31U-links-pipeline.md), [CC-30](CC-30-cloud-pairing.md) |
+| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                                                                                         |
+| Plan mode   | yes                                                                                                                                                                                              |
+| Gates       | plan-mode, drift-gate, all-sdks                                                                                                                                                                  |
+| Human input | none                                                                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                        |
 
 ## Goal
 

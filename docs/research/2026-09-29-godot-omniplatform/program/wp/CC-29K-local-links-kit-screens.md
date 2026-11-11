@@ -5,7 +5,7 @@
 | Phase       | CC                                                                                                                                                                |
 | Size        | 0.175 engineer-weeks                                                                                                                                              |
 | Depends on  | [CC-29](CC-29-local-links.md), [CC-29b](CC-29b-local-links-android-godot.md), [CC-23L](CC-23L-local-links-plan.md), [CC-29.15](CC-29.15-local-pairing-kit-api.md) |
-| Unblocks    | none                                                                                                                                                              |
+| Unblocks    | [CC-31U](CC-31U-links-pipeline.md), [CC-30](CC-30-cloud-pairing.md), [UK-67](UK-67-light-card-qr.md)                                                              |
 | Role        | `pkey-sdk-porter`                                                                                                                                                 |
 | Plan mode   | no                                                                                                                                                                |
 | Gates       | pkey-ux-reviewer, ui-snapshots, modernity-lint                                                                                                                    |
