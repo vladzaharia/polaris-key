@@ -2667,7 +2667,7 @@
     {
       "sdk": "python",
       "path": "cloudConnect.local_links",
-      "reason": "the accessor of the local links namespace (cloud_connect.local_links.pair, .join, .list, .rename, .remove, .set_reachable, .open, .on_link); not a verb"
+      "reason": "the accessor of the local links namespace (cloud_connect.local_links.pair, .join, .dials_left, .list, .rename, .remove, .set_reachable, .on_change, .open, .on_link); not a verb"
     }
   ],
   "concepts": [
@@ -8145,10 +8145,7 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "CC-29.15",
-          "reason": "the Python port lands in slice .15e"
-        },
+        "python": {},
         "swift": {
           "planned": "CC-29.15",
           "reason": "the Swift port lands in slice .15f"
@@ -8168,10 +8165,7 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "CC-29.15",
-          "reason": "the Python port lands in slice .15e"
-        },
+        "python": {},
         "swift": {
           "planned": "CC-29.15",
           "reason": "the Swift port lands in slice .15f"

@@ -2,7 +2,8 @@
 """The ``local`` section of ``peer-matrix.json`` (WIRE-CONTRACT-V5 §15.12, account-free local pairing) through
 ``core/peer_local.py`` and the codecs it builds on. Mirrors ``conformance/runners/node/localSuites.ts``: the
 constants, the code, the QR, the adverts, the TXT parsers, the ``LOCAL_LINK`` body, the link secret, the
-handshake payloads, the window, the join plan and its dial budget, the exchange guard, the pin, the listener's
+handshake payloads, the window, the join plan and its dial budget (with the nameplate memory, the renewal floor
+and the join reasons of CC-29.15), the exchange guard, the pin, the listener's
 trial order, the record rules and the gate, and the ``admission`` rows of a listener that holds no account key.
 The ``local.xfer`` rows run in ``test_connect_xfer_conformance.py``."""
 
@@ -287,6 +288,74 @@ def test_join(r: Dict[str, Any]) -> None:
         dialled.append(nxt)
         plan.ended(outcome)
     assert {"browsed": plan.browses, "kept": plan.kept, "dialled": dialled, "result": plan.result()} == r["want"]
+
+
+@pytest.mark.parametrize("r", M["nameplateMemory"]["rows"], ids=_ids(M["nameplateMemory"]["rows"]))
+def test_nameplate_memory(r: Dict[str, Any]) -> None:
+    assert M["nameplateMemory"]["seconds"] == L.LOCAL_DIAL_BUDGET_SECONDS
+    memory = L.NameplateMemory()
+    got: List[Dict[str, Any]] = []
+    for e in r["events"]:
+        if "shown" in e:
+            memory.shown(e["shown"], e["t"])
+            continue
+        source, consumed = _stream(e["draw"])
+        got.append({"nameplate": memory.draw(source, e["t"]), "consumed": consumed()})
+    assert got == r["want"]
+
+
+def test_renew_floor_constants() -> None:
+    f = M["renewFloor"]
+    assert [f["cooldownSeconds"], f["wrongSeconds"], f["wrongLimit"]] == [
+        L.LOCAL_RENEW_COOLDOWN_SECONDS,
+        L.LOCAL_RENEW_WRONG_SECONDS,
+        L.LOCAL_RENEW_WRONG_LIMIT,
+    ]
+
+
+@pytest.mark.parametrize("r", M["renewFloor"]["rows"], ids=_ids(M["renewFloor"]["rows"]))
+def test_renew_floor(r: Dict[str, Any]) -> None:
+    floor = L.RenewFloor()
+    got: List[Dict[str, Any]] = []
+    for e in r["events"]:
+        if "ended" in e:
+            floor.ended(e["ended"], e["t"])
+        else:
+            got.append(floor.check(e["t"]))
+    assert got == r["want"]
+
+
+def test_join_reasons_precedence() -> None:
+    assert M["joinReasons"]["precedence"] == ["invalid", "other-app", "spent-at-start", "wrong", "spent-mid-join"]
+
+
+@pytest.mark.parametrize("r", M["joinReasons"]["rows"], ids=_ids(M["joinReasons"]["rows"]))
+def test_join_reasons(r: Dict[str, Any]) -> None:
+    plan = L.JoinPlan(r["input"])
+    if r["input"]["kind"] == "code":
+        budget = L.DialBudget()
+        budget.spend(r["input"]["nameplate"], 0.0, r["budget"])
+        if not budget.check(r["input"]["nameplate"], 1.0)["allowed"]:
+            plan.start_spent()
+    # Two matching adverts, so a plan that browses has a dial for each outcome.
+    for n in ("a", "b"):
+        instance = r["input"]["instance"] if r["input"]["kind"] == "qr" else "p1-" + n
+        nameplate = r["input"]["nameplate"] if r["input"]["kind"] == "code" else "00"
+        plan.see(instance, True, nameplate)
+    for outcome in r["dials"]:
+        if plan.next() is None:
+            break
+        plan.ended(outcome)
+    assert {"result": plan.result(), "reason": plan.reason()} == r["want"]
+
+
+def test_dials_left_reads_two_digits_only() -> None:
+    b = L.DialBudget()
+    assert [L.dials_left(b, t, 0.0) for t in ("", "4", "ab12", "4 -", "４８")] == [None] * 5
+    assert L.dials_left(b, " 4-8 12 34", 0.0) == 2
+    b.spend("48", 0.0, 1)
+    assert [L.dials_left(b, "48", 1.0), L.dials_left(b, "49", 1.0), b.left("48", 1.0)] == [1, 2, 1]
+    assert L.dials_left(b, "48", 300.0) == 2
 
 
 @pytest.mark.parametrize("r", M["exchange"], ids=_ids(M["exchange"]))

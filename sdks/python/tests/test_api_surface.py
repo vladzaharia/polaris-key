@@ -153,6 +153,8 @@ ATTRS = [
     ("cloudConnect.localLinks.open", "LocalLinks", "open"),
     ("cloudConnect.localLinks.onLink", "LocalLinks", "on_link"),
     ("cloudConnect.localLinks.localPairing", "LocalLinks", "local_pairing"),
+    ("cloudConnect.localLinks.dialsLeft", "LocalLinks", "dials_left"),
+    ("cloudConnect.localLinks.onChange", "LocalLinks", "on_change"),
     ("cloudConnect.transfer.send", "Transfer", "send"),
     ("cloudConnect.transfer.onOffer", "Transfer", "on_offer"),
     ("cloudConnect.transfer.onResult", "Transfer", "on_result"),
