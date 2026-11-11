@@ -149,7 +149,11 @@ class ConnectLocalLinksKitTest : ConnectLanBase() {
             browseSeconds = browse,
             mdns = net,
             allowLoopback = true,
-        ).also { if (random != null) it.random = random }
+        ).also {
+            // The joiner's dials and the client's dialsLeft read one clock: this device's.
+            it.mono = { t }
+            if (random != null) it.random = random
+        }
     }
 
     private fun wrongOf(code: String): String = code.replaceRange(8, 9, if (code[8] == '1') "2" else "1")
