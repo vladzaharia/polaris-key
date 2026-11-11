@@ -37,6 +37,7 @@ import asyncio
 import collections.abc
 import functools
 import inspect
+import threading
 from typing import Any, AsyncIterator, Callable, Generator, Iterable, Optional
 
 from .client import PolarisKeyClient
@@ -386,17 +387,69 @@ class _AsyncCloudNearby(_AsyncFacet):
         return GuardedCoroutine(run(), "cloud_connect.nearby.on_request")
 
 
+class _AsyncPairHandle:
+    """The open pairing window on the async client: ``open`` and ``code()`` read at once; ``stop()`` and
+    ``renew()`` are coroutines run on a worker thread."""
+
+    def __init__(self, target: Any) -> None:
+        self._target = target
+
+    def __repr__(self) -> str:
+        return "<AsyncLocalPairHandle open=%s>" % self.open
+
+    @property
+    def open(self) -> bool:
+        return self._target.open  # type: ignore[no-any-return]
+
+    def code(self) -> Any:
+        return self._target.code()
+
+    def stop(self) -> GuardedCoroutine:
+        return GuardedCoroutine(_to_thread(self._target.stop), "cloud_connect.local_links.stop")
+
+    def renew(self) -> GuardedCoroutine:
+        return GuardedCoroutine(_to_thread(self._target.renew), "cloud_connect.local_links.renew")
+
+
 class _AsyncLocalLinks(_AsyncFacet):
     """``cloud_connect.local_links`` on the async client: ``pair``, ``join``, ``list``, ``rename``, ``remove``,
-    ``set_reachable`` and ``open`` are coroutines run on a worker thread. ``on_link`` and ``local_pairing``
-    return at once; the callbacks (and the pairing offers' ``confirm`` and ``decline``, which block) are the
-    Connect thread's."""
+    ``set_reachable`` and ``open`` are coroutines run on a worker thread. ``on_link``, ``on_change``,
+    ``dials_left`` and ``local_pairing`` return at once; the callbacks (and the pairing offers' ``confirm`` and
+    ``decline``, which block) are the Connect thread's. ``pair`` answers a handle whose ``stop()`` and
+    ``renew()`` are coroutines. Cancelling the task of ``join`` cancels the join (no dial is refunded)."""
 
     def on_link(self, fn: Callable[..., Any]) -> Callable[[], None]:
         return self._target.on_link(fn)  # type: ignore[no-any-return]
 
+    def on_change(self, fn: Callable[[], None]) -> Callable[[], None]:
+        return self._target.on_change(fn)  # type: ignore[no-any-return]
+
+    def dials_left(self, text: str) -> Optional[int]:
+        return self._target.dials_left(text)  # type: ignore[no-any-return]
+
     def local_pairing(self) -> bool:
         return self._target.local_pairing()  # type: ignore[no-any-return]
+
+    def pair(self, *args: Any, **kwargs: Any) -> GuardedCoroutine:
+        async def run() -> _AsyncPairHandle:
+            return _AsyncPairHandle(await _to_thread(self._target.pair, *args, **kwargs))
+
+        return GuardedCoroutine(run(), "cloud_connect.local_links.pair")
+
+    def join(self, options: Any = None, **kwargs: Any) -> GuardedCoroutine:
+        async def run() -> Any:
+            o = {**(dict(options) if options else {}), **kwargs}
+            stop = o.get("cancel")
+            if stop is None:
+                stop = o["cancel"] = threading.Event()
+            try:
+                return await _to_thread(self._target.join, o)
+            except asyncio.CancelledError:
+                # The worker thread cannot be interrupted: the join is told to stop and ends within 250 ms.
+                stop.set()
+                raise
+
+        return GuardedCoroutine(run(), "cloud_connect.local_links.join")
 
 
 class _AsyncCloudConnect(_AsyncFacet):
