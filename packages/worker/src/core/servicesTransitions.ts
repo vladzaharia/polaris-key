@@ -97,11 +97,20 @@ export async function applyServiceTransitions(
   const result = after.identity?.enabled
     ? { signedInDevicesCleared: 0 }
     : await signOutIdentityOff(env, db, product, actor, now);
-  for (const listener of contributedServicesChangeListeners())
-    await listener(
-      { db, env, now },
-      { product, before: opts.before ?? null, after, actor },
-    );
+  // Each listener runs alone: one that throws is logged and the rest still hear the write, so a
+  // revocation (the issuer's families) is never skipped because an earlier listener failed.
+  for (const listener of contributedServicesChangeListeners()) {
+    try {
+      await listener(
+        { db, env, now },
+        { product, before: opts.before ?? null, after, actor },
+      );
+    } catch (e) {
+      console.error(
+        `services listener failed for ${product}: ${e instanceof Error ? e.name : "error"}`,
+      );
+    }
+  }
   return result;
 }
 

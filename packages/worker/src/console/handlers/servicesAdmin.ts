@@ -134,6 +134,7 @@ export async function handleServicesAdmin(
       parseServices(row.services_json).services,
       session,
       now,
+      { before: parseServices(row.services_json).services },
     );
     const state = serviceStateOf(await getProduct(db, slug));
     return adminJson({ ...state, facts: await featureFactsOf(env, db, slug) });
