@@ -40,11 +40,11 @@ class ConnectLinksPairingWindowTest : ConnectLanBase() {
             allowed = { true },
         )
 
-        fun options(net: MdnsAdapter) = LinkPairOptions(
+        fun options(net: MdnsAdapter, answer: Boolean = true) = LinkPairOptions(
             categories = listOf("docs"),
             onCode = { offer ->
                 codes += offer.code
-                scope.launch { if (confirm) offer.confirm() else offer.decline() }
+                if (answer) scope.launch { if (confirm) offer.confirm() else offer.decline() }
             },
             label = label,
             onLinked = { linked += it },
@@ -116,6 +116,49 @@ class ConnectLinksPairingWindowTest : ConnectLanBase() {
         }
         until { a.linked.isNotEmpty() && b.linked.isNotEmpty() }
         // Exactly one side dials (the lower instance does not); its sockets all came from the found network's factory.
+        assertEquals(1, fa.made.get() + fb.made.get())
+        runBlocking {
+            ha.stop()
+            hb.stop()
+        }
+    }
+
+    /** Announces every found advert again whenever asked, as mDNS does on a refresh or a network change. */
+    private class Reannounce(val inner: MdnsAdapter) : MdnsAdapter {
+        private val seen = CopyOnWriteArrayList<Pair<(MdnsFound) -> Unit, MdnsFound>>()
+
+        override suspend fun advertise(advert: MdnsAdvert): MdnsHandle = inner.advertise(advert)
+
+        override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle {
+            val remember = { found: MdnsFound ->
+                seen += onUp to found
+                onUp(found)
+            }
+            return inner.browse(remember, onDown, accept)
+        }
+
+        fun again() = seen.toList().forEach { (up, found) -> up(found) }
+    }
+
+    @Test
+    fun anAdvertAnnouncedAgainAfterTheDialIsNotDialledAgain() {
+        val a = Person(device(idA), "Ana", true)
+        val b = Person(device(idB), "Ben", true)
+        val net = Network()
+        val fa = CountingFactory()
+        val fb = CountingFactory()
+        val ra = Reannounce(WithFactory(net, fa))
+        val rb = Reannounce(WithFactory(net, fb))
+        // Neither person answers the code, so the window stays open with the dialled session up.
+        val (ha, hb) = runBlocking {
+            LinkPairing.start(a.source, a.options(ra, answer = false)) to LinkPairing.start(b.source, b.options(rb, answer = false))
+        }
+        until { a.codes.isNotEmpty() && b.codes.isNotEmpty() }
+        ra.again()
+        rb.again()
+        // A second dial would come within milliseconds; none does in the time given.
+        val dialledAgain = runCatching { until(300) { fa.made.get() + fb.made.get() > 1 } }.isSuccess
+        assertEquals(false, dialledAgain)
         assertEquals(1, fa.made.get() + fb.made.get())
         runBlocking {
             ha.stop()

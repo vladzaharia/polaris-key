@@ -380,6 +380,8 @@ internal class LinkPairing private constructor(private val src: PairSource, priv
             socket.close()
             return
         }
+        // Connected: an advert announced again while it stays up is not dialled again (only a failed dial is retried).
+        synchronized(lock) { candidates[c.instance]?.tries = TRIES_PER_ADVERT }
         val l = makeLive(TcpPipe(socket), NoiseRole.initiator, null)
         l.link?.start()
     }
