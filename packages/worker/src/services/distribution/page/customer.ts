@@ -68,6 +68,7 @@ import {
   type PageAction,
   type StoreKind,
 } from "./model.js";
+import { productPlatforms } from "../facts.js";
 import { feedOriginOf } from "./index.js";
 // The download page's own escaper (`render.ts`), so the portal's QR label matches the page's.
 import { escapeHtmlDecimalApostrophe as esc } from "../../../platform/html.js";
@@ -252,8 +253,16 @@ export async function customerDownloads(
     .filter((o) => (STORE_KINDS as readonly string[]).includes(o.kind));
   if (outlets.length) {
     const state = await storeState(ctx.db, slug);
+    const facts = (
+      await productPlatforms({
+        db: ctx.db,
+        product: slug,
+        hooks: ctx.hooks,
+        now: Math.floor(Date.now() / 1000),
+      })
+    ).platforms;
     for (const outlet of outlets) {
-      const link = storeLink(outlet.kind as StoreKind, outlet.identity);
+      const link = storeLink(outlet.kind as StoreKind, outlet.identity, facts);
       if (!link) continue;
       const live = state.live.get(outlet.id);
       const held = state.held.get(outlet.id);
