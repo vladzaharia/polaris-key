@@ -1,0 +1,9 @@
+; The Godot live-peer driver project (CC-29X.3): a headless project over the SDK's addon (the `addons` link),
+; run with `--script res://driver.gd`. See tools/live-peer/README.md.
+
+config_version=5
+
+[application]
+
+config/name="Polaris Key live peer"
+run/flush_stdout_on_print=true

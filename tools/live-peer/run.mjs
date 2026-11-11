@@ -5,12 +5,12 @@
 // multicast is needed. Every timeout below is a hang guard; no step asserts on elapsed time.
 //
 //   node tools/live-peer/run.mjs --pair node:python     one ordered pair (A shows, B joins)
-//   node tools/live-peer/run.mjs --matrix linux         every ordered pair of two different Linux drivers
+//   node tools/live-peer/run.mjs --matrix linux         every ordered pair of two different Linux drivers (node, python, kotlin, godot)
 //   node tools/live-peer/run.mjs --matrix macos         Swift against Node and Python, both ways
 //   node tools/live-peer/run.mjs --list                 the drivers, and which can run here
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, symlinkSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
@@ -30,6 +30,32 @@ const kotlinBin = here("drivers/kotlin/build/install/live-peer/bin/live-peer");
 const swiftBin = () =>
   process.env.PKEY_LIVE_SWIFT ??
   here("drivers/swift/live-peer-swift/.build/release/live-peer-swift");
+
+// The Godot driver runs the editor binary headless over tools/live-peer/drivers/godot, a project whose `addons` link
+// (made here) points at sdks/godot/addons. The first start imports the project for its class cache. PKEY_LIVE_GODOT
+// (else GODOT_BIN, else `godot` on PATH) names the binary; it must be Godot 4.7.2.
+const godotDir = here("drivers/godot");
+const godotBin = () =>
+  process.env.PKEY_LIVE_GODOT ?? process.env.GODOT_BIN ?? "godot";
+const godotRuns = () =>
+  spawnSync(godotBin(), ["--version"], { stdio: "ignore" }).status === 0;
+let godotReady = false;
+const godotProject = () => {
+  if (godotReady) return;
+  const link = `${godotDir}/addons`;
+  if (!existsSync(link))
+    symlinkSync("../../../../sdks/godot/addons", link, "dir");
+  if (!existsSync(`${godotDir}/.godot/global_script_class_cache.cfg`)) {
+    const r = spawnSync(
+      godotBin(),
+      ["--headless", "--path", godotDir, "--import"],
+      { stdio: "ignore" },
+    );
+    if (r.status !== 0)
+      throw new Error("the Godot driver project did not import");
+  }
+  godotReady = true;
+};
 
 // A matrix whose pairs all include one driver: the other SDKs are already paired in `linux`.
 const MATRIX_ANCHORS = { macos: "swift" };
@@ -60,6 +86,19 @@ export const DRIVERS = {
     matrices: ["linux"],
     available: () => existsSync(kotlinBin),
     command: () => ({ exe: kotlinBin, args: [], env: {} }),
+  },
+  // The Godot driver: the editor binary, headless, over the addon's local links (GDScript mDNS lane replaced by the broker).
+  godot: {
+    matrices: ["linux"],
+    available: godotRuns,
+    command: () => {
+      godotProject();
+      return {
+        exe: godotBin(),
+        args: ["--headless", "--path", godotDir, "--script", "res://driver.gd"],
+        env: {},
+      };
+    },
   },
   // The Swift driver: a SwiftPM executable over sdks/swift (macOS only: the SDK's local links use Network.framework).
   swift: {
