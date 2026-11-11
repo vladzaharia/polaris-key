@@ -106,15 +106,17 @@ describe("services listeners and the issuer", () => {
 
   it("a listener that throws does not stop the issuer's: Identity off still revokes the families", async () => {
     const t = await signIn();
-    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
     const real = contributions.contributedServicesChangeListeners();
     vi.spyOn(
       contributions,
       "contributedServicesChangeListeners",
     ).mockReturnValue([
-      async () => {
-        throw new Error("restore store down");
-      },
+      [
+        "test.broken",
+        async () => {
+          throw new TypeError("secret detail that must not be recorded");
+        },
+      ],
       ...real,
     ]);
     await applyServiceTransitions(
@@ -128,7 +130,15 @@ describe("services listeners and the issuer", () => {
         before: set(true),
       },
     );
-    expect(quiet).toHaveBeenCalledTimes(1);
+    const rows = await s.w.db.all<{ summary: string; target_id: string }>(
+      "SELECT summary, target_id FROM audit WHERE action = 'services.listener.failed'",
+    );
+    expect(rows).toEqual([
+      {
+        summary: `A services listener failed for ${SLUG}: test.broken (TypeError)`,
+        target_id: SLUG,
+      },
+    ]);
     expect(await live()).toBe(0);
     await refreshRefused(t);
     expect(await grants()).toBe(1);
@@ -138,7 +148,6 @@ describe("services listeners and the issuer", () => {
     const t = await signIn();
     // The restore listener fails on an off-to-on write; the off-write itself was never applied.
     await s.w.db.run("DROP TABLE identity_restore_keys");
-    vi.spyOn(console, "error").mockImplementation(() => {});
     await applyServiceTransitions(
       s.w.env,
       s.w.db,
