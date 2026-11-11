@@ -247,7 +247,7 @@ public class PolarisLocalPairingState(
                 device = if (notice == "declined") lastDevice else null,
                 changed = diff,
                 rotation = prev.rotation + 1,
-                replaced = prev.step == "show",
+                replaced = prev.step == "show" || prev.step == "confirm",
             ),
         )
         tick()

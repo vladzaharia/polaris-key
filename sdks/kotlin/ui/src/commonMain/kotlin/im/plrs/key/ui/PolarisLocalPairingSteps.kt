@@ -72,8 +72,13 @@ internal fun ColumnScope.PairClosed(c: PairCtx) {
     // The wait is stated in the label (its line carries the time) and the dimmed button says why it is not yet available.
     val label = if (cooling) c.text("localPairing.showNewIn") else c.button("localPairing.showNew")
     Column(Modifier.fillMaxWidth()) {
-        Column(Modifier.alpha(if (cooling) DIMMED else 1f).semantics { if (cooling) stateDescription = label }) {
-            PolarisPrimaryButton(label, { if (!cooling) c.actions.showNew() }, initialFocus = !cooling)
+        // Unavailable, it is the full-contrast secondary (as on Apple), never a faded primary.
+        Column(Modifier.semantics { if (cooling) stateDescription = label }) {
+            if (cooling) {
+                PolarisSecondaryButton(label, { c.actions.showNew() })
+            } else {
+                PolarisPrimaryButton(label, { c.actions.showNew() }, initialFocus = true)
+            }
         }
         Spacer(Modifier.height(PolarisSpace.controls))
         PairActionRow(c.button("common.close"), c.actions::close, initialFocus = false)
@@ -100,8 +105,12 @@ internal fun ColumnScope.PairEnter(c: PairCtx) {
     Shares(c.lines, c.ui.categories, c.labels)
     Spacer(Modifier.height(PolarisSpace.group))
     val dim = !joining && "localPairing.pair" in c.disabled
-    Column(Modifier.alpha(if (dim) DIMMED else 1f).semantics { if (dim && message != null) stateDescription = message }) {
-        PolarisPrimaryButton(c.button("localPairing.pair"), { if (!joining) c.actions.pair() })
+    Column(Modifier.semantics { if (dim && message != null) stateDescription = message }) {
+        if (dim) {
+            PolarisSecondaryButton(c.button("localPairing.pair"), { c.actions.pair() })
+        } else {
+            PolarisPrimaryButton(c.button("localPairing.pair"), { if (!joining) c.actions.pair() })
+        }
     }
     Spacer(Modifier.height(PolarisSpace.controls))
     if (joining) {

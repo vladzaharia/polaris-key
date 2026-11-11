@@ -138,6 +138,9 @@ internal fun PairRing(fraction: Float, modifier: Modifier = Modifier) {
 /** Cancel (or Close) as the hug-width secondary, then the quiet "… instead" link under it. */
 @Composable
 internal fun PairActionRow(secondary: String, onSecondary: () -> Unit, link: Pair<String, () -> Unit>? = null, initialFocus: Boolean = true) {
-    PolarisActionGroup(row = true) { PolarisSecondaryButton(secondary, onSecondary, initialFocus = initialFocus) }
-    if (link != null) PairLink(link.first, link.second)
+    // The hug-width secondary and its link on one row, both at the start edge: nothing zigzags on a phone.
+    Row(horizontalArrangement = Arrangement.spacedBy(PolarisSpace.group), verticalAlignment = Alignment.CenterVertically) {
+        PolarisActionGroup(row = true) { PolarisSecondaryButton(secondary, onSecondary, initialFocus = initialFocus) }
+        if (link != null) PairLink(link.first, link.second)
+    }
 }

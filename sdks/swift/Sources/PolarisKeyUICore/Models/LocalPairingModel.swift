@@ -111,7 +111,11 @@ public final class LocalPairingModel {
             pair: { _, _, _ in throw KitLocalError(code: "unknown") },
             join: { _, _, _, _ in throw KitLocalError(code: "unknown") })
         self.init(driver: never, categories: inputs.localPairing?.categories ?? [], inputs: inputs)
-        if let shown = inputs.localPairing { state = shown }
+        if let shown = inputs.localPairing {
+            state = shown
+            // A paired still starts with the name the other device sent, as the live screen does.
+            if shown.step == .paired { name = shown.device ?? "" }
+        }
     }
 
     public var screen: KitScreen<LocalPairingState> { KitStates.localPairing(inputs) }
@@ -215,7 +219,7 @@ public final class LocalPairingModel {
             if !wrongCode, let d = lastDevice { next.device = d }
         }
         rotation += 1
-        replaced = prev.step == .show
+        replaced = prev.step == .show || prev.step == .confirm
         go(next, changed: diff)
         tick()
     }

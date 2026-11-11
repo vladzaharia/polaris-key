@@ -33,6 +33,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 private class FlowActions(private val state: PolarisLocalPairingState, private val scope: CoroutineScope) : PolarisPairFlowActions {
     override fun show() {
@@ -126,7 +128,9 @@ public fun PolarisLocalPairingScreen(
     categoryLabels: Map<String, String> = emptyMap(),
     actions: PolarisLocalPairingActions = PolarisLocalPairingActions.None,
 ) {
-    val screen = remember(ui) { ui.screen() }
+    // The product's own name, as the header shows it: the pre-prompt says "{app}", never a placeholder.
+    val product = PolarisTheme.copy.productName
+    val screen = remember(ui, product) { ui.screen(KitInputs.of(mapOf("presentation" to JsonObject(mapOf("name" to JsonPrimitive(product)))))) }
     if (screen.isHidden) return
     val locale = kitLocale()
     val lines = remember(screen, locale) { KitLines(screen, KitCopy.bundled, locale) }

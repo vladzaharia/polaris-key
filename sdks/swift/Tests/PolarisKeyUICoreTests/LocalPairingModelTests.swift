@@ -157,6 +157,25 @@ final class LocalPairingModelTests: XCTestCase {
         XCTAssertTrue(m.replaced)
     }
 
+    func testACodeThatChangesDuringTheConfirmPromptIsMarkedReplaced() async {
+        let (m, f, _) = make()
+        await shown(m, f)
+        f.events?.onConfirm(f.offer())
+        await settle()
+        XCTAssertEqual(m.state.step, .confirm)
+        f.events?.onCode(code("4812 2222", "timeout"))
+        await settle()
+        XCTAssertTrue(m.replaced)
+    }
+
+    func testAPairedStillStartsWithTheNameTheOtherDeviceSent() {
+        var inputs = KitInputs()
+        var p = KitLocalPairing(step: .paired)
+        p.device = "Maya's laptop"
+        inputs.localPairing = p
+        XCTAssertEqual(LocalPairingModel(inputs: inputs).name, "Maya's laptop")
+    }
+
     func testAWrongCodeLightsTheChangedDigitsAndAnnounces() async {
         let (m, f, _) = make()
         await shown(m, f)

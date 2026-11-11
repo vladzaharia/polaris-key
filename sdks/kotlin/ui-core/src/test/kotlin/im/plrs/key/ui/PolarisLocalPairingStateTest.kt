@@ -534,6 +534,19 @@ class PolarisLocalPairingStateTest {
     }
 
     @Test
+    fun aCodeThatChangesDuringTheConfirmPromptIsMarkedReplaced() = runTest {
+        val links = FakeLinks()
+        val state = make(links)
+        shown(state, links)
+        links.events!!.onConfirm(FakeOffer("Maya"))
+        runCurrent()
+        assertEquals("confirm", state.ui.value.step)
+        links.events!!.onCode(code("4812 2222", "timeout"))
+        runCurrent()
+        assertTrue(state.ui.value.replaced)
+    }
+
+    @Test
     fun theAppsOwnAnswersAreShownWithTheList() = runTest {
         val links = FakeLinks().apply { rows = rows(2) }
         val state = PolarisPairedDevicesState(links)
