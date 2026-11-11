@@ -35,6 +35,7 @@ import {
   type IdentityEvent,
   type ShownIdentity,
 } from "./signIn.js";
+import { AccessTokens, type AccessToken } from "./accessToken.js";
 import { ChoiceClient } from "./choice.js";
 import { NearbyRoutes } from "./nearby.js";
 import {
@@ -179,6 +180,11 @@ export class IdentityClient {
     this.signInState = new SignInState(ctx.dirs.state);
     // The token manager keeps "a sign-in produced this token" in the state directory.
     tokens.setMarks(this.signInState);
+    this.accessTokens = new AccessTokens({
+      ctx,
+      tokens,
+      discovery: this.loadDiscovery,
+    });
     this.account = new Account({
       ctx,
       tokens,
@@ -203,6 +209,7 @@ export class IdentityClient {
 
   private readonly account: Account;
   private readonly signInState: SignInState;
+  private readonly accessTokens: AccessTokens;
   #routes: NearbyRoutes | undefined;
 
   /** The nearby HTTP routes, for the sign-in and approver sessions. @internal */
@@ -323,6 +330,28 @@ export class IdentityClient {
    */
   attach(opts: { confirm: boolean }): Promise<AttachResult> {
     return this.account.attach(opts.confirm);
+  }
+
+  /**
+   * A short-lived (600 s) access token for the app's own backend, from this device's token
+   * (RFC 8693 device exchange, `Authorization: Bearer <accessToken>`). The Worker signs it; this
+   * client never verifies it, the backend does, against the issuer's key set.
+   *
+   * It proves that this device holds a sign-in, and nothing more: it is NOT a licence check (no
+   * tier, no entitlement), so a backend that sells a licensed feature checks the licence too.
+   *
+   * Kept in memory only, reused until 60 seconds before it expires, requested one at a time and
+   * dropped at sign-out. Throws the typed `service-unavailable` N/A, with no request, when the
+   * product's discovery names no access token (its issuer is off), `no-token` with no device
+   * token, and the Worker's own refusal otherwise: `invalid_grant` when the device holds no
+   * sign-in, `invalid_request` when the issuer was turned off since discovery, `rate_limited`
+   * (`retryAfterSeconds`; ten a minute per device; until that wait has passed the call fails
+   * the same way without a request). The held token belongs to the device token it was asked
+   * with: a replaced token or another sign-in asks again. `{refresh: true}` skips the held token, for an
+   * app whose backend refused it.
+   */
+  accessToken(opts: { refresh?: boolean } = {}): Promise<AccessToken> {
+    return this.accessTokens.get(opts);
   }
 
   /** Open the product's account page in the browser. */
@@ -498,6 +527,7 @@ export class IdentityClient {
 
   /** Forget the stored identity (the facade calls it on every deactivation). */
   async forget(): Promise<void> {
+    this.accessTokens.clear();
     await rm(this.identityFile, { force: true }).catch(() => undefined);
     await rm(subjectFile(this.ctx.dirs.state), { force: true }).catch(
       () => undefined,

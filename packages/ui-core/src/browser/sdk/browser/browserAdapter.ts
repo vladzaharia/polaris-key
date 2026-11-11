@@ -222,13 +222,14 @@ import type { FeedKind, FeedUrl, FeedUrlOptions } from "../core/types.js";
 import type { LinkClient } from "../core/link.js";
 import {
   AccountFeature,
+  accessTokenEndpointOf,
   accountEndpointsOf,
   accountUnavailable,
   openPortal,
 } from "../core/account.js";
 import { activationError } from "../core/activationError.js";
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
-import type { StoreStatus } from "@polaris-key/client-core";
+import type { AccessToken, StoreStatus } from "@polaris-key/client-core";
 import type {
   AttachResult,
   KeyActivation,
@@ -660,6 +661,7 @@ export class BrowserAdapter implements PolarisAdapter {
         store: this.bearerStore,
         enabled: (slug) => this.capabilities[slug].enabled,
         identityEndpoints: () => accountEndpointsOf(this.discovery_),
+        accessTokenEndpoint: () => accessTokenEndpointOf(this.discovery_),
         redirectEndpoints: () => redirectEndpointsOf(this.discovery_),
         choiceEndpoints: () => choiceEndpointsOf(this.discovery_),
         deviceChoice: () => deviceChoiceOf(this.discovery_),
@@ -1118,6 +1120,23 @@ export class BrowserAdapter implements PolarisAdapter {
       }
       return r;
     });
+  }
+
+  async accessToken(opts: { refresh?: boolean } = {}): Promise<AccessToken> {
+    const b = this.requireBearer();
+    await this.ensureDiscovery();
+    if (accessTokenEndpointOf(this.discovery_) === null)
+      throw new UnsupportedError(
+        {
+          supported: false,
+          feature: AccountFeature.accessToken,
+          reason: "product",
+          detail:
+            "this product's discovery names no access token exchange: its sign-in issuer is not served",
+        },
+        ErrorCode.serviceUnavailable,
+      );
+    return this.account(() => b.accessToken(opts));
   }
 
   /** `identity.choice.*`: bearer mode, over the `choice*` endpoints discovery names. */
@@ -1796,6 +1815,12 @@ export class BrowserAdapter implements PolarisAdapter {
         product: this.product,
         bearer: b,
         options: { ...o, deviceKeys: await this.deviceKeyPort() },
+        // A ring route's `account_required` reaches Cloud Sync like a `/sync` one does.
+        onAccountRequired: (url, forSubject) =>
+          void this.cloudSync
+            .accountRequired(url, forSubject)
+            .catch(() => undefined),
+        origin: new URL(this.base).origin,
       }),
     ));
   }

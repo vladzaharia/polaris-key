@@ -96,7 +96,11 @@ internal class CloudSyncHostPump(
         val snapshot = MachineStateJson.encode(persisted ?: machine().persist())
         val keys = st.openKeys.toList()
         // Failing to persist never fails the call that produced it. After a purge nothing is saved (H-7).
-        if (!st.purged) withContext(Dispatchers.IO) { runCatching { st.file.save(snapshot, null, keys) { !st.purged } } }
+        if (!st.purged) {
+            withContext(Dispatchers.IO) {
+                runCatching { st.file.save(snapshot, null, keys, BlockedMarks(st.refused, st.forgetOwed)) { !st.purged } }
+            }
+        }
     }
 
     private fun retryDue(): Boolean = !st.retryArmed && !st.closed && st.failures in 1..SYNC_MAX_RETRIES

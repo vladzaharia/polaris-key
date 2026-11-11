@@ -29,6 +29,12 @@ internal class CloudSyncHostState(val deps: CloudSyncHostDeps, val opts: CloudSy
     var catalog: JsonObject = EMPTY_CATALOG
     var routes: List<JsonObject> = emptyList()
     val openKeys: LinkedHashSet<String> = linkedSetOf()
+
+    /** The subject refused with `account_required` (saved in the state file): not signed in again until it is lifted. */
+    @Volatile var refused: String? = null
+
+    /** The key ring's stored root is still to be forgotten; saved with the blocked state so a restart retries it. */
+    @Volatile var forgetOwed: Boolean = false
     var documentJson: String = ""
 
     /** The document and discovery the machine was last built from: a purge rebuilds from these without awaiting. */

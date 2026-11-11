@@ -163,17 +163,29 @@ async function startJoin(f: Fake, onField?: () => Promise<void>) {
 const joins = (f: Fake) => f.log.filter((l) => l.startsWith("join")).length;
 
 describe("<LocalPairing>", () => {
-  it("shows the code as served, spelled out, beside its QR; Enter a code instead withdraws it", async () => {
+  it("shows the code as served and spelled out, with no QR; Show a QR code swaps it for the QR in the same window", async () => {
     const f = fake();
     const { container } = await shown(f);
     const drawn = container.querySelector('[data-key="a11y.linkCode"]')!;
     expect(drawn.textContent).toBe("4812 3456");
     expect(drawn.getAttribute("aria-label")).toContain("4 8 1 2");
-    expect(container.querySelector(".qr svg")).not.toBeNull();
-    await press("Enter a code instead");
-    await waitFor(() => expect(f.log).toContain("stop"));
-    expect(await codeField()).not.toBeNull();
     expect(container.querySelector(".qr")).toBeNull();
+    await press("Show a QR code");
+    // jsdom cannot draw a canvas, so the plain QR stands in for the Light Card.
+    await waitFor(() =>
+      expect(container.querySelector(".qr svg")).not.toBeNull(),
+    );
+    expect(container.querySelector('[data-key="a11y.linkCode"]')).toBeNull();
+    expect(f.log).not.toContain("renew");
+    await press("Show the code instead");
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-key="a11y.linkCode"]')?.textContent,
+      ).toBe("4812 3456"),
+    );
+    expect(container.querySelector(".qr")).toBeNull();
+    await press("Cancel");
+    await waitFor(() => expect(f.log).toContain("stop"));
   });
 
   it("a wrong code lights the new digits, says so, and announces the new code", async () => {

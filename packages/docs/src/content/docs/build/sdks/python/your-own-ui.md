@@ -315,7 +315,9 @@ def account(client: PolarisKeyClient) -> bool:
     if isinstance(preview, AttachConfirm):
         client.identity.attach(confirm=True)
     client.identity.open_account()  # OpenAccountResult(url, opened)
-    print(subject)
+    # A 600 s token for your own backend: proof of a sign-in, not a license check.
+    headers = {"authorization": f"Bearer {client.identity.access_token().access_token}"}
+    print(subject, headers.keys())
     return client.identity.sign_out().released
 ```
 
@@ -323,6 +325,13 @@ def account(client: PolarisKeyClient) -> bool:
 A refusal (`account_required`, `license_owned`) is an `AttachRefused` result. `sign_out()` removes the
 device token only when `released` is true; a device activated by a key keeps its license. Use
 `client.license.deactivate()` to free the device.
+
+`identity.access_token()` (a coroutine on the async client) trades the device token for an access token
+that lasts 600 seconds. It proves the device holds a sign-in; it is not a license check, so check the
+license where it matters. It raises `service-unavailable` unless the product's sign-in issuer is on,
+and `invalid_grant` means the device holds no sign-in. The SDK keeps the token in memory and reuses it
+until a minute before it expires; `refresh=True` asks again. A `rate_limited` error carries
+`retry_after_seconds`.
 
 ## Status, offline and refresh
 

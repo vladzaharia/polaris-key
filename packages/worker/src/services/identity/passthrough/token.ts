@@ -41,6 +41,7 @@
  */
 
 import {
+  DEVICE_SUBJECT_TOKEN_TYPE,
   RESTORE_GRANT_TYPE,
   TOKEN_EXCHANGE_GRANT_TYPE,
   type KeyReturnTokenResponse,
@@ -65,6 +66,7 @@ import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { oauth, readForm, withNoStore } from "./oauthHttp.js";
 import { CLIENT_ID_PATTERN } from "@polaris-key/protocol/identity";
 import { namedClientId } from "../issuer/clientAuth.js";
+import { handleDeviceExchange } from "../issuer/deviceExchange.js";
 import { handleIssuerToken } from "../issuer/token.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import {
@@ -115,13 +117,33 @@ export { bindWithoutChoice };
 
 const CLIENT_ID_RE = new RegExp(CLIENT_ID_PATTERN);
 
-/** The token endpoint: 30 a minute per client network, 10 per device id; both fail closed. */
+/** The token endpoint: 30 a minute per client network, 10 per device id and network; both fail closed. */
 export const TOKEN_RATE = { bucket: "identityToken", limit: 30, windowSec: 60 };
 export const TOKEN_DEVICE_RATE = {
   bucket: "identityTokenDevice",
   limit: 10,
   windowSec: 60,
 };
+
+/** The per-device budget of a grant: 10 a minute per device id and client network, failing closed. */
+export const deviceBudgetOk = (
+  env: Env,
+  slug: string,
+  deviceId: string,
+  req: Request,
+  now: number,
+): Promise<boolean> =>
+  rateLimitOk(
+    env,
+    slug,
+    { ...TOKEN_DEVICE_RATE, id: `${deviceId}:${clientNetwork(req)}` },
+    now,
+  );
+
+export const deviceBudgetRefused = (): Response =>
+  oauth(429, "rate_limited", undefined, {
+    retryAfter: TOKEN_DEVICE_RATE.windowSec,
+  });
 
 const CODE_RE = /^[A-Za-z0-9_-]{43}$/;
 /** RFC 7636 §4.1. */
@@ -166,6 +188,14 @@ export async function handleToken(ctx: {
   const grant = form.get("grant_type");
   if (!grant)
     return oauth(400, ErrorCode.InvalidRequest, "grant_type is required.");
+  // I-21.13 (§12.13.10): the own app's device token for an access token. Its token type is its own
+  // branch, ahead of `launch.identityExchange`: it is not a platform-identity exchange. It answers
+  // `invalid_request` while the issuer is off, as an unknown subject token type does.
+  if (
+    grant === TOKEN_EXCHANGE_GRANT_TYPE &&
+    form.get("subject_token_type") === DEVICE_SUBJECT_TOKEN_TYPE
+  )
+    return handleDeviceExchange({ req, env, db, product, now, form });
   // LG-1: with the gate off the grant is not one this build knows (`unsupported_grant_type`).
   if (
     grant === TOKEN_EXCHANGE_GRANT_TYPE &&
@@ -199,17 +229,8 @@ export async function handleToken(ctx: {
   // A malformed code or verifier cannot be a real one: refused without touching the store.
   if (!CODE_RE.test(code) || !VERIFIER_RE.test(verifier))
     return oauth(400, ErrorCode.InvalidGrant);
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { ...TOKEN_DEVICE_RATE, id: deviceId },
-      now,
-    ))
-  )
-    return oauth(429, "rate_limited", undefined, {
-      retryAfter: TOKEN_DEVICE_RATE.windowSec,
-    });
+  if (!(await deviceBudgetOk(env, product.slug, deviceId, req, now)))
+    return deviceBudgetRefused();
 
   // Redeem: the challenge derived from the verifier is the proof. Match or mismatch, the code ends.
   const record = await redeemAuthorizationCode(

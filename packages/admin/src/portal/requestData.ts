@@ -1,4 +1,5 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import type { EndSessionView } from "@polaris-key/protocol/identity";
 import {
   type AppConsentView,
   type LicenseChoiceView,
@@ -33,4 +34,11 @@ export function useSignInConsent(
   enabled: boolean,
 ): UseQueryResult<AppConsentView> {
   return useQuery(pq.signinConsent(handle, enabled));
+}
+
+/** The end-session request of the sign-out page (I-21.12). */
+export function useEndSessionRequest(
+  handle: string,
+): UseQueryResult<EndSessionView> {
+  return useQuery(pq.signoutRequest(handle));
 }

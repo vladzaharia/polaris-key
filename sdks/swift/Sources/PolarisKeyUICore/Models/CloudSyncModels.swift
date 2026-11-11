@@ -324,6 +324,10 @@ public final class CloudSyncStatusModel {
     public let onSignIn: (@MainActor () -> Void)?
     /// Try again, for a failed transfer. nil draws no button.
     public var onRetry: (@MainActor () -> Void)?
+    /// Asked before the Sync stopped row is announced; true once per stop, whichever view asks. The
+    /// settings host sets it, so a view that appears again while sync is still stopped stays quiet.
+    /// nil (a standalone row) always announces.
+    public var claimStopAnnouncement: (@MainActor () -> Bool)?
 
     public init(
         _ state: KitCloudSync.State = .locked, onUnlock: @escaping @MainActor () -> Void,

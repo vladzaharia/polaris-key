@@ -205,19 +205,24 @@ describe("scanStrictJson (WIRE-CONTRACT-V4 §1.2)", () => {
     const name = "a".repeat(32_000);
     const text = `{"config":{"k":{"value":{"${name}":[${Array(8000).fill("1.5").join(",")}]}}}}`;
     expect(text.length).toBeLessThan(65_536);
-    const before = process.memoryUsage().heapUsed;
-    const started = performance.now();
     const scan = scanStrictJson(text);
-    const elapsed = performance.now() - started;
-    const grown = process.memoryUsage().heapUsed - before;
     expect(scan.ok).toBe(true);
     expect(scan.nonWireIntegers.size).toBe(8000);
     expect(scan.nonWireIntegers.has(`/config/k/value/${name}/7999`)).toBe(true);
     expect(scan.nonWireIntegers.has(`/config/k/value/${name}/8000`)).toBe(
       false,
     );
-    expect(grown).toBeLessThan(32 * 1024 * 1024);
-    expect(elapsed).toBeLessThan(2000);
+    // Size, not a heap delta or a stopwatch (both move with the GC and the load): the set keeps
+    // one node per container or number and stores each member name once, so the characters it
+    // holds are bounded by the payload's own, where one pointer per number would hold 8 000 names.
+    const held = scan.nonWireIntegers as unknown as {
+      name: string[];
+      parent: number[];
+    };
+    expect(held.parent.length).toBeLessThanOrEqual(8000 + 8);
+    expect(held.name.reduce((n, s) => n + s.length, 0)).toBeLessThanOrEqual(
+      text.length,
+    );
   });
 
   it("judges rule 8 from the digits and the token rule from the spelling", () => {

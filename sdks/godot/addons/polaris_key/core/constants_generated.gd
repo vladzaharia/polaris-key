@@ -159,6 +159,8 @@ class ErrorCode:
 	const RECOVERY_CODE_INVALID := "recovery-code-invalid"
 	const SYNC_ENCRYPTION_PINNED := "sync-encryption-pinned"
 	const SYNC_FILE_INVALID := "sync-file-invalid"
+	const SYNC_EXPORT_TOO_LARGE := "sync-export-too-large"
+	const SYNC_EXPORT_FAILED := "sync-export-failed"
 	const SYNC_MERGE_CLOSED := "sync-merge-closed"
 	const INVALID_OPTIONS := "invalid-options"
 	const INVALID_ARGUMENT := "invalid-argument"
@@ -255,7 +257,7 @@ class ErrorCode:
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "signing_unavailable", "device_keys_invalid", "device_keys_required", "ring_too_large", "relay_disabled", "relay_paused", "relay_quota_exceeded", "connect_links_disabled", "relay_ticket_invalid", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "erasure_ledger_unavailable", "identity_disabled", "unknown_app", "invalid_request", "invalid_client", "invalid_grant", "unsupported_grant_type", "invalid_scope", "redirect_uri_mismatch", "unsupported_response_type", "request_not_supported", "request_uri_not_supported", "login_required", "consent_required", "interaction_required", "unauthorized_client", "invalid_token", "invalid_request_uri", "license_choice_required", "interstitial_required", "not_nearby", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "code_expired", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "cursor_expired", "client_mismatch", "value_invalid", "op_invalid_for_policy", "setting_not_synced", "collection_unknown", "entitlement_required", "quota_exceeded", "writes_paused", "encryption_mismatch", "revision_conflict", "upload_mismatch", "upload_expired", "upload_incomplete", "file_too_large", "keyring_conflict", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "backend-origin-not-allowed", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device-keys-unreadable", "device-key-store-error", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "redirect-unavailable", "sign-in-denied", "sign-in-unavailable", "platform-identity-unavailable", "sync-locked", "recovery-code-invalid", "sync-encryption-pinned", "sync-file-invalid", "sync-merge-closed", "invalid-options", "invalid-argument", "invoke-not-allowed", "sender-refused", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "connect-unavailable", "peer-cert-invalid", "nearby-permission-denied", "nearby-unsupported", "peer-handshake-failed", "peer-closed", "transfer-cancelled", "link-unknown", "local-pairing-off", "pairing-code-failed", "pairing-not-found", "local-links-full", "peer_revoked", "peer_expired", "peer_bad_frame", "peer_unknown_critical", "peer_not_allowed", "peer_busy", "peer_timeout", "peer_bye", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected", "attach-declined", "license_required", "license_invalid", "license_stale", "sign_in_required"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "signing_unavailable", "device_keys_invalid", "device_keys_required", "ring_too_large", "relay_disabled", "relay_paused", "relay_quota_exceeded", "connect_links_disabled", "relay_ticket_invalid", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "erasure_ledger_unavailable", "identity_disabled", "unknown_app", "invalid_request", "invalid_client", "invalid_grant", "unsupported_grant_type", "invalid_scope", "redirect_uri_mismatch", "unsupported_response_type", "request_not_supported", "request_uri_not_supported", "login_required", "consent_required", "interaction_required", "unauthorized_client", "invalid_token", "invalid_request_uri", "license_choice_required", "interstitial_required", "not_nearby", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "code_expired", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "cursor_expired", "client_mismatch", "value_invalid", "op_invalid_for_policy", "setting_not_synced", "collection_unknown", "entitlement_required", "quota_exceeded", "writes_paused", "encryption_mismatch", "revision_conflict", "upload_mismatch", "upload_expired", "upload_incomplete", "file_too_large", "keyring_conflict", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "backend-origin-not-allowed", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device-keys-unreadable", "device-key-store-error", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "redirect-unavailable", "sign-in-denied", "sign-in-unavailable", "platform-identity-unavailable", "sync-locked", "recovery-code-invalid", "sync-encryption-pinned", "sync-file-invalid", "sync-export-too-large", "sync-export-failed", "sync-merge-closed", "invalid-options", "invalid-argument", "invoke-not-allowed", "sender-refused", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "connect-unavailable", "peer-cert-invalid", "nearby-permission-denied", "nearby-unsupported", "peer-handshake-failed", "peer-closed", "transfer-cancelled", "link-unknown", "local-pairing-off", "pairing-code-failed", "pairing-not-found", "local-links-full", "peer_revoked", "peer_expired", "peer_bad_frame", "peer_unknown_critical", "peer_not_allowed", "peer_busy", "peer_timeout", "peer_bye", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected", "attach-declined", "license_required", "license_invalid", "license_stale", "sign_in_required"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -406,6 +408,8 @@ const ERROR_CODE_KINDS := {
 	"recovery-code-invalid": "client",
 	"sync-encryption-pinned": "client",
 	"sync-file-invalid": "client",
+	"sync-export-too-large": "client",
+	"sync-export-failed": "client",
 	"sync-merge-closed": "client",
 	"invalid-options": "client",
 	"invalid-argument": "client",
@@ -547,6 +551,7 @@ class Feature:
 	const SYNC_E2E_RECOVERY := "sync.e2e.recovery"
 	const SYNC_TRANSFER_BACKGROUND := "sync.transfer.background"
 	const SYNC_E2E := "sync.e2e"
+	const SYNC_EXPORT := "sync.export"
 	const CONNECT_IDENTITY := "connect.identity"
 	const CONNECT_NOISE := "connect.noise"
 	const CONNECT_PROTOCOL := "connect.protocol"
@@ -581,6 +586,7 @@ class Feature:
 	const IDENTITY_PGS := "identity.pgs"
 	const IDENTITY_AUTOSIGNIN := "identity.autosignin"
 	const IDENTITY_RESTORE := "identity.restore"
+	const IDENTITY_ACCESSTOKEN := "identity.accesstoken"
 	const IDENTITY_LINK := "identity.link"
 	const IDENTITY_NEARBY := "identity.nearby"
 	const RELEASE_CHANGELOG := "release.changelog"
@@ -650,7 +656,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "core.devicekeys", "license.gate", "license.signedinuser", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "sync.keyring", "sync.records", "sync.files", "sync.files.delta", "sync.e2e.recovery", "sync.transfer.background", "sync.e2e", "connect.identity", "connect.noise", "connect.protocol", "connect.lan", "connect.relay", "connect.links", "connect.transfer", "connect.local", "connect.app", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "identity.redirect.web", "identity.redirect.native", "identity.choice", "identity.devicecode.choice", "identity.signin.hints", "identity.keyreturn", "identity.exchange", "identity.gamecenter", "identity.pgs", "identity.autosignin", "identity.restore", "identity.link", "identity.nearby", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.kit.holders", "ui.cli", "ui.cli.mount", "ui.cli.contract", "ui.cli.portal", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "core.devicekeys", "license.gate", "license.signedinuser", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "sync.keyring", "sync.records", "sync.files", "sync.files.delta", "sync.e2e.recovery", "sync.transfer.background", "sync.e2e", "sync.export", "connect.identity", "connect.noise", "connect.protocol", "connect.lan", "connect.relay", "connect.links", "connect.transfer", "connect.local", "connect.app", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "identity.redirect.web", "identity.redirect.native", "identity.choice", "identity.devicecode.choice", "identity.signin.hints", "identity.keyreturn", "identity.exchange", "identity.gamecenter", "identity.pgs", "identity.autosignin", "identity.restore", "identity.accesstoken", "identity.link", "identity.nearby", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.kit.holders", "ui.cli", "ui.cli.mount", "ui.cli.contract", "ui.cli.portal", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -1218,7 +1224,7 @@ const OUTLET_MATRIX_VERSION := 1
 const PLAN_MATRIX_VERSION := 2
 
 ## `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-const SYNC_SCENARIOS_VERSION := 5
+const SYNC_SCENARIOS_VERSION := 6
 
 ## `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
 const DEVICE_LABEL_VERSION := 2
@@ -1384,6 +1390,42 @@ const SYNC_ENVELOPE_FIXED_BYTES := 49
 
 ## Cloud Sync: `SYNC_ENVELOPE_PAD_BLOCK` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
 const SYNC_ENVELOPE_PAD_BLOCK := 64
+
+## Cloud Sync: `SYNC_EXPORT_BLOB_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_BLOB_MAX_BYTES := 268435456
+
+## Cloud Sync: `SYNC_EXPORT_FORMAT` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_FORMAT := "pkey-sync-export/1"
+
+## Cloud Sync: `SYNC_EXPORT_ITEM_RESERVE_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_ITEM_RESERVE_BYTES := 1024
+
+## Cloud Sync: `SYNC_EXPORT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_MAX_BYTES := 4294967295
+
+## Cloud Sync: `SYNC_EXPORT_MAX_CHUNKS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_MAX_CHUNKS := 65536
+
+## Cloud Sync: `SYNC_EXPORT_MAX_ENTRIES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_MAX_ENTRIES := 65000
+
+## Cloud Sync: `SYNC_EXPORT_MAX_PULLS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_MAX_PULLS := 64
+
+## Cloud Sync: `SYNC_EXPORT_MAX_WAIT_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_MAX_WAIT_MS := 5400000
+
+## Cloud Sync: `SYNC_EXPORT_RETRY_AFTER_MAX_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_RETRY_AFTER_MAX_MS := 900000
+
+## Cloud Sync: `SYNC_EXPORT_STORE_DIR` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_STORE_DIR := "stores/sync.cloudSync/"
+
+## Cloud Sync: `SYNC_EXPORT_ZIP_END_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_ZIP_END_BYTES := 22
+
+## Cloud Sync: `SYNC_EXPORT_ZIP_ENTRY_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+const SYNC_EXPORT_ZIP_ENTRY_BYTES := 92
 
 ## Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
 const SYNC_FILE_FORMAT := "pkey-sync-file/1"
@@ -1669,6 +1711,7 @@ static func capabilities() -> Dictionary:
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
 		"sync.transfer.background": {"status": "implemented", "service": "sync", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"sync.e2e": {"status": "implemented", "service": "sync", "na": []},
+		"sync.export": {"status": "implemented", "service": "sync", "na": []},
 		"connect.identity": {"status": "implemented", "service": "connect", "na": []},
 		"connect.noise": {"status": "implemented", "service": "connect", "na": []},
 		"connect.protocol": {"status": "implemented", "service": "connect", "na": []},
@@ -1703,6 +1746,7 @@ static func capabilities() -> Dictionary:
 		"identity.pgs": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"identity.autosignin": {"status": "implemented", "service": "identity", "na": []},
 		"identity.restore": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"identity.accesstoken": {"status": "implemented", "service": "identity", "na": []},
 		"identity.link": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"identity.nearby": {"status": "implemented", "service": "identity", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
@@ -1772,4 +1816,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "1d0dc06c7c6a23e1a892bd95db5d38c54b6de97e1442bcd6f5130d826b8394aa"
+const CAPABILITY_DIGEST := "e2e91f798bf895aa89a998d79522b987bb2fc2030b49004966faead75c3b353c"

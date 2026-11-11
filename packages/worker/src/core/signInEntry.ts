@@ -16,6 +16,8 @@
 //   - `?request=<handle>`: the app sign-in card (PX-14a). `handleSignInEntry` itself answers 404; the
 //     dispatcher serves the portal shell instead to a browser that holds a request binder, and the
 //     SPA reads the handle.
+//   - `/signout?request=eo_…&bind=<token>` (I-21.12, V5 §12.13.9) is the same hop for Polaris Locker's
+//     sign-out page (`handleSignOutBind`); the dispatcher serves that page's shell.
 //   - `?request=<handle>&bind=<token>` on the customer host: the bind hop (LK-04,
 //     `signInBind.ts`). The token is redeemed once, the browser gets its `__Host-pk_req` binder,
 //     and the 303 goes to `/signin?request=<handle from the store>`: nothing in the query reaches
@@ -39,28 +41,41 @@ export function isBindHop(req: Request): boolean {
   return q.has("request") && q.has("bind");
 }
 
-/** The hop itself; the caller only offers it on the customer host. */
-export async function handleSignInBind(
+/**
+ * The hop itself; the caller only offers it on the customer host. `kind` and `path` name the page
+ * the binder is for: an app's sign-in card (`request`, `/signin`) or Polaris Locker's sign-out page
+ * (`signout`, `/signout`, I-21.12). The token names its own handle and kind: a token for another
+ * request or page is as good as none.
+ */
+async function bindHop(
   req: Request,
   env: Env,
+  kind: "request" | "signout",
+  path: "/signin" | "/signout",
 ): Promise<Response> {
   const q = new URL(req.url).searchParams;
   const handle = q.get("request") ?? "";
   const bind = q.get("bind");
   const bound = bind ? await consumeBindToken(env, bind) : null;
-  // The token names its own handle: a token for another request is as good as none.
-  if (!bound || bound.kind !== "request" || bound.handle !== handle)
+  if (!bound || bound.kind !== kind || bound.handle !== handle)
     return notFound();
   return new Response(null, {
     status: 303,
     headers: {
-      location: `/signin?request=${bound.handle}`,
+      location: `${path}?request=${bound.handle}`,
       "set-cookie": binderCookie(bound.binder, REQUEST_HANDLE_TTL_SECONDS),
       "cache-control": "no-store",
       "referrer-policy": "no-referrer",
     },
   });
 }
+
+export const handleSignInBind = (req: Request, env: Env): Promise<Response> =>
+  bindHop(req, env, "request", "/signin");
+
+/** I-21.12 (V5 §12.13.9): the same hop for `/signout?request=eo_…&bind=…`. */
+export const handleSignOutBind = (req: Request, env: Env): Promise<Response> =>
+  bindHop(req, env, "signout", "/signout");
 
 export function handleSignInEntry(req: Request): Response {
   if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();

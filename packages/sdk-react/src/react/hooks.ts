@@ -388,6 +388,10 @@ export interface UsePolarisAuth {
   signIn: PolarisAdapter["signIn"];
   subject: PolarisAdapter["subject"];
   attach: PolarisAdapter["attach"];
+  /** A 600 s access token for the app's own backend (identity.accesstoken): proof that this device
+   *  holds a sign-in, NOT a licence check. A typed `UnsupportedError` where the product's issuer is
+   *  off or the transport holds no device token. */
+  accessToken: PolarisAdapter["accessToken"];
   /** The licence choice an app shows itself after a sign-in answered `choose`
    *  (identity.choice); see `useLicenseChoice`. */
   choice: PolarisAdapter["choice"];
@@ -427,6 +431,7 @@ export function usePolarisAuth(): UsePolarisAuth {
       signIn: adapter.signIn,
       subject: () => adapter.subject(),
       attach: (opts) => adapter.attach(opts),
+      accessToken: (opts) => adapter.accessToken(opts),
       choice: adapter.choice,
       link: adapter.link,
       autoSignIn: (opts) => adapter.autoSignIn(opts),

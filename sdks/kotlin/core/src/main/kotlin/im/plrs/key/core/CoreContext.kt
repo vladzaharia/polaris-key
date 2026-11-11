@@ -970,8 +970,10 @@ public class CoreContext(options: CoreOptions) {
         maxBodyBytes: Int? = null,
         /** This request's deadline in seconds; null is the client's `requestTimeoutSeconds`. */
         timeoutSeconds: Double? = null,
+        /** False returns a 3xx as the response: for a request whose body must reach one origin only. */
+        followRedirects: Boolean = true,
     ): PolarisResponse = transport.send(
-        PolarisRequest(url, method, headers(headers), body, timeoutSeconds ?: requestTimeoutSeconds, maxBodyBytes),
+        PolarisRequest(url, method, headers(headers), body, timeoutSeconds ?: requestTimeoutSeconds, maxBodyBytes, followRedirects),
     )
 
     /** GET one signed document with conditional-request support; verification is NOT here. */

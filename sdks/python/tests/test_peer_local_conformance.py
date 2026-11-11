@@ -52,10 +52,6 @@ def _body(r: Dict[str, Any]) -> bytes:
     return r["body"].encode("utf-8")
 
 
-def _reader(c: List[float]) -> Callable[[], float]:
-    return lambda: c[0]
-
-
 def test_admission_rows() -> None:
     c = M["constants"]
     assert c["admissionGroupPerMinute"] == LOCAL_GROUP_PER_MINUTE
@@ -64,7 +60,7 @@ def test_admission_rows() -> None:
         lim = HandshakeLimiter(
             c["admissionSharedPerMinute"],
             c["admissionWaiting"],
-            _reader(clock),
+            lambda now=clock: now[0],
             c["admissionGroupPerMinute"],
         )
         holds: Dict[int, Callable[[], None]] = {}
@@ -374,12 +370,12 @@ def test_pin() -> None:
     for r in M["pin"]:
         if r["mode"] == "l":
             ok = L.local_pin(bytes.fromhex(r["held"][r["matched"]]), bytes.fromhex(r["remoteStatic"]))
-            got: Dict[str, Any] = {"ok": ok} if ok else {"ok": ok, "close": "peer_revoked", "sends": 0}
-            assert got == r["want"], r["id"]
+            local_got: Dict[str, Any] = {"ok": ok} if ok else {"ok": ok, "close": "peer_revoked", "sends": 0}
+            assert local_got == r["want"], r["id"]
         else:
             ok = L.pairing_remote_ok(bytes.fromhex(r["own"]), bytes.fromhex(r["remoteStatic"]))
-            got2: Dict[str, Any] = {"ok": ok} if ok else {"ok": ok, "close": "silent", "sends": 0}
-            assert got2 == r["want"], r["id"]
+            pairing_got: Dict[str, Any] = {"ok": ok} if ok else {"ok": ok, "close": "silent", "sends": 0}
+            assert pairing_got == r["want"], r["id"]
         # The initiator asks after message 2, the responder after message 3.
         assert r["checkedAfter"] == (2 if r["role"] == "initiator" else 3), r["id"]
 

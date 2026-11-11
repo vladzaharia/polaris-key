@@ -37,9 +37,18 @@ import { profileClaims } from "./mint.js";
 import { stillRegistered } from "./registration.js";
 import { issuerServed } from "./served.js";
 
-/** `userinfo`: 120 a minute per client network, failing closed. */
+/**
+ * `userinfo` (§12.13.11), failing closed: 120 a minute per client network for every request, and,
+ * once the token is verified, 120 a minute per subject and client (a person's one app cannot be
+ * driven from many networks, and one app's person does not starve another's).
+ */
 export const USERINFO_RATE = {
   bucket: "identityIssuerUserinfo",
+  limit: 120,
+  windowSec: 60,
+};
+export const USERINFO_SUBJECT_RATE = {
+  bucket: "identityIssuerUserinfoSubject",
   limit: 120,
   windowSec: 60,
 };
@@ -147,6 +156,23 @@ export async function handleUserinfo(
 
   const client = await getActiveClient(db, slug, clientId);
   if (!client || !stillRegistered(client, null, scopes)) return invalidToken();
+  if (
+    !(await rateLimitOk(
+      env,
+      slug,
+      { ...USERINFO_SUBJECT_RATE, id: `${sub}:${clientId}` },
+      now,
+    ))
+  )
+    return scopedCors(
+      noStore(
+        new Response(JSON.stringify({ error: "rate_limited" }), {
+          status: 429,
+          headers: { "content-type": "application/json", "retry-after": "60" },
+        }),
+      ),
+      client,
+    );
   // The subject names the account for this product; the account and grant must be live now.
   const account = await db.first<{ account_id: string }>(
     "SELECT account_id FROM account_product_subjects WHERE product = ? AND subject = ?",

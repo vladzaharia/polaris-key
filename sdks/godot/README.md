@@ -553,12 +553,12 @@ PolarisKey.presentation_source.changed.connect(func(member): print(member))
 
 ## Supported engines
 
-| Engine      | Status                              | How it is tested                                                                                     |
-| ----------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| 4.4 (4.4.1) | supported floor (source-compatible) | Linux editor; the clean-install smoke test                                                           |
-| 4.5 (4.5.2) | supported                           | Linux editor and official release template                                                           |
-| 4.6 (4.6.3) | supported, recommended              | Linux editor and official release template                                                           |
-| 4.7 (4.7.2) | supported, recommended              | Linux editor and release template; Windows and macOS editor smoke legs; the clean-install smoke test |
+| Engine      | Status                              | How it is tested                                                                                                                            |
+| ----------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4.4 (4.4.1) | supported floor (source-compatible) | Linux editor; the clean-install smoke test                                                                                                  |
+| 4.5 (4.5.2) | supported                           | Linux editor and official release template, nightly and before a tag (not on every push)                                                    |
+| 4.6 (4.6.3) | supported, recommended              | Linux editor and official release template, nightly and before a tag (not on every push)                                                    |
+| 4.7 (4.7.2) | supported, recommended              | Linux editor and release template on every push; Windows and macOS editor smoke legs nightly and before a tag; the clean-install smoke test |
 
 The addon is written to 4.4 syntax and feature-detects newer engine APIs:
 

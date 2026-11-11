@@ -3,7 +3,6 @@ import { Button } from "../../../ui/Button.js";
 import { t } from "../../../lib/copy.js";
 import { Input } from "../../../ui/Input.js";
 import { Expand } from "../../../ui/motion/index.js";
-import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import { HttpError, type PortalMethods } from "../../api.js";
 import { useMakePrimary, useRenamePasskey } from "../../data.js";
@@ -94,7 +93,6 @@ export function MakePrimaryTool({
               }
             : undefined,
         });
-        announce(text);
         focusAfter();
       },
       onError: (err) => {
@@ -238,7 +236,6 @@ export function RenamePasskeyTool({
   const done = (said: string | null): void => {
     if (said) {
       toast.success(said);
-      announce(said);
     }
     setOpen(false);
     setNeedsStepUp(false);

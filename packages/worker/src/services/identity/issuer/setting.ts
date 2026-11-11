@@ -16,7 +16,7 @@ export const IDENTITY_ISSUER: SettingDef = setting({
   area: "identity.platformSignIn",
   label: "Sign in with this product",
   description:
-    "Whether websites and apps you register as clients may sign people in with this product (OpenID Connect). Off unless you turn it on; registering clients needs it.",
+    "Lets websites and apps you register sign people in with this product (OpenID Connect). Registering a client needs it on. Turning it off ends sign-in at once; people stay signed in to your clients for 10 minutes at most and sign in again after you turn it back on.",
   keywords: ["openid", "oidc", "sign in with", "clients", "issuer"],
   docs: "/docs/features/sign-in/",
   value: { kind: "boolean" },
@@ -27,7 +27,7 @@ export const IDENTITY_ISSUER: SettingDef = setting({
   securityWidening: true,
   widensWhen: "on",
   critical: true,
-  confirm: { on: "L1", off: "L0" },
+  confirm: { on: "L1", off: "L1" },
   visibleWhen: { service: "identity", offBehaviour: "hide" },
   storage: { kind: "scalar" },
   readers: ["services/identity/issuer/served.ts"],

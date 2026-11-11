@@ -16,7 +16,6 @@ from polaris_key.core import stages as stages_module
 from polaris_key.core.stages import (
     BootOptions,
     BootState,
-    boot_guard_action,
     boot_transition,
     initial_boot_state,
 )
@@ -136,11 +135,6 @@ def test_defaults() -> None:
     blocked = _run(_TO_GATE + [{"type": "gate.status", "status": "version-too-old"}])
     retried = boot_transition(blocked, {"type": "retry"}).state
     assert (retried.stage, retried.sync) == ("sync", "pending")
-
-
-def test_boot_guard_rolls_back_at_max_failed_boots() -> None:
-    assert boot_guard_action(staged=True, failed_boots=1) == "apply-staged"
-    assert boot_guard_action(staged=True, failed_boots=2) == "roll-back"
 
 
 @pytest.mark.parametrize("sync", ["ok", "offline", "error"])

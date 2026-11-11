@@ -42,6 +42,7 @@ from ..constants_generated import (
 from ..core.bounded_body import read_capped_bytes, read_capped_text
 from ..core.context import CoreContext
 from ..core.errors import PolarisError
+from .sign_in_url import from_worker_origin, sign_in_url_of
 from .transfer import FileBody, FileQuery, FileReply, FileTarget, TransferError
 from .transfer_codec import SERVER_CHUNK_MAX_STORED_BYTES
 
@@ -187,7 +188,7 @@ class _Answer:
     """What one exchange produced: a refusal made locally (no bearer, a redirect), or the status, the
     lowercased headers and what ``read`` returned."""
 
-    __slots__ = ("refusal", "status", "headers", "data")
+    __slots__ = ("refusal", "status", "headers", "data", "for_subject", "trusted")
 
     def __init__(
         self,
@@ -195,20 +196,38 @@ class _Answer:
         status: int = 0,
         headers: Optional[Dict[str, str]] = None,
         data: Any = None,
+        for_subject: Optional[str] = None,
+        trusted: bool = True,
     ) -> None:
         self.refusal = refusal
         self.status = status
         self.headers = headers or {}
         self.data = data
+        #: The person signed in when the call started.
+        self.for_subject = for_subject
+        #: Whether the answer came from the Worker's own origin (not redirected).
+        self.trusted = trusted
 
 
 class FileRoutes:
     """The routes of §13.2 as an engine ``FileTransport``. ``token`` is the device bearer now, or ``None``
     when signed out."""
 
-    def __init__(self, ctx: CoreContext, token: Callable[[], Optional[str]]) -> None:
+    def __init__(
+        self,
+        ctx: CoreContext,
+        token: Callable[[], Optional[str]],
+        on_account_required: Optional[Callable[[Optional[str], Optional[str]], None]] = None,
+        subject: Optional[Callable[[], Optional[str]]] = None,
+    ) -> None:
         self._ctx = ctx
         self._token = token
+        #: Told when a route answers ``account_required`` (V5 §11.5), with the answer's ``signInUrl``
+        #: unvetted and the person signed in when the call started. The call still returns its refusal.
+        #: Only an answer from the Worker's own origin counts.
+        self._on_account_required = on_account_required
+        #: Who is signed in now, read when a call starts.
+        self._subject = subject
 
     # ── Paths ───────────────────────────────────────────────────────────────────────────────
 
@@ -252,6 +271,7 @@ class FileRoutes:
             raise _bad("route")
         if cancel is not None and cancel.is_set():
             raise TransferError("aborted")
+        for_subject = self._subject() if self._subject is not None else None
         token = self._token()
         if token is None:
             return _Answer(refusal=FileReply.failure(401, ErrorCode.UNAUTHORIZED))
@@ -289,21 +309,36 @@ class FileRoutes:
                 out_headers = {k.lower(): v for k, v in res.headers.items()}
                 if 300 <= status < 400:
                     return _Answer(refusal=FileReply.failure(status, "redirect_refused"))
-                return _Answer(status=status, headers=out_headers, data=read(res))
+                return _Answer(
+                    status=status,
+                    headers=out_headers,
+                    data=read(res),
+                    for_subject=for_subject,
+                    trusted=from_worker_origin(res, ctx.base_url),
+                )
         except PolarisError as e:
             # Local-only is a refusal to dial, not a network failure: nothing is retried.
             if e.code == ErrorCode.LOCAL_ONLY:
                 raise TransferError("rejected", code=e.code) from None
             raise
 
-    @staticmethod
-    def _refusal(status: int, headers: Dict[str, str], text: Optional[str]) -> FileReply:
+    def _refusal(self, a: _Answer) -> FileReply:
         """The refusal an error answer is: the server's code, ``Retry-After``, and the body's extra members."""
-        code, parsed = _parse_error_body(text or "")
+        status, headers = a.status, a.headers
+        code, parsed = _parse_error_body(a.data or "")
         err = parsed.get("error")
         nested = err if isinstance(err, dict) else {}
         top = {k: v for k, v in parsed.items() if k != "error"}
         inner = {k: v for k, v in nested.items() if k not in ("code", "message")}
+        if status == 403 and code == ErrorCode.ACCOUNT_REQUIRED:
+            if not a.trusted:
+                # Only the Worker's own answer counts; from anywhere else it is an ordinary 403.
+                code = None
+            elif self._on_account_required is not None:
+                try:
+                    self._on_account_required(sign_in_url_of(parsed), a.for_subject)
+                except Exception:  # noqa: BLE001 - never throws into the route that saw it
+                    pass
         return FileReply.failure(
             status,
             code or _code_for_status(status),
@@ -322,7 +357,7 @@ class FileRoutes:
         if a.refusal is not None:
             return a.refusal
         if not 200 <= a.status < 300:
-            return self._refusal(a.status, a.headers, a.data)
+            return self._refusal(a)
         return FileReply.success(None)
 
     def _json(
@@ -338,7 +373,7 @@ class FileRoutes:
         if a.refusal is not None:
             return a.refusal
         if not 200 <= a.status < 300:
-            return self._refusal(a.status, a.headers, a.data)
+            return self._refusal(a)
         value: Any = None
         if a.data is not None:
             try:
@@ -351,9 +386,7 @@ class FileRoutes:
 
     # ── FileTransport ───────────────────────────────────────────────────────────────────────
 
-    def begin(
-        self, target: FileTarget, request: Dict[str, Any], cancel: Optional[threading.Event] = None
-    ) -> FileReply:
+    def begin(self, target: FileTarget, request: Dict[str, Any], cancel: Optional[threading.Event] = None) -> FileReply:
         path = f"{self._record(target)}/begin"
 
         def accept(v: Dict[str, Any]) -> bool:
@@ -463,7 +496,7 @@ class FileRoutes:
         if a.status not in (200, 206):
             if 200 <= a.status < 300:
                 return FileReply.failure(a.status, ErrorCode.BAD_RESPONSE)
-            return self._refusal(a.status, a.headers, a.data)
+            return self._refusal(a)
         if a.data is None:
             return FileReply.failure(a.status, ErrorCode.BAD_RESPONSE)
         m = re.fullmatch(r"bytes ([0-9]{1,15})-([0-9]{1,15})/([0-9]{1,15})", a.headers.get("content-range", ""))
@@ -501,7 +534,7 @@ class FileRoutes:
         if a.status != 200:
             if 200 <= a.status < 300:
                 return FileReply.failure(a.status, ErrorCode.BAD_RESPONSE)
-            return self._refusal(a.status, a.headers, a.data)
+            return self._refusal(a)
         if a.data is None:
             return FileReply.failure(a.status, ErrorCode.BAD_RESPONSE)
         return FileReply.success(a.data)

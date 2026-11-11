@@ -37,11 +37,16 @@ func _init(routes: PKeyIdentityNearbyRoutes, approval: PKeyPeerNearbyApprover.Ap
 	platform = approval.platform
 	for c in approval.codes:
 		codes.append(String(c))
-	approval.closed.connect(func(code: StringName, by_peer: bool) -> void: closed.emit(code, by_peer))
+	# A method, not a lambda: a lambda would hold `self`, and the approval that holds the connection is held by `self`.
+	approval.closed.connect(_on_closed)
 
 
 func _to_string() -> String:
 	return "PKeyNearbyAsk()"
+
+
+func _on_closed(code: StringName, by_peer: bool) -> void:
+	closed.emit(code, by_peer)
 
 
 func is_closed() -> bool:

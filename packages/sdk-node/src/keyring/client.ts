@@ -50,7 +50,14 @@ import {
 import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
-import { readJson, responseError } from "../core/http.js";
+import { fromWorkerOrigin } from "@polaris-key/ui-core/browser/sdk/core/signInUrl.js";
+import {
+  classify,
+  classifyResponse,
+  errorFrom,
+  readJson,
+  signInUrlOf,
+} from "../core/http.js";
 import {
   readJson as readJsonFile,
   removeJson,
@@ -247,6 +254,14 @@ export class KeyringClient {
   #keys: DeviceKeyPort | undefined;
   readonly codec: SyncCodec;
   readonly #pinFile: string;
+  /** Told when a ring route answers `account_required` (the client wires Cloud Sync here), with the
+   *  answer's `signInUrl` unvetted and the person signed in when the call started (`subject`). The
+   *  call still throws its own error. Only an answer from the Worker's own origin counts. */
+  onAccountRequired:
+    | ((signInUrl: string | null, forSubject: string | null) => void)
+    | null = null;
+  /** Who is signed in now (Cloud Sync's person), read when a call starts. */
+  subject: (() => string | null) | null = null;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -323,6 +338,34 @@ export class KeyringClient {
       sealStream: wrap(inner.sealStream) as FileCodec["sealStream"],
       openStream: wrap(inner.openStream) as FileCodec["openStream"],
     };
+  }
+
+  /**
+   * Runs `use` with the current root for the device export, which derives its file keys from it.
+   * The array is the ring's own, so `use` must not keep it or copy it; it is zeroed on `lock()`,
+   * and `locked` aborts then, so `use` stops before it can read the zeroes. A lock during `use`
+   * rejects with `sync-locked`. Refuses with `sync-locked` while locked.
+   * @internal
+   */
+  async withRoot<T>(
+    use: (root: Uint8Array, locked: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    const held = this.#need();
+    const gone = new AbortController();
+    const watch: RootListener = {
+      setRoot: () => {
+        if (this.#held !== held) gone.abort();
+      },
+    };
+    this.#listeners.add(watch);
+    try {
+      return await use(held.root, gone.signal);
+    } catch (e) {
+      if (gone.signal.aborted) throw locked();
+      throw e;
+    } finally {
+      this.#listeners.delete(watch);
+    }
   }
 
   /** Whether this device holds a root right now. */
@@ -900,8 +943,19 @@ export class KeyringClient {
       headers["content-type"] = "application/json";
       init.body = JSON.stringify(body);
     }
+    const forSubject = this.subject?.() ?? null;
     const res = await this.ctx.request(this.ctx.url(path), init, "key ring");
-    if (!res.ok) throw await responseError(res, "key ring");
+    if (!res.ok) {
+      let c = await classifyResponse(res);
+      if (c.status === 403 && c.code === ErrorCode.accountRequired) {
+        // The Worker took the account away (V5 §11.5): Cloud Sync learns it from this route too,
+        // but only from the Worker's own answer; from a redirect target it is an ordinary 403.
+        if (fromWorkerOrigin(res, new URL(this.ctx.baseUrl).origin))
+          this.onAccountRequired?.(signInUrlOf(c.body), forSubject);
+        else c = classify(403, "", res.headers.get("retry-after"));
+      }
+      throw errorFrom(c, "key ring");
+    }
     return res;
   }
 

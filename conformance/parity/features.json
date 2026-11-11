@@ -899,6 +899,25 @@
       "note": "WIRE-CONTRACT-V5 §13. sync-vectors.json (U-34) and sync-scenarios.json v3 (U-35) are the golden vectors; the keyring-* transcripts pin the ring routes (U-36). Each SDK's client follows in U-38 to U-40."
     },
     {
+      "id": "sync.export",
+      "family": "sync",
+      "title": "cloudSync.export(): a readable copy of the synced data on the device, as a zip in the Polaris Locker portal's layout",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "sync-vectors.json",
+          "family": "exportCases",
+          "wp": "U-51"
+        },
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [],
+      "note": "WIRE-CONTRACT-V5 §13.12 (`pkey-sync-export/1`). sync-vectors.json exportCases pin the archive's entries (names, order, sizes, hashes, the manifest), not zip bytes. The desktop bridge has no Cloud Sync verb on bridge v4, so it answers the typed N/A, as for sync.settings. The kit action is U-51k."
+    },
+    {
       "id": "connect.identity",
       "family": "connect",
       "title": "Device certificates and rings: verify, key choice and admission",
@@ -1709,6 +1728,20 @@
         }
       ],
       "note": "I-49 (WIRE-CONTRACT-V5 §12.11.8): a signed-in device enrols a restore secret with POST /<p>/identity/restore and keeps it in an end-to-end platform backup (iCloud Keychain, Block Store). A new device of the same person redeems it at token with the urn:polaris-key:grant-type:restore grant and the pkey-proof/1 restore proof, once, and signs in with no click. Sign-out deletes the server row and the item. Discovery's restore member and endpoint gate it. Pinned by the restore-* and discovery-identity-restore transcripts (I-49.8); Swift, Kotlin and Godot implement it on their native lanes."
+    },
+    {
+      "id": "identity.accesstoken",
+      "family": "devices",
+      "title": "Access token: a signed-in device trades its device token for a short-lived token its developer's backend can verify",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-21b"
+        }
+      ],
+      "allowedNa": [],
+      "note": "I-21 (WIRE-CONTRACT-V5 §12.13.10, D6): with discovery's identity accessToken member, identity.accessToken() posts a token-exchange form to token with the device's own pkeyt_ token as the subject token (subject_token_type urn:polaris-key:token-type:device) and gets a 600 second RS256 access token (at+jwt) for the developer's backend (SP-68). The client keeps it in memory only, reuses it until expires_in minus 60 seconds and drops it on sign-out. Without accessToken in discovery the call fails service-unavailable. Pinned by identity-access-token (I-21.13); I-21b implements it in client-core and the six SDKs."
     },
     {
       "id": "identity.link",

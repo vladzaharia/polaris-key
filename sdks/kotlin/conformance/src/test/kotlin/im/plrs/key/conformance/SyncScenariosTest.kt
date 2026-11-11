@@ -21,6 +21,7 @@ import im.plrs.key.core.SYNC_SIGNOUT_FLUSH_MS
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
+import im.plrs.key.core.sync.SignInUrl
 import im.plrs.key.core.sync.SyncJson
 import im.plrs.key.core.sync.SyncRoutes
 import im.plrs.key.core.sync.SyncUserSetting
@@ -66,6 +67,17 @@ class SyncScenariosTest : ConformanceSuite() {
                 assertTrue("$name: unknown step $kind", kind in kinds)
             }
             SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
+        }
+    }
+
+    @Test
+    fun signInUrlCasesReplayInFull() {
+        // The one sign-in URL rule every host applies (U-52): the shared table is the contract.
+        val cases = corpus["signInUrlCases"].arrayValue!!.map { it as JsonObject }
+        assertTrue(cases.isNotEmpty())
+        for (c in cases) {
+            val got = SignInUrl.safe(c["url"].stringValue, c["origin"].stringValue!!)
+            assertEquals(c["name"].stringValue, c["expect"].stringValue, got)
         }
     }
 

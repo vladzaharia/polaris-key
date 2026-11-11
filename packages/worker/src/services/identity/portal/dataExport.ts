@@ -77,6 +77,10 @@ import { listAccountPasskeys } from "../passkeys/repo.js";
 import { passkeyView } from "../passkeys/routes.js";
 import type { PortalHooksFor } from "./api.js";
 import { licenseGrants } from "./entitlements.js";
+import {
+  exportSignedInWith,
+  type ExportedSignedInWith,
+} from "./signedInWith.js";
 import { licenseStores, portalLicenseOrigin, storeKey } from "./origin.js";
 import {
   listLibraryEntries,
@@ -312,6 +316,8 @@ export interface AccountExport {
   passkeys: ExportedPasskey[];
   sessions: ExportedSession[];
   connectedApps: ExportedConsent[];
+  /** I-21.15: the registered clients the person signed in to, across products. */
+  signedInWith: ExportedSignedInWith[];
   termsAcceptances: ExportedTerms[];
   library: {
     entries: ExportedLibraryEntry[];
@@ -334,6 +340,8 @@ export interface ProductExport extends ProductSection {
   schema: typeof PRODUCT_EXPORT_SCHEMA;
   exportedAt: number;
   consent: ExportedConsent | null;
+  /** I-21.15: the registered clients the person signed in to with this product. */
+  signedInWith: ExportedSignedInWith[];
   termsAcceptances: ExportedTerms[];
   libraryEntry: ExportedLibraryEntry | null;
   removedLicenses: ExportedRemovedLicense[];
@@ -743,6 +751,14 @@ export async function exportProductData(
     exportedAt: now,
     ...section,
     consent: (await consents(db, accountId, slug))[0] ?? null,
+    signedInWith: await exportSignedInWith(
+      ctx.env,
+      db,
+      accountId,
+      now,
+      ctx.hooksFor,
+      slug,
+    ),
     termsAcceptances: await terms(db, accountId, slug),
     libraryEntry: (await libraryEntries(db, accountId, slug))[0] ?? null,
     removedLicenses: await removedLicenses(db, accountId, slug),
@@ -964,6 +980,13 @@ export async function exportAccountData(
     passkeys,
     sessions,
     connectedApps: await consents(db, accountId),
+    signedInWith: await exportSignedInWith(
+      ctx.env,
+      db,
+      accountId,
+      now,
+      ctx.hooksFor,
+    ),
     termsAcceptances: await terms(db, accountId),
     library: {
       entries: await libraryEntries(db, accountId),

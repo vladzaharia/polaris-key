@@ -469,6 +469,31 @@ signed in, `config.set`, `clear` and `setting(key)` go through the machine and `
 typed `service-unavailable`. Signing out flushes, forgets the key ring and purges; a ring that cannot forget stops the sign-out. The
 state file is `cloud-sync.json` in the store's state directory (`noBackupFilesDir` on Android).
 
+### Export the synced data
+
+`client.cloudSync.export(destination, options)` (suspend) gives a person a readable copy of what the app synced: a zip in the layout of the Polaris Locker portal's own export, with the data in plaintext. It is **not encrypted**: tell the person where it went. The SDK sends what is waiting, reads what the Worker holds, writes `<destination>.partial` (created exclusively, owner-only, never through a link) and renames it over `destination` once it is whole. An error or a cancel removes the partial and leaves the old file as it was. The SDK has no consent prompt: ask before you call if you want one. `CloudSyncExportOptions(includeRevisions, onProgress)`; cancel by cancelling the coroutine (`exportFuture` from Java). It refuses with `account_required`, `sync-locked`, `sync-encryption-pinned`, `sync-export-too-large` (nothing written) or `SyncExportException` (`sync-export-failed`, reason `destination`, `network` or `busy`). `result.skipped` lists what could not be written, a `partial` file included.
+
+On Android the person picks the place, and the SDK writes to the stream the app holds. The SDK writes and flushes it and never closes or keeps it; close it yourself, and delete the document when the export fails (the SDK cannot):
+
+```kotlin android
+import android.content.ContentResolver
+import android.net.Uri
+import android.provider.DocumentsContract
+import im.plrs.key.sdk.PolarisKeyClient
+
+// uri comes from ActivityResultContracts.CreateDocument("application/zip") (ACTION_CREATE_DOCUMENT)
+suspend fun exportToDocument(client: PolarisKeyClient, resolver: ContentResolver, uri: Uri) {
+    try {
+        val out = resolver.openOutputStream(uri) ?: error("no stream")
+        out.use { client.cloudSync.export(it) }
+    } catch (e: Exception) {
+        // Failed or canceled: do not leave a half-written document behind.
+        DocumentsContract.deleteDocument(resolver, uri)
+        throw e
+    }
+}
+```
+
 ## JVM desktop
 
 `PolarisKeyDesktop` (in `:sdk`) is the desktop entry point, as `PolarisKeyAndroid` is

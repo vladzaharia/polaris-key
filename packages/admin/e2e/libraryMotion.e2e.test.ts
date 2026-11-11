@@ -371,14 +371,16 @@ const cueClasses = (page: Page): Promise<string[]> =>
 
 describe("motion on: the Library and Discover under the Worker's CSP", () => {
   for (const theme of ["dark", "light"] as const)
-    // Disabled as flaky (owner 2026-10-23 rule): an image fade was caught mid-stagger once on CI.
-    it.skip(`the first load staggers the tiles in at most 6 steps, once (${theme})`, async () => {
+    it(`the first load staggers the tiles in at most 6 steps, once (${theme})`, async () => {
       const s = await open("twelve", "/", { theme });
       const { page } = s;
       await page
         .getByRole("heading", { level: 1, name: "Your library" })
         .waitFor();
       await page.getByRole("article", { name: "Glyphsmith" }).waitFor();
+      // The art fades in as each image loads, after the tiles' own stagger: wait for it, or the
+      // rest check can pass in the gap and an image fade starts after it.
+      await artShown(page);
       await atRest(page);
       const events = await log(page);
       const starts = events.filter(
@@ -400,9 +402,14 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
         events.filter((e) => e.phase === "cancel" && e.name === "pk-enter"),
       ).toEqual([]);
       // Once it has run, the stagger is off and nothing is left animating.
-      await expect
-        .poll(() => items(page).getAttribute("class"))
-        .not.toMatch(/\bpk-stagger\b/);
+      await page.waitForFunction(
+        () =>
+          !/\bpk-stagger\b/.test(
+            document
+              .querySelector("section[aria-labelledby='all-h'] :is(ul, tbody)")
+              ?.getAttribute("class") ?? "",
+          ),
+      );
       expect(await running(page)).toEqual([]);
 
       // A search, then Show all: the tiles come back in place, without a stagger.
@@ -410,6 +417,7 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
       await page.getByText("Showing 1 of 12 ·").waitFor();
       await page.getByRole("button", { name: "Show all" }).click();
       await page.getByRole("article", { name: "Glyphsmith" }).waitFor();
+      await artShown(page);
       await atRest(page);
       expect(
         (await log(page)).filter(
@@ -639,23 +647,21 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
       .getByRole("button", { name: "Add to library: Mossgarden" })
       .click();
     await page.getByRole("link", { name: "Open Mossgarden" }).waitFor();
-    // The pop-in and the ring start a frame after the link appears. Poll (without draining the log)
+    // The pop-in and the ring start a frame after the link appears. Wait (without draining the log)
     // until both have started, or the settle below would see a page with no animation yet and read
     // an empty log.
-    const started = async (target: string, name: string): Promise<boolean> =>
-      (await state(page)).log.some(
-        (e) =>
-          e.kind === "animation" &&
-          e.phase === "start" &&
-          e.target === target &&
-          e.name === name,
-      );
-    const bothStarted = async (): Promise<boolean> =>
-      (await started("plate", "pk-pop-in")) &&
-      (await started("ring", "pk-fade-in"));
-    for (let i = 0; i < 100 && !(await bothStarted()); i++)
-      await page.waitForTimeout(50);
-    expect(await bothStarted(), "the pop-in and the ring started").toBe(true);
+    await page.waitForFunction(() => {
+      const log = (window as unknown as { __m: Probe }).__m.log;
+      const hit = (target: string, name: string): boolean =>
+        log.some(
+          (e) =>
+            e.kind === "animation" &&
+            e.phase === "start" &&
+            e.target === target &&
+            e.name === name,
+        );
+      return hit("plate", "pk-pop-in") && hit("ring", "pk-fade-in");
+    });
     await atRest(page);
     const came = (await log(page)).filter(
       (e) =>
@@ -1052,6 +1058,7 @@ describe("Library → product → Library: no download or primary button changes
         await page
           .getByRole("heading", { level: 1, name: "Nightfall" })
           .waitFor();
+        // brittle-ok: the media is held back on purpose; the beat is the fixture, not a wait
         await page.waitForTimeout(500);
         s.release();
         await page.waitForFunction(

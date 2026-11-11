@@ -16,6 +16,8 @@ package im.plrs.key.sdk
 
 import im.plrs.key.core.SYNC_CDC_MAX_BYTES
 import im.plrs.key.core.SYNC_CHUNK_MAX_STORED_BYTES
+import im.plrs.key.core.sync.ExportFileOpener
+import im.plrs.key.core.sync.PlannedFileOpener
 import im.plrs.key.core.sync.SyncChunks
 import im.plrs.key.core.sync.SyncCrypto
 import im.plrs.key.core.sync.SyncFileStream
@@ -79,9 +81,13 @@ public interface FileCodec {
     public fun sealWhole(plain: ByteArray): ByteArray
 
     public fun newOpener(): FileOpener
+
+    /** An opener for the export: the plaintext size is known, so the last segment is known without waiting for the stream's end. */
+    public fun newPlannedOpener(plainSize: Long): ExportFileOpener
 }
 
 /** The codec of a collection of an end-to-end product. [root] is the ring root; it is held, never printed. */
+@Suppress("TooManyFunctions")
 public class E2eFileCodec(private val root: ByteArray, private val collection: String, private val decode: ZstdDecode? = libZstdDecode) : FileCodec {
     private val collKey = SyncKeys.deriveCollKey(root, collection)
     private val kid = SyncKeys.deriveKid(root)
@@ -114,6 +120,8 @@ public class E2eFileCodec(private val root: ByteArray, private val collection: S
         is SyncFileStream.Opened.Refused -> FileOpened.Invalid(o.reason.wire)
     }
 
+    override fun newPlannedOpener(plainSize: Long): ExportFileOpener = PlannedFileOpener(collKey, kid, plainSize)
+
     override fun newOpener(): FileOpener {
         val inner = SyncFileStream.Opener(collKey, kid)
         return object : FileOpener {
@@ -125,6 +133,7 @@ public class E2eFileCodec(private val root: ByteArray, private val collection: S
 }
 
 /** The codec of a collection of a server-mode product. */
+@Suppress("TooManyFunctions")
 public class ServerFileCodec(private val decode: ZstdDecode? = libZstdDecode) : FileCodec {
     override val enc: String get() = "none"
 
@@ -180,5 +189,11 @@ public class ServerFileCodec(private val decode: ZstdDecode? = libZstdDecode) : 
         override fun push(data: ByteArray): List<ByteArray> = listOf(data)
 
         override fun finish(): ByteArray = ByteArray(0)
+    }
+
+    override fun newPlannedOpener(plainSize: Long): ExportFileOpener = object : ExportFileOpener {
+        override fun push(data: ByteArray): List<ByteArray> = listOf(data)
+
+        override fun finish() = Unit
     }
 }

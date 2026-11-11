@@ -2907,7 +2907,7 @@
         "kotlin": {},
         "godot": {},
         "react": {
-          "planned": "U-20",
+          "planned": "U-38",
           "reason": "the adapter has mintToken; no React hook exposes it yet"
         }
       },
@@ -3003,7 +3003,7 @@
           "reason": "Godot observes a signal"
         },
         "react": {
-          "planned": "U-20",
+          "planned": "U-38",
           "reason": "no React hook; useConfigSetting re-renders on a change"
         }
       },
@@ -3156,7 +3156,7 @@
           "reason": "Godot observes a signal"
         },
         "react": {
-          "planned": "U-20",
+          "planned": "U-38",
           "reason": "no React hook; useConfigSetting re-renders on a change"
         }
       },
@@ -3335,10 +3335,7 @@
       "feature": "identity.account",
       "sdks": {
         "node": {},
-        "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "react": {},
         "python": {},
         "swift": {},
         "kotlin": {},
@@ -3561,10 +3558,7 @@
         "react": {
           "spelling": "SignInSession.complete"
         },
-        "python": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "python": {},
         "swift": {
           "spelling": "SignInSession.complete"
         },
@@ -3626,14 +3620,8 @@
           "spelling": "usePolarisAuth().choice",
           "shape": "hook"
         },
-        "python": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
-        "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "python": {},
+        "swift": {},
         "kotlin": {
           "shape": "property",
           "reason": "a property returning the choice client"
@@ -3662,10 +3650,7 @@
           "spelling": "usePolarisAuth().choice.licenses",
           "shape": "hook"
         },
-        "python": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "python": {},
         "swift": {
           "spelling": "ChoiceNamespace.licenses",
           "labels": ["grant"]
@@ -3699,10 +3684,7 @@
           "spelling": "usePolarisAuth().choice.devices",
           "shape": "hook"
         },
-        "python": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "python": {},
         "swift": {
           "spelling": "ChoiceNamespace.devices",
           "labels": ["grant", "licenseId"]
@@ -3736,10 +3718,7 @@
           "spelling": "usePolarisAuth().choice.complete",
           "shape": "hook"
         },
-        "python": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "python": {},
         "swift": {
           "spelling": "ChoiceNamespace.complete",
           "labels": ["grant", "choice"]
@@ -3769,10 +3748,7 @@
           "spelling": "usePolarisAuth().choice.cancel",
           "shape": "hook"
         },
-        "python": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "python": {},
         "swift": {
           "spelling": "ChoiceNamespace.cancel",
           "labels": ["grant"]
@@ -3948,10 +3924,7 @@
         "node": {
           "spelling": "attach"
         },
-        "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "react": {},
         "python": {
           "spelling": "attach"
         },
@@ -3973,12 +3946,35 @@
       "feature": "identity.account",
       "sdks": {
         "node": {},
-        "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "react": {},
         "python": {},
         "swift": {},
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.accessToken",
+      "kind": "method",
+      "feature": "identity.accesstoken",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "usePolarisAuth().accessToken",
+          "shape": "hook"
+        },
+        "python": {},
+        "swift": {
+          "labels": ["refresh"]
+        },
         "kotlin": {},
         "godot": {}
       },
@@ -4533,6 +4529,79 @@
           "spelling": "client.event",
           "shape": "signal",
           "reason": "Godot observes the one event signal, kind cloudSync (type transferProgress, transferDone, transferFailed)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.export",
+      "kind": "method",
+      "feature": "sync.export",
+      "args": [
+        {
+          "name": "destination",
+          "type": "string"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "CloudSyncExport",
+      "errors": [
+        "account_required",
+        "sync-locked",
+        "sync-encryption-pinned",
+        "unsupported",
+        "cancelled",
+        "sync-export-too-large",
+        "sync-export-failed"
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {
+          "spelling": "useCloudSync().export",
+          "shape": "hook",
+          "reason": "a browser has no path: the hook's export (useCloudSync().export, spelled by U-51.4) takes options and answers a Blob, or writes to options.sink; the desktop bridge answers unsupported"
+        },
+        "swift": {
+          "labels": ["to", "options"]
+        },
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.cancelExport",
+      "kind": "method",
+      "feature": "sync.export",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node cancels with the AbortSignal passed as the signal option of cloudSync.export"
+        },
+        "react": {
+          "sdkOnly": true,
+          "reason": "React cancels with the AbortSignal passed as the signal option of useCloudSync().export"
+        },
+        "godot": {
+          "sdkOnly": true,
+          "spelling": "PKeyCloudSync.cancel_export",
+          "reason": "GDScript has no cancellation token: the other SDKs cancel with an AbortSignal, a threading.Event or task cancellation"
+        },
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python cancels with the threading.Event passed as cancel, or by cancelling the awaiting task"
+        },
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift cancels with the Task that awaits cloudSync.export(to:options:)"
+        },
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin cancels by cancelling the coroutine (or the Java future) that runs the export"
         }
       },
       "layer": "client"
@@ -9075,260 +9144,6 @@
         "pattern": "\\bGateOptions\\b",
         "files": ["*.swift", "fence:swift"]
       }
-    },
-    {
-      "sdk": "node",
-      "from": "identity.signInWithBrowser",
-      "to": "identity.signIn.start",
-      "package": "I-10a"
-    },
-    {
-      "sdk": "node",
-      "from": "identity.beginSignIn",
-      "to": "identity.signIn.start",
-      "package": "I-10a"
-    },
-    {
-      "sdk": "node",
-      "from": "identity.pollSignIn",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10a"
-    },
-    {
-      "sdk": "node",
-      "from": "identity.waitForSignIn",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10a"
-    },
-    {
-      "sdk": "swift",
-      "from": "identity.signInWithBrowser",
-      "to": "identity.signIn.start",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\b(?:identity|client)\\.signInWithBrowser\\s*\\(",
-        "files": ["*.swift", "fence:swift"]
-      }
-    },
-    {
-      "sdk": "swift",
-      "from": "identity.beginSignIn",
-      "to": "identity.signIn.start",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\b(?:identity|client)\\.beginSignIn\\s*\\(",
-        "files": ["*.swift", "fence:swift"]
-      }
-    },
-    {
-      "sdk": "swift",
-      "from": "identity.pollSignIn",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\b(?:identity|client)\\.pollSignIn\\s*\\(",
-        "files": ["*.swift", "fence:swift"]
-      }
-    },
-    {
-      "sdk": "swift",
-      "from": "identity.waitForSignIn",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\b(?:identity|client)\\.waitForSignIn\\s*\\(",
-        "files": ["*.swift", "fence:swift"]
-      }
-    },
-    {
-      "sdk": "swift",
-      "from": "identity.acceptSignIn",
-      "to": "identity.attachLicense",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\b(?:identity|client)\\.acceptSignIn\\s*\\(",
-        "files": ["*.swift", "fence:swift"]
-      }
-    },
-    {
-      "sdk": "kotlin",
-      "from": "identity.beginSignIn",
-      "to": "identity.signIn.start",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\b(?:identity|client)\\.beginSignIn\\s*\\(",
-        "files": ["*.kt", "fence:kotlin"]
-      }
-    },
-    {
-      "sdk": "kotlin",
-      "from": "identity.pollSignIn",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\b(?:identity|client)\\.pollSignIn\\s*\\(",
-        "files": ["*.kt", "fence:kotlin"]
-      }
-    },
-    {
-      "sdk": "kotlin",
-      "from": "identity.waitForSignIn",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\b(?:identity|client)\\.waitForSignIn\\s*\\(",
-        "files": ["*.kt", "fence:kotlin"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.begin_sign_in",
-      "to": "identity.signIn.start",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.begin_sign_in\\s*\\(",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.sign_in_with_browser",
-      "to": "identity.signIn.start",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.sign_in_with_browser\\s*\\(",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.request_sign_in",
-      "to": "identity.signIn.start",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.request_sign_in\\s*\\(",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.poll_sign_in",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.poll_sign_in\\s*\\(",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.wait_for_sign_in",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.wait_for_sign_in\\s*\\(",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.accept_sign_in",
-      "to": "identity.signIn.session.accept",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.accept_sign_in\\s*\\(",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.cancel",
-      "to": "identity.signIn.session.cancel",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.cancel\\s*\\(",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.is_signing_in",
-      "to": "identity.signIn.session.isWaiting",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.is_signing_in\\s*\\(",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.signed_in_identity",
-      "to": "identity.subject",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.signed_in_identity\\s*\\(",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.sign_in_pending",
-      "to": "identity.signIn.session.outcome",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.sign_in_pending\\b",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.sign_in_confirm",
-      "to": "identity.signIn.session.outcome",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.sign_in_confirm\\b",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "godot",
-      "from": "identity.sign_in_finished",
-      "to": "identity.signIn.session.outcome",
-      "package": "I-10b",
-      "scan": {
-        "pattern": "\\bidentity\\.sign_in_finished\\b",
-        "files": ["*.gd", "fence:gdscript"]
-      }
-    },
-    {
-      "sdk": "python",
-      "from": "identity.sign_in_with_browser",
-      "to": "identity.signIn.start",
-      "package": "I-10a"
-    },
-    {
-      "sdk": "python",
-      "from": "identity.begin_sign_in",
-      "to": "identity.signIn.start",
-      "package": "I-10a"
-    },
-    {
-      "sdk": "python",
-      "from": "identity.poll_sign_in",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10a"
-    },
-    {
-      "sdk": "python",
-      "from": "identity.wait_for_sign_in",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10a"
-    },
-    {
-      "sdk": "python",
-      "from": "identity.accept_sign_in",
-      "to": "identity.signIn.session.wait",
-      "package": "I-10a"
     }
   ]
 }

@@ -944,6 +944,24 @@ export function qrCode(
   );
 }
 
+/** The Light Card's stage before it can draw: an empty night stage of its final size, so the column
+ *  never jumps and the plain QR is never a stand-in while the card loads. */
+export function lightCardStage(c: KitCtx, key: "a11y.qrPairing"): ReactNode {
+  return (
+    <figure
+      className="qr"
+      data-part="qr"
+      data-key={key}
+      data-lightcard=""
+      data-pending=""
+      role="img"
+      aria-label={plain(c, key)}
+    >
+      <span className="stage-fill" />
+    </figure>
+  );
+}
+
 /** The address beside a code, with Copy (DL14: the text and Copy carry the same link). */
 export function copyAddress(c: KitCtx): ReactNode {
   if (!c.view.copy.includes("a11y.copyAddress")) return null;
@@ -1325,7 +1343,13 @@ export function since(epochSeconds: number, locale: string): string {
   return rtf.format(-Math.round(d / 365), "year");
 }
 
-const warnedRows = new Set<string>();
+/** Which rows were warned of. One set for every copy of the kit in the page (the built package
+ *  and a bundler's own copy would otherwise each warn), found under a registered symbol so a
+ *  test that shares its module graph between files can forget it (`test/setupKitParts.ts`). */
+const WARNED_ROWS = Symbol.for("polaris-key.kit.warnedRows");
+const warnedRows: Set<string> = ((globalThis as Record<symbol, unknown>)[
+  WARNED_ROWS
+] ??= new Set<string>()) as Set<string>;
 
 /** True when the string has every argument it names; else warns once and says no (the elements
  *  do the same), so a missing fact is never drawn as "{name}". */

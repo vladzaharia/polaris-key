@@ -160,6 +160,8 @@ public object ErrorCode {
     public const val recoveryCodeInvalid: String = "recovery-code-invalid"
     public const val syncEncryptionPinned: String = "sync-encryption-pinned"
     public const val syncFileInvalid: String = "sync-file-invalid"
+    public const val syncExportTooLarge: String = "sync-export-too-large"
+    public const val syncExportFailed: String = "sync-export-failed"
     public const val syncMergeClosed: String = "sync-merge-closed"
     public const val invalidOptions: String = "invalid-options"
     public const val invalidArgument: String = "invalid-argument"
@@ -404,6 +406,8 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "recovery-code-invalid",
     "sync-encryption-pinned",
     "sync-file-invalid",
+    "sync-export-too-large",
+    "sync-export-failed",
     "sync-merge-closed",
     "invalid-options",
     "invalid-argument",
@@ -648,6 +652,8 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "recovery-code-invalid" to "client",
     "sync-encryption-pinned" to "client",
     "sync-file-invalid" to "client",
+    "sync-export-too-large" to "client",
+    "sync-export-failed" to "client",
     "sync-merge-closed" to "client",
     "invalid-options" to "client",
     "invalid-argument" to "client",
@@ -788,6 +794,7 @@ public object Feature {
     public const val syncE2eRecovery: String = "sync.e2e.recovery"
     public const val syncTransferBackground: String = "sync.transfer.background"
     public const val syncE2e: String = "sync.e2e"
+    public const val syncExport: String = "sync.export"
     public const val connectIdentity: String = "connect.identity"
     public const val connectNoise: String = "connect.noise"
     public const val connectProtocol: String = "connect.protocol"
@@ -822,6 +829,7 @@ public object Feature {
     public const val identityPgs: String = "identity.pgs"
     public const val identityAutosignin: String = "identity.autosignin"
     public const val identityRestore: String = "identity.restore"
+    public const val identityAccesstoken: String = "identity.accesstoken"
     public const val identityLink: String = "identity.link"
     public const val identityNearby: String = "identity.nearby"
     public const val releaseChangelog: String = "release.changelog"
@@ -935,6 +943,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "sync.e2e.recovery",
     "sync.transfer.background",
     "sync.e2e",
+    "sync.export",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -969,6 +978,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.pgs",
     "identity.autosignin",
     "identity.restore",
+    "identity.accesstoken",
     "identity.link",
     "identity.nearby",
     "release.changelog",
@@ -1814,7 +1824,7 @@ public const val OUTLET_MATRIX_VERSION: Int = 1
 public const val PLAN_MATRIX_VERSION: Int = 2
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-public const val SYNC_SCENARIOS_VERSION: Int = 5
+public const val SYNC_SCENARIOS_VERSION: Int = 6
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 public const val DEVICE_LABEL_VERSION: Int = 2
@@ -1980,6 +1990,42 @@ public const val SYNC_ENVELOPE_FIXED_BYTES: Int = 49
 
 /** Cloud Sync: `SYNC_ENVELOPE_PAD_BLOCK` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
 public const val SYNC_ENVELOPE_PAD_BLOCK: Int = 64
+
+/** Cloud Sync: `SYNC_EXPORT_BLOB_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_BLOB_MAX_BYTES: Int = 268435456
+
+/** Cloud Sync: `SYNC_EXPORT_FORMAT` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_FORMAT: String = "pkey-sync-export/1"
+
+/** Cloud Sync: `SYNC_EXPORT_ITEM_RESERVE_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_ITEM_RESERVE_BYTES: Int = 1024
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_MAX_BYTES: Long = 4294967295L
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_CHUNKS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_MAX_CHUNKS: Int = 65536
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_ENTRIES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_MAX_ENTRIES: Int = 65000
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_PULLS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_MAX_PULLS: Int = 64
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_WAIT_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_MAX_WAIT_MS: Int = 5400000
+
+/** Cloud Sync: `SYNC_EXPORT_RETRY_AFTER_MAX_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_RETRY_AFTER_MAX_MS: Int = 900000
+
+/** Cloud Sync: `SYNC_EXPORT_STORE_DIR` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_STORE_DIR: String = "stores/sync.cloudSync/"
+
+/** Cloud Sync: `SYNC_EXPORT_ZIP_END_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_ZIP_END_BYTES: Int = 22
+
+/** Cloud Sync: `SYNC_EXPORT_ZIP_ENTRY_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+public const val SYNC_EXPORT_ZIP_ENTRY_BYTES: Int = 92
 
 /** Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
 public const val SYNC_FILE_FORMAT: String = "pkey-sync-file/1"
@@ -2268,6 +2314,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.e2e.recovery" to CapabilityRow("implemented", "sync", listOf()),
     "sync.transfer.background" to CapabilityRow("implemented", "sync", listOf(CapabilityNa("jvm", "runtime"))),
     "sync.e2e" to CapabilityRow("implemented", "sync", listOf()),
+    "sync.export" to CapabilityRow("implemented", "sync", listOf()),
     "connect.identity" to CapabilityRow("implemented", "connect", listOf()),
     "connect.noise" to CapabilityRow("implemented", "connect", listOf()),
     "connect.protocol" to CapabilityRow("implemented", "connect", listOf()),
@@ -2302,6 +2349,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.pgs" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.autosignin" to CapabilityRow("implemented", "identity", listOf()),
     "identity.restore" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
+    "identity.accesstoken" to CapabilityRow("implemented", "identity", listOf()),
     "identity.link" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.nearby" to CapabilityRow("implemented", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
@@ -2371,4 +2419,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "889f7e9b2e0c6b96a5f5eca0f627265c0417181361c55b84658353c308fe0ec7"
+public const val CAPABILITY_DIGEST: String = "b9a5dd8c666918e9fee4d49e267971cdf6aabed466d688be0001dba74afe9fe9"

@@ -250,6 +250,8 @@ func account(_ client: PolarisKeyClient) async throws -> String? {
         _ = try await client.identity.attach(confirm: true)
     }
     try await client.identity.openAccount()  // Polaris Locker, in the system browser
+    // A 600 s token for your own backend: proof of a sign-in, not a license check.
+    _ = try await client.identity.accessToken().accessToken
     let result = try await client.identity.signOut()
     return result.released ? "Signed out. Activate again to continue." : subject
 }
@@ -259,6 +261,12 @@ func account(_ client: PolarisKeyClient) async throws -> String? {
 the account. A refusal (`account_required`, `license_owned`) is a `.refused` result. `signOut()`
 removes the device token only when `released` is true; a device activated by a key keeps its
 license. `client.signOut()` forwards to it, and `client.deactivate()` frees the device itself.
+
+`identity.accessToken(refresh:)` trades the device token for an access token that lasts 600 seconds. It
+proves the device holds a sign-in; it is not a license check, so check the license where it matters. It
+throws `service-unavailable` unless the product's sign-in issuer is on, and `invalid_grant` means the
+device holds no sign-in. The SDK keeps the token in memory and reuses it until a minute before it
+expires; `refresh: true` asks again. A `rate_limited` error carries `retryAfterSeconds`.
 
 ## Status, offline and refresh
 

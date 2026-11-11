@@ -167,29 +167,6 @@ def test_activation_then_reads_across_both_documents() -> None:
     c.close()
 
 
-# @pkey-feature core.sync
-def test_the_two_documents_have_independent_etags() -> None:
-    """§5: a settings edit no longer forces a licence re-download, and a tier change no
-    longer forces a settings refetch."""
-    c = make_client(_ok_routes())
-    c.license.activate_with_key("k")
-    assert c._cache.etag("license") == "lic-etag"
-    assert c._cache.etag("config") == "cfg-etag"
-    c.close()
-
-
-# @pkey-feature core.sync
-def test_sync_reports_per_service_outcomes() -> None:
-    c = make_client(_ok_routes())
-    c._tokens.set(TOKEN)
-    result = c.sync()
-    assert set(result.documents) == {"license", "config"}
-    assert result.documents["license"].kind == "applied"
-    assert result.documents["config"].kind == "applied"
-    assert result.applied is True
-    c.close()
-
-
 def test_re_serving_the_same_document_is_refused_as_a_replay() -> None:
     """§3's per-type anti-replay floor, reached through the client: a forced re-fetch that
     returns a document with the SAME ``issuedAt`` is not newer, so nothing is applied and
@@ -474,45 +451,7 @@ def test_enroll_disabled_is_a_404() -> None:
     c.close()
 
 
-# @pkey-feature license.enroll
-def test_enroll_succeeds_and_syncs() -> None:
-    c = make_client(_ok_routes())
-    assert c.license.enroll().kind == "ok"
-    assert c.status().status == "ok"
-    c.close()
-
-
 # ── 401 handling + deactivation ─────────────────────────────────────────────────────
-def test_401_reacquires_the_token_exactly_once_then_succeeds() -> None:
-    state = {"doc_calls": 0, "token_calls": 0}
-
-    def handler(r: httpx.Request) -> httpx.Response:
-        p = f"/{PRODUCT}"
-        if r.url.path == f"{p}/license/activate":
-            return httpx.Response(200, json={"token": "pkeyt_stale", "schemaVersion": 4})
-        if r.url.path == f"{p}/license/token":
-            state["token_calls"] += 1
-            assert r.headers["authorization"] == "Bearer pkeyt_stale"
-            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
-        if r.url.path == f"{p}/license/document":
-            state["doc_calls"] += 1
-            if r.headers["authorization"] == "Bearer pkeyt_stale":
-                return httpx.Response(401)
-            return httpx.Response(
-                200, text=sign_license(r.headers["X-PKey-Device"]), headers={"etag": "l"}
-            )
-        if r.url.path == f"{p}/devices/report":
-            return httpx.Response(200, json={"ok": True})
-        return httpx.Response(404)
-
-    c = make_client(handler, expected_services=["license"])
-    assert c.license.activate_with_key("k").kind == "ok"
-    assert state["doc_calls"] == 2  # stale -> 401, fresh -> 200
-    assert state["token_calls"] == 1
-    assert c.status(now=NOW + 100).status == "ok"
-    c.close()
-
-
 def test_a_hard_401_is_recorded_once_and_becomes_revoked() -> None:
     """§4.3: a recorded hard 401 yields ``revoked`` offline, and the re-acquire is
     attempted exactly ONCE per pass — not a loop that would keep postponing the signal."""

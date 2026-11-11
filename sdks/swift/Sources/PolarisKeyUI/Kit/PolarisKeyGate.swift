@@ -343,7 +343,7 @@ extension View {
     /// The sign-in sheet's shape. iOS: full height with the drag indicator. macOS: one fitted
     /// sheet, 440 pt wide; macOS 26 draws the inset rounded panel itself and the kit only sizes
     /// it (S3).
-    @ViewBuilder fileprivate func kitSignInSheetShape() -> some View {
+    @ViewBuilder func kitSignInSheetShape() -> some View {
         #if os(macOS)
             kitMacSheet()
         #else

@@ -28,8 +28,10 @@ const DRAIN_MAX_MSEC := 10000
 
 ## Named suite sets. Later work packages append their suites to `ci`; `profile` stays outside, and
 ## so does `ui_matrix` (about a minute), which run_tests.sh runs as a step of its own. `dev_live`
-## (SP-41) is in `ci` and skips itself where no `pkey dev` variable is set; a lane that sets all
-## three runs it against that server (tests/suite_dev_live.gd).
+## (SP-41) is in no set: CI runs it on one leg only, the 4.7.2 editor leg, which sets
+## PKEY_TEST_DEV_LIVE=1 so run_tests.sh adds it to that leg's last parallel process. It skips itself
+## where no `pkey dev` variable is set; a lane that sets all three runs it against that server
+## (tests/suite_dev_live.gd).
 ## `ci` split in two for the 4.7.2 editor runners (run_tests.sh PKEY_TEST_PART=editor-a / editor-b), so
 ## neither nears the step watchdog. The two lists are disjoint and together are `ci`, as a set
 ## (tools/godotCiSplit.test.ts); a suite added to `ci` goes into one of them in the same change.
@@ -39,13 +41,13 @@ const SETS := {
 		"devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity",
 		"qr", "build_stamp", "update", "stage_matrix", "ui", "ui_components", "cloud_sync_ui",
 		"updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop",
-		"keyring", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_add_to_account", "ui_holders", "ui_holders_flow", "ui_locales", "dev_live",
+		"keyring", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_add_to_account", "ui_holders", "ui_holders_flow", "ui_locales",
 		"api_surface",
 	],
 	"ci_b": [
 		"transcripts", "boot", "sync_vectors", "sync_ring", "sync_host_codec", "sync_files",
 		"cloud_sync_transfer", "cloud_sync_files", "cloud_sync_bulk", "cloud_sync_bulk_native",
-		"cloud_sync_saves", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce",
+		"cloud_sync_saves", "cloud_sync_export", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce",
 		"backend", "transports", "connect",
 	],
 	## `ci` split in four, balanced by measured run time, for the parallel editor and template runs
@@ -68,11 +70,11 @@ const SETS := {
 		"sha512", "ed25519", "conformance", "core", "license", "transcripts", "devices",
 		"devicekeys", "devicekeys_native", "backup_exclusion", "qr", "update", "boot",
 		"ui_components", "brand", "keyring", "sync_vectors", "cloud_sync_files",
-		"cloud_sync_bulk_native", "cloud_sync_saves", "cloud_sync_settings", "transports",
-		"parity", "ui_lint", "ui_core", "ui_add_to_account", "ui_locales", "dev_live",
+		"cloud_sync_bulk_native", "cloud_sync_saves", "cloud_sync_export", "cloud_sync_settings", "transports",
+		"parity", "ui_lint", "ui_core", "ui_add_to_account", "ui_locales",
 		"api_surface",
 	],
-	"ci": ["sha512", "ed25519", "nfc", "conformance", "core", "config", "license", "transcripts", "presentation", "devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "ui_components", "cloud_sync_ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "sync_vectors", "sync_ring", "sync_host_codec", "sync_files", "cloud_sync_transfer", "cloud_sync_files", "cloud_sync_bulk", "cloud_sync_bulk_native", "cloud_sync_saves", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce", "backend", "transports", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_add_to_account", "ui_holders", "ui_holders_flow", "ui_locales", "dev_live", "api_surface", "connect"],
+	"ci": ["sha512", "ed25519", "nfc", "conformance", "core", "config", "license", "transcripts", "presentation", "devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "ui_components", "cloud_sync_ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "sync_vectors", "sync_ring", "sync_host_codec", "sync_files", "cloud_sync_transfer", "cloud_sync_files", "cloud_sync_bulk", "cloud_sync_bulk_native", "cloud_sync_saves", "cloud_sync_export", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce", "backend", "transports", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_add_to_account", "ui_holders", "ui_holders_flow", "ui_locales", "api_surface", "connect"],
 	## The brief spells the suite with a hyphen.
 	"stage-matrix": ["stage_matrix"],
 }
@@ -129,8 +131,20 @@ func _run(args: PackedStringArray, at: int) -> void:
 			failed += 1
 
 	failed += await _drain()
+	await _release_boot_hosts()
+	if OS.get_environment("PKEY_TEST_SEED_LEAK") == "1":
+		# The leak gate's self-test (run_tests.sh): a RefCounted that holds itself outlives the run, so the
+		# engine reports it at exit and the step must fail.
+		var seeded := SeededLeak.new()
+		seeded.me = seeded
 	print("PKEY-TEST SUMMARY suites=%d checks=%d failed=%d" % [names.size(), checks, failed])
 	quit(1 if failed > 0 else 0)
+
+
+## What `PKEY_TEST_SEED_LEAK=1` leaks.
+class SeededLeak:
+	extends RefCounted
+	var me: SeededLeak
 
 
 ## Waits until nothing the SDK started is still running, so the engine quits with no worker task or
@@ -149,6 +163,20 @@ func _drain() -> int:
 		print("FAIL runner drain — %d worker tasks still pending after %d ms (pump %d, pack jobs %d)" % [left, DRAIN_MAX_MSEC, PKeyPeerPump.pending_total, PKeyPackJob.pending])
 		return 1
 	return 0
+
+
+## A boot a suite left running waits on its fake host for ever, and some engines report that suspended coroutine
+## as a leaked object: answer the waits until none is left.
+func _release_boot_hosts() -> void:
+	var path := "res://tests/support/fake_boot_host.gd"
+	if not ResourceLoader.exists(path):
+		return
+	var host_script: GDScript = load(path)
+	for i in 20:
+		if not host_script.release_all():
+			break
+		await process_frame
+		await process_frame
 
 
 func _run_suite(t: PKeyTestContext, name: String, extra: PackedStringArray) -> bool:

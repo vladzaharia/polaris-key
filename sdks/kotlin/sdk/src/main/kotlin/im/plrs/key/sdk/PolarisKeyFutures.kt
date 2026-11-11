@@ -30,6 +30,7 @@ import im.plrs.key.core.peer.nearby.NearbyRequest
 import im.plrs.key.core.peer.nearby.NearbyRequestOptions
 import im.plrs.key.core.peer.nearby.PickOutcome
 import im.plrs.key.core.sync.SyncStatus
+import im.plrs.key.identity.AccessToken
 import im.plrs.key.identity.AttachResult
 import im.plrs.key.identity.AutoSignInOptions
 import im.plrs.key.identity.AutoSignInResult
@@ -65,6 +66,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import kotlinx.serialization.json.JsonElement
 import java.io.File
+import java.io.OutputStream
+import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 
 /** [client]'s suspend API as CompletableFutures, for Java callers; see the file comment. */
@@ -201,6 +204,10 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     /** `identity.choice.cancel(grant)`: give the grant up. */
     public fun choiceCancel(grant: String): CompletableFuture<ChoiceResult<Unit>> = call { client.identity.choice.cancel(grant) }
 
+    /** `identity.accessToken(refresh)`: the app's own access token for its own backend (not a licence check). */
+    @JvmOverloads
+    public fun accessToken(refresh: Boolean = false): CompletableFuture<AccessToken> = call { client.identity.accessToken(refresh) }
+
     /** `identity.attach(confirm)`: preview (false) or add the device's licence to the signed-in account (true). */
     public fun attach(confirm: Boolean): CompletableFuture<AttachResult> = call { client.identity.attach(confirm) }
 
@@ -235,6 +242,16 @@ public class PolarisKeyFutures @JvmOverloads constructor(
 
     /** `client.cloudSync.flush()`: send what is waiting (bounded), then answer the status. */
     public fun flushFuture(): CompletableFuture<SyncStatus> = call { client.cloudSync.flush() }
+
+    /** `client.cloudSync.export(destination, options)`: a readable zip of the synced data; cancelling the future cancels the export. */
+    @JvmOverloads
+    public fun exportFuture(destination: Path, options: CloudSyncExportOptions = CloudSyncExportOptions()): CompletableFuture<CloudSyncExport> =
+        call { client.cloudSync.export(destination, options) }
+
+    /** The same into a stream the app owns (the SDK never closes it). */
+    @JvmOverloads
+    public fun exportFuture(output: OutputStream, options: CloudSyncExportOptions = CloudSyncExportOptions()): CompletableFuture<CloudSyncExport> =
+        call { client.cloudSync.export(output, options) }
 
     /** `client.cloudSync.newRecoveryCode()`: a new recovery code, shown once and kept nowhere. */
     public fun newRecoveryCodeFuture(): CompletableFuture<String> = call { client.cloudSync.newRecoveryCode() }

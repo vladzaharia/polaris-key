@@ -650,48 +650,61 @@ describe("limits", () => {
     });
   });
 
-  it("an accept that no longer fits cancels that transfer with quota and keeps the session", async () => {
-    const r = await rig({
-      estimate: async () => ({ quota: 100_000, usage: 0 }),
-    });
-    // Two sessions of the peer; each offer fits when it is shown.
-    let inn2: unknown = null;
-    r.p.ra.onSession((s) => (inn2 = s));
-    const out2 = await r.p.rb.dial(r.p.a.id);
-    await until(() => inn2 !== null);
-    r.sender.adopt(out2);
-    r.receiver.adopt(inn2 as never);
-    const answers: (() => void)[] = [];
-    const sink = { blob: null as Blob | null };
-    r.setHandler(
-      (o) =>
-        new Promise((res) => {
-          answers.push(() => res(collect(sink)(o)));
-        }),
-    );
-    // Hold the first transfer's writes so its room stays promised.
-    let release!: () => void;
-    const gate = new Promise<void>((res) => (release = res));
-    const write = r.store.write.bind(r.store);
-    r.store.write = async (ref, off, d) => {
-      await gate;
-      return write(ref, off, d);
-    };
-    const first = r.sender.send(r.p.out, new Blob([bytes(60_000)]), { id: ID });
-    const second = r.sender.send(out2, new Blob([bytes(60_000)]), {
-      id: "QQQQQQQQQQQQQQQQQQQQQQ",
-    });
-    first.catch(() => undefined);
-    second.catch(() => undefined);
-    await until(() => answers.length === 2);
-    answers[0]!();
-    await untilAsync(async () => r.store.free() < 50_000);
-    answers[1]!();
-    await expect(second).rejects.toMatchObject({ reason: "quota" });
-    expect(out2.closed).toBeNull();
-    release();
-    await first;
-  });
+  it.each([["first", "second"] as const, ["second", "first"] as const])(
+    "an accept that no longer fits cancels that transfer with quota and keeps the session (offers sent %s then %s)",
+    async (...order) => {
+      const r = await rig({
+        estimate: async () => ({ quota: 100_000, usage: 0 }),
+      });
+      // Two sessions of the peer; each offer fits when it is shown.
+      let inn2: unknown = null;
+      r.p.ra.onSession((s) => (inn2 = s));
+      const out2 = await r.p.rb.dial(r.p.a.id);
+      await until(() => inn2 !== null);
+      r.sender.adopt(out2);
+      r.receiver.adopt(inn2 as never);
+      // Answers are kept by offer id: the two sessions are independent, so which offer the receiver
+      // sees first is not the order they were sent in.
+      const answers = new Map<string, () => void>();
+      const sink = { blob: null as Blob | null };
+      r.setHandler(
+        (o) =>
+          new Promise((res) => {
+            answers.set(o.id, () => res(collect(sink)(o)));
+          }),
+      );
+      // Hold the first transfer's writes so its room stays promised.
+      let release!: () => void;
+      const gate = new Promise<void>((res) => (release = res));
+      const write = r.store.write.bind(r.store);
+      r.store.write = async (ref, off, d) => {
+        await gate;
+        return write(ref, off, d);
+      };
+      const sends = {
+        first: () =>
+          r.sender.send(r.p.out, new Blob([bytes(60_000)]), { id: ID }),
+        second: () =>
+          r.sender.send(out2, new Blob([bytes(60_000)]), {
+            id: "QQQQQQQQQQQQQQQQQQQQQQ",
+          }),
+      };
+      // The offers go out in the order under test; their arrival order is the receiver's to see.
+      const [a1, a2] = [sends[order[0]](), sends[order[1]]()];
+      const first = order[0] === "first" ? a1 : a2;
+      const second = order[0] === "first" ? a2 : a1;
+      first.catch(() => undefined);
+      second.catch(() => undefined);
+      await until(() => answers.size === 2);
+      answers.get(ID)!();
+      await untilAsync(async () => r.store.free() < 50_000);
+      answers.get("QQQQQQQQQQQQQQQQQQQQQQ")!();
+      await expect(second).rejects.toMatchObject({ reason: "quota" });
+      expect(out2.closed).toBeNull();
+      release();
+      await first;
+    },
+  );
 
   it("refuses a write past the offered size or past the room", async () => {
     const r = await rig({ estimate: async () => ({ quota: 1000, usage: 0 }) });

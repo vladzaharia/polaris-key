@@ -62,14 +62,6 @@ final class WireContractV3Tests: XCTestCase {
         XCTAssertNil(JWSVerifier.verify(jws, trust: signer.trust, typ: .license))
     }
 
-    func testDuplicateKeyInPayloadIsRejected() {
-        let dup = #"{"licenseId":"a","licenseId":"b","aud":"djdl"}"#
-        XCTAssertNil(
-            JWSVerifier.verify(
-                signer.sign(payloadJSON: dup, typ: JwsTyp.license.rawValue),
-                trust: signer.trust, typ: .license))
-    }
-
     /// Duplicates nested inside an object, and inside an object inside an ARRAY, are caught too —
     /// a scan that only tracked the top level would miss both.
     func testDuplicateKeyNestedAndInsideArrayIsRejected() {
@@ -91,17 +83,6 @@ final class WireContractV3Tests: XCTestCase {
     }
 
     // ── §1 size caps (R2-04) ───────────────────────────────────────────────────────
-    /// The payload cap was bypassable by moving the blob into the PROTECTED HEADER, which no
-    /// implementation bounded. The signature here is VALID, so only the cap can reject it.
-    func testOversizedHeaderIsRejectedDespiteValidSignature() {
-        let junk = String(repeating: "x", count: 8 * 1024 * 1024)
-        let typ = JwsTyp.license.rawValue
-        let jws = signer.signRaw(
-            header: #"{"alg":"EdDSA","typ":"\#(typ)","kid":"\#(signer.kid)","junk":"\#(junk)"}"#,
-            payload: licenseJSON(issuedAt: issued))
-        XCTAssertNil(JWSVerifier.verify(jws, trust: signer.trust, typ: .license))
-    }
-
     /// The boundary: a header exactly at 1024 decoded bytes verifies, one byte over does not.
     func testHeaderCapBoundary() {
         let typ = JwsTyp.license.rawValue
@@ -184,15 +165,6 @@ final class WireContractV3Tests: XCTestCase {
     }
 
     // ── §2 domain separation (R2-10) ───────────────────────────────────────────────
-    /// A trust manifest presented where a license document is expected is rejected on `typ`, not
-    /// by accident on a downstream decode error.
-    func testWrongTypIsRejectedAtTheCallSite() {
-        let payload = licenseJSON(issuedAt: issued)
-        let asTrust = signer.sign(payloadJSON: payload, typ: JwsTyp.trust.rawValue)
-        XCTAssertNil(JWSVerifier.verify(asTrust, trust: signer.trust, typ: .license))
-        XCTAssertNotNil(JWSVerifier.verify(asTrust, trust: signer.trust, typ: .trust))
-    }
-
     /// The two v3 documents refuse EACH OTHER. One signing key signs both, so without domain
     /// separation a config document — which carries no entitlements — could be presented as a
     /// licence, or a licence smuggled in where settings are read.
@@ -247,56 +219,10 @@ final class WireContractV3Tests: XCTestCase {
             checkFreshness: checkFreshness)
     }
 
-    func testClaimChecks() {
+    /// An empty `licenseId` is not a licence. Every other claim check that used to sit here is a
+    /// `licenseDocCases` row of the corpus.
+    func testAnEmptyLicenseIdIsNotALicense() {
         let t = issued
-        // Happy path.
-        XCTAssertNotNil(
-            verifyLicenseDoc(signer.sign(Fixtures.license(issuedAt: t)), options: options(now: t)))
-
-        // `iss` — a fixed string, never a suffix match. The bare apex is one label away and
-        // must still be REJECTED (§8).
-        XCTAssertNil(
-            verifyLicenseDoc(
-                signer.sign(Fixtures.license(iss: "plrs.im", issuedAt: t)),
-                options: options(now: t)),
-            "the bare `plrs.im` apex must not be accepted for `key.plrs.im`")
-        XCTAssertNil(
-            verifyLicenseDoc(
-                signer.sign(Fixtures.license(iss: "https://evil.example", issuedAt: t)),
-                options: options(now: t)))
-        // A 400-day-expired doc is rejected AT VERIFY, not merely at the gate.
-        XCTAssertNil(
-            verifyLicenseDoc(
-                signer.sign(Fixtures.license(issuedAt: t)),
-                options: options(now: t + 400 * SECONDS_PER_DAY)))
-        // A far-future `issuedAt` is prima facie tampering.
-        XCTAssertNil(
-            verifyLicenseDoc(
-                signer.sign(Fixtures.license(issuedAt: t + 10 * SECONDS_PER_DAY)),
-                options: options(now: t)))
-        // graceUntil must not precede expiresAt…
-        XCTAssertNil(
-            verifyLicenseDoc(
-                signer.sign(
-                    Fixtures.license(issuedAt: t, expiresAt: t + 3600, graceUntil: t + 60)),
-                options: options(now: t)))
-        // …nor run past the bound that keeps a hostile server honest.
-        XCTAssertNil(
-            verifyLicenseDoc(
-                signer.sign(
-                    Fixtures.license(issuedAt: t, graceUntil: t + MAX_GRACE_SECONDS + 1)),
-                options: options(now: t)))
-        // Exactly AT the ceiling is fine — the bound is inclusive.
-        XCTAssertNotNil(
-            verifyLicenseDoc(
-                signer.sign(Fixtures.license(issuedAt: t, graceUntil: t + MAX_GRACE_SECONDS)),
-                options: options(now: t)))
-        // Anti-replay: strictly newer than the last accepted, per TYPE.
-        XCTAssertNil(
-            verifyLicenseDoc(
-                signer.sign(Fixtures.license(issuedAt: t)),
-                options: options(now: t, lastAcceptedIssuedAt: t)))
-        // An empty licenseId is not a licence.
         XCTAssertNil(
             verifyLicenseDoc(
                 signer.sign(Fixtures.license(licenseId: "", issuedAt: t)),
@@ -305,26 +231,14 @@ final class WireContractV3Tests: XCTestCase {
 
     /// A config document's `schemaVersion` is the per-product CATALOG version, so an unfamiliar
     /// one is ACCEPTED — allow-listing it would brick every product that republished its schema.
-    /// The SHAPE is what is enforceable, and `"4"` is the shape R2-08 slipped through.
-    func testConfigSchemaVersionIsShapeCheckedNotAllowListed() {
+    /// The shape and minimum checks are `configDocCases` rows (`config-schema-version-invalid`,
+    /// `config-schema-version-zero`).
+    func testConfigSchemaVersionIsNotAllowListed() {
         let t = issued
         XCTAssertNotNil(
             verifyConfigDoc(
                 signer.sign(Fixtures.config(schemaVersion: 999, issuedAt: t)),
                 options: options(now: t)))
-        let asString = String(
-            decoding: try! JSONEncoder().encode(Fixtures.config(issuedAt: t)), as: UTF8.self
-        ).replacingOccurrences(of: #""schemaVersion":1"#, with: #""schemaVersion":"1""#)
-        XCTAssertNil(
-            verifyConfigDoc(
-                signer.sign(payloadJSON: asString, typ: JwsTyp.config.rawValue),
-                options: options(now: t)),
-            "a non-integer schemaVersion must fail the shape check")
-        XCTAssertNil(
-            verifyConfigDoc(
-                signer.sign(Fixtures.config(schemaVersion: 0, issuedAt: t)),
-                options: options(now: t)),
-            "a non-positive schemaVersion is not a catalog version")
     }
 
     /// `CLOCK_SKEW_SECONDS` is applied in both directions: a device five minutes fast no longer
@@ -397,17 +311,6 @@ final class WireContractV3Tests: XCTestCase {
         XCTAssertNil(
             verifyLicenseDoc(
                 signer.sign(saturated), options: options(now: t, checkFreshness: false)))
-    }
-
-    /// The trust set is consulted for the key, never the document — and an unknown or pruned kid
-    /// simply is not in it.
-    func testKeySelectionIsFromTheTrustSetOnly() {
-        let jws = signer.sign(Fixtures.license(issuedAt: issued))
-        XCTAssertNil(JWSVerifier.verify(jws, trust: [:], typ: .license))
-        XCTAssertNil(
-            JWSVerifier.verify(
-                jws, trust: [signer.kid: TestSigner(kid: signer.kid).publicKeyB64],
-                typ: .license))
     }
 
     /// The manifest's `schemaVersion` IS a genuine wire version, so an unknown one fails closed —

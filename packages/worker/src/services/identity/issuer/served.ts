@@ -30,3 +30,20 @@ export async function issuerServed(db: Db, slug: string): Promise<boolean> {
   if (!row) return false;
   return readIssuerSetting(db, row);
 }
+
+/**
+ * The issuer epoch (V5 §12.13.7 rule 8): when `identity.issuer.enabled` was last written, or `0`
+ * when it never was. A refresh family that started before it is refused: it began under an earlier
+ * turn-on, so turning the issuer off and on again ends every client's old sign-ins. Any write of
+ * the row moves it (a console claim of an unchanged value included), which can only refuse more,
+ * never less. `null` for an unknown or deleted product.
+ */
+export async function issuerEpoch(
+  db: Db,
+  slug: string,
+): Promise<number | null> {
+  const row = await getProduct(db, slug);
+  if (!row) return null;
+  const [view] = await readRowSettings(db, row, [IDENTITY_ISSUER]);
+  return view!.updatedAt ?? 0;
+}

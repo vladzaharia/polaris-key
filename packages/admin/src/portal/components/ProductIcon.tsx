@@ -78,6 +78,7 @@ export function ProductIcon({
 }): React.ReactElement {
   const [failed, setFailed] = React.useState(false);
   const [shape, setShape] = React.useState<IconShape>("shaped");
+  const color = tintFor(slug, tint);
   if (src && !failed) {
     return (
       <img
@@ -106,12 +107,12 @@ export function ProductIcon({
     <span
       aria-hidden
       data-art="fallback"
-      style={neutral ? undefined : artTint(tintFor(slug, tint))}
+      style={neutral ? undefined : artTint(color)}
       className={cn(
         "inline-flex shrink-0 items-center justify-center font-medium",
         neutral
           ? "border border-border bg-surface-sunken text-fg-strong"
-          : "bg-(--pk-art) text-(--pk-brand-text)",
+          : "bg-(--pk-art) text-[color:var(--pk-art-ink,var(--pk-brand-text))]",
         SIZE[size],
         TILE[size],
         RADIUS[size],

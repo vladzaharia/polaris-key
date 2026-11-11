@@ -8,6 +8,9 @@ extends RefCounted
 
 const SLUG := PKeyTestPeers.SLUG
 
+## Every bus the tests made, dropped at the end of the run so the lanes they hold can be freed.
+var _buses: Array = []
+
 
 class FakeHandle extends RefCounted:
 	var stops := 0
@@ -22,6 +25,13 @@ class Bus extends RefCounted:
 	var adverts: Array = []
 	var browsers: Array = []
 	var acceptors: Dictionary = {}
+
+
+	## Lets go of what points back at the lanes (each lane holds its bus, and a bus holds its browsers).
+	func drop() -> void:
+		adverts.clear()
+		browsers.clear()
+		acceptors.clear()
 
 
 class Lane extends RefCounted:
@@ -96,7 +106,8 @@ class NativeLane extends Lane:
 
 
 	func dial(instance: String) -> PKeyPeerPipe:
-		var other: NativeLane = (bus as NativeBus).owners.get(instance)
+		# Not typed `NativeLane`: a class naming its own type in a method leaks its script graph at exit.
+		var other: Variant = (bus as NativeBus).owners.get(instance)
 		var acceptor: Callable = other.acceptors.get("p", Callable()) if other != null else Callable()
 		if not acceptor.is_valid():
 			return null
@@ -111,6 +122,11 @@ class NativeLane extends Lane:
 
 class NativeBus extends Bus:
 	var owners: Dictionary = {}
+
+
+	func drop() -> void:
+		super()
+		owners.clear()
 
 
 ## What the host does on one side.
@@ -181,6 +197,15 @@ func run(t: PKeyTestContext) -> void:
 	await _decline(t)
 	await _offer_cap(t)
 	await _querier_only(t)
+	for b: Bus in _buses:
+		b.drop()
+	_buses.clear()
+
+
+func _bus(native := false) -> Bus:
+	var b: Bus = NativeBus.new() if native else Bus.new()
+	_buses.append(b)
+	return b
 
 
 func _tree() -> SceneTree:
@@ -204,7 +229,7 @@ func _opts(h: Host, lane: Object, cats: Array, extra := {}) -> Dictionary:
 
 func _options(t: PKeyTestContext) -> void:
 	var h := Host.new()
-	var bus := Bus.new()
+	var bus := _bus()
 	var cases := {
 		"no handler": {"categories": []},
 		"too many categories": {"categories": ["a", "b", "c", "d", "e", "f", "g", "h", "i"], "on_offer": Callable(h, "on_offer")},
@@ -224,15 +249,15 @@ func _options(t: PKeyTestContext) -> void:
 func _gates(t: PKeyTestContext) -> void:
 	var h := Host.new()
 	h.allowed = false
-	var r := PKeyConnectPairing.start(h.source(), _opts(h, Lane.new(Bus.new()), []))
+	var r := PKeyConnectPairing.start(h.source(), _opts(h, Lane.new(_bus()), []))
 	t.check("a closed gate does not open the window", not r.ok and r.code == PKeyConstants.ErrorCode.CONNECT_LINKS_DISABLED)
 	h.allowed = true
-	var old := Lane.new(Bus.new())
+	var old := Lane.new(_bus())
 	old.caps = {"slots": false, "tags": false}
 	r = PKeyConnectPairing.start(h.source(), _opts(h, old, []))
 	t.check("a lane without slots answers unsupported", not r.ok and r.code == PKeyConstants.ErrorCode.NEARBY_UNSUPPORTED)
 	t.check("and advertised nothing", old.bus.adverts.is_empty())
-	var bus := Bus.new()
+	var bus := _bus()
 	var lane := Lane.new(bus)
 	r = PKeyConnectPairing.start(h.source(), _opts(h, lane, ["docs"]))
 	t.check("the window opens", r.ok)
@@ -259,7 +284,7 @@ func _pair_up(t: PKeyTestContext, lane_a: Lane, lane_b: Lane, ha: Host, hb: Host
 
 func _end_to_end(t: PKeyTestContext, native_pipes: bool) -> void:
 	var tag := "memory lane" if native_pipes else "tcp"
-	var bus: Bus = NativeBus.new() if native_pipes else Bus.new()
+	var bus: Bus = _bus(native_pipes)
 	var ha := Host.new()
 	var hb := Host.new()
 	var lane_a: Lane = NativeLane.new(bus) if native_pipes else Lane.new(bus)
@@ -297,7 +322,7 @@ func _end_to_end(t: PKeyTestContext, native_pipes: bool) -> void:
 
 ## A window puts only a bounded number of offers to the host: a device that reaches the code after that is closed.
 func _offer_cap(t: PKeyTestContext) -> void:
-	var bus := Bus.new()
+	var bus := _bus()
 	var ha := Host.new()
 	var hb := Host.new()
 	var ps := _pair_up(t, Lane.new(bus), Lane.new(bus), ha, hb, ["docs"], ["docs"])
@@ -316,7 +341,7 @@ func _offer_cap(t: PKeyTestContext) -> void:
 
 
 func _decline(t: PKeyTestContext) -> void:
-	var bus := Bus.new()
+	var bus := _bus()
 	var ha := Host.new()
 	var hb := Host.new()
 	var ps := _pair_up(t, Lane.new(bus), Lane.new(bus), ha, hb, ["docs"], ["docs"])
@@ -334,7 +359,7 @@ func _decline(t: PKeyTestContext) -> void:
 
 
 func _querier_only(t: PKeyTestContext) -> void:
-	var bus := Bus.new()
+	var bus := _bus()
 	var ha := Host.new()
 	var hb := Host.new()
 	var lane_b := Lane.new(bus)

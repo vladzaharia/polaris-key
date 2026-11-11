@@ -24,6 +24,76 @@ subprojects {
     }
 }
 
+// Flavour dedupe for CI (-Ppkey.directFlavourOnly=true): the play flavour runs every test, the
+// direct flavour runs only src/testDirect plus the shared src/test classes listed in
+// tools/flavour-tests.txt, the ones that branch on the flavour or build the flavour's own classes.
+// Every other shared test is flavour-neutral and would repeat the play run. checkFlavourTests (below)
+// fails when a shared test touches the flavour and is not on that list, so the direct run cannot drop
+// coverage unnoticed. Without the property the direct flavour runs everything, as before.
+val flavourTestList = layout.projectDirectory.file("tools/flavour-tests.txt")
+val flavourModuleDirs = listOf("platform", "android", "../godot/native/android")
+
+fun testClassName(f: File): String {
+    val pkg = f.useLines { lines -> lines.firstNotNullOfOrNull { Regex("^package\\s+([\\w.]+)").find(it)?.groupValues?.get(1) } }
+    return (if (pkg == null) "" else "$pkg.") + f.nameWithoutExtension
+}
+
+fun testClassNames(dir: File): List<String> =
+    if (!dir.isDirectory) emptyList() else dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.map(::testClassName).toList()
+
+val directFlavourOnly = providers.gradleProperty("pkey.directFlavourOnly").map { it == "true" }.orElse(false)
+subprojects {
+    tasks.withType<Test>().matching { it.name == "testDirectDebugUnitTest" && projectDir.relativeTo(rootDir).path in flavourModuleDirs }.configureEach {
+        if (directFlavourOnly.get()) {
+            val shared = providers.fileContents(flavourTestList).asText.get().lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+            val own = testClassNames(projectDir.resolve("src/testDirect"))
+            filter {
+                isFailOnNoMatchingTests = false
+                // An empty include list would run everything; this pattern matches nothing.
+                includeTestsMatching("no.such.Class")
+                (shared + own).forEach { includeTestsMatching(it) }
+            }
+        }
+    }
+}
+
+val flavourSensitive = Regex(
+    "PolarisKeyPlatform\\.(flavor|isPlay|isDirect)|PolarisKeyAndroid\\.flavor|BuildConfig\\.FLAVOR|FlavorAndroid|FLAVOR_(PLAY|DIRECT)" +
+        "|\\bCommands\\(|(PlatformIntegrity|PlatformIdentity|PlatformBackup)\\.create\\(|\\.playPacks\\(",
+)
+tasks.register("checkFlavourTests") {
+    group = "verification"
+    description = "Fails when a shared test (src/test of :platform, :android, :godot) touches the flavour and is not in tools/flavour-tests.txt, or the list names a class that is gone or no longer flavour-sensitive."
+    val testDirs = flavourModuleDirs.map { layout.projectDirectory.dir("$it/src/test").asFile }
+    val listFile = flavourTestList.asFile
+    val sensitiveRe = flavourSensitive
+    inputs.files(listFile)
+    testDirs.forEach { inputs.dir(it).optional() }
+    doLast {
+        // Self-contained: a task action may not hold references to script-level functions or values.
+        fun className(f: File): String {
+            val pkg = f.useLines { lines -> lines.firstNotNullOfOrNull { Regex("^package\\s+([\\w.]+)").find(it)?.groupValues?.get(1) } }
+            return (if (pkg == null) "" else "$pkg.") + f.nameWithoutExtension
+        }
+        val listed = listFile.readLines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toSet()
+        val sensitive = mutableSetOf<String>()
+        val present = mutableSetOf<String>()
+        for (dir in testDirs) {
+            for (f in dir.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+                val name = className(f)
+                present += name
+                if (sensitiveRe.containsMatchIn(f.readText())) sensitive += name
+            }
+        }
+        val problems = mutableListOf<String>()
+        (sensitive - listed).sorted().forEach { problems += "$it touches the flavour but is not in tools/flavour-tests.txt (the direct flavour would skip it)" }
+        (listed - present).sorted().forEach { problems += "tools/flavour-tests.txt names $it, which no shared test defines" }
+        (listed - sensitive).intersect(present).sorted().forEach { problems += "tools/flavour-tests.txt names $it, which no longer touches the flavour" }
+        if (problems.isNotEmpty()) throw GradleException("flavour test list out of date:\n  " + problems.joinToString("\n  "))
+        logger.lifecycle("checkFlavourTests: ${listed.size} shared tests run in both flavours")
+    }
+}
+
 // :platform publishes one coordinate per flavour (polaris-key-platform-play, -direct; P6-09), and a
 // consumer that is itself published (the Godot binding, P6-10) declares that coordinate so its POM
 // names the right flavour. Inside this build the coordinate IS the :platform project; variant-aware
@@ -62,6 +132,10 @@ val checkModuleBoundaries = tasks.register("checkModuleBoundaries") {
     val gamesProject = findProject(":games")
     val androidProject = findProject(":android")
     val everyProject = rootProject.subprojects.toList()
+    // The one task that is not configuration-cache compatible: its action walks every project's
+    // plugins, configurations and resolved classpaths, which are live Project state the cache cannot
+    // store. Requesting it makes Gradle skip the cache for that build; the rest stay cacheable.
+    notCompatibleWithConfigurationCache("walks every project's configurations and resolved classpaths at execution time")
     // Resolved from the root project over project dependencies (variant-aware), never through another
     // project's own configuration: under org.gradle.parallel that needs the owner's lock.
     val boundaryConfigs = listOf("api" to Usage.JAVA_API, "runtime" to Usage.JAVA_RUNTIME).map { (label, usage) ->

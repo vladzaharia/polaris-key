@@ -62,7 +62,8 @@ import { oauth } from "../passthrough/oauthHttp.js";
 import {
   authenticate,
   clientCorsOrigins,
-  CLIENT_TOKEN_RATE,
+  CONFIDENTIAL_TOKEN_RATE,
+  PUBLIC_TOKEN_RATE,
   scopedCors,
   type IssuerTokenCx,
 } from "./clientAuth.js";
@@ -89,21 +90,16 @@ export async function handleIssuerToken(cx: IssuerTokenCx): Promise<Response> {
   if (!auth.ok) return scopedCors(auth.response, null);
   const { client } = auth;
   const out = (res: Response): Response => scopedCors(res, client);
-  if (
-    !(await rateLimitOk(
-      env,
-      slug,
-      {
-        ...CLIENT_TOKEN_RATE,
-        id: `${client.clientId}:${clientNetwork(req)}`,
-      },
-      now,
-    ))
-  )
+  const budget =
+    client.type === "web"
+      ? { ...CONFIDENTIAL_TOKEN_RATE, id: client.clientId }
+      : {
+          ...PUBLIC_TOKEN_RATE,
+          id: `${client.clientId}:${clientNetwork(req)}`,
+        };
+  if (!(await rateLimitOk(env, slug, budget, now)))
     return out(
-      oauth(429, "rate_limited", undefined, {
-        retryAfter: CLIENT_TOKEN_RATE.windowSec,
-      }),
+      oauth(429, "rate_limited", undefined, { retryAfter: budget.windowSec }),
     );
 
   const grant = form.get("grant_type");
@@ -187,15 +183,20 @@ export async function handleIssuerToken(cx: IssuerTokenCx): Promise<Response> {
     (await erasureVerdict(env, now, account.id)) !== "clear"
   )
     return out(oauth(400, ErrorCode.InvalidGrant));
-  if (!(await getClientGrant(db, slug, account.id, client.clientId)))
-    return out(oauth(400, ErrorCode.InvalidGrant));
+  const held = await getClientGrant(db, slug, account.id, client.clientId);
+  if (!held) return out(oauth(400, ErrorCode.InvalidGrant));
+  // Change what <Client> gets may have narrowed the grant since Continue: the code's claims are
+  // read against the grant as it stands now, never wider (V5 §12.13.7).
+  const delivered = claims.claims.filter((c) =>
+    held.claimsGranted.some((g) => g === c),
+  );
 
   const { accessToken, idToken } = await mintIssuerTokens(cx, {
     clientId: client.clientId,
     account,
     subject,
     scope: record.scope,
-    claims: claims.claims,
+    claims: delivered,
     authTime: claims.authTime,
     nonce: record.nonce,
   });
@@ -208,14 +209,18 @@ export async function handleIssuerToken(cx: IssuerTokenCx): Promise<Response> {
           clientId: client.clientId,
           accountId: account.id,
           scope: record.scope.join(" "),
-          claims: claims.claims,
+          claims: delivered,
           authTime: claims.authTime,
           redirectUri: record.redirectUri,
           codeHash: await hashAuthCode(env, code),
         },
         now,
+        { requireGrant: true },
       )
     : null;
+  // A Disconnect landed since the grant was read: nothing was issued, so nothing is answered.
+  if (refresh === null && record.scope.includes("offline_access"))
+    return out(oauth(400, ErrorCode.InvalidGrant));
   await touchClientGrant(db, slug, account.id, client.clientId, now);
   await appendAudit(db, {
     product: slug,

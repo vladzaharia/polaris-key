@@ -39,7 +39,8 @@
         "signin.key.signIn",
         "signin.key.ownedSignIn",
         "activate.waitingSignIn",
-        "activate.recommend.action"
+        "activate.recommend.action",
+        "cloudSync.signIn"
       ],
       "open-manage-url": [
         "deviceLimit.openBrowser",
@@ -12526,6 +12527,26 @@
       }
     },
     {
+      "name": "CloudSyncStatus/signed-out: Sign in to sync, never an error or a sync time",
+      "input": {
+        "cloudSync": {
+          "state": "error",
+          "signedIn": false,
+          "lastSynced": "2 min ago"
+        }
+      },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "error",
+        "copy": ["cloudSync.signIn", "cloudSync.syncStopped"],
+        "actions": ["start-sign-in"]
+      },
+      "mustNot": {
+        "invariant": "A device whose account is gone says so and offers Sign in to sync; it is never an error or a sync time.",
+        "copy": ["cloudSync.error", "cloudSync.synced"]
+      }
+    },
+    {
       "name": "CloudSyncStatus/ring-changed: Review without the host's handler",
       "input": { "cloudSync": { "state": "ring-changed" } },
       "expect": {
@@ -15332,14 +15353,18 @@
           "a11y.busy",
           "common.cancel",
           "localPairing.showBody",
-          "localPairing.title",
-          "localPairing.toEnter"
+          "localPairing.title"
         ],
         "actions": ["cancel"]
       },
       "mustNot": {
         "invariant": "A slow start never shows a code or a QR that is not there yet.",
-        "copy": ["a11y.linkCode", "a11y.qrPairing", "localPairing.expires"]
+        "copy": [
+          "a11y.linkCode",
+          "a11y.qrPairing",
+          "localPairing.expires",
+          "localPairing.toQr"
+        ]
       }
     },
     {
@@ -15357,19 +15382,315 @@
         "state": "show",
         "copy": [
           "a11y.linkCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.showBody",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"]
       },
       "mustNot": {
-        "invariant": "A shown code never has a Copy button and no countdown of tries.",
-        "copy": ["localPairing.showNewIn", "localPairing.triesLeft"]
+        "invariant": "The code view never shows the QR, and a shown code never has a Copy button or a countdown of tries.",
+        "copy": [
+          "a11y.qrPairing",
+          "localPairing.qrTitle",
+          "localPairing.showNewIn",
+          "localPairing.triesLeft"
+        ]
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: the QR alone, with its time and a way back to the code",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.toCode",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "The QR view never shows the digits, and a switch of view never renews the window.",
+        "copy": [
+          "a11y.linkCode",
+          "localPairing.showBody",
+          "localPairing.showNewIn",
+          "localPairing.title",
+          "localPairing.toQr"
+        ]
+      },
+      "notApplicable": {
+        "sdks": ["godot"],
+        "reason": "The code and QR views are split in the React, SwiftUI and Compose kits (UK-67, CC-29K.5); the Godot kit takes the split in a later slice and checks the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: someone may be guessing",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "notice": "guessing",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.rotatedTitle",
+          "localPairing.toCode",
+          "localPairing.tooManyAgainBody",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "The warning is said in the QR view too.",
+        "copy": ["a11y.linkCode"]
+      },
+      "notApplicable": {
+        "sdks": ["godot"],
+        "reason": "The code and QR views are split in the React, SwiftUI and Compose kits (UK-67, CC-29K.5); the Godot kit takes the split in a later slice and checks the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: a wrong code changed it, said without the digits",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "notice": "rotated",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.rotatedBody",
+          "localPairing.rotatedTitle",
+          "localPairing.toCode",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "The QR view says a changed code without saying the digits.",
+        "copy": ["a11y.linkCode", "a11y.newCode", "localPairing.showNew"]
+      },
+      "notApplicable": {
+        "sdks": ["godot"],
+        "reason": "The code and QR views are split in the React, SwiftUI and Compose kits (UK-67, CC-29K.5); the Godot kit takes the split in a later slice and checks the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: the code expired, the QR stays dimmed with a new code one press away",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 0,
+          "view": "qr",
+          "expired": true,
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.failedExpired",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.showNew",
+          "localPairing.toCode"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "An expired window is never waiting: no time left, no waiting row.",
+        "copy": ["localPairing.expires", "localPairing.waitingDevice"]
+      },
+      "notApplicable": {
+        "sdks": ["godot"],
+        "reason": "The code and QR views are split in the React, SwiftUI and Compose kits (UK-67, CC-29K.5); the Godot kit takes the split in a later slice and checks the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show: the code expired, the digits stay dimmed with a new code one press away",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 0,
+          "expired": true,
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show",
+        "copy": [
+          "a11y.linkCode",
+          "common.cancel",
+          "localPairing.failedExpired",
+          "localPairing.showBody",
+          "localPairing.showNew",
+          "localPairing.title",
+          "localPairing.toQr"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "An expired window is never waiting: no time left, no waiting row.",
+        "copy": ["localPairing.expires", "localPairing.waitingDevice"]
+      },
+      "notApplicable": {
+        "sdks": ["godot"],
+        "reason": "The code and QR views are split in the React, SwiftUI and Compose kits (UK-67, CC-29K.5); the Godot kit takes the split in a later slice and checks the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: a prompt was declined, said without the digits",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "notice": "declined",
+          "device": "LAPTOP-7QH3RX",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.notPairedWith",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.rotatedBody",
+          "localPairing.toCode",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "The QR view says a declined prompt without the digits.",
+        "copy": ["a11y.linkCode", "a11y.newCode"]
+      },
+      "notApplicable": {
+        "sdks": ["godot"],
+        "reason": "The code and QR views are split in the React, SwiftUI and Compose kits (UK-67, CC-29K.5); the Godot kit takes the split in a later slice and checks the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: a new code is being opened in place after the code expired",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 0,
+          "view": "qr",
+          "expired": true,
+          "busy": "new-code",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.busy",
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.failedExpired",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.showNew",
+          "localPairing.toCode"
+        ],
+        "actions": ["cancel"],
+        "disabled": ["localPairing.showNew"]
+      },
+      "notApplicable": {
+        "sdks": ["godot"],
+        "reason": "The code and QR views are split in the React, SwiftUI and Compose kits (UK-67, CC-29K.5); the Godot kit takes the split in a later slice and checks the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: pairing is being blocked",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "notice": "blocked",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.blockedBody",
+          "localPairing.blockedTitle",
+          "localPairing.expires",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.toCode",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "A blocked network is said in the QR view too.",
+        "copy": ["a11y.linkCode"]
+      },
+      "notApplicable": {
+        "sdks": ["godot"],
+        "reason": "The code and QR views are split in the React, SwiftUI and Compose kits (UK-67, CC-29K.5); the Godot kit takes the split in a later slice and checks the shared view until then."
       }
     },
     {
@@ -15389,7 +15710,6 @@
         "copy": [
           "a11y.linkCode",
           "a11y.newCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.rotatedBody",
@@ -15397,7 +15717,7 @@
           "localPairing.showBody",
           "localPairing.showNew",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"]
@@ -15426,7 +15746,6 @@
           "a11y.busy",
           "a11y.linkCode",
           "a11y.newCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.rotatedBody",
@@ -15434,7 +15753,7 @@
           "localPairing.showBody",
           "localPairing.showNew",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"],
@@ -15463,7 +15782,6 @@
         "copy": [
           "a11y.linkCode",
           "a11y.newCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.notPairedWith",
@@ -15471,7 +15789,7 @@
           "localPairing.showBody",
           "localPairing.showNew",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"]
@@ -15498,14 +15816,13 @@
         "state": "show",
         "copy": [
           "a11y.linkCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.blockedBody",
           "localPairing.blockedTitle",
           "localPairing.expires",
           "localPairing.showBody",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"]
@@ -15528,14 +15845,13 @@
         "copy": [
           "a11y.linkCode",
           "a11y.newCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.rotatedTitle",
           "localPairing.showBody",
           "localPairing.showNew",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.tooManyAgainBody",
           "localPairing.waitingDevice"
         ],
@@ -18030,27 +18346,27 @@
   ],
   "localLayout": [
     {
-      "name": "wide: two panes, the kit's logo",
+      "name": "wide: one centred column, the kit's logo",
       "window": { "width": 1280, "height": 800 },
       "expect": {
-        "panes": 2,
+        "panes": 1,
         "logo": true,
         "scrolls": false,
         "noticeBeforeQr": false
       }
     },
     {
-      "name": "600 wide is the first width with two panes",
+      "name": "600 wide: still one column",
       "window": { "width": 600, "height": 700 },
       "expect": {
-        "panes": 2,
+        "panes": 1,
         "logo": true,
         "scrolls": false,
         "noticeBeforeQr": false
       }
     },
     {
-      "name": "599 wide is one column",
+      "name": "599 wide: one column",
       "window": { "width": 599, "height": 700 },
       "expect": {
         "panes": 1,
@@ -18060,7 +18376,7 @@
       }
     },
     {
-      "name": "200 % text keeps one column in a window that is 1100 wide",
+      "name": "200 % text in a window that is 1100 wide: one column",
       "window": { "width": 1100, "height": 800, "textScale": 2 },
       "expect": {
         "panes": 1,
@@ -18070,13 +18386,13 @@
       }
     },
     {
-      "name": "short and wide (720 by 420): two panes, no logo, no scroll",
+      "name": "short and wide (720 by 420): one column that scrolls, no logo, the notice before the QR",
       "window": { "width": 720, "height": 420 },
       "expect": {
-        "panes": 2,
+        "panes": 1,
         "logo": false,
-        "scrolls": false,
-        "noticeBeforeQr": false
+        "scrolls": true,
+        "noticeBeforeQr": true
       }
     },
     {
@@ -18090,10 +18406,10 @@
       }
     },
     {
-      "name": "a TV is always two panes",
+      "name": "a TV is one column too",
       "window": { "width": 480, "height": 360, "tv": true },
       "expect": {
-        "panes": 2,
+        "panes": 1,
         "logo": true,
         "scrolls": false,
         "noticeBeforeQr": false

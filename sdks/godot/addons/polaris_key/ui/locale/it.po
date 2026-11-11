@@ -2122,10 +2122,10 @@ msgstr "Alcune modifiche sono in conflitto."
 msgid "cloudSync.error"
 msgstr "Impossibile sincronizzare. Riprova più tardi."
 
-#. You're signed out.
-#. CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it.
-msgid "cloudSync.signedOut"
-msgstr "Sei disconnesso."
+#. Sync stopped.
+#. CloudSyncStatus: a small sync status. Shown instead of the error line when sync stopped because this device has no signed-in account for it; Sign in to sync sits beside it. Say the sync stopped, not that the person is signed out: the app may still show them as signed in. Not an error.
+msgid "cloudSync.syncStopped"
+msgstr "Sincronizzazione interrotta."
 
 #. Sign in to sync
 #. CloudSyncStatus: a small sync status. Syncing needs an account.
@@ -3432,6 +3432,16 @@ msgstr[2] "{left} inserimenti della chiave rimasti"
 #. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.key.noEntries"
 msgstr "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo."
+
+#. Check your connection.
+#. Body of a request card that could not be reached because the network failed; a Try again button follows.
+msgid "signin.unreachable.network"
+msgstr "Controlla la connessione."
+
+#. Wait a moment.
+#. Body of a request card refused for too many attempts; a Try again button follows.
+msgid "signin.unreachable.wait"
+msgstr "Attendi un momento."
 
 #. Continue without an account
 #. License key step (SIGN-IN.md §3.9).
@@ -6319,13 +6329,13 @@ msgctxt "macos"
 msgid "localPairing.pairedDevices"
 msgstr "Dispositivi associati"
 
-#. Scan or enter this code on the other device.
+#. Enter this code on the other device.
 #. Pair with a Code: show: what to do with the code.
 msgid "localPairing.showBody"
-msgstr "Scansiona o inserisci questo codice sull’altro dispositivo."
+msgstr "Inserisci questo codice sull’altro dispositivo."
 
 #. QR code with the pairing code
-#. Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code.
+#. Pair with a Code: Screen reader label; never shown. Names the QR in the QR view.
 msgid "a11y.qrPairing"
 msgstr "Codice QR con il codice di associazione"
 
@@ -6339,15 +6349,35 @@ msgstr "Scade tra {time}"
 msgid "localPairing.waitingDevice"
 msgstr "In attesa dell’altro dispositivo…"
 
-#. Enter a code instead
-#. Pair with a Code: show: withdraws this code and opens the field.
-msgid "localPairing.toEnter"
-msgstr "Inserisci invece un codice"
+#. Scan to pair
+#. Pair with a Code: QR view: the title.
+msgid "localPairing.qrTitle"
+msgstr "Scansiona per associare"
 
-#. macos: Enter a Code Instead
+#. Point the other device’s camera here.
+#. Pair with a Code: QR view: what to do with the QR.
+msgid "localPairing.qrBody"
+msgstr "Inquadra qui con la fotocamera dell’altro dispositivo."
+
+#. Show a QR code
+#. Pair with a Code: code view: the quiet link to the QR view of the same window.
+msgid "localPairing.toQr"
+msgstr "Mostra un codice QR"
+
+#. macos: Show a QR Code
 msgctxt "macos"
-msgid "localPairing.toEnter"
-msgstr "Inserisci invece un codice"
+msgid "localPairing.toQr"
+msgstr "Mostra un codice QR"
+
+#. Show the code instead
+#. Pair with a Code: QR view: the quiet link back to the code view of the same window.
+msgid "localPairing.toCode"
+msgstr "Mostra invece il codice"
+
+#. macos: Show the Code Instead
+msgctxt "macos"
+msgid "localPairing.toCode"
+msgstr "Mostra invece il codice"
 
 #. Wrong code entered
 #. Pair with a Code: show: after a wrong guess.
@@ -8242,6 +8272,26 @@ msgstr "Già deciso"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-merge-closed.message"
 msgstr "La scelta è già stata fatta o sostituita da una modifica più recente. Non è cambiato nulla."
+
+#. Copy too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.title"
+msgstr "Copia troppo grande"
+
+#. The synced data is too big to save as one file. Nothing was saved.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.message"
+msgstr "I dati sincronizzati sono troppo grandi per un solo file. Non è stato salvato nulla."
+
+#. Copy not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.title"
+msgstr "Copia non salvata"
+
+#. The copy of your synced data couldn't be saved. Check the destination and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.message"
+msgstr "Non è stato possibile salvare la copia dei dati sincronizzati. Controlla la destinazione e riprova."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

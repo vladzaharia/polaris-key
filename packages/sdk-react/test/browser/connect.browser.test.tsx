@@ -446,6 +446,8 @@ describe("two panes in short landscape and on TV", () => {
         kit.querySelector("[data-key].btn, .btn")!,
       ];
       const sw = document.documentElement.scrollHeight;
+      // Focus on the heading must not scroll the window: the panes' actions are not a docked bar.
+      expect(scrollY, "window scrolled").toBe(0);
       for (const el of targets) {
         const b = el.getBoundingClientRect();
         expect(b.top, "above the top edge").toBeGreaterThanOrEqual(0.5);

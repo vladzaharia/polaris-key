@@ -18,7 +18,6 @@ import { Callout } from "../../../ui/Callout.js";
 import { Input } from "../../../ui/Input.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { Expand } from "../../../ui/motion/index.js";
-import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import { formatRelative } from "../../../lib/format.js";
 import { PORTAL_FMT } from "../../date.js";
@@ -312,7 +311,6 @@ function MethodGroups({
     if (said) setNotice(said);
     if (said?.tone === "success") {
       toast.success(said.text);
-      announce(said.text);
     }
     if (add === "email") setAddEmailAsked((n) => n + 1);
     if (add === "passkey") setPasskeyAsked((n) => n + 1);
@@ -1025,7 +1023,6 @@ function AddEmail({
       toast.success(text, {
         description: t("locker.methods.emailAddedNote"),
       });
-      announce(text);
       setStep({ kind: "closed" });
       setEmail("");
       setCode("");
@@ -1264,7 +1261,6 @@ function AddPasskey({
       toast.success(t("locker.methods.passkeyAdded"), {
         description: t("locker.methods.passkeyAddedNote"),
       });
-      announce(t("locker.methods.passkeyAdded"));
       setStepUp(false);
       setReady(false);
       onAdded();

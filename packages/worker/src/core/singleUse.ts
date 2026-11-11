@@ -62,6 +62,8 @@ export type SingleUseKind =
   | "signin-request"
   /** A cross-host bind token (LK-04, plans/LK-00.md §7.8), by its hash: the request handle and binder to hand to the customer host. */
   | "signin-bind"
+  /** An end-session handle (I-21.12, WIRE-CONTRACT-V5 §12.13.9), by its hash: the validated request of an RP-initiated logout, held until Sign out or Stay signed in takes it. */
+  | "signout-request"
   /** An app passthrough authorization code (I-08, WIRE-CONTRACT-V4 §12.4), by its hash. */
   | "signin-code"
   /** A pending sign-in grant (I-08b, WIRE-CONTRACT-V4 §12.5.1), by the hash of the grant. */

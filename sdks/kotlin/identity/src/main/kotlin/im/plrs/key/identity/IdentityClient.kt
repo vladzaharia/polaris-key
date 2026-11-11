@@ -161,9 +161,13 @@ public class IdentityClient(
     /** The link offer (Link.kt): `pending`, `offer()`, `accept()`, `decline()`, `dismiss()`. */
     public val link: LinkClient get() = LinkClient(this)
     private val revokeRestore: BeforeSignOutHook = { restoreSignOut() }
-    private val account =
-        IdentityAccount(core, opener, { beforeSignOut.toList() + revokeRestore }, onSubject, onSignedOut) { markSignedOut() }
+    private val account: IdentityAccount =
+        IdentityAccount(core, opener, { beforeSignOut.toList() + revokeRestore }, onSubject, onSignedOut) {
+            markSignedOut()
+            accessTokens.clear()
+        }
             .also { it.restoreStep = { restoreSignOut() } }
+    private val accessTokens: AccessTokens = AccessTokens(core) { account.fragment() }
 
     @Volatile
     private var deviceKeys: DeviceKeyPort? = deviceKeys
@@ -335,6 +339,23 @@ public class IdentityClient(
 
     /** Run the pre-sign-out hooks, sign out, forget the subject; the token goes only when the seat was released. */
     public suspend fun signOut(): SignOutResult = account.signOut()
+
+    /**
+     * The app's own access token for its own backend (`identity.accessToken`, V5 section 12.13.10): the device token
+     * exchanged (RFC 8693) for a 600 second `at+jwt`, held in memory only, never stored or logged, and dropped at sign-out.
+     * Reused until 60 seconds before it expires; [refresh] asks for a new one (an app whose backend refused it).
+     *
+     * It is proof that this device holds a sign-in, NOT a licence check: it carries no tier and no entitlement, and a
+     * signed-in device has one whether or not it holds a valid licence. A backend that sells a licensed feature
+     * checks the licence as well (the server drop-ins).
+     *
+     * Throws `service-unavailable` (the typed N/A, no request) unless discovery carries `accessToken: true`, `no-token`
+     * without a device token, and a [PolarisException] with the wire code (`invalid_grant`, `invalid_request`,
+     * `rate_limited` with `retryAfterSeconds`; after a 429 the wait is honoured without a request), `server-error`
+     * or `bad_response` otherwise. A failure is not cached.
+     */
+    @JvmOverloads
+    public suspend fun accessToken(refresh: Boolean = false): AccessToken = accessTokens.get(refresh)
 
     /** Open the product's page in the customer portal through the host's opener. */
     public suspend fun openAccount(): OpenAccountResult = account.openAccount()

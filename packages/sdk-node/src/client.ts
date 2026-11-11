@@ -76,6 +76,7 @@ import { BackendClient, type BackendClientOptions } from "./backend/client.js";
 import { KeyringClient, type KeyringOptions } from "./keyring/client.js";
 import { CloudSyncHost, type CloudSyncHostOptions } from "./cloudSync/host.js";
 import { CloudSyncApi } from "./cloudSync/api.js";
+export type { CloudSyncExportOptions } from "./cloudSync/export.js";
 import { SavesApi } from "./cloudSync/saves.js";
 import { readStoredSubject } from "./identity/account.js";
 import { ConnectClient, type ConnectOptions } from "./connect/client.js";
@@ -231,6 +232,7 @@ export class PolarisKeyClient {
     | "onConflict"
     | "conflicts"
     | "cloudEmpty"
+    | "export"
   > & {
     /** The saves of the signed-in person (U-22.5). */
     readonly saves: SavesApi;
@@ -276,6 +278,17 @@ export class PolarisKeyClient {
   private lastStatus: LicenseState["status"] | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly capabilityContext: CapabilityContext;
+
+  /** A key-ring or file route answered `account_required`: Cloud Sync takes the same transition as
+   *  for a `/sync` 403. Never throws into the route that saw it. */
+  private accountRequiredFromRoute(
+    signInUrl: string | null,
+    forSubject: string | null,
+  ): void {
+    void this.cloudSyncApi
+      .accountRequired(signInUrl, forSubject)
+      .catch(() => undefined);
+  }
 
   constructor(opts: PolarisKeyClientOptions & { localOnly?: boolean }) {
     this.product = opts.productSlug;
@@ -461,6 +474,7 @@ export class PolarisKeyClient {
       ctx: this.core,
       host: this.cloudSyncHost,
       keyring: this.keyring,
+      tokens: this.tokens,
       config: this.config,
       subject: () => readStoredSubject(this.core.dirs.state),
       emit: (e) => this.events.safeEmit("cloudSync", e),
@@ -468,6 +482,12 @@ export class PolarisKeyClient {
         signedInAs = s;
       },
       purgeSaves: () => this.savesApi.purge(),
+      ...(opts.cloudSync?.exportClock?.now
+        ? { exportNow: opts.cloudSync.exportClock.now }
+        : {}),
+      ...(opts.cloudSync?.exportClock?.sleep
+        ? { exportSleep: opts.cloudSync.exportClock.sleep }
+        : {}),
     });
     this.savesApi = new SavesApi({
       ctx: this.core,
@@ -477,7 +497,13 @@ export class PolarisKeyClient {
       subject: () => signedInAs,
       attach: () => this.cloudSyncApi.attach(),
       emit: (e) => this.events.safeEmit("cloudSync", e),
+      // A file route's `account_required` reaches the machine like a `/sync` one does.
+      onAccountRequired: (url, forSubject) =>
+        this.accountRequiredFromRoute(url, forSubject),
     });
+    this.keyring.subject = () => signedInAs;
+    this.keyring.onAccountRequired = (url, forSubject) =>
+      this.accountRequiredFromRoute(url, forSubject);
     this.cloudSync = {
       status: () => this.cloudSyncApi.status(),
       flush: () => this.cloudSyncApi.flush(),
@@ -485,6 +511,8 @@ export class PolarisKeyClient {
       onConflict: (fn) => this.cloudSyncApi.onConflict(fn),
       conflicts: () => this.cloudSyncApi.conflicts(),
       cloudEmpty: () => this.cloudSyncApi.cloudEmpty(),
+      export: (destination, options) =>
+        this.cloudSyncApi.export(destination, options),
       saves: this.savesApi,
       transfers: () => this.savesApi.transfers(),
     };

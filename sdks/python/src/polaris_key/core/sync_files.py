@@ -91,6 +91,7 @@ __all__ = [
     "seal_file_stream",
     "seal_file",
     "open_file_stream",
+    "open_file_stream_planned",
     "OpenedFile",
     "open_file",
     "open_file_range_stream",
@@ -640,6 +641,50 @@ def open_file_stream(coll_key: bytes, kid: bytes, source: Iterable[bytes]) -> It
             raise FileStreamError("auth")
         yield plain
         return
+
+
+def open_file_stream_planned(
+    coll_key: bytes, kid: bytes, source: Iterable[bytes], plain_size: int
+) -> Iterator[bytes]:
+    """:func:`open_file_stream` for a reader that knows the plaintext size (a pointer's size, checked):
+    the last-segment flag comes from the plan, not from the end of the source, so a stream cut on a
+    segment boundary still yields every whole segment before it fails. Yields each segment's plaintext
+    once its tag has verified; ends after the planned segments and reads nothing past them. Raises
+    :class:`FileStreamError` (``shape`` when the source ends early, ``auth``, or a header reason)."""
+    pieces = iter(source)
+    buf = bytearray()
+    ended = False
+
+    def fill(until: int) -> None:
+        nonlocal ended
+        while not ended and len(buf) < until:
+            try:
+                buf.extend(next(pieces))
+            except StopIteration:
+                ended = True
+
+    def take(n: int) -> bytes:
+        out = bytes(buf[:n])
+        del buf[:n]
+        return out
+
+    fill(FILE_HEADER_BYTES)
+    if len(buf) < FILE_HEADER_BYTES:
+        raise FileStreamError("shape")
+    header, salt = _parse_header(take(FILE_HEADER_BYTES), kid)
+    key = sc.derive_file_key(coll_key, salt)
+    count = max(1, -(-plain_size // FILE_SEGMENT_BYTES))
+    for i in range(count):
+        last = i == count - 1
+        plain_len = plain_size - i * FILE_SEGMENT_BYTES if last else FILE_SEGMENT_BYTES
+        want = plain_len + FILE_TAG_BYTES
+        fill(want)
+        if len(buf) < want:
+            raise FileStreamError("shape")
+        plain = sc.aes_gcm_open(key, _segment_nonce(i, last), header, take(want))
+        if plain is None:
+            raise FileStreamError("auth")
+        yield plain
 
 
 @dataclass(frozen=True)

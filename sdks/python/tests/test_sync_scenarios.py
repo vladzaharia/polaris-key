@@ -16,6 +16,7 @@ import pytest
 
 from polaris_key.cloud_sync.machine import CloudSyncMachine, relaunch
 from polaris_key.cloud_sync.routes import synced_settings, user_setting_issues
+from polaris_key.cloud_sync.sign_in_url import safe_sign_in_url
 from polaris_key.constants_generated import (
     SYNC_DEBOUNCE_MS,
     SYNC_MAX_CLOCK_SKEW_MS,
@@ -31,14 +32,15 @@ _CORPUS: Dict[str, Any] = json.loads(
 )
 _SCENARIOS: List[Dict[str, Any]] = _CORPUS["scenarios"]
 _SETTING_CASES: List[Dict[str, Any]] = _CORPUS["settingCases"]
+#: The one sign-in URL rule every host applies (U-52).
+_SIGN_IN_URL_CASES: List[Dict[str, Any]] = _CORPUS["signInUrlCases"]
 #: The records binding of cloudSync.saves (plans/U-22.5.md): a second family, replayed in full.
 _FILE_RECORDS: Dict[str, Any] = _CORPUS["fileRecordCases"]
 _FILE_RECORD_CASES: List[Dict[str, Any]] = _FILE_RECORDS["scenarios"]
 
 
-
 def test_corpus_constants() -> None:
-    assert _CORPUS["syncScenariosVersion"] == SYNC_SCENARIOS_VERSION == 5
+    assert _CORPUS["syncScenariosVersion"] == SYNC_SCENARIOS_VERSION == 6
     assert _CORPUS["constants"] == {
         "debounceMs": SYNC_DEBOUNCE_MS,
         "signOutFlushMs": SYNC_SIGNOUT_FLUSH_MS,
@@ -70,6 +72,9 @@ def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
         return m.flush()
     if name == "refresh":
         return m.refresh()
+    if name == "accountRequired":
+        m.account_required(args[0] if args else None)
+        return {"ok": True}
     raise AssertionError(f"unknown call {name}")
 
 
@@ -172,6 +177,11 @@ def test_scenario(sc: Dict[str, Any]) -> None:
                 assert licence == raw["licence"], f"{where}: licence"
         else:
             raise AssertionError(f"{where}: unknown step")
+
+
+@pytest.mark.parametrize("case", _SIGN_IN_URL_CASES, ids=[c["name"] for c in _SIGN_IN_URL_CASES])
+def test_sign_in_url_case(case: Dict[str, Any]) -> None:
+    assert safe_sign_in_url(case["url"], case["origin"]) == case["expect"]
 
 
 @pytest.mark.parametrize("case", _SETTING_CASES, ids=[c["name"] for c in _SETTING_CASES])

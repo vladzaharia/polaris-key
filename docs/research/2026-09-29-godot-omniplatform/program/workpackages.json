@@ -2367,7 +2367,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/P2-11-updates-page-updaters-shipped-platforms.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2-12",
@@ -4261,7 +4261,7 @@
         "plans/CC-01.md §4, §6 (no exchange here; critical path of automatic sign-in, R-18)"
       ],
       "brief": "wp/I-10a-sdk-identity-node-react-python.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "I-04"
     },
     {
@@ -4295,7 +4295,7 @@
         "plans/CC-01.md §4, §6 (no exchange here; critical path of automatic sign-in, R-18)"
       ],
       "brief": "wp/I-10b-sdk-identity-swift-kotlin-godot.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "I-04"
     },
     {
@@ -4642,7 +4642,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1.9, 2.6],
-      "deps": ["I-20", "I-34"],
+      "deps": ["I-20"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -5163,13 +5163,13 @@
     },
     {
       "id": "I-34",
-      "title": "Granular consent and Connected apps",
+      "title": "Granular consent for the product's own apps",
       "phase": "I",
       "stage": "DX consolidation F: Identity",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.8, 1.2],
-      "deps": ["I-08b", "I-11", "I-35"],
+      "deps": ["I-08b", "I-11", "I-35", "I-21"],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
@@ -5181,7 +5181,8 @@
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
         "consolidation alias IX-09",
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md",
-        "plans/I-20.md §3.5, §8 (Connected apps groups issuer clients; Disconnect takes a cl_ id)"
+        "plans/I-20.md §3.5, §8 (Connected apps groups issuer clients; Disconnect takes a cl_ id)",
+        "plans/I-34-I-21.15.md (approved 2026-11-10): client rows of Connected apps ship as I-21.15; this package keeps the own-app rows (Change opens PX-14b's toggles; Disconnect via I-11's hook)"
       ],
       "brief": "wp/I-34-granular-consent-connected-apps.md",
       "status": "todo"
@@ -5724,7 +5725,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-20-sdk-settings-react.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -5826,7 +5827,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-12-privacy-settings-portal.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "U-11a",
@@ -9206,7 +9207,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-18-cloud-sync-section.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-19",
@@ -17647,9 +17648,9 @@
     },
     {
       "id": "PX-31b",
-      "title": "Account Packages section and Connected apps with disconnect (split of PX-31)",
+      "title": "Dropped (plans/I-34-I-21.15.md D9, 2026-11-10): Account Packages section and Connected apps with disconnect (split of PX-31); Packages shipped as PX-31a and F-33, client rows are I-21.15, own-app rows are I-34",
       "phase": "PX",
-      "stage": "Locker UX waves (2026-10-19)",
+      "stage": "dropped",
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.2, 0.3],
@@ -17665,7 +17666,7 @@
         "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §4"
       ],
       "brief": "wp/PX-31b-account-packages-connected-apps.md",
-      "status": "todo"
+      "status": "dropped"
     },
     {
       "id": "PX-32",
@@ -19357,7 +19358,7 @@
       "optional": false,
       "refs": ["plans/CC-01.md §2 R-5", "plans/CC-01-cloud-connect.md §3"],
       "brief": "wp/CC-26-device-key-stores.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "I-42",
@@ -19677,7 +19678,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5", "plans/CC-01.md §4"],
       "brief": "wp/U-39-e2e-client-swift-kotlin.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-40",
@@ -20065,7 +20066,7 @@
         "plans/DEVICE-REMOVAL.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)"
       ],
       "brief": "wp/I-53-device-removal.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-65",
@@ -20172,7 +20173,15 @@
       "estimateWeeks": [0.4, 0.6],
       "deps": ["U-38", "U-39", "U-40"],
       "planMode": true,
-      "gates": ["plan-mode", "drift-gate", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "all-sdks",
+        "corpus-runner",
+        "security-review",
+        "ci:macos",
+        "ci:android"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
@@ -20192,13 +20201,31 @@
       "role": "pkey-sdk-porter",
       "estimateWeeks": [0.2, 0.3],
       "deps": ["U-12"],
-      "planMode": false,
-      "gates": ["drift-gate", "all-sdks"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate", "all-sdks", "corpus-runner"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": ["plans/U-12-PX-18.md §3 follow-up (b)"],
       "brief": "wp/U-52-sdk-stop-after-removal.md",
+      "status": "todo"
+    },
+    {
+      "id": "U-51k",
+      "title": "Kit action \"Download synced data\" and its not-encrypted warning (U-51 D8)",
+      "phase": "U",
+      "stage": "U4 later",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.4],
+      "deps": ["U-51"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "pkey-ux-reviewer", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["U-51 plan decision D8 (lead directory, plans/U-51-U-52.md)"],
+      "brief": "wp/U-51k-cloud-sync-export-kit.md",
       "status": "todo"
     },
     {

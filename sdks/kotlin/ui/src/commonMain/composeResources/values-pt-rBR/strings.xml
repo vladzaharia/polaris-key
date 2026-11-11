@@ -785,8 +785,8 @@
     <string name="cloudSync_conflict">Algumas alterações estão em conflito.</string>
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_error">Não foi possível sincronizar. Tente novamente mais tarde.</string>
-    <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
-    <string name="cloudSync_signedOut">Você saiu da conta.</string>
+    <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when sync stopped because this device has no signed-in account for it; Sign in to sync sits beside it. Say the sync stopped, not that the person is signed out: the app may still show them as signed in. Not an error. -->
+    <string name="cloudSync_syncStopped">A sincronização parou.</string>
     <!-- CloudSyncStatus: a small sync status. Syncing needs an account. -->
     <string name="cloudSync_signIn">Entrar para sincronizar</string>
     <string name="cloudSync_signIn__macos">Entrar para sincronizar</string>
@@ -1276,6 +1276,10 @@
     </plurals>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_noEntries">Esta chave não tem mais usos em %1$s. Adicione-a à sua conta e entre em %1$s com sua conta.</string>
+    <!-- Body of a request card that could not be reached because the network failed; a Try again button follows. -->
+    <string name="signin_unreachable_network">Verifique sua conexão.</string>
+    <!-- Body of a request card refused for too many attempts; a Try again button follows. -->
+    <string name="signin_unreachable_wait">Aguarde um momento.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">Continuar sem conta</string>
     <string name="signin_key_skip__macos">Continuar sem conta</string>
@@ -2384,16 +2388,23 @@
     <string name="localPairing_pairedDevices">Dispositivos pareados</string>
     <string name="localPairing_pairedDevices__macos">Dispositivos pareados</string>
     <!-- Pair with a Code: show: what to do with the code. -->
-    <string name="localPairing_showBody">Escaneie ou insira este código no outro dispositivo.</string>
-    <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
+    <string name="localPairing_showBody">Insira este código no outro dispositivo.</string>
+    <!-- Pair with a Code: Screen reader label; never shown. Names the QR in the QR view. -->
     <string name="a11y_qrPairing">Código QR com o código de pareamento</string>
     <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
     <string name="localPairing_expires">Expira em %1$s</string>
     <!-- Pair with a Code: show: shown while the code is open. -->
     <string name="localPairing_waitingDevice">Aguardando o outro dispositivo…</string>
-    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
-    <string name="localPairing_toEnter">Inserir um código em vez disso</string>
-    <string name="localPairing_toEnter__macos">Inserir um código em vez disso</string>
+    <!-- Pair with a Code: QR view: the title. -->
+    <string name="localPairing_qrTitle">Escaneie para parear</string>
+    <!-- Pair with a Code: QR view: what to do with the QR. -->
+    <string name="localPairing_qrBody">Aponte a câmera do outro dispositivo para cá.</string>
+    <!-- Pair with a Code: code view: the quiet link to the QR view of the same window. -->
+    <string name="localPairing_toQr">Mostrar um código QR</string>
+    <string name="localPairing_toQr__macos">Mostrar um código QR</string>
+    <!-- Pair with a Code: QR view: the quiet link back to the code view of the same window. -->
+    <string name="localPairing_toCode">Mostrar o código em vez disso</string>
+    <string name="localPairing_toCode__macos">Mostrar o código em vez disso</string>
     <!-- Pair with a Code: show: after a wrong guess. -->
     <string name="localPairing_rotatedTitle">Código incorreto inserido</string>
     <!-- Pair with a Code: show: the code is new now. -->
@@ -3148,6 +3159,14 @@
     <string name="core_codes_sync_merge_closed_title">Já decidido</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_merge_closed_message">A escolha já foi feita ou foi substituída por uma alteração mais recente. Nada foi alterado.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_export_too_large_title">Cópia grande demais</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_export_too_large_message">Os dados sincronizados são grandes demais para um único arquivo. Nada foi salvo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_export_failed_title">Cópia não salva</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_export_failed_message">Não foi possível salvar a cópia dos seus dados sincronizados. Verifique o destino e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App não configurado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

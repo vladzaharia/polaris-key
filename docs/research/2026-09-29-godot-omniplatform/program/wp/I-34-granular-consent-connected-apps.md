@@ -1,16 +1,18 @@
-# I-34 Granular consent and Connected apps
+# I-34 Granular consent for the product's own apps
 
-| Field       | Value                                                                                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation F: Identity)                                                                              |
-| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                         |
-| Depends on  | [I-08b](I-08b-licence-choice-api.md), [I-11](I-11-portal-library.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md)                                                  |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-21](I-21-product-issuer.md), [PX-14b](PX-14b-native-return-consent-toggles.md), [PX-31b](PX-31b-account-packages-connected-apps.md) |
-| Role        | `pkey-implementer`                                                                                                                                                             |
-| Plan mode   | no                                                                                                                                                                             |
-| Gates       | none beyond the green gate                                                                                                                                                     |
-| Human input | none                                                                                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                      |
+| Field       | Value                                                                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation F: Identity)                                                             |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                                                        |
+| Depends on  | [I-08b](I-08b-licence-choice-api.md), [I-11](I-11-portal-library.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md), [I-21](I-21-product-issuer.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14b](PX-14b-native-return-consent-toggles.md), [PX-31b](PX-31b-account-packages-connected-apps.md)                |
+| Role        | `pkey-implementer`                                                                                                                                            |
+| Plan mode   | no                                                                                                                                                            |
+| Gates       | none beyond the green gate                                                                                                                                    |
+| Human input | none                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                     |
+
+> **Narrowed (2026-11-10).** Connected apps for registered client apps, their Disconnect and Change, and the client lifecycle ship as I-21.15 (`plans/I-34-I-21.15.md`). This package keeps the product's own-app rows in that section (Change opens PX-14b's toggles; Disconnect via I-11's hook) and now depends on I-21.
 
 ## Consolidation 2026-10-07
 

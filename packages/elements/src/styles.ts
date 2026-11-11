@@ -1415,6 +1415,33 @@ bdi {
   gap: var(--pk-space-2) var(--pk-space-3);
   color: var(--pk-text-muted);
 }
+/* The Cloud Sync strip: the glyph stays with the label; the action sits on the label's line when
+   it fits and wraps under the label's start (not the glyph) otherwise. The strip reserves one
+   44 px line, so a state that appears (Sync stopped) moves nothing. */
+.inline-status[data-grouped] {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  min-block-size: 2.75rem;
+}
+.inline-status[data-grouped] > .status-glyph {
+  margin-block-start: calc((2.75rem - 1.25rem) / 2);
+}
+.inline-status[data-grouped] > .inline-body {
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--pk-space-3);
+  min-inline-size: 0;
+}
+/* The label's first line is centred in the 44 px line; a wrapped second line hangs below, so the
+   glyph (centred on that first line) stays with it. */
+.inline-status[data-grouped] > .inline-body > :first-child {
+  display: block;
+  box-sizing: border-box;
+  min-block-size: 2.75rem;
+  padding-block: calc((2.75rem - 1lh) / 2);
+}
 /* The bar takes its own row under the label: a flex item with no inline size is 0 px wide. */
 .inline-status .progress {
   flex: 1 0 100%;

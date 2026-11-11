@@ -9003,6 +9003,116 @@ the system transfer service for the task's life; the SDK cancels tasks older tha
 relaunch and all of them at sign-out. While the app is suspended, a ranged read is bounded only by
 the task's end.
 
+### Cloud Sync device export: T33 (U-51)
+
+`cloudSync.export()` writes a person's synced data, decrypted, to a file on the device
+(WIRE-CONTRACT-V5 §13.12). It adds no route, header or server row.
+
+- **T33, the device export writes plaintext outside protected storage.** In end-to-end mode the
+  data was ciphertext at rest and is now a readable file, in a place the person chose. Controls:
+  an explicit destination only (the SDK never picks a location, never writes to shared storage on
+  its own and never uploads); on a path the partial is created exclusively with owner-only access
+  at creation (no pre-created file, link, directory or device is followed or written), flushed and
+  renamed atomically over the destination, an error or a cancel removes it and leaves the old
+  destination as it was, and the next export removes a partial a crash left; no other plaintext
+  temp copy exists; no value, id or path is logged; no secret, no ciphertext and no pairwise
+  subject is in the archive; entry names come from a closed grammar (fixed names and decimal
+  positions), so no person-chosen id, device name or Worker-chosen text can make an unzip write
+  outside its folder or collide; everything the Worker serves is untrusted: a file is read at most
+  its planned size, hashed against the pointer (or the binding in end-to-end mode, the manifest
+  for chunks) and ends listed partial on any difference, so a same-size swap is flagged and not
+  written as live; a pointer's size must be a safe integer, a chunked file is planned by its
+  authenticated manifest, and the entry, chunk, zip32-total and wait bounds are all checked
+  before the first byte, so a hostile store cannot exhaust the disk, memory or time; a row that
+  cannot be written as canonical JSON is dropped and listed, never aborting the export. In
+  end-to-end mode a row the Worker forged or altered fails to open (the name check of §13.10.4)
+  and lands in `skipped`; a file the sealed value does not bind is not written. In server mode the
+  export trusts the Worker as sync does. Residuals: once written, the file is as safe as its holder
+  keeps it (backups, shared folders, a stolen unlocked device); the SDK has no consent gate (the
+  app already holds the data, and the app decides when to export); a Worker can withhold rows or
+  serve stale ones, so an export is the Worker's view, complete only as far as the Worker is honest
+  (`unsynced` and `skipped` say what the device knows); kept revisions in end-to-end mode are
+  authenticated but bound to nothing, so a Worker can present another file of the same collection
+  as an older revision (an integrity limit of the person's own copy, never a disclosure; marked
+  `live: false`, `bound: false`); a crash leaves a `.partial` until the next export removes it;
+  a file the SDK cannot remove (an SAF document it did not create, a browser's already-saved
+  download) is the app's to delete; and the hourly file
+  allowance (§13.8.2) means a large export can wait, up to the wait bound, then fails with
+  reason `network`.
+
+  What each port can and cannot guarantee at the destination (the rules are §13.12's; where a
+  runtime has no primitive the SDK checks around the gap and the gap is a residual):
+  - **Node, Python, Swift, Kotlin on a POSIX file system** do all of it: `<destination>.partial`
+    is created exclusively, without following a link, at mode `0600`, flushed and fsynced
+    (Swift `F_FULLFSYNC`), renamed over the destination, and the directory is synced.
+  - **Windows** (Node, Python, Kotlin) has no `O_NOFOLLOW` and ignores the mode: the user's
+    default ACL on the folder applies, so another account the folder is shared with may read a
+    file the person put there. The exclusive create still refuses an existing entry, and each
+    port checks for a link before creating.
+  - **Swift on iOS, tvOS, visionOS, watchOS** sets `FileProtectionType.completeUnlessOpen` on the
+    partial before the first byte, and the class survives the rename: once the file is closed it
+    cannot be read while the device is locked. `complete` was not used: the partial stays open
+    for the whole export, and a device that locks mid-export would make its writes fail, where an
+    open `completeUnlessOpen` file stays writable. macOS has no such attribute: `0600` is the
+    protection.
+  - **Godot** has less to work with. `FileAccess` has no exclusive create, so a stale partial is
+    removed first and the partial is created empty, tightened and reopened without truncating; another
+    process that can write the destination's folder, and creates it in between, is not detected.
+    It has no `O_NOFOLLOW`: links are checked before creating (again immediately before the open),
+    after creating and again before the rename, and a link swapped in between a check and its use
+    is followed (a race with another process that can write the destination's folder). An app
+    exports to `user://` or a folder only it can write. It has no fsync, only a flush, so
+    after a power loss a renamed file can be short. Mode bits exist only on macOS and Linux (the
+    file is created empty, set to `0600`, and only then written); on Windows the ACL applies, on
+    Android and iOS the app-private store is the protection, and on the web `user://` is held in
+    memory (IndexedDB) so the plaintext sits there until the app deletes it or offers it. A
+    device or pipe at the destination is not told from a file. On Windows the engine's rename
+    removes an existing target and then moves, so a crash between the two can lose the old
+    destination. `export` also finishes only at its next step after a cancel: a request in flight
+    (at most 15 s) ends first.
+  - **Kotlin on Android** has no path: the app passes an SAF `OutputStream`. The SDK writes and
+    flushes it and never closes it; the app closes it and deletes the document on a failure or
+    cancel. The SDK can neither delete nor tell what the document held before, so a document the
+    person chose to overwrite can be left truncated.
+  - **A browser** has no path and no rename: a Blob returned to the app (capped), or a picker's
+    stream that an error aborts. The app revokes any object URL it made.
+  - **A hard crash** (power loss, a kill) on any path port leaves a `.partial` until the next
+    export removes it.
+  - **A destination error's operating-system message can carry the path.** The SDK puts a reason,
+    never a path, in its own error and logs nothing, but a chained or wrapped OS error may name
+    it: a host must not log or report a destination error it did not build.
+  - **One more difference:** the Godot SDK refuses a Worker body that holds a lone surrogate as a
+    whole (the pull fails with reason `network`) where the other ports drop that one row and list
+    it `invalid`, because a Godot `String` cannot hold one.
+
+### Cloud Sync after a per-product removal: T34 (U-52)
+
+When the Worker takes a person's account away (`403 account_required`, from `/sync`, a key-ring route or a
+file route), a device keeps its state as it stands: the subject's partition (pending edits, snapshot, cursor,
+`clientId`, E2E bookkeeping) is deleted whole, the key ring's root is dropped and its pin forgotten, the status
+stays `blocked` across a relaunch, and "Sign in to sync" is offered. The code is unsigned, so this section is
+about a forged one.
+
+- **T34, a forged `account_required`.** Forging it takes TLS interception, a trusted-root proxy or a
+  compromised Worker. Controls: the answer counts only when the Worker's own origin sent it (a redirected,
+  opaque or off-origin 403 is an ordinary 403) and, from a key-ring or file route, only for the person signed in
+  when that call started (a late answer for a person who has gone says nothing about the one signed in now); the
+  offered `signInUrl` passes one rule in every SDK (https on the Worker's origin; no userinfo, backslash, control
+  or non-ASCII character; a trailing dot and a lookalike host fail; pinned by the corpus's `signInUrlCases`), so it
+  never sends the person to another origin; nothing is written to licence state or to the server; the refused
+  subject is signed in again only by a sign-in the person completes, never by the cached one replayed at launch;
+  a pin that could not be removed is saved with the blocked state, retried at start and before any sign-in, and
+  the sign-in waits for it; if the blocked state cannot be rewritten the old file (which holds the snapshot in the
+  clear) is removed and the refusal is kept in memory for the run. Effects, by design: the edits not yet pushed
+  are lost (D2), the snapshot is dropped (the next pull restores it), the root is locked and `sealedKeys` restart
+  as on a new device, and "Sign in to sync" shows. The root comes back through the wrap from another device, the
+  recovery code or a platform backup; a Godot desktop build has no platform backup, so there it is the wrap and the
+  recovery code. Residual, and it is the one that matters: forgetting the pin also resets the device's E2E ring pin,
+  so for a Worker or TLS adversary the next ring read is first-contact trust on demand, as on a new device (T21's
+  key substitution applies from then on; the wrap and the recovery code still need the person's other devices or
+  code). The platform backup stays (D3), a device that never comes online keeps its root (T22), and a same-origin
+  tab or process can still report it. A notice "your encryption was reset" is not built.
+
 ### The account override layer (U-03, U-27)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the
@@ -11604,6 +11714,122 @@ license_owned` with `signInUrl` and nothing is counted. A licence that is not us
   key writes no binding and clears any the device held (U-02), so a device signed in on the product
   leaves its account and its Cloud Sync principal, and the answer names no subject whatever bearer
   is presented. It never carries an account, an account email or the key.
+
+### Sign in with <Product>: the product issuer (I-21)
+
+plans/I-20.md §9, WIRE-CONTRACT-V5 §12.13. A product becomes an OpenID provider for websites and
+apps that are not its own: registered clients (`cl_…`) send a person's browser to
+`GET /<p>/identity/authorize`, redeem the code at `POST /<p>/identity/token` for an RS256 `id_token`
+and `at+jwt`, refresh, read `userinfo`, revoke, and end the session at `end-session`. The product's
+own app reaches its developer's backend through the device exchange. The tokens are not Polaris
+signed documents: no `pkey-*+jws` verifier accepts one, and `PROTOCOL_VERSION` stays 5. The issuer
+is dark until a product sets `identity.issuer.enabled`. One row per threat, ids IS-1 to IS-14, which
+the contract cites. Tests: `test/services/identity/issuer/*.test.ts` and `test/attack/I21-*.test.ts`.
+
+- **IS-1 Look-alike client phishing (S-16 §5.4 item 14).** Only the product's developer registers a
+  client, through the manifest or the console (at most 20 per product, no dynamic registration).
+  The card names the client, the product, the developer ("by <developer>" for a partner client) and
+  the host the person returns to, from the stored record and never from a query parameter. A client
+  name or developer name is re-checked at render time with the display rules and the reserved terms
+  (`registeredView.ts`): one that fails draws the neutral frame and the client's key, never a spoofed
+  product. A client whose `status` is not `active` is unknown to every issuer route, which read it
+  live, so an operator or the manifest can switch one off at once. Tests: `issuerContinue`,
+  `portalRegisteredClient`.
+- **IS-2 A rogue developer harvesting emails.** Every claim beyond `sub` is the person's to share,
+  per client: the first Continue always asks (D22), an optional claim has its own switch, a
+  required one is asked or the request is Cancel, and a declined claim is in no token and not in
+  `userinfo` (read live). "Connected apps" lists every client. Audit rows
+  `identity.client.continue`, `identity.client.token`, `identity.client.signin`,
+  `identity.client.revoke` and `identity.session.end` name the subject and the client and hold
+  no claim value, code or token. Residual: a profile claim a person shared is the client's to keep
+  (the copy says so).
+- **IS-3 Redirect substitution, open redirect and IdP mix-up.** `client_id` and `redirect_uri` are
+  checked before anything else and the redirect URI must equal a registered one exactly (no case
+  fold, percent-decoding, default port, trailing slash, wildcard, fragment, userinfo or
+  `localhost`; a native loopback port aside). Until both are valid the answer is a branded page and
+  never a redirect, and every later error and the success redirect build on the registered string,
+  never the one the request sent. `iss` is on every redirect (RFC 9207) and the issuer key is the
+  product's own. Tests: `I21-issuer-authorize` (fuzzed redirect classes).
+- **IS-4 Code interception or injection.** PKCE `S256` is required of public clients, and a
+  confidential client sends PKCE or a `nonce` (`plain` is `invalid_request`). A code lives 60
+  seconds, is single use (one atomic consume, a mismatch ends it too) and is bound to the client,
+  the redirect URI, the challenge, `nonce`, the granted scope and claims, the account and the
+  subject. A code presented again revokes the family it opened (10-minute tombstone, audit
+  `identity.refresh.code_reuse`). Client authentication is verified before the code is touched, so a
+  stranger cannot burn one. Tests: `I21-tokenCode`.
+- **IS-5 Refresh token theft and replay.** `pkeyo_` tokens are opaque, 256 bits, stored only as an
+  HMAC under `KEY_HASH_PEPPER`, rotated on every use; a spent token presented again revokes its
+  family with no grace (audit `identity.refresh.reuse`). A token ends 30 days after its last use,
+  a family 90 days after it opened, an account holds at most 10 live families per client, and each
+  use re-checks the client, grant, both toggles, the account and the subject. Revocation paths are
+  the table of §12.13.7; ended rows are purged 30 days later. Tests: `issuerRefresh`.
+- **IS-6 Token confusion and cross-product replay.** Each product signs with its own RS256 key
+  (`typ` `JWT` or `at+jwt`), `alg` is pinned before any key is chosen, and `iss`, `aud` and `typ` are
+  checked: `userinfo` refuses an `id_token`, a `pkeyt_` device token and the device exchange's token
+  (it holds no `openid`), an `id_token_hint` must be an `id_token` of this issuer and this client,
+  and another product's token fails at this product's key set. The document verifiers of §1 to §3 stay
+  EdDSA-only and never see an issuer token. Tests: `I21-tokenConfusion`, `issuerUserinfo`.
+- **IS-7 Issuer key compromise.** The RSA-2048 key is sealed under `PLATFORM_KEK` (R2-09) with the
+  AAD `pkey:v2:<product>:issuer-signing-key:<kid>`, so a blob copied to another product or `kid`
+  does not open; it is never exported, logged or returned. Keys rotate every 90 days, a `next` key
+  is published 7 days before it signs, a retired one stays 30 days, and an emergency rotation
+  (Superadmin, step-up, audited) drops a `kid` at once. The key set is cached for 60 seconds so a
+  dropped key stops verifying quickly. Tests: `issuerKeys`.
+- **IS-8 Silent SSO and a clickjacked consent.** An interactive sign-in always shows Continue
+  (D22). `prompt=none` is answered only with a live Polaris Locker session AND a grant that
+  covers this client's request, on the customer host that holds the session, and is otherwise
+  `login_required`, `consent_required` or `interaction_required`. Continue needs the account
+  session, the portal CSRF header and the request's binder, and the card's pages send
+  `frame-ancestors 'none'`. Tests: `issuerSilent`, `issuerContinue`.
+- **IS-9 Cross-tenant correlation.** `sub` is the pairwise subject of the product, so two products
+  never share one and the account id never leaves. A partner client of a product gets the
+  product's `sub` (D8) and the card says it is another company's app. A profile claim (name,
+  picture, email) is a join key across apps the person shares it with, and the consent copy says a
+  shared claim is the same for every app.
+- **IS-10 Tenant-minted identities presented as verified.** `email_verified` is true only for the
+  account's Polaris-verified primary email (`profileClaims`). A sign-in connection's claims and
+  groups (I-32) never reach a token.
+- **IS-11 The device exchange (D6).** The own client only: the caller's own `pkeyt_` device token,
+  `X-PKey-Device` naming that device and a device that holds a sign-in (a bound pairwise subject
+  of an active account not on the erasure ledger). Every refusal of the credential is the one
+  `400 invalid_grant`; a registered client gets `unauthorized_client`, an unserved issuer
+  `invalid_request`. The answer is 600 seconds, an empty scope, no refresh token, no `id_token`,
+  no `auth_time` and no entitlements: never more than the device token. 10 a minute per device and
+  network and 30 a minute per network, failing closed (a stranger who knows a device id spends only
+  the budget of their own network). The exchange writes no audit row: the access token is a short
+  statement of who the device's person is, never a licence check, and the exchange is a read of what
+  the device already holds. Tests: `issuerDeviceExchange`.
+- **IS-12 Client secret leakage.** `pkeycs_` has a scannable prefix, is stored only as an HMAC under
+  the pepper, shown once, at most 2 live per client, with `last_used_at`. A public client holds no
+  secret. The credential is hashed and compared against every live secret in constant time whether
+  or not the client exists, a failure costs a budget of 20 a minute per client and network and a
+  correct credential is never refused by it. Tests: `I21-tokenCode` ("secret guessing").
+- **IS-13 Logout CSRF and an open redirect at `end-session`.** `end-session` ends nothing: it
+  validates the request and hands the browser to Polaris Locker's `/signout`, which asks "Sign out
+  of Polaris Locker too?". `post_logout_redirect_uri` is used only when the client is known (by
+  `client_id`, or by the `id_token_hint`'s audience, which the hint's verification then binds) and
+  the string equals one of its registered `postLogoutRedirectUris`; the redirect built is the
+  REGISTERED string plus `state`, never the one sent (the loopback port of a native client aside: it
+  is the presented one), and anything else renders a branded page and redirects nowhere. The hint is checked as at `authorize` (`alg` and `typ` pinned, this product's
+  keys, `iss`, `aud`; expired accepted). A repeated or oversized parameter is refused. The handle
+  (`eo_`, 120 seconds, single use) is bound to the browser by the `__Host-pk_req` binder; the page
+  and its three JSON routes are same-origin, and Sign out and Stay signed in need the portal CSRF
+  header while the browser holds a session, are refused cross-site by Fetch Metadata, and spend
+  the handle only after every check has passed. Sign out ends this browser's one session, never
+  another session of the account; refresh tokens and grants survive it. Residual: redeeming the bind
+  token of a cross-host hand-off replaces the browser's `__Host-pk_req` binder (the LK-04
+  precedent), so a hostile link can break a sign-in card that is open in that browser; the
+  person starts it again, and nothing is granted or ended. Tests: `issuerEndSession`,
+  `I21-endSession`.
+- **IS-14 Cost and denial of service.** Each limit of §12.13.11 fails closed: `authorize` 60 a
+  minute per network, `token` 30 per client and network (public) or 600 per client (confidential)
+  with 20 failed authentications per client and network, `userinfo` 120 per network and per subject
+  and client, `revoke` 60 per client and network (public) or per client (confidential), `end-session` 30 per
+  network, the exchange 10 per device and network.
+  Client and redirect-URI counts are capped (20 clients, 10 redirect URIs, 10 post-logout URIs, 2
+  secrets), refresh families are capped at 10, and discovery and the key set are public and cached.
+  Residual: RSA signing is a CPU cost per token, bounded by those limits and by 600-second token
+  lifetimes that clients reuse.
 
 ### Platform → Connections: the operator's side of connections (I-31)
 

@@ -11,7 +11,7 @@ extends RefCounted
 # @pkey-feature identity.exchange identity.gamecenter identity.pgs
 # @pkey-feature sync.files sync.files.delta sync.saves sync.records
 # @pkey-feature connect.identity connect.relay connect.links identity.redirect.native identity.link
-# @pkey-feature identity.keyreturn identity.nearby identity.restore
+# @pkey-feature identity.keyreturn identity.nearby identity.restore identity.accesstoken
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -249,6 +249,9 @@ static func replay(tr: Dictionary, act_hook: Callable = Callable()) -> Array:
 				sdk.core.discovery_manifest = _link_discovery(server.base_url(), tr)
 			if step["action"] in ["browser", "redirectComplete"] and sdk.core.discovery_manifest == null:
 				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
+			if "identity.accesstoken" in tr["features"] and sdk.core.discovery_manifest != null and step["action"] != "discover":
+				# The recorded discovery names the transcript's base; the token route is the loopback server's.
+				sdk.core.discovery_manifest = _identity_rebased(sdk.core.discovery_manifest, tr["baseUrl"], server.base_url())
 			if "identity.restore" in tr["features"] and sdk.core.discovery_manifest != null and step["action"] != "discover":
 				# The recorded discovery names the transcript's base; the routes are the loopback server's.
 				sdk.core.discovery_manifest = _identity_rebased(sdk.core.discovery_manifest, tr["baseUrl"], server.base_url())
@@ -301,6 +304,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			# identity.restore (section 12.11.8): the member and its endpoint.
 			out["restore"] = fragment.get("restore", false) == true
 			out["restoreEndpoint"] = String(fragment.get("restore_endpoint", "")) != ""
+			# identity.accesstoken (section 12.13.10): the fragment's `accessToken` member.
+			out["accessToken"] = fragment.get("access_token", false) == true
 			# connect.links (WIRE-CONTRACT-V5 section 15.9): the cached gate of inter-account links.
 			out["interAccount"] = PKeyConnectClient.inter_account_of(sdk.core.discovery_manifest)
 			# identity.nearby (section 12.11.5): whether the discovery just loaded names nearby approval and its routes.
@@ -321,6 +326,23 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			out["result"] = "ok" if await sdk.identity.restore.delete_wire() else "refused"
 		"linkOffer", "link":
 			out.merge(await _link_step(sdk, step, exchange_keys), true)
+		"accessToken":
+			# Every recorded step asks again inside the 600 second window, so each bypasses the held token (`refresh`);
+			# tests/identity/test_access_token.gd pins the reuse rule.
+			var r: PKeyResult = await sdk.identity.access_token(true)
+			out["accessTokenHeld"] = r.ok and String(r.detail["access_token"]) != ""
+			if r.ok:
+				out["result"] = "ok"
+				out["tokenType"] = r.detail["token_type"]
+				out["expiresIn"] = r.detail["expires_in"]
+			elif r.code == PKeyErrors.SERVICE_UNAVAILABLE:
+				out["result"] = "unavailable"
+			else:
+				out["result"] = "refused"
+				out["status"] = r.detail.get("status") if r.detail is Dictionary else null
+				out["code"] = String(r.code)
+				if r.detail is Dictionary and r.detail.has("retry_after_seconds"):
+					out["retryAfter"] = r.detail["retry_after_seconds"]
 		"subject":
 			var r: PKeyResult = await sdk.identity.subject()
 			out["subject"] = r.detail.get("subject") if r.ok else "unavailable"

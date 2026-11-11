@@ -7,7 +7,7 @@
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 // @pkey-feature license.manage
-// @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
+// @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle identity.accesstoken
 // @pkey-feature identity.redirect.web identity.signin.hints identity.keyreturn identity.choice connect.identity
 // @pkey-feature connect.relay identity.redirect.native
 // @pkey-feature identity.link identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter identity.devicecode.choice sync.files sync.files.delta sync.saves sync.records
@@ -433,6 +433,8 @@ enum SwiftReplay {
                 [identity?.nearbyStart, identity?.nearbyApprove, identity?.nearbyPoll].allSatisfy {
                     ($0 ?? "").isEmpty == false
                 })
+            // `identity.accesstoken` (§12.13.10): whether the discovery just loaded names the exchange.
+            out["accessToken"] = .bool(identity?.accessToken == true)
             // `connect.links` (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
             out["interAccount"] = .bool(await client.connect.interAccount())
             // `connect.local` (CC-29): the cached `services.connect.localPairing` the SDK gates local pairing on.
@@ -587,6 +589,24 @@ enum SwiftReplay {
             }
         case "subject":
             out["subject"] = try await client.identity.subject().map(JSONValue.string) ?? .null
+        case "accessToken":
+            // `refresh: true` on every step: the recording asks again inside the 600 s window and expects a
+            // request each time, which the reuse rule would swallow (unit tests pin the rule).
+            out["accessTokenHeld"] = .bool(false)
+            do {
+                let at = try await client.identity.accessToken(refresh: true)
+                out["result"] = .string("ok")
+                out["accessTokenHeld"] = .bool(!at.accessToken.isEmpty)
+                out["tokenType"] = .string(at.tokenType)
+                out["expiresIn"] = .int(at.expiresIn)
+            } catch let error as PolarisError where error.code == PolarisError.serviceUnavailable {
+                out["result"] = .string("unavailable")
+            } catch let error as PolarisError {
+                out["result"] = .string("refused")
+                out["status"] = error.status.map(JSONValue.int) ?? .null
+                out["code"] = .string(error.code)
+                out["retryAfter"] = error.retryAfterSeconds.map(JSONValue.int) ?? .null
+            }
         case "signOut":
             out["released"] = .bool(try await client.identity.signOut().released)
         case "attach":

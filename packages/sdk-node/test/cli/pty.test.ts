@@ -36,9 +36,8 @@ describe.skipIf(!ptyAvailable)("on a real pty", () => {
       });
       await new Promise((r) => setTimeout(r, 50));
       p.type("\x1b");
-      // The 3 s bound is for the kit, not the machine: it runs from the program's first question
-      // (OSC 11, asked once tsx has loaded it and it reads keys), so a loaded runner's start-up
-      // is not counted. The race only guards against a hang.
+      // No stopwatch: the program ending by itself on the Esc, with its own answer on screen,
+      // is the check; the race only guards against a hang.
       const code = await Promise.race([
         p.exited,
         new Promise<number>((r) => setTimeout(() => r(-1), 20_000)),
@@ -53,7 +52,6 @@ describe.skipIf(!ptyAvailable)("on a real pty", () => {
       expect(text).not.toContain("Code expired");
       expect(code).toBe(1);
       expect(p.osc11Seen).toBe(true);
-      expect(p.exitedAt! - p.osc11At!).toBeLessThan(3000);
     }, 20_000);
 
   const drags: Array<[string, Array<[number, number]>]> = [

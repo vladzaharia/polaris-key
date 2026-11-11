@@ -22,11 +22,11 @@ import {
 import { Button } from "../../../../ui/Button.js";
 import { readStash } from "../../../../lib/stepUp.js";
 import { Callout } from "../../../../ui/Callout.js";
+import { ReasonField } from "../../../../ui/ReasonField.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { confirmBlocked, NEEDS_REASON } from "../../../../ui/confirmReasons.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
-import { Textarea } from "../../../../ui/Textarea.js";
 import { toast } from "../../../../ui/toast.js";
 import { RuleEditor } from "../../../access/RuleEditor.js";
 import { mutate } from "../../../data/mutations.js";
@@ -294,21 +294,7 @@ export function PlatformSsoRules({
         });
       }}
     >
-      <div className="space-y-1 text-sm">
-        <label className="block space-y-1">
-          <span className="font-medium text-fg-strong">Reason</span>
-          <Textarea
-            value={reason}
-            onValueChange={setReason}
-            maxLength={500}
-            rows={2}
-            placeholder="Why this changes"
-          />
-        </label>
-        <p className="text-xs text-fg-muted">
-          Required. Kept in the activity log.
-        </p>
-      </div>
+      <ReasonField value={reason} onValueChange={setReason} />
     </ConfirmDialog>
   );
 

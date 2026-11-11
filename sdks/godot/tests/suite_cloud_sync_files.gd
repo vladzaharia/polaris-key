@@ -14,6 +14,7 @@ const PRODUCT := "diceroll"
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_paths(t)
 	await _transport(t)
+	await _account_required(t)
 	await PKeyTestFixtures.frames(10)
 	return true
 
@@ -71,6 +72,44 @@ func _rig_done(r: Dictionary) -> void:
 	r["server"].stop()
 	r["server"].queue_free()
 	r["host"].queue_free()
+
+
+## U-52: a 403 account_required on a file route tells the host once, with the URL the Worker named; any
+## other 403 does not.
+func _account_required(t: PKeyTestContext) -> void:
+	var target := {"collection": "saves", "record": "slot1"}
+	var next: Array = []
+	var who := ["ps_a"]
+	# The person changes while the request is out: the call's subject was noted when it started.
+	var rig := _transport_rig(func(_req: Dictionary) -> Dictionary:
+		who[0] = "ps_b"
+		return next.pop_front() if not next.is_empty() else {"status": 599})
+	var ft: Object = rig["ft"]
+	var told: Array = []
+	ft.on_account_required = func(url: Variant, subject: Variant) -> void: told.append([url, subject])
+	ft.subject_now = func() -> Variant: return who[0]
+	next.append({"status": 403, "headers": {"content-type": "application/json"}, "body": JSON.stringify({"error": {"code": "account_required", "signInUrl": "/signin?product=diceroll"}})})
+	var r: Dictionary = await ft.status(target, "up_1")
+	t.check("account_required: the file route's own refusal is unchanged", not r["ok"] and r["code"] == "account_required")
+	t.check("account_required: the host is told once with the named URL and the person the call started for", told == [["/signin?product=diceroll", "ps_a"]], str(told))
+	next.append({"status": 403, "headers": {"content-type": "application/json"}, "body": JSON.stringify({"error": {"code": "quota_exceeded"}})})
+	await ft.status(target, "up_1")
+	next.append({"status": 404, "headers": {"content-type": "application/json"}, "body": JSON.stringify({"error": {"code": "account_required"}})})
+	await ft.status(target, "up_1")
+	next.append({"status": 403, "body": "not json"})
+	await ft.status(target, "up_1")
+	t.check("account_required: another 403, another status or an unreadable body tells nothing", told.size() == 1, str(told))
+	next.append({"status": 403, "headers": {"content-type": "application/json"}, "body": JSON.stringify({"error": {"code": "account_required"}})})
+	await ft.status(target, "up_1")
+	t.check("account_required: a missing URL is null", told.size() == 2 and told[1][0] == null)
+	# An answer whose final URL is not the one asked for (a redirect hop) is an ordinary 403.
+	var out := {"res": {"status": 403, "headers": {}, "url": "http://127.0.0.1:1/elsewhere", "body": JSON.stringify({"error": {"code": "account_required"}}).to_utf8_buffer()}}
+	ft._note_account_required(out, "http://127.0.0.1:1/diceroll/sync/files/saves/slot1", "ps_a")
+	t.check("account_required: an answer from another URL tells nothing", told.size() == 2)
+	out["res"]["url"] = "http://127.0.0.1:1/diceroll/sync/files/saves/slot1"
+	ft._note_account_required(out, "http://127.0.0.1:1/diceroll/sync/files/saves/slot1", "ps_a")
+	t.check("account_required: the Worker's own URL counts", told.size() == 3)
+	_rig_done(rig)
 
 
 func _transport(t: PKeyTestContext) -> void:

@@ -36,6 +36,7 @@ import httpx
 
 from .backend import BackendClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
+from .cloud_sync.export_host import CloudSyncExporter
 from .cloud_sync.host import CloudSyncHost, CloudSyncHostDeps, CloudSyncHostOptions
 from .cloud_sync.merge import HostMergeMachine, MergeRegistry
 from .cloud_sync.saves import SavesApi
@@ -351,8 +352,8 @@ class PolarisKeyClient:
             refresh_discovery=self._refresh_discovery,
             # Nearby sign-in (I-47): D's keys come from Connect's signer, the LAN half is Cloud Connect's
             # nearby engine, and this runtime can browse unless the client has no transport.
-            nearby_signer=lambda: self.connect.nearby_signer(),
-            cloud_nearby=lambda: self.cloud_connect.nearby,
+            nearby_signer=lambda: self.connect.nearby_signer(),  # type: ignore[has-type]
+            cloud_nearby=lambda: self.cloud_connect.nearby,  # type: ignore[has-type]
             keyring=lambda: self.keyring,
             nearby_runtime=lambda role: not self.core.local_only,
             register_nearby_keys=self._register_nearby_keys,
@@ -476,7 +477,7 @@ class PolarisKeyClient:
             emit=self._emit_cloud_sync,
             log=lambda m: _log.warning("%s", m),
             on_subject=lambda s: self._set_synced_subject(s),
-            purge_saves=lambda: self._saves_api.purge(),
+            purge_saves=lambda: self._saves_api.purge(),  # type: ignore[has-type]
             merge=self._merge,
         )
         self._synced_subject: Optional[str] = None
@@ -492,7 +493,19 @@ class PolarisKeyClient:
         )
         #: Cloud Sync (WIRE-CONTRACT-V5 §13): ``status()`` and ``flush()``; changes arrive as
         #: ``client.events`` ``cloudSync`` events. A product without the Sync service gets the typed N/A.
-        self.cloud_sync = CloudSyncClient(self._cloud_sync_api, self._saves_api)
+        self.cloud_sync = CloudSyncClient(
+            self._cloud_sync_api,
+            self._saves_api,
+            CloudSyncExporter(
+                ctx=self.core,
+                host=self.cloud_sync_host,
+                keyring=self.keyring,
+                tokens=self._tokens,
+                subject=self.identity._account.stored_subject,
+                attach=self._cloud_sync_api.attach,
+                flush=self._cloud_sync_api.flush,
+            ),
+        )
         # The identity session's subject drives the machine; a sign-out flushes (bounded) and forgets.
         self.events.subscribe(self._identity_to_sync, ("identity",))
         self.identity.on_before_sign_out(self._cloud_sync_api.before_sign_out)

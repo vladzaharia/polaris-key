@@ -122,7 +122,12 @@ private fun statusCode(status: Int): String = when {
  * The file routes of section 13.2 as a [FileTransport]. [bound] is the person the session belongs to (the host's
  * subject): a request whose bearer is another person's is not sent.
  */
-public class HttpFileTransport(private val core: CoreContext, private val bound: () -> String? = { null }) : FileTransport {
+public class HttpFileTransport(
+    private val core: CoreContext,
+    /** Told of a 403 `account_required` (never a redirected one): its `signInUrl` (or null) and the call's subject. */
+    private val onAccountRequired: (signInUrl: String?, forSubject: String?) -> Unit = { _, _ -> },
+    private val bound: () -> String? = { null },
+) : FileTransport {
     private class Sent(
         val json: JsonObject? = null,
         val body: ByteArray? = null,
@@ -193,7 +198,15 @@ public class HttpFileTransport(private val core: CoreContext, private val bound:
         )
         val res = core.transport.send(wire)
         if (res.status in FIRST_3XX..LAST_3XX) return res.status to PolarisResponseView(ByteArray(0), emptyMap(), redirect = true)
+        if (res.status == STATUS_FORBIDDEN) noteAccountRequired(res.body, now)
         return res.status to PolarisResponseView(res.body, res.headers.mapKeys { it.key.lowercase() })
+    }
+
+    /** A 403 `account_required` from the Worker's own origin (no redirect is followed): the host hears of it. */
+    private fun noteAccountRequired(body: ByteArray, subject: String?) {
+        if (body.size > FILES_ERROR_MAX_BYTES) return
+        val err = (JsonText.parseOrNull(String(body, Charsets.UTF_8)) as? JsonObject)?.get("error").objectValue
+        if (err?.get("code").stringValue == ErrorCode.accountRequired) onAccountRequired(err?.get("signInUrl").stringValue, subject)
     }
 
     private class PolarisResponseView(val body: ByteArray, val headers: Map<String, String>, val redirect: Boolean = false)

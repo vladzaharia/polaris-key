@@ -328,6 +328,10 @@ private final class GuardedFileCodec: FileCodec, CustomReflectable, CustomString
         try check()
         return GuardedOpener(inner: inner.makeOpener(), codec: self)
     }
+    func makePlannedOpener(plainSize: Int) throws -> any FileOpener {
+        try check()
+        return GuardedOpener(inner: try inner.makePlannedOpener(plainSize: plainSize), codec: self)
+    }
 }
 
 private final class GuardedOpener: FileOpener, @unchecked Sendable {
@@ -475,6 +479,12 @@ public actor SyncKeyring: CustomReflectable {
         }
     }
     private nonisolated let memory = RingMemory()
+    /// Told when a ring route answers `account_required` (the client wires Cloud Sync here), with the answer's
+    /// `signInUrl` unvetted and the person signed in when the call started. The call still throws its own
+    /// error. Only an answer from the Worker's own origin counts.
+    nonisolated let accountRequiredHook = LockedValue<(@Sendable (String?, String?) -> Void)?>(nil)
+    /// Who is signed in now (Cloud Sync's person), read when a call starts.
+    nonisolated let subjectProvider = LockedValue<(@Sendable () async -> String?)?>(nil)
     private var madeKeys: (any DeviceKeyPort)?
     private var madeRoots: RingRootStore?
     private var madeBackup: (any SyncRootBackupPort)?
@@ -1137,9 +1147,28 @@ public actor SyncKeyring: CustomReflectable {
             headers["content-type"] = "application/json"
             data = try JSONSerialization.data(withJSONObject: body)
         }
+        let forSubject = await subjectProvider.current?()
         let res = try await core.request(core.endpoints.url(path), method: method, headers: headers, body: data)
-        guard res.isOK else { throw Self.refusal(res) }
+        guard res.isOK else {
+            let error = Self.refusal(res)
+            if res.status == 403, error.code == ErrorCode.accountRequired {
+                // Only the Worker's own answer counts; from a redirect target it is an ordinary 403.
+                guard res.isFromOrigin(of: core.endpoints.baseUrl) else {
+                    throw PolarisError(
+                        code: ErrorCode.forbidden, message: "The server answered 403.", status: 403)
+                }
+                // The Worker took the account away (WIRE-CONTRACT-V5 section 11.5): Cloud Sync learns it here too.
+                accountRequiredHook.current?(Self.signInUrl(res.body), forSubject)
+            }
+            throw error
+        }
         return res
+    }
+
+    /// The `signInUrl` of an `account_required` body: inside `error` or beside it.
+    static func signInUrl(_ body: Data) -> String? {
+        guard let o = object(body) else { return nil }
+        return o["error"]?.objectValue?["signInUrl"]?.stringValue ?? o["signInUrl"]?.stringValue
     }
 
     private func send(_ method: String, _ path: String, _ body: [String: Any]? = nil) async throws {

@@ -84,7 +84,7 @@ static func cloud_sync_status_view(ctx: RefCounted) -> Dictionary:
 	# to sync, in a neutral tone (DL6). Review shows only when the host handles it.
 	var signed_out := error and _eq(sync.get("signedIn"), false)
 	var review := _eq(state, "conflict") and _eq(sync.get("canReview"), true)
-	var copy: Array = ["cloudSync.signedOut", "cloudSync.signIn"] if signed_out else [
+	var copy: Array = ["cloudSync.syncStopped", "cloudSync.signIn"] if signed_out else [
 		"cloudSync.%s" % [state],
 		"common.review" if review else "",
 	]

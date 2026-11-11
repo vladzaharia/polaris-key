@@ -358,6 +358,12 @@ export const qk = {
   /** I-12: sign-in through this product (the passthrough header name, claimByKey, 4.8). */
   signInSettings: (slug: string) =>
     product(slug, "identity", "sign-in-settings"),
+  /** I-21.14: Sign in with <Product>: the page, and (with the id) one client. */
+  identityClients: (slug: string) => product(slug, "identity", "clients"),
+  identityClient: (slug: string, id: string) =>
+    product(slug, "identity", "clients", id),
+  /** Platform → Issuer keys (I-21.14). */
+  issuerKeys: (): QueryKey => ["platform", "issuer-keys"],
 };
 
 function qkFeeds(scope: FeedScope): QueryKey {

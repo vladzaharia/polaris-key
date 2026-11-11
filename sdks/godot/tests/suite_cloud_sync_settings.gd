@@ -6,6 +6,7 @@ extends RefCounted
 
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const CodecPort := preload("res://addons/polaris_key/services/cloud_sync/codec_port.gd")
+const BulkChannel := preload("res://addons/polaris_key/services/cloud_sync/bulk_channel.gd")
 
 const PRODUCT := "diceroll"
 const KEY := "a.x"
@@ -38,6 +39,37 @@ class FailingState:
 		return false
 
 
+## A ring that also logs `lock()`, the moment the root leaves memory.
+class LoggingRing:
+	extends FakeRing
+
+	func lock() -> void:
+		log.append("ring.lock")
+
+
+## A bulk channel that logs `close()`, the moment the native lanes are cancelled.
+class LoggingChannel:
+	extends BulkChannel
+	var log: Array
+
+	func _init(p_log: Array) -> void:
+		log = p_log
+
+	func available() -> bool:
+		return true
+
+	func close() -> void:
+		log.append("channel.close")
+
+
+## A state file whose rewrite fails (the blocked state cannot be saved).
+class FailingSave:
+	extends "res://addons/polaris_key/services/cloud_sync/state.gd"
+
+	func save(_file: Dictionary) -> bool:
+		return false
+
+
 class OpenCodec:
 	extends CodecPort
 
@@ -51,6 +83,9 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _person_change_and_offline(t)
 	await _sign_out_chain(t)
 	await _elsewhere_and_offers(t)
+	await _account_required_persisted(t)
+	await _account_required_routes(t)
+	await _account_required_hardening(t)
 	await _import_and_document(t)
 	await _quit_durability(t)
 	_licence_free(t)
@@ -132,6 +167,15 @@ func _urls_and_options(t: PKeyTestContext) -> void:
 	t.check("A-5: another origin, http, a scheme-relative or backslash URL is refused", Sync.safe_sign_in_url("https://evil.example/a", base) == null and Sync.safe_sign_in_url("http://key.plrs.im/a", base) == null \
 			and Sync.safe_sign_in_url("//evil.example/a", base) == null and Sync.safe_sign_in_url("/\\evil.example", base) == null and Sync.safe_sign_in_url("javascript:alert(1)", base) == null)
 	t.check("A-5: control characters and whitespace are refused", Sync.safe_sign_in_url("/a b", base) == null and Sync.safe_sign_in_url("/a\n", base) == null and Sync.safe_sign_in_url("\thttps://key.plrs.im/", base) == null)
+	t.check("A-5: the default port is normalised, the path is not restricted", \
+			Sync.safe_sign_in_url("https://key.plrs.im:443/a/b?c=d#e", base) == "https://key.plrs.im/a/b?c=d#e" \
+			and Sync.safe_sign_in_url("https://key.plrs.im/", base) == "https://key.plrs.im/")
+	t.check("A-5: userinfo, any backslash, a trailing dot, a punycode lookalike and another port are refused", \
+			Sync.safe_sign_in_url("https://user@key.plrs.im/a", base) == null \
+			and Sync.safe_sign_in_url("https://key.plrs.im\\@evil.example/", base) == null \
+			and Sync.safe_sign_in_url("https://key.plrs.im/a\\b", base) == null and Sync.safe_sign_in_url("https://key.plrs.im./a", \
+					base) == null and Sync.safe_sign_in_url("https://xn--key-plrs.im/a", base) == null \
+			and Sync.safe_sign_in_url("https://key.plrs.im:8443/a", base) == null and Sync.safe_sign_in_url("https://key.plrs.im:443@evil.example/", base) == null)
 	t.check("A-5: null and non-strings stay null", Sync.safe_sign_in_url(null, base) == null and Sync.safe_sign_in_url(5, base) == null and Sync.safe_sign_in_url("", base) == null)
 	var o := PKeyOptions.new()
 	o.product_slug = PRODUCT
@@ -345,6 +389,275 @@ func _elsewhere_and_offers(t: PKeyTestContext) -> void:
 		has_null_offer = has_null_offer or (e.get("type") == "signInOffered" and e.get("sign_in_url") == null)
 	t.check("A-5: a person change by the Worker's own word is an involuntary leave with a null offer", kinds.has("signedOut") and has_null_offer, str(kinds))
 	_done(c2)
+
+
+## U-52: `account_required` keeps the machine as it stands (blocked, no partition) and the refused subject
+## with it. A relaunch stays blocked and sends nothing for that subject; another subject lifts it.
+func _account_required_persisted(t: PKeyTestContext) -> void:
+	var log := []
+	var version := [0]
+	var mode := ["ok"]
+	var handler := _handler(log, version, func(req: Dictionary) -> Variant:
+		if mode[0] == "account_required" and req["path"].contains("/sync"):
+			return {"status": 403, "body": "{\"error\":{\"code\":\"account_required\",\"signInUrl\":\"https://evil.example/x\"}}"}
+		return null)
+	var c := await _make(handler)
+	var sdk: Node = c["sdk"]
+	await _sign_in(c, "ps_a")
+	var ring := FakeRing.new(log, sdk.cloud_sync.host._file.path())
+	sdk.cloud_sync._keyring = ring
+	sdk.config.set_value(KEY, 9)
+	mode[0] = "account_required"
+	await sdk.cloud_sync.flush()
+	await sdk.cloud_sync._join_chain()
+	await PKeyTestFixtures.frames(3)
+	var host: Node = sdk.cloud_sync.host
+	var types: Array = c["events"].map(func(e: Dictionary) -> Variant: return e.get("type"))
+	var left: Array = c["events"].filter(func(e: Dictionary) -> bool: return e.get("type") == "signedOut")
+	t.check("U-52: the app hears signedOut(accountRequired) with the edit counted, and no unsyncedData", left.size() == 1 \
+			and left[0]["reason"] == "accountRequired" and left[0]["unsynced"] >= 1 and not types.has("unsyncedData"), str(c["events"]))
+	t.check("U-52: the ring forgot, and the status reads blocked (not local)", log.has("ring.forget") \
+			and sdk.cloud_sync.status().detail["state"] == "blocked" and sdk.cloud_sync.status().detail["reason"] == "account_required")
+	var saved: Dictionary = host._file.load_file()
+	t.check("U-52: the machine is saved as it stands: blocked, no partition for the subject, the refused subject named", \
+			FileAccess.file_exists(host._file.path()) and saved["refused"] == "ps_a" and saved["persisted"]["blocked"] == "account_required" \
+			and not saved["persisted"]["partitions"].has("ps_a"), str(saved.get("refused")))
+	var offer: Dictionary = {}
+	for e: Dictionary in c["events"]:
+		if e.get("type") == "signInOffered":
+			offer = e
+	t.check("U-52: the offer's foreign sign-in URL is vetted to null", not offer.is_empty() and offer.get("sign_in_url") == null)
+	# While blocked an edit stays local and nothing is sent.
+	var sync_before := _paths.filter(func(p: String) -> bool: return p.contains("/sync")).size()
+	sdk.config.set_value(KEY, 10)
+	await sdk.cloud_sync.flush()
+	t.check("U-52: blocked, an edit goes nowhere", _paths.filter(func(p: String) -> bool: return p.contains("/sync")).size() == sync_before)
+	# Relaunch: same options, same store, the same subject still signed in at the identity client.
+	var o: PKeyOptions = sdk.core.options
+	sdk.cloud_sync.close()
+	sdk.queue_free()
+	mode[0] = "ok"
+	var sdk2 := PKeyTestFixtures.new_sdk()
+	sdk2.configure(o)
+	await sdk2.start()
+	# The identity client's cached subject is replayed at launch through attach(), not as a sign-in.
+	sdk2.core.cache.set_subject("ps_a")
+	await sdk2.cloud_sync.attach()
+	await sdk2.cloud_sync._drain()
+	await sdk2.cloud_sync.host.idle()
+	var h2: Node = sdk2.cloud_sync.host
+	var sync_after := _paths.filter(func(p: String) -> bool: return p.contains("/sync")).size()
+	t.check("U-52: a relaunch with the same subject stays blocked, signed out, and sends nothing", h2.machine().subject() == null \
+			and sdk2.cloud_sync.status().detail["state"] == "blocked" and h2.refused() == "ps_a" and sync_after == sync_before, \
+			"%d %d" % [sync_before, sync_after])
+	t.check("U-52: the relaunch holds no root", h2.machine().has_root() == false)
+	sdk2.cloud_sync.on_identity("signedIn", "ps_b", "")
+	await sdk2.cloud_sync._drain()
+	await h2.idle()
+	t.check("U-52: a different subject lifts the block", h2.machine().subject() == "ps_b" and sdk2.cloud_sync.status().detail["state"] != "blocked" and h2.refused() == null)
+	sdk2.cloud_sync.close()
+	sdk2.queue_free()
+	c["server"].stop()
+	PKeyTestFixtures.remove_tree(c["dir"])
+
+	# A sign-out clears the refusal: the same subject may sign in again.
+	log.clear()
+	var c2 := await _make(handler)
+	var sdk3: Node = c2["sdk"]
+	await _sign_in(c2, "ps_a")
+	mode[0] = "account_required"
+	sdk3.config.set_value(KEY, 1)
+	await sdk3.cloud_sync.flush()
+	await sdk3.cloud_sync._join_chain()
+	mode[0] = "ok"
+	t.check("U-52: refused, blocked", sdk3.cloud_sync.host.refused() == "ps_a")
+	await sdk3.cloud_sync.before_sign_out()
+	t.check("U-52: a sign-out purges the blocked state and the refusal", sdk3.cloud_sync.host.refused() == null \
+			and sdk3.cloud_sync.status().detail["state"] == "local" and not FileAccess.file_exists(sdk3.cloud_sync.host._file.path()))
+	await _sign_in(c2, "ps_a")
+	t.check("U-52: the same subject signs in again after a sign-out", sdk3.cloud_sync.host.machine().subject() == "ps_a")
+	# F2: a sign-in the person completes in this run lifts the refusal of that same subject.
+	mode[0] = "account_required"
+	sdk3.config.set_value(KEY, 2)
+	await sdk3.cloud_sync.flush()
+	await sdk3.cloud_sync._join_chain()
+	mode[0] = "ok"
+	t.check("U-52: refused again", sdk3.cloud_sync.host.refused() == "ps_a" and sdk3.cloud_sync.host.machine().subject() == null)
+	sdk3.cloud_sync.on_identity("signedIn", "ps_a", "")
+	await sdk3.cloud_sync._drain()
+	await sdk3.cloud_sync.host.idle()
+	t.check("U-52: the person signing in again as the same subject lifts the refusal", sdk3.cloud_sync.host.machine().subject() == "ps_a" \
+			and sdk3.cloud_sync.host.refused() == null and sdk3.cloud_sync.status().detail["state"] != "blocked")
+	_done(c2)
+
+
+## U-52: the key-ring route and a request in flight. A 403 account_required on a key-ring call is the same
+## signal as the `/sync` one; a `/sync` request on the wire is cancelled and its answer dropped.
+func _account_required_routes(t: PKeyTestContext) -> void:
+	var log := []
+	var version := [0]
+	var ring_403 := [false]
+	var hang_sync := [false]
+	var handler := _handler(log, version, func(req: Dictionary) -> Variant:
+		if ring_403[0] and req["path"].contains("devices/keyring"):
+			return {"status": 403, "body": "{\"error\":{\"code\":\"account_required\",\"signInUrl\":\"/signin?product=diceroll\"}}"}
+		if hang_sync[0] and req["path"].contains("/sync"):
+			return {"hang": true}
+		return null)
+	var c := await _make(handler)
+	var sdk: Node = c["sdk"]
+	await _sign_in(c, "ps_a")
+	sdk.config.set_value(KEY, 3)
+	ring_403[0] = true
+	var read: PKeyResult = await sdk.keyring.read()
+	await sdk.cloud_sync._join_chain()
+	await PKeyTestFixtures.frames(3)
+	t.check("U-52: the key-ring call's own answer is unchanged", not read.ok and String(read.code) == "account_required")
+	t.check("U-52: a key-ring 403 account_required blocks Cloud Sync and forgets the root", sdk.cloud_sync.status().detail["state"] == "blocked" \
+			and sdk.cloud_sync.host.refused() == "ps_a" and not sdk.keyring.unlocked())
+	var offer: Dictionary = {}
+	for e: Dictionary in c["events"]:
+		if e.get("type") == "signInOffered":
+			offer = e
+	# The loopback Worker is http, so the vetting (https on the Worker's origin only) drops the path to null.
+	t.check("U-52: the key-ring answer's sign-in URL is offered through the same vetting", not offer.is_empty() and offer.has("sign_in_url") and offer["sign_in_url"] == null, str(offer))
+	var events_before: int = c["events"].size()
+	await sdk.keyring.read()
+	await PKeyTestFixtures.frames(3)
+	t.check("U-52: a second 403 while blocked changes nothing", c["events"].size() == events_before)
+	_done(c)
+
+	# A /sync request on the wire when the signal arrives: cancelled, its answer dropped, nothing left armed.
+	log.clear()
+	var c2 := await _make(handler)
+	var sdk2: Node = c2["sdk"]
+	await _sign_in(c2, "ps_a")
+	sdk2.config.set_value(KEY, 4)
+	hang_sync[0] = true
+	sdk2.cloud_sync.flush()  # not awaited: the push is out and never answered
+	var waited := 0
+	while c2["server"].requests.filter(func(r: Dictionary) -> bool: return r["method"] == "POST").is_empty() and waited < 200:
+		await PKeyTestFixtures.frames(1)
+		waited += 1
+	t.check("U-52: the push is on the wire", not c2["server"].requests.filter(func(r: Dictionary) -> bool: return r["method"] == "POST").is_empty())
+	var started := Time.get_ticks_msec()
+	sdk2.cloud_sync.account_required(null)
+	var h: Node = sdk2.cloud_sync.host
+	var idle: bool = await h.idle(5000)
+	t.check("U-52: the request in flight is cancelled at once, not after its 15 s timeout", idle and Time.get_ticks_msec() - started < 5000, str(Time.get_ticks_msec() - started))
+	t.check("U-52: the machine is blocked with no request waiting and no timer armed", sdk2.cloud_sync.status().detail["state"] == "blocked" \
+			and h._machine.take_requests().is_empty() and h._timer.is_stopped())
+	_done(c2)
+
+
+## U-52 hardening: a failed forget is saved, retried and holds sign-in; a late answer for someone who left,
+## and one from a redirect, are ordinary; the native lanes close before the root drops; a failed rewrite of the
+## blocked state deletes the file.
+func _account_required_hardening(t: PKeyTestContext) -> void:
+	var log := []
+	var version := [0]
+	var mode := ["ok"]
+	var handler := _handler(log, version, func(req: Dictionary) -> Variant:
+		if mode[0] == "account_required" and req["path"].contains("/sync"):
+			return {"status": 403, "body": "{\"error\":{\"code\":\"account_required\"}}"}
+		if mode[0] == "redirect" and req["path"].contains("devices/keyring"):
+			return {"status": 302, "headers": {"location": "/diceroll/elsewhere"}}
+		if req["path"].contains("/elsewhere"):
+			return {"status": 403, "body": "{\"error\":{\"code\":\"account_required\"}}"}
+		return null)
+
+	# F3: the ring cannot forget. Saved as pending, sign-in waits, the retry at start and before sign-in clears it.
+	var c := await _make(handler)
+	var sdk: Node = c["sdk"]
+	await _sign_in(c, "ps_a")
+	var ring := FakeRing.new(log, sdk.cloud_sync.host._file.path())
+	ring.fail = true
+	sdk.cloud_sync._keyring = ring
+	sdk.config.set_value(KEY, 5)
+	mode[0] = "account_required"
+	await sdk.cloud_sync.flush()
+	await sdk.cloud_sync._join_chain()
+	var host: Node = sdk.cloud_sync.host
+	t.check("U-52 forget: a failing ring.forget is kept as pending, in memory and in the saved state", host.forget_pending() and host._file.load_file()["forgetPending"] == true)
+	mode[0] = "ok"
+	sdk.cloud_sync.on_identity("signedIn", "ps_b", "")
+	await sdk.cloud_sync._drain()
+	await host.idle()
+	t.check("U-52 forget: sign-in waits while the root cannot be removed", host.machine().subject() == null and host.forget_pending())
+	# Relaunch with the failure still pending in the file: the start retries it with a healthy ring.
+	var o: PKeyOptions = sdk.core.options
+	sdk.cloud_sync.close()
+	sdk.queue_free()
+	log.clear()
+	var sdk2 := PKeyTestFixtures.new_sdk()
+	sdk2.configure(o)
+	var ring2 := FakeRing.new(log, "")
+	sdk2.cloud_sync._keyring = ring2
+	await sdk2.start()
+	await sdk2.cloud_sync.attach()
+	var h2: Node = sdk2.cloud_sync.host
+	t.check("U-52 forget: a relaunch retries the forget at start and clears it", log.has("ring.forget") and not h2.forget_pending() and h2._file.load_file()["forgetPending"] == false, str(log))
+	sdk2.cloud_sync.on_identity("signedIn", "ps_b", "")
+	await sdk2.cloud_sync._drain()
+	await h2.idle()
+	t.check("U-52 forget: sign-in then goes through", h2.machine().subject() == "ps_b")
+	sdk2.cloud_sync.close()
+	sdk2.queue_free()
+	c["server"].stop()
+	PKeyTestFixtures.remove_tree(c["dir"])
+
+	# F5: an answer for someone who has since left is ignored; for the person signed in it counts.
+	log.clear()
+	var c2 := await _make(handler)
+	var sdk3: Node = c2["sdk"]
+	await _sign_in(c2, "ps_a")
+	sdk3.cloud_sync.account_required_for(null, "ps_other")
+	t.check("U-52 subject: an account_required for another person changes nothing", sdk3.cloud_sync.host.machine().subject() == "ps_a" and sdk3.cloud_sync.status().detail["state"] != "blocked")
+	sdk3.cloud_sync.account_required_for(null, null)
+	t.check("U-52 subject: one noted while nobody was signed in changes nothing either", sdk3.cloud_sync.host.machine().subject() == "ps_a")
+	sdk3.cloud_sync.account_required_for(null, "ps_a")
+	t.check("U-52 subject: one for the person signed in counts", sdk3.cloud_sync.host.machine().subject() == null and sdk3.cloud_sync.status().detail["state"] == "blocked")
+
+	# F8: the blocked state cannot be rewritten: the old file (the plaintext snapshot) is deleted, the refusal stays in memory.
+	_done(c2)
+	log.clear()
+	var c3 := await _make(handler)
+	var sdk4: Node = c3["sdk"]
+	await _sign_in(c3, "ps_a")
+	sdk4.config.set_value(KEY, 6)
+	await sdk4.cloud_sync.flush()
+	var h4: Node = sdk4.cloud_sync.host
+	t.check("U-52 save: the state file exists while signed in", FileAccess.file_exists(h4._file.path()))
+	h4._file = FailingSave.new(h4._file.dir, PRODUCT, null)
+	sdk4.cloud_sync.account_required(null)
+	await sdk4.cloud_sync._join_chain()
+	t.check("U-52 save: a failed rewrite of the blocked state deletes the file and keeps the refusal in memory", not FileAccess.file_exists(h4._file.path()) and h4.refused() == "ps_a")
+	_done(c3)
+
+	# The native lanes are cancelled before the root drops.
+	log.clear()
+	var c4 := await _make(handler)
+	var sdk5: Node = c4["sdk"]
+	await _sign_in(c4, "ps_a")
+	sdk5.cloud_sync._files.set_channel(LoggingChannel.new(log))
+	sdk5.cloud_sync._keyring = LoggingRing.new(log, sdk5.cloud_sync.host._file.path())
+	log.clear()
+	sdk5.cloud_sync.account_required(null)
+	await sdk5.cloud_sync._join_chain()
+	t.check("U-52 lanes: the bulk channel closes, then the root is locked, then the ring forgets", log.slice(0, 3) == ["channel.close", "ring.lock", "ring.forget"], str(log))
+	_done(c4)
+
+	# F6: an account_required that came through a redirect is an ordinary 403.
+	mode[0] = "redirect"
+	var c5 := await _make(handler)
+	var sdk6: Node = c5["sdk"]
+	await _sign_in(c5, "ps_a")
+	var red: PKeyResult = await sdk6.keyring.read()
+	await sdk6.cloud_sync._join_chain()
+	await PKeyTestFixtures.frames(3)
+	t.check("U-52 origin: an account_required reached through a redirect changes nothing", not red.ok \
+			and sdk6.cloud_sync.host.machine().subject() == "ps_a" and sdk6.cloud_sync.status().detail["state"] != "blocked", str(red))
+	_done(c5)
 
 
 func _import_and_document(t: PKeyTestContext) -> void:

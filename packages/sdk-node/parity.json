@@ -221,6 +221,10 @@
       "reason": "runtime",
       "note": "No iCloud Keychain or Block Store to keep a restore secret in (I-49)."
     },
+    "identity.accesstoken": {
+      "status": "implemented",
+      "note": "I-21b: client.identity.accessToken() posts the RFC 8693 device exchange (the device's own pkeyt_ token) to discovery's identity token endpoint and returns a 600 second at+jwt for the app's own backend. Only when discovery names accessToken, else the typed service-unavailable. Memory only, reused until 60 seconds before expiry, one request at a time, dropped at sign-out; accessToken({refresh: true}) asks again. Proof of the signed-in device, not a licence check. identity-access-token replays in conformance/runners/node."
+    },
     "identity.link": {
       "status": "na",
       "runtime": ["node"],
@@ -580,6 +584,10 @@
     "server.webhooks": {
       "status": "planned",
       "wp": "SP-67"
+    },
+    "sync.export": {
+      "status": "implemented",
+      "note": "client.cloudSync.export(destination, { includeRevisions, signal }) (src/cloudSync/{export,exportFile}.ts, wired in api.ts): flush, then pull from the start until more is false, then client-core's exportToSink into <destination>.partial (created O_CREAT|O_EXCL|O_NOFOLLOW at 0600, fsynced, renamed over the destination; any error or cancel removes it and the old destination survives), a stale partial removed at the next export, a non-regular destination refused. The end-to-end root is lent by keyring.withRoot and a lock aborts the export; the file source reads like saves.read and waits out a 429 within the bounded budget. test/cloudSyncExport.test.ts; exportCases in the Node conformance runner (syncVectors.test.ts, syncExportZip.test.ts)."
     }
   }
 }

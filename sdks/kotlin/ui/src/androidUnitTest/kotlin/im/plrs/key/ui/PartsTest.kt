@@ -54,14 +54,23 @@ class PartsTest {
         show { PolarisLicenseChoice(case.screen, case.rows.choices!!) }
         // A purchase or a key reads "Added with a key"; a store license "From <store>", with its term.
         val rows = case.rows.choices!!.choices
-        rule.onAllNodes(hasText("Added with a key · Lifetime")).assertCountEquals(rows.count { it.originKey() == "signin.choice.origin.keyAdded" && it.expiresAt == null })
+        rule.onAllNodes(hasText("Added with a key · Lifetime")).assertCountEquals(
+            rows.count {
+                it.originKey() == "signin.choice.origin.keyAdded" &&
+                    it.expiresAt == null
+            },
+        )
         rule.onNodeWithText("From Google Play · Until ${kitDate(1_798_761_600, "en")}").assertIsDisplayed()
         rule.onNodeWithText("Free · Lifetime").assertIsDisplayed()
         // The developer's own grants name the developer (here the product, the only name the sample has).
         rule.onAllNodes(hasText("From Diceroll · Until ${kitDate(1_798_761_600, "en")}")).assertCountEquals(rows.count { it.origin == "developer" })
         // The tier as a pill and the seats as words.
         rule.onNodeWithText("Edu").assertIsDisplayed()
-        rule.onAllNodes(hasText("1 of 3 devices")).assertCountEquals(case.rows.choices!!.choices.count { it.seats?.used == 1 && it.seats?.limit == 3 })
+        rule.onAllNodes(hasText("1 of 3 devices")).assertCountEquals(
+            case.rows.choices!!.choices.count {
+                it.seats?.used == 1 && it.seats?.limit == 3
+            },
+        )
         rule.onNodeWithText("Fennick Studio Edu").assertIsDisplayed()
     }
 
@@ -121,7 +130,10 @@ class PartsTest {
     @Test
     fun withoutAPurchaseCapabilityThePortalIsTheWayAndTheKitDrawsNoPrice() {
         val base = MatrixCases.case("paywall-offers").inputs!!
-        val inputs = base.with("capabilities", kotlinx.serialization.json.JsonObject(mapOf("purchase" to kotlinx.serialization.json.JsonPrimitive(false))))
+        val inputs = base.with(
+            "capabilities",
+            kotlinx.serialization.json.JsonObject(mapOf("purchase" to kotlinx.serialization.json.JsonPrimitive(false))),
+        )
         val screen = KitStates.resolve(KitComponent.paywall, inputs)
         var portal = 0
         show { PolarisPaywall(screen, emptyList(), onPortal = { portal++ }) }
@@ -209,7 +221,11 @@ class PartsTest {
 
     @Test
     fun aLockedGateTakesAHostSlotInPlaceOfTheCard() {
-        show { PolarisEntitlementGate(entitled = false, locked = { androidx.compose.material3.Text("Upgrade slot") }) { androidx.compose.material3.Text("hidden") } }
+        show {
+            PolarisEntitlementGate(entitled = false, locked = {
+                androidx.compose.material3.Text("Upgrade slot")
+            }) { androidx.compose.material3.Text("hidden") }
+        }
         rule.onNodeWithText("Upgrade slot").assertIsDisplayed()
         rule.onNodeWithText("hidden").assertDoesNotExist()
     }
@@ -256,6 +272,7 @@ class PartsTest {
         }
         rule.onNodeWithText("Couldn't sync. Try again later.").assertIsDisplayed()
         rule.onNodeWithText("Try again").performClick()
+        rule.onNodeWithText("Sync stopped.").assertIsDisplayed()
         rule.onNodeWithText("Sign in to sync").performClick()
         assertEquals(1, retried)
         assertEquals(1, signedIn)

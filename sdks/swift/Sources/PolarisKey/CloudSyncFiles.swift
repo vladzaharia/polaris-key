@@ -50,14 +50,23 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
     private let token: @Sendable () async -> String?
     private let timeoutSeconds: Double
     private let bulk: (any BulkChannel)?
+    /// Told when a route answers 403 `account_required` (WIRE-CONTRACT-V5 section 11.5), with the answer's
+    /// `signInUrl` unvetted and the person signed in when the call started. The call still returns its
+    /// refusal. Only an answer from the Worker's own origin counts.
+    private let onAccountRequired: (@Sendable (String?, String?) -> Void)?
+    /// Who is signed in now, read when a call starts.
+    private let subject: (@Sendable () async -> String?)?
 
     public init(
         product: String, baseUrl: String, transport: any PolarisTransport,
         headers: @escaping @Sendable () async -> [String: String],
         token: @escaping @Sendable () async -> String?, timeoutSeconds: Double = 15,
-        bulk: (any BulkChannel)? = nil
+        bulk: (any BulkChannel)? = nil, onAccountRequired: (@Sendable (String?, String?) -> Void)? = nil,
+        subject: (@Sendable () async -> String?)? = nil
     ) {
         self.bulk = bulk
+        self.onAccountRequired = onAccountRequired
+        self.subject = subject
         self.product = product
         self.baseUrl = baseUrl
         self.transport = transport
@@ -67,10 +76,15 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
     }
 
     /// The client's own transport, headers and device token.
-    public init(core: CoreContext, bulk: (any BulkChannel)? = nil) {
+    public init(
+        core: CoreContext, bulk: (any BulkChannel)? = nil,
+        onAccountRequired: (@Sendable (String?, String?) -> Void)? = nil,
+        subject: (@Sendable () async -> String?)? = nil
+    ) {
         self.init(
             product: core.product, baseUrl: core.endpoints.baseUrl, transport: core.transport,
-            headers: { await core.headers() }, token: { await core.token }, bulk: bulk)
+            headers: { await core.headers() }, token: { await core.token }, bulk: bulk,
+            onAccountRequired: onAccountRequired, subject: subject)
     }
 
     // MARK: Paths
@@ -156,7 +170,8 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
     }
 
     private enum Exchanged {
-        case response(PolarisResponse)
+        /// The answer, and the person signed in when the call that got it started.
+        case response(PolarisResponse, String?)
         case refusal(FileRefusal)
     }
 
@@ -166,6 +181,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
     ) async throws -> Exchanged {
         // The builders already checked; this is the closed list.
         guard Self.isFilesPath(product: product, path) else { throw bad("route") }
+        let forSubject = await subject?()
         guard let token = await token(), !token.isEmpty else {
             return .refusal(FileRefusal(status: 401, code: ErrorCode.unauthorized))
         }
@@ -224,7 +240,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
         if (300..<400).contains(res.status) {
             return .refusal(FileRefusal(status: res.status, code: "redirect_refused"))
         }
-        return .response(res)
+        return .response(res, forSubject)
     }
 
     /// RFC 9530: `sha-256=:<base64>:` from the lowercase hex digest.
@@ -279,7 +295,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
 
     /// The refusal an error answer is: the server's code, `Retry-After`, and the body's extra members
     /// (`missing`, `server`), which sit beside `error` or inside it.
-    private func refusal(_ res: PolarisResponse) -> FileRefusal {
+    private func refusal(_ res: PolarisResponse, _ forSubject: String?) -> FileRefusal {
         let raw = res.body.prefix(CloudSyncFileBounds.errorMaxBytes)
         var top: [String: JSONValue] = [:]
         var code: String?
@@ -296,6 +312,14 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
             default: code = o["code"]?.stringValue
             }
         }
+        if res.status == 403, code == ErrorCode.accountRequired {
+            // Only the Worker's own answer counts; from anywhere else it is an ordinary 403.
+            if res.isFromOrigin(of: baseUrl) {
+                onAccountRequired?(top["signInUrl"]?.stringValue, forSubject)
+            } else {
+                code = nil
+            }
+        }
         return FileRefusal(
             status: res.status, code: code ?? Self.fallbackCode(res.status),
             retryAfterSeconds: Self.retryAfter(res.header("retry-after")), body: .object(top))
@@ -304,7 +328,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
     private func empty(_ r: Exchanged) -> FileReply<Void> {
         switch r {
         case .refusal(let f): return .refused(f)
-        case .response(let res): return res.isOK ? .ok(()) : .refused(refusal(res))
+        case .response(let res, let who): return res.isOK ? .ok(()) : .refused(refusal(res, who))
         }
     }
 
@@ -312,8 +336,8 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
     private func json(_ r: Exchanged, _ accept: ([String: JSONValue]) -> Bool = { _ in true }) -> FileReply<JSONValue> {
         switch r {
         case .refusal(let f): return .refused(f)
-        case .response(let res):
-            guard res.isOK else { return .refused(refusal(res)) }
+        case .response(let res, let who):
+            guard res.isOK else { return .refused(refusal(res, who)) }
             guard res.body.count <= CloudSyncFileBounds.jsonMaxBytes,
                 case .object(let o)? = try? CanonicalJSON.parse(utf8: res.body), accept(o)
             else { return .refused(FileRefusal(status: res.status, code: ErrorCode.badResponse)) }
@@ -414,8 +438,8 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
             bulky: query.range != nil)
         switch r {
         case .refusal(let f): return .refused(f)
-        case .response(let res):
-            guard res.isOK else { return .refused(refusal(res)) }
+        case .response(let res, let who):
+            guard res.isOK else { return .refused(refusal(res, who)) }
             guard res.status == 200 || res.status == 206, res.body.count <= cap else {
                 return .refused(FileRefusal(status: res.status, code: ErrorCode.badResponse))
             }
@@ -432,8 +456,8 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
             "GET", path, expectBytes: SYNC_CHUNK_MAX_STORED_BYTES, cap: SYNC_CHUNK_MAX_STORED_BYTES, bulky: true)
         switch r {
         case .refusal(let f): return .refused(f)
-        case .response(let res):
-            guard res.isOK else { return .refused(refusal(res)) }
+        case .response(let res, let who):
+            guard res.isOK else { return .refused(refusal(res, who)) }
             guard res.status == 200, res.body.count <= SYNC_CHUNK_MAX_STORED_BYTES else {
                 return .refused(FileRefusal(status: res.status, code: ErrorCode.badResponse))
             }

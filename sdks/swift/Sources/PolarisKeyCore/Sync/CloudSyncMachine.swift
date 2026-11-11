@@ -558,6 +558,28 @@ public final class CloudSyncMachine {
         return .ok
     }
 
+    /// The host saw `account_required` on a route the machine does not drive: a key-ring call or a
+    /// Cloud Sync file transfer (WIRE-CONTRACT-V5 section 11.5). The same transition as the `/sync`
+    /// 403. Nothing happens on a device with no subject or one already blocked this way. A request
+    /// in flight is abandoned, so its answer is for the host to drop.
+    public func accountRequired(signInUrl: String? = nil) {
+        if s.subject == nil || s.blocked == .accountRequired { return }
+        accountRequiredLeave(signInUrl: signInUrl)
+    }
+
+    /// Whether the device holds the ring's root (`setRoot`); a relaunch carries it.
+    public var hasRoot: Bool { root }
+
+    /// `account_required`: the subject's partition is deleted whole, the root is forgotten and the
+    /// device stays blocked, across a relaunch, until `signIn`. The unsynced count is reported; its
+    /// edits are not kept (no `unsyncedData`). Licence state and `local` values are not touched.
+    func accountRequiredLeave(signInUrl: String?) {
+        leave(.accountRequired, discard: true)
+        root = false
+        s.blocked = .accountRequired
+        events.append(.signInOffered(signInUrl: signInUrl))
+    }
+
     /// The effective mode: E2E when the app requires it or this device has ever accepted E2E.
     public var encryptionMode: SyncEncryption { requiresE2E ? .e2e : .server }
 
@@ -1504,7 +1526,11 @@ public final class CloudSyncMachine {
             s.partitions[name]!.cursor = 0
             s.partitions[name]!.empty = nil
         }
-        s.partitions[name]!.signedOutAt = now
+        if reason == .accountRequired {
+            s.partitions.removeValue(forKey: name)
+        } else {
+            s.partitions[name]!.signedOutAt = now
+        }
         s.subject = nil
         signingOut = nil
         inFlight = nil
@@ -1531,6 +1557,7 @@ public final class CloudSyncMachine {
     {
         let saved = m.persist()
         var o = opts
+        o.hasRoot = m.hasRoot
         o.now = m.now
         o.network = m.network
         if journalLost {

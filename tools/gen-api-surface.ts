@@ -350,6 +350,12 @@ function renderPython(api: Api): string {
     } else if (r.id.startsWith("identity.nearby.")) {
       // M's side of nearby approval (I-47): `available` and `on_request` live on `identity.nearby`.
       attrs.push(`(${q(r.id)}, "NearbyNamespace", ${q(r.name)})`);
+    } else if (r.id.startsWith("identity.choice.")) {
+      // The licence choice (I-10a.17): the verbs live on `identity.choice` (`ChoiceClient`).
+      attrs.push(`(${q(r.id)}, "ChoiceClient", ${q(r.name)})`);
+    } else if (r.id === "identity.signIn.session.complete") {
+      // The redirect session (I-10a.17) finishes with the callback URL.
+      attrs.push(`(${q(r.id)}, "RedirectSession", ${q(r.name)})`);
     } else if (r.id.startsWith("identity.signIn.session.")) {
       attrs.push(
         `(${q(r.id)}, ${q(NEARBY_SESSION.has(leafOf(r.id)) ? "NearbySignInSession" : "SignInSession")}, ${q(r.name)})`,
@@ -391,10 +397,12 @@ from polaris_key.connect.links import CloudLinks
 from polaris_key.connect.local_links import LocalLinks
 from polaris_key.connect.nearby import CloudNearby
 from polaris_key.connect.transfer import IncomingOffer, Transfer
+from polaris_key.identity.choice import ChoiceClient
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.auto_sign_in import NearbyNamespace
 from polaris_key.identity.native_redirect import push_request
 from polaris_key.identity.nearby_session import NearbySignInSession
+from polaris_key.identity.redirect import RedirectSession
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
 from polaris_key.license.entitlements import EntitlementsClient
@@ -404,6 +412,8 @@ CLASSES = {
     "ConfigClient": ConfigClient,
     "ConfigSetting": ConfigSetting,
     "IdentityClient": IdentityClient,
+    "ChoiceClient": ChoiceClient,
+    "RedirectSession": RedirectSession,
     "SignInNamespace": SignInNamespace,
     "SignInSession": SignInSession,
     "NearbyNamespace": NearbyNamespace,
@@ -487,6 +497,7 @@ const SWIFT_UNASSERTED = new Set([
   "config.decode",
   "cloudSync.encryption", // CloudSyncOptions(encryption:), nested under PolarisKeyClientOptions.cloudSync
   "identity.signIn.keyReturn", // an argument of the native redirect start (LK-SKIP.9), not a member
+  "cloudSync.cancelExport", // the cancelled Task that awaits export(to:options:), not a member
 ]);
 /** The handle's async properties: no key path reaches them, so each is read inside an async closure. */
 const SWIFT_ASYNC_HANDLE = new Set([
@@ -546,6 +557,9 @@ function renderSwift(api: Api): string {
       lines.push(
         `_ = \\${r.name === "events" ? "PolarisKeyClient" : (SWIFT_TYPE[r.ns] ?? "PolarisKeyClient")}.${r.name}  // ${r.id}`,
       );
+    } else if (r.id === "identity.choice") {
+      // A property returning the choice namespace (I-10b); its verbs are the rows below.
+      lines.push(`_ = \\IdentityClient.choice  // ${r.id}`);
     } else if (r.id.startsWith("cloudConnect.links.")) {
       // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
       lines.push(`_ = CloudLinks.${ref}  // ${r.id}`);
@@ -610,6 +624,8 @@ const KOTLIN_UNASSERTED = new Set([
   "client.client",
   "client.playPacks",
   "client.flavor",
+  // An sdkOnly row with no symbol: Kotlin cancels by cancelling the coroutine that runs the export.
+  "cloudSync.cancelExport",
 ]);
 /** Extension functions on the client, declared top-level in the sdk package (Boot.kt). */
 const KOTLIN_EXTENSION = new Set(["client.boot", "client.bootHost"]);
@@ -652,6 +668,11 @@ function renderKotlin(api: Api): string {
       lines.push(
         `val cancelById: (CloudTransfer, String) -> Unit = CloudTransfer::cancel  // ${r.id}`,
       );
+    } else if (r.id === "cloudSync.export") {
+      // `export(destination: Path, options)` and `export(output: OutputStream, options)` overload; the typed reference picks the path one.
+      lines.push(
+        `val exportToPath: suspend (CloudSyncClient, Path, CloudSyncExportOptions) -> CloudSyncExport = CloudSyncClient::export  // ${r.id}`,
+      );
     } else if (r.id.startsWith("cloudConnect.transfer.")) {
       // Direct Transfer (CC-20): the verbs live on `cloudConnect.transfer` (`CloudTransfer`); the offer answers on `TransferOffer`.
       lines.push(
@@ -686,6 +707,8 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.sdk.CloudLocalLinks`,
     `import im.plrs.key.sdk.CloudNearby`,
     `import im.plrs.key.sdk.CloudSyncClient`,
+    `import im.plrs.key.sdk.CloudSyncExport`,
+    `import im.plrs.key.sdk.CloudSyncExportOptions`,
     `import im.plrs.key.sdk.CloudSyncHostOptions`,
     `import im.plrs.key.sdk.CloudTransfer`,
     `import im.plrs.key.sdk.CommerceClient`,
@@ -704,6 +727,7 @@ function renderKotlin(api: Api): string {
       .map((n) => `import im.plrs.key.sdk.${n}`),
     `import im.plrs.key.update.UpdateClient`,
     `import im.plrs.key.update.UpdateClientOptions`,
+    `import java.nio.file.Path`,
     ``,
     `/** Compile-only and never called: a renamed or removed symbol fails the test source set's build. */`,
     `internal suspend fun apiSurface() {`,

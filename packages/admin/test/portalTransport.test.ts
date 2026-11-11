@@ -65,7 +65,7 @@ describe("the portal's transport (security-relevant behaviour)", () => {
   });
 
   it("/logout carries no CSRF header and does not follow the redirect", async () => {
-    const fn = stub(new Response(null, { status: 500 }));
+    const fn = stub(new Response(null, { status: 204 }));
     await portalApi.signOutHere();
     const req = sent(fn);
     expect(req.path).toBe("/logout");
@@ -74,7 +74,14 @@ describe("the portal's transport (security-relevant behaviour)", () => {
     expect(req.headers.has(CSRF)).toBe(false);
   });
 
-  it("/logout accepts any status but reports a network failure", async () => {
+  it("/logout reports a refusal (status 400 or more)", async () => {
+    stub(new Response(null, { status: 500 }));
+    const e = await portalApi.signOutHere().catch((x) => x);
+    expect(e).toBeInstanceOf(HttpError);
+    expect((e as HttpError).status).toBe(500);
+  });
+
+  it("/logout accepts any status below 400 but reports a network failure", async () => {
     stub(new TypeError("offline"));
     const e = await portalApi.signOutHere().catch((x) => x);
     expect(e).toBeInstanceOf(HttpError);

@@ -48,11 +48,25 @@ public const val CLOUD_SYNC_IMPORTED_FILE: String = "cloud-sync-imported.json"
 /** Open-setting names kept for tombstone mapping; past this the oldest are dropped. */
 public const val OPEN_KEYS_MAX: Int = 4096
 
+/** What a blocked machine adds to the saved file: the refused subject, and whether the key ring's stored root is still owed a forget. */
+public class BlockedMarks(public val refused: String? = null, public val forgetPending: Boolean = false)
+
 /** What the file holds (after `load` validated it). */
-public class CloudSyncFileContents(public val persisted: JsonObject?, public val catalog: JsonObject?, public val openKeys: List<String>)
+public class CloudSyncFileContents(
+    public val persisted: JsonObject?,
+    public val catalog: JsonObject?,
+    public val openKeys: List<String>,
+    /** The subject the Worker refused with `account_required`: not signed in again until a sign-out, another subject or a purge. */
+    public val refused: String? = null,
+    /** The key ring's stored root still has to be forgotten (a forget failed or the process ended first): retried at start. */
+    public val forgetPending: Boolean = false,
+)
 
 /** The catalog's outer shape; the host derives routes from it with `SyncRoutes.syncedSettings`. */
 internal fun isCatalogShape(v: JsonElement?): Boolean = v is JsonObject && v["schemaVersion"].longValue != null && v["entries"] is JsonArray
+
+/** Test seam: every state save fails (a full or read-only disk). */
+internal var failSaves: Boolean = false
 
 /** Test seam: take the java.io path of an Android below API 26 on any runtime. */
 internal var forceLegacyIo: Boolean = false
@@ -109,19 +123,32 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
             persisted?.takeIf { it["partitions"] is JsonObject && it["hlc"] is JsonArray && it["contacted"].boolValue != null },
             raw["catalog"].objectValue?.takeIf { isCatalogShape(it) },
             keys.takeLast(OPEN_KEYS_MAX),
+            raw["refused"].stringValue,
+            raw["forgetPending"].boolValue == true,
         )
     }
 
-    public fun save(persisted: JsonObject, catalog: JsonObject?, openKeys: List<String>, allowed: () -> Boolean = { true }) {
+    public fun save(
+        persisted: JsonObject,
+        catalog: JsonObject?,
+        openKeys: List<String>,
+        blocked: BlockedMarks = BlockedMarks(),
+        allowed: () -> Boolean = { true },
+    ) {
         val body = buildJsonObject {
             put("v", 1)
             put("product", product)
             put("persisted", persisted)
             put("catalog", catalog ?: JsonNull)
             put("openKeys", JsonArray(openKeys.map { JsonPrimitive(it) }))
+            if (blocked.refused != null) put("refused", blocked.refused)
+            if (blocked.forgetPending) put("forgetPending", true)
         }
         // Checked under the same lock [remove] takes: after a purge removed the file, no save lands (H-7).
-        synchronized(lock) { if (allowed()) writeAtomic(body.toString().toByteArray(Charsets.UTF_8)) }
+        synchronized(lock) {
+            if (failSaves) throw StoreException("could not write the Cloud Sync state")
+            if (allowed()) writeAtomic(body.toString().toByteArray(Charsets.UTF_8))
+        }
     }
 
     private fun readJson(): JsonElement? = runCatching {

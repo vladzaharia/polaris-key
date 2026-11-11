@@ -154,6 +154,8 @@ val checkPlatformOnly = tasks.register("checkPlatformOnly") {
         name to configurations.named(name).flatMap { it.incoming.resolutionResult.rootComponent }
     }
     inputs.property("classpaths", platformOnlyClasspaths)
+    // A task action may not reference script-level values (configuration cache), so it holds a copy.
+    val sdkGroupId = sdkGroup
     doLast {
         val problems = mutableListOf<String>()
         for ((name, rootProvider) in roots) {
@@ -169,9 +171,9 @@ val checkPlatformOnly = tasks.register("checkPlatformOnly") {
                     when {
                         id is ProjectComponentIdentifier && id.projectPath == ":platform" -> platformSeen = true
                         id is ProjectComponentIdentifier -> problems += "$name: project ${id.projectPath}"
-                        id is ModuleComponentIdentifier && id.group == sdkGroup &&
+                        id is ModuleComponentIdentifier && id.group == sdkGroupId &&
                             id.module.startsWith("polaris-key-platform-") -> platformSeen = true
-                        id is ModuleComponentIdentifier && id.group == sdkGroup -> problems += "$name: ${id.group}:${id.module}"
+                        id is ModuleComponentIdentifier && id.group == sdkGroupId -> problems += "$name: ${id.group}:${id.module}"
                     }
                 }
                 for (d in c.dependencies) {
@@ -180,7 +182,7 @@ val checkPlatformOnly = tasks.register("checkPlatformOnly") {
                         // An unresolvable request is still a declared dependency.
                         is UnresolvedDependencyResult -> when (val r = d.requested) {
                             is ProjectComponentSelector -> problems += "$name: project ${r.projectPath} (unresolved)"
-                            is ModuleComponentSelector -> if (r.group == sdkGroup) problems += "$name: ${r.group}:${r.module} (unresolved)"
+                            is ModuleComponentSelector -> if (r.group == sdkGroupId) problems += "$name: ${r.group}:${r.module} (unresolved)"
                         }
                     }
                 }

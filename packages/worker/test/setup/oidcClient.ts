@@ -2,7 +2,8 @@
 //
 //   - Every module cache registers its clear with `src/platform/testReset.ts`; each test starts
 //     by running them all, so a file sees what a fresh Worker isolate would even when the runner
-//     shares one module graph across files (`--no-isolate`).
+//     shares one module graph across files (the `shared` project, vitest.isolation.ts). The files
+//     that mock a module run in the `isolated` project, one fresh graph each.
 //   - The relying-party client (I-30) caches discovery documents and key sets; tests install a
 //     fresh IdP key per case.
 //   - It discovers the issuer before every authorization request. A test that only STARTS a
@@ -10,35 +11,21 @@
 //     document (Pocket ID's shape, `test/oidcIssuerFake.ts`) and passes every other URL on. A test
 //     that completes a sign-in installs its own `fetch` for the token endpoint and the JWKS, which
 //     replaces this default for that test.
-import { readFileSync } from "node:fs";
-import { afterAll, beforeAll, beforeEach, expect, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, vi } from "vitest";
 import { issuerDiscovery } from "../oidcIssuerFake.js";
 
 const DISCOVERY = "/.well-known/openid-configuration";
-// Under `--no-isolate` this file runs once per test file in one global scope: keep the first
+// In the `shared` project this file runs once per test file in one global scope: keep the first
 // (real) `fetch`, never an earlier file's stub or this file's own wrapper.
 const REAL_FETCH = Symbol.for("pkey.test.realFetch");
 const scope = globalThis as unknown as Record<symbol, typeof fetch>;
 const realFetch = (scope[REAL_FETCH] ??= globalThis.fetch);
 
-// A file that mocks a module (`vi.mock`, `vi.doMock`) needs a module graph of its own: a module
-// another file already loaded keeps the real dependency. Such a file starts from an empty module
-// cache and leaves one behind. Every other file shares the worker's graph under `--no-isolate`
-// and costs nothing under the default.
-const testPath = expect.getState().testPath;
-const mocksModules =
-  testPath !== undefined &&
-  /\bvi\s*\.\s*(?:mock|doMock)\s*\(/.test(readFileSync(testPath, "utf8"));
-
 // Isolate-level state is emptied at the file boundary, before the file's own `beforeAll` (a file
 // installs its test doubles there) and after it. What a file stubs, it gives back.
 async function emptyIsolate(): Promise<void> {
-  // Imported late: after `vi.resetModules()` the registry to clear is the current graph's.
   (await import("../../src/platform/testReset.js")).runResets();
 }
-
-// At evaluation, not in a hook: the test file's own imports resolve right after this file does.
-if (mocksModules) vi.resetModules();
 
 beforeAll(emptyIsolate);
 
@@ -48,7 +35,6 @@ afterAll(async () => {
   vi.unstubAllEnvs();
   vi.useRealTimers();
   await emptyIsolate();
-  if (mocksModules) vi.resetModules();
 });
 
 beforeEach(async () => {

@@ -9,6 +9,21 @@ extends RefCounted
 
 const PRODUCT := "djdl"
 
+## The facade nodes the tests made: a Node is not reference counted, so the suite frees them at its end.
+static var _owned: Array[Node] = []
+
+
+static func _own(n: Node) -> Node:
+	_owned.append(n)
+	return n
+
+
+static func _free_owned() -> void:
+	for n in _owned:
+		if is_instance_valid(n):
+			n.free()
+	_owned.clear()
+
 
 ## A stand-in for the PolarisKeyApple / PolarisKeyAndroid `cmd(json)` surface, sealing with a keyed
 ## transform like PKeyFakeSealer. `prefix` is "dk" (Apple) or "ks" (Android).
@@ -72,6 +87,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_missing_lane(t)
 	_wipe(t)
 	_lanes(t)
+	_free_owned()
 	return true
 
 
@@ -100,8 +116,8 @@ func _selection(t: PKeyTestContext) -> void:
 	t.check("selection: a key that reports secure hardware is hardware-backed", s.hardware_backed())
 	var kc := _store(_dir("sel2"), PKeyFakeSealer.new("keychain"))
 	t.check("selection: a keychain sealer is not hardware by its name", kc.protection() == "keychain-sealed" and not kc.hardware_backed())
-	var login := PKeyAppleSealer.new(PRODUCT, PKeyApple.new(), true)
-	var ios := PKeyAppleSealer.new(PRODUCT, PKeyApple.new(), false)
+	var login := PKeyAppleSealer.new(PRODUCT, _own(PKeyApple.new()), true)
+	var ios := PKeyAppleSealer.new(PRODUCT, _own(PKeyApple.new()), false)
 	t.check("selection: the macOS login keychain is not hardware, the iOS data-protection keychain is", not login.hardware_backed() and ios.hardware_backed())
 	var bad := PKeyDeviceKeyStore.new("Bad Slug", _dir("sel5"))
 	var br := bad.ensure()
@@ -318,7 +334,7 @@ func _lanes(t: PKeyTestContext) -> void:
 	# Apple (iOS: data-protection keychain; macOS: the login keychain).
 	for flavor in ["ios", "macos"]:
 		var lane := FakeLane.new()
-		var apple := PKeyApple.new()
+		var apple := _own(PKeyApple.new())
 		apple.platform = flavor
 		apple.native = lane
 		var sealer := PKeyAppleSealer.new(PRODUCT, apple, flavor == "macos")
@@ -339,14 +355,14 @@ func _lanes(t: PKeyTestContext) -> void:
 		lane.force = {"ok": false, "unsupported": true, "reason": "runtime", "detail": "no keychain"}
 		var un := sealer.seal(plain, ctx)
 		t.check("apple %s: unsupported stays unsupported" % flavor, not un.ok and un.code == &"unsupported", str(un))
-	var off := PKeyAppleSealer.new(PRODUCT, PKeyApple.new())
+	var off := PKeyAppleSealer.new(PRODUCT, _own(PKeyApple.new()))
 	off.apple.platform = "linux"
 	t.check("apple: off Apple the sealer is unavailable", off.unavailable() != "")
 	t.check("apple: no facade, unavailable", PKeyAppleSealer.new(PRODUCT, null).unavailable() != "")
 	# Android.
 	var alane := FakeLane.new()
 	alane.prefix = "ks"
-	var android := PKeyAndroid.new()
+	var android := _own(PKeyAndroid.new())
 	android.platform = "android"
 	android.native = alane
 	var asl := PKeyAndroidSealer.new(PRODUCT, android)
@@ -359,7 +375,7 @@ func _lanes(t: PKeyTestContext) -> void:
 	t.check("android: a Keystore provider fault is STORE_FAULT, not unreadable", not af.ok and af.code == PKeyDeviceKeyStore.STORE_FAULT and af.message.contains("keystore-provider"), str(af))
 	alane.force = {"ok": false, "error": "unopenable"}
 	t.check("android: unopenable is unreadable", asl.open(asealed.detail, ctx).code == PKeyDeviceKeyStore.KEYS_UNREADABLE)
-	var no_android := PKeyAndroid.new()
+	var no_android := _own(PKeyAndroid.new())
 	no_android.platform = "linux"
 	t.check("android: off Android the sealer is unavailable", PKeyAndroidSealer.new(PRODUCT, no_android).unavailable() != "")
 	# Windows.

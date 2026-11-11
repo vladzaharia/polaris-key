@@ -465,6 +465,9 @@ func _gate_moves(t: PKeyTestContext) -> void:
 	_manifest(na.core, true)
 	na.core.discovery_changed.emit()
 	t.check("gate: the gate opening again brings the room back", await _until(func() -> bool: return na.relay.rooms().size() == 1))
+	# Let the room finish its first connect before it is stopped: a room stopped while its ticket is being asked for
+	# never ends its loop, and keeps itself (and everything it holds) alive.
+	await _until(func() -> bool: return na.relay.rooms().size() == 1 and na.relay.rooms()[0]["state"] == "open")
 	_finish(r)
 
 

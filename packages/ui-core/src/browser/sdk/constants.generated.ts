@@ -154,6 +154,8 @@ export const ErrorCode = {
   recoveryCodeInvalid: "recovery-code-invalid",
   syncEncryptionPinned: "sync-encryption-pinned",
   syncFileInvalid: "sync-file-invalid",
+  syncExportTooLarge: "sync-export-too-large",
+  syncExportFailed: "sync-export-failed",
   syncMergeClosed: "sync-merge-closed",
   invalidOptions: "invalid-options",
   invalidArgument: "invalid-argument",
@@ -399,6 +401,8 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "recovery-code-invalid",
   "sync-encryption-pinned",
   "sync-file-invalid",
+  "sync-export-too-large",
+  "sync-export-failed",
   "sync-merge-closed",
   "invalid-options",
   "invalid-argument",
@@ -646,6 +650,8 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "recovery-code-invalid": "client",
   "sync-encryption-pinned": "client",
   "sync-file-invalid": "client",
+  "sync-export-too-large": "client",
+  "sync-export-failed": "client",
   "sync-merge-closed": "client",
   "invalid-options": "client",
   "invalid-argument": "client",
@@ -786,6 +792,7 @@ export const Feature = {
   syncE2eRecovery: "sync.e2e.recovery",
   syncTransferBackground: "sync.transfer.background",
   syncE2e: "sync.e2e",
+  syncExport: "sync.export",
   connectIdentity: "connect.identity",
   connectNoise: "connect.noise",
   connectProtocol: "connect.protocol",
@@ -820,6 +827,7 @@ export const Feature = {
   identityPgs: "identity.pgs",
   identityAutosignin: "identity.autosignin",
   identityRestore: "identity.restore",
+  identityAccesstoken: "identity.accesstoken",
   identityLink: "identity.link",
   identityNearby: "identity.nearby",
   releaseChangelog: "release.changelog",
@@ -934,6 +942,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.e2e.recovery",
   "sync.transfer.background",
   "sync.e2e",
+  "sync.export",
   "connect.identity",
   "connect.noise",
   "connect.protocol",
@@ -968,6 +977,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.pgs",
   "identity.autosignin",
   "identity.restore",
+  "identity.accesstoken",
   "identity.link",
   "identity.nearby",
   "release.changelog",
@@ -1880,7 +1890,7 @@ export const OUTLET_MATRIX_VERSION = 1;
 export const PLAN_MATRIX_VERSION = 2;
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-export const SYNC_SCENARIOS_VERSION = 5;
+export const SYNC_SCENARIOS_VERSION = 6;
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 export const DEVICE_LABEL_VERSION = 2;
@@ -2046,6 +2056,42 @@ export const SYNC_ENVELOPE_FIXED_BYTES = 49;
 
 /** Cloud Sync: `SYNC_ENVELOPE_PAD_BLOCK` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
 export const SYNC_ENVELOPE_PAD_BLOCK = 64;
+
+/** Cloud Sync: `SYNC_EXPORT_BLOB_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_BLOB_MAX_BYTES = 268435456;
+
+/** Cloud Sync: `SYNC_EXPORT_FORMAT` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_FORMAT = "pkey-sync-export/1";
+
+/** Cloud Sync: `SYNC_EXPORT_ITEM_RESERVE_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_ITEM_RESERVE_BYTES = 1024;
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_MAX_BYTES = 4294967295;
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_CHUNKS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_MAX_CHUNKS = 65536;
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_ENTRIES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_MAX_ENTRIES = 65000;
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_PULLS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_MAX_PULLS = 64;
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_WAIT_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_MAX_WAIT_MS = 5400000;
+
+/** Cloud Sync: `SYNC_EXPORT_RETRY_AFTER_MAX_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_RETRY_AFTER_MAX_MS = 900000;
+
+/** Cloud Sync: `SYNC_EXPORT_STORE_DIR` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_STORE_DIR = "stores/sync.cloudSync/";
+
+/** Cloud Sync: `SYNC_EXPORT_ZIP_END_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_ZIP_END_BYTES = 22;
+
+/** Cloud Sync: `SYNC_EXPORT_ZIP_ENTRY_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_ZIP_ENTRY_BYTES = 92;
 
 /** Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
 export const SYNC_FILE_FORMAT = "pkey-sync-file/1";
@@ -2373,6 +2419,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "sync.e2e": { status: "implemented", service: "sync", na: [] },
+  "sync.export": { status: "implemented", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
@@ -2501,6 +2548,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "web", reason: "runtime" },
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
+  },
+  "identity.accesstoken": {
+    status: "implemented",
+    service: "identity",
+    na: [],
   },
   "identity.link": {
     status: "implemented",
@@ -2697,4 +2749,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "c2b69b5efbc484a4f2f67e51c581490f9b718832172444778745df8bdf170f7e";
+  "91944d1e56bf9882854428c533d63a71046b630a066531fd26bb3ad65261ab3d";

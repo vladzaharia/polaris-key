@@ -177,6 +177,11 @@ export const COVERED_PAGES: Covered[] = [
     prose: false,
   },
   {
+    path: "packages/docs/src/content/docs/features/cloud-connect/local-links.md",
+    language: "ts",
+    prose: false,
+  },
+  {
     path: "packages/docs/src/content/docs/features/cloud-sync/collections.md",
     language: "ts",
     prose: false,
@@ -187,7 +192,17 @@ export const COVERED_PAGES: Covered[] = [
     prose: false,
   },
   {
+    path: "packages/docs/src/content/docs/features/cloud-sync/export-and-removal.mdx",
+    language: "ts",
+    prose: false,
+  },
+  {
     path: "packages/docs/src/content/docs/features/cloud-sync/saves.mdx",
+    language: "ts",
+    prose: false,
+  },
+  {
+    path: "packages/docs/src/content/docs/features/sign-in/sign-in-with-product.md",
     language: "ts",
     prose: false,
   },

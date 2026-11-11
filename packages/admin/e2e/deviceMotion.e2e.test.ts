@@ -491,9 +491,11 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
       await devices
         .getByRole("img", { name: "1 of 3 devices in use" })
         .waitFor();
-      expect(await page.locator("#pk-announcer").textContent()).toContain(
-        "Studio PC was removed. 1 of 3 devices in use.",
-      );
+      // The removal is said once, by the toast's live region.
+      await page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: "Studio PC was removed. 1 of 3 devices in use." })
+        .waitFor();
       // Nothing left behind.
       expect(await running(page)).toEqual([]);
       expect(await inlineNames(page)).toBe(0);
@@ -715,9 +717,11 @@ describe("reduced motion: every change in scope is an instant swap to the same e
         .getByRole("img", { name: "1 of 3 devices in use" })
         .waitFor();
       await expect.poll(() => focused(page)).toBe("H2:Devices");
-      expect(await page.locator("#pk-announcer").textContent()).toContain(
-        "Studio PC was removed. 1 of 3 devices in use.",
-      );
+      // The removal is said once, by the toast's live region.
+      await page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: "Studio PC was removed. 1 of 3 devices in use." })
+        .waitFor();
       const m = await state(page);
       expect(m.starts, "a View Transition started").toEqual([]);
       expect(m.vt, "html[data-vt] was set").toEqual([]);

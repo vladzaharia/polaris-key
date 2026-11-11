@@ -81,6 +81,10 @@ class CloudSyncSettingsTest {
 
     @Volatile private var push403 = false
 
+    @Volatile private var ringForbidden = false
+
+    @Volatile private var ringRedirect = false
+
     @Volatile private var pushChange = ""
     private lateinit var keyringRef: SyncKeyring
 
@@ -125,6 +129,12 @@ class CloudSyncSettingsTest {
             }
         }
 
+        r.path.contains("/devices/keyring") && ringRedirect ->
+            respond(302, """{"error":{"code":"account_required"}}""")
+
+        r.path.contains("/devices/keyring") && ringForbidden ->
+            respond(403, """{"error":{"code":"account_required","signInUrl":"https://evil.example/login"}}""")
+
         r.path.endsWith("/devices/keyring/recovery") -> respond(204)
 
         r.path.contains("/sync") -> respond(200, pullBody(who))
@@ -134,7 +144,11 @@ class CloudSyncSettingsTest {
 
     /** A root store whose delete fails (a locked keystore). */
     private class LockedStorage(val inner: InMemoryDeviceKeyStorage, var failing: Boolean = true) : DeviceKeyStorage by inner {
+        /** How many times the root was asked to go. */
+        val clears = java.util.concurrent.atomic.AtomicInteger()
+
         override suspend fun clear() {
+            clears.incrementAndGet()
             if (failing) throw java.io.IOException("locked")
             inner.clear()
         }
@@ -145,6 +159,7 @@ class CloudSyncSettingsTest {
         val roots: DeviceKeyStorage = InMemoryDeviceKeyStorage(),
         services: List<ServiceSlug> = listOf(ServiceSlug.license, ServiceSlug.config, ServiceSlug.identity, ServiceSlug.sync),
         seedRoot: Boolean = true,
+        background: CloudSyncBackgroundPort? = null,
     ) {
         val transport = ScriptedTransport(::handle)
         val client: PolarisKeyClient
@@ -175,6 +190,10 @@ class CloudSyncSettingsTest {
                         cloudSync = CloudSyncHostOptions().also {
                             it.encryption = "server"
                             it.catalog = mirror
+                            if (background != null) {
+                                it.backgroundPort = background
+                                it.backgroundTransfers = true
+                            }
                         },
                     ),
                 )
@@ -460,7 +479,218 @@ class CloudSyncSettingsTest {
         assertEquals(1, offers.size)
         assertNull("an off-origin URL is never handed to the app", offers.single().signInUrl)
         assertFalse("the ring was forgotten", r.client.keyring.unlocked)
-        assertFalse(r.stateFile.exists())
+        // The machine is saved as it stands, not purged: blocked, with the refused subject.
+        eventually("the blocked state is saved") { r.stateFile.exists() && r.stateFile.readText().contains("\"refused\"") }
+        val status = r.client.cloudSync.status()
+        assertEquals(SyncState.Blocked, status.state)
+        assertEquals("account_required", status.reason)
+        val partitions = CloudSyncStateFile(r.dir, "djdl").load().persisted!!["partitions"] as JsonObject
+        assertFalse("the subject's partition is gone", ALICE in partitions.keys)
+    }
+
+    @Test
+    fun theRefusalSurvivesARelaunchAndOnlyAnotherSubjectLiftsIt() = runBlocking {
+        val dir = tmp.newFolder()
+        val roots = InMemoryDeviceKeyStorage()
+        val first = Rig(dir = dir, roots = roots)
+        first.signIn()
+        push403 = true
+        first.client.config.set(VOL, json(0.5))
+        first.client.cloudSync.flush()
+        eventually("blocked and saved") { first.stateFile.exists() && first.stateFile.readText().contains("\"refused\"") }
+        first.client.close()
+        push403 = false
+        val pushes = log.count { it.startsWith("push") }
+        // Relaunch with the same subject held: still blocked, and nothing is sent.
+        val second = Rig(dir = dir, roots = roots, seedRoot = false)
+        second.client.cloudSync.flush()
+        assertEquals(SyncState.Blocked, second.client.cloudSync.status().state)
+        assertEquals("nothing was pushed for the refused subject", pushes, log.count { it.startsWith("push") })
+        second.client.config.set(VOL, json(0.6))
+        second.client.cloudSync.flush()
+        assertEquals(pushes, log.count { it.startsWith("push") })
+        // Another subject lifts it.
+        second.signIn(BOB)
+        eventually("another subject syncs") { second.client.cloudSync.status().state != SyncState.Blocked }
+        second.client.config.set(VOL, json(0.7))
+        second.client.cloudSync.flush()
+        assertTrue("the new subject pushes", log.count { it.startsWith("push") } > pushes)
+        assertFalse(second.stateFile.readText().contains("\"refused\""))
+    }
+
+    @Test
+    fun aKeyRing403AccountRequiredBlocksSyncAndForgetsTheRing() = runBlocking {
+        val r = Rig()
+        r.signIn()
+        ringForbidden = true
+        try {
+            r.client.cloudSync.newRecoveryCode()
+            fail("the key ring answered")
+        } catch (e: PolarisException) {
+            assertEquals(ErrorCode.accountRequired, e.code)
+        }
+        eventually("signed out") { r.events.any { it is CloudSyncEvent.SignedOut && it.reason == "accountRequired" } }
+        eventually("ring forgotten") { !r.client.keyring.unlocked }
+        eventually("blocked") { r.client.cloudSync.status().state == SyncState.Blocked }
+        eventually("the vetted offer follows the forget") { r.events.any { it is CloudSyncEvent.SignInOffered } }
+        assertNull(r.events.filterIsInstance<CloudSyncEvent.SignInOffered>().single().signInUrl)
+    }
+
+    /** Records the order of the scheduler's cancel and the stored root's removal. */
+    private class OrderPort(val order: CopyOnWriteArrayList<String>) : CloudSyncBackgroundPort {
+        override fun attach(runner: CloudSyncBackgroundRunner) {
+            order += "attach"
+        }
+
+        override fun enqueue(transferId: String, owner: String) {
+            order += "enqueue"
+        }
+
+        override fun cancel(transferId: String) {
+            order += "cancel"
+        }
+
+        override fun cancelOwner(owner: String) {
+            order += "cancelOwner:$owner"
+        }
+    }
+
+    private class OrderStorage(val inner: InMemoryDeviceKeyStorage, val order: CopyOnWriteArrayList<String>) : DeviceKeyStorage by inner {
+        override suspend fun clear() {
+            order += "forget"
+            inner.clear()
+        }
+    }
+
+    @Test
+    fun theScheduledTransfersStopBeforeTheStoredRootGoes() = runBlocking {
+        val order = CopyOnWriteArrayList<String>()
+        val r = Rig(roots = OrderStorage(InMemoryDeviceKeyStorage(), order), background = OrderPort(order))
+        r.signIn()
+        push403 = true
+        r.client.config.set(VOL, json(0.5))
+        r.client.cloudSync.flush()
+        eventually("the stored root is forgotten") { "forget" in order }
+        assertEquals(listOf("cancelOwner:${ownerTag(ALICE)}", "forget"), order.filter { it.startsWith("cancelOwner") || it == "forget" })
+    }
+
+    @Test
+    fun aFailedForgetIsSavedAndRetriedAtStartAndSignInWaitsForIt() = runBlocking {
+        val dir = tmp.newFolder()
+        val roots = LockedStorage(InMemoryDeviceKeyStorage())
+        val first = Rig(dir = dir, roots = roots)
+        first.signIn()
+        push403 = true
+        first.client.config.set(VOL, json(0.5))
+        first.client.cloudSync.flush()
+        eventually("blocked, with the forget owed") { first.stateFile.exists() && first.stateFile.readText().contains("\"forgetPending\":true") }
+        push403 = false
+        // Another person signs in while the stored root cannot be removed: they wait.
+        who = BOB
+        first.client.identity.subject()
+        first.client.cloudSync.flush()
+        assertEquals(SyncState.Blocked, first.client.cloudSync.status().state)
+        // The store heals: the retry forgets, then the waiting person signs in.
+        roots.failing = false
+        first.client.cloudSync.flush()
+        eventually("the waiting person signed in after the forget") { first.client.cloudSync.status().state != SyncState.Blocked }
+        assertFalse("the stored root is gone", first.client.keyring.status().rootStored)
+        first.client.close()
+    }
+
+    @Test
+    fun aRetryThatFailsAgainKeepsTheWaitingPersonWaiting() = runBlocking {
+        val roots = LockedStorage(InMemoryDeviceKeyStorage())
+        val first = Rig(roots = roots)
+        first.signIn()
+        push403 = true
+        first.client.config.set(VOL, json(0.5))
+        first.client.cloudSync.flush()
+        eventually("blocked, with the forget owed") { first.stateFile.exists() && first.stateFile.readText().contains("\"forgetPending\":true") }
+        push403 = false
+        // Another person signs in while the stored root cannot be removed: they wait.
+        who = BOB
+        first.client.identity.subject()
+        first.client.cloudSync.flush()
+        assertEquals(SyncState.Blocked, first.client.cloudSync.status().state)
+        // The app comes back and the retry fails again: the person is still waiting.
+        val asked = roots.clears.get()
+        first.client.cloudSync.touch()
+        eventually("the retry asked the store again") { roots.clears.get() > asked }
+        // The store heals: the next retry forgets, then the waiting person signs in.
+        roots.failing = false
+        first.client.cloudSync.touch()
+        eventually("the waiting person signed in after the forget") { first.client.cloudSync.status().state != SyncState.Blocked }
+        assertFalse("the stored root is gone", first.client.keyring.status().rootStored)
+        first.client.close()
+    }
+
+    @Test
+    fun anOwedForgetIsRetriedWhenTheNextRunStarts() = runBlocking {
+        val dir = tmp.newFolder()
+        val roots = LockedStorage(InMemoryDeviceKeyStorage())
+        val first = Rig(dir = dir, roots = roots)
+        first.signIn()
+        push403 = true
+        first.client.config.set(VOL, json(0.5))
+        first.client.cloudSync.flush()
+        eventually("blocked, with the forget owed") { first.stateFile.exists() && first.stateFile.readText().contains("\"forgetPending\":true") }
+        first.client.close()
+        push403 = false
+        roots.failing = false
+        val second = Rig(dir = dir, roots = roots, seedRoot = false)
+        second.client.cloudSync.flush()
+        eventually("the owed forget ran and its flag went") { !second.stateFile.readText().contains("forgetPending") }
+        assertFalse(second.client.keyring.status().rootStored)
+        assertEquals("the refusal is kept", SyncState.Blocked, second.client.cloudSync.status().state)
+        second.client.close()
+    }
+
+    @Test
+    fun aSignInCompletedDuringThisRunLiftsTheRefusalOfTheSameSubject() = runBlocking {
+        val r = Rig()
+        r.signIn()
+        push403 = true
+        r.client.config.set(VOL, json(0.5))
+        r.client.cloudSync.flush()
+        eventually("blocked") { r.client.cloudSync.status().state == SyncState.Blocked }
+        eventually("saved with the refusal") { r.stateFile.exists() && r.stateFile.readText().contains("\"refused\"") }
+        push403 = false
+        r.client.noteSignInCompleted()
+        eventually("the same subject syncs again") { r.client.cloudSync.status().state != SyncState.Blocked }
+        r.client.config.set(VOL, json(0.8))
+        val pushes = log.count { it.startsWith("push") }
+        r.client.cloudSync.flush()
+        assertTrue(log.count { it.startsWith("push") } > pushes)
+    }
+
+    @Test
+    fun aLateAnswerForAnotherPersonIsIgnored() = runBlocking {
+        val r = Rig()
+        r.signIn()
+        r.signIn(BOB)
+        // A key ring or file call that started for Alice hears account_required after Bob signed in.
+        r.client.keyring.onAccountRequired!!.invoke("/x", ALICE)
+        r.client.cloudSync.flush()
+        assertNotEquals(SyncState.Blocked, r.client.cloudSync.status().state)
+        r.client.keyring.onAccountRequired!!.invoke("/x", BOB)
+        eventually("Bob's own answer blocks") { r.client.cloudSync.status().state == SyncState.Blocked }
+    }
+
+    @Test
+    fun aKeyRingAccountRequiredThatARedirectCarriesIsAnOrdinaryRefusal() = runBlocking {
+        val r = Rig()
+        r.signIn()
+        ringRedirect = true
+        try {
+            r.client.cloudSync.newRecoveryCode()
+            fail("the key ring answered")
+        } catch (_: PolarisException) {
+            // refused, as any other answer that is not a 2xx
+        }
+        r.client.cloudSync.flush()
+        assertNotEquals(SyncState.Blocked, r.client.cloudSync.status().state)
+        assertTrue(r.events.none { it is CloudSyncEvent.SignedOut })
     }
 
     @Test
@@ -476,6 +706,21 @@ class CloudSyncSettingsTest {
             assertNull(bad, safeSignInUrl(bad, origin))
         }
         assertNull(safeSignInUrl(null, origin))
+        // The default port is normalised, a path is not restricted; userinfo, a backslash and lookalike hosts are refused.
+        assertEquals("https://key.example/x", safeSignInUrl("https://key.example:443/x", origin))
+        assertEquals("https://key.example/any/where?a=b#c", safeSignInUrl("https://key.example/any/where?a=b#c", origin))
+        for (bad in listOf(
+            "https://user:pw@key.example/x",
+            "https://user@key.example/x",
+            "https://key.example/a\\b",
+            "https://key.example\\@evil.example/",
+            "https://key.example./x",
+            "https://xn--key-example.example/x",
+            "https://k\u0435y.example/x",
+            "https://key.example@evil.example/x",
+        )) {
+            assertNull(bad, safeSignInUrl(bad, origin))
+        }
     }
 
     // ── A-6 and config through the machine ───────────────────────────────────────────────────────

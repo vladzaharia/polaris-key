@@ -829,7 +829,7 @@
       "code": "cancelled",
       "kind": "client",
       "service": "identity",
-      "description": "Python, Godot: a device-code sign-in wait was cancelled by the host. Also a native-redirect wait the host or the person cancelled (I-15)."
+      "description": "Python, Godot: a device-code sign-in wait was cancelled by the host. Also a native-redirect wait the host or the person cancelled (I-15). Every SDK: a `cloudSync.export()` the host cancelled (WIRE-CONTRACT-V5 §13.12); nothing is left at the destination."
     },
     {
       "code": "sign-in-expired",
@@ -884,6 +884,18 @@
       "kind": "client",
       "service": "sync",
       "description": "Cloud Sync files: a downloaded file failed a check the server could have caused (a segment tag, the manifest, a chunk id, plainSha256, a length, or the file binding of an end-to-end save) (WIRE-CONTRACT-V5 §13.10.4). A cancelled transfer is a transfer state, not this error."
+    },
+    {
+      "code": "sync-export-too-large",
+      "kind": "client",
+      "service": "sync",
+      "description": "Cloud Sync: `cloudSync.export()` was refused before its first byte because the archive would pass a cap, more than SYNC_EXPORT_MAX_ENTRIES entries or more than SYNC_EXPORT_MAX_BYTES of file bytes; the browser also refuses a Blob over SYNC_EXPORT_BLOB_MAX_BYTES when no sink is given. Nothing is written (WIRE-CONTRACT-V5 §13.12)."
+    },
+    {
+      "code": "sync-export-failed",
+      "kind": "client",
+      "service": "sync",
+      "description": "Cloud Sync: `cloudSync.export()` ended without an archive. The error's `reason` is `destination` (the destination cannot be written: no permission, disk full, the picker closed), `network` (offline, or retries spent) or `busy` (another export of this client is running). The partial file is removed (WIRE-CONTRACT-V5 §13.12)."
     },
     {
       "code": "sync-merge-closed",

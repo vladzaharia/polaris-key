@@ -15,6 +15,7 @@
 // and decrypts only the segments it needs.
 
 import Foundation
+
 #if canImport(CryptoKit)
     import CryptoKit
 #else
@@ -228,6 +229,64 @@ public enum SyncFileStream {
             else { throw Failure(.auth) }
             index += 1
             return plain
+        }
+    }
+
+    /// `Opener` for a stream whose plaintext size is known beforehand (the export's plan): which segment
+    /// is last comes from the size, not from the end of the input, so a stream cut on a segment boundary
+    /// still yields every whole segment before it fails. `push` returns the plaintext of each segment
+    /// whose tag has verified (the last one included, as soon as it is whole); `finish` throws `shape`
+    /// when the input ended before the last segment, and `push` throws `size` when bytes follow it.
+    /// Both throw `Failure`.
+    public struct PlannedOpener {
+        private let collKey: Data
+        private let kid: Data
+        private let plainSize: Int
+        private let segments: Int
+        private var parsed: ParsedHeader?
+        private var key = Data()
+        private var index = 0
+        private var buffer = Data()
+
+        public init(collKey: Data, kid: Data, plainSize: Int) throws {
+            guard plainSize >= 0 else { throw Failure(.size) }
+            self.collKey = collKey
+            self.kid = kid
+            self.plainSize = plainSize
+            segments = max(1, (plainSize + SyncFileStream.segmentBytes - 1) / SyncFileStream.segmentBytes)
+        }
+
+        public mutating func push(_ data: Data) throws -> [Data] {
+            buffer.append(data)
+            if parsed == nil {
+                guard buffer.count >= SyncFileStream.headerBytes else { return [] }
+                let p = try SyncFileStream.parseHeader(buffer.prefix(SyncFileStream.headerBytes), kid: kid)
+                parsed = p
+                key = SyncCrypto.deriveFileKey(collKey: collKey, salt: p.salt)
+                buffer = Data(buffer.dropFirst(SyncFileStream.headerBytes))
+            }
+            var out: [Data] = []
+            while index < segments {
+                let last = index == segments - 1
+                let body = last ? plainSize - index * SyncFileStream.segmentBytes : SyncFileStream.segmentBytes
+                let need = body + SyncFileStream.tagBytes
+                guard buffer.count >= need else { break }
+                guard
+                    let plain = SyncCrypto.aesGcmOpen(
+                        key: key, aad: parsed!.header, ciphertext: Data(buffer.prefix(need)),
+                        nonce: SyncFileStream.nonce(index, last: last))
+                else { throw Failure(.auth) }
+                index += 1
+                buffer = Data(buffer.dropFirst(need))
+                out.append(plain)
+            }
+            if index == segments && !buffer.isEmpty { throw Failure(.size) }
+            return out
+        }
+
+        /// Every segment came out of `push`; this only checks that the input did not end early.
+        public func finish() throws {
+            guard parsed != nil, index == segments else { throw Failure(.shape) }
         }
     }
 

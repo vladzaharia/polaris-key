@@ -73,6 +73,8 @@ Obj = Dict[str, Any]
 TICK_MS = 250
 #: The most exchanges one pump makes, whatever the machine keeps asking for.
 MAX_EXCHANGES = 64
+#: The machine's answer to ``receive`` when it abandoned the request meanwhile.
+_NO_REQUEST_IN_FLIGHT = "respond: no request is in flight"
 #: The most entries and bytes of a catalog the host will route by.
 MAX_CATALOG_ENTRIES = 1024
 MAX_CATALOG_BYTES = 1024 * 1024
@@ -210,6 +212,10 @@ class CloudSyncHost:
         self._purged = False
         #: The person the machine's queued requests belong to (``None`` for none).
         self._bound: Optional[str] = None
+        #: The subject ``account_required`` took away (saved with the journal; see ``CloudSyncFile``).
+        self._refused: Optional[str] = None
+        #: The key ring's pin is still to be removed (saved with the blocked journal).
+        self._forget_pending = False
         #: What the key ring last said about the root; applied to the machine at the next pump.
         self._root_pending: Optional[bool] = None
         self._building = False
@@ -324,6 +330,8 @@ class CloudSyncHost:
             self._started = True
             saved = self._file.load()
             self._open_keys = {k: None for k in saved["openKeys"]}
+            self._refused = saved["refused"]
+            self._forget_pending = saved["forgetPending"]
             self._mirror = _vetted(self._opts.catalog)
             self._served = _vetted(saved["catalog"])
             self._build(saved["persisted"])
@@ -514,9 +522,18 @@ class CloudSyncHost:
         if pending is not None:
             m.set_root(pending)
 
-    def _receive(self, m: CloudSyncMachine, res: Obj, opened: Optional[Obj] = None) -> None:
+    def _receive(self, m: CloudSyncMachine, res: Obj, opened: Optional[Obj] = None) -> bool:
+        """Hand an answer to the machine. A request the machine abandoned meanwhile
+        (``account_required()`` from a key-ring or file route, a sign-out) has no one to take its answer:
+        it is dropped, and nothing it carried reaches the journal. Returns whether the machine took it."""
         with self._lock:
-            m.receive(res, opened)
+            try:
+                m.receive(res, opened)
+            except RuntimeError as e:
+                if str(e) == _NO_REQUEST_IN_FLIGHT:
+                    return False
+                raise
+        return True
 
     def bind_subject(self, subject: Optional[str]) -> None:
         """Tell the host whose requests the machine now holds (``None`` for none)."""
@@ -529,7 +546,8 @@ class CloudSyncHost:
         e2e = m.encryption_mode() == "e2e"
         # S3: a locked ring sends nothing, a pull included.
         if e2e and codec.locked:
-            return self._receive(m, {"error": "transport"})
+            self._receive(m, {"error": "transport"})
+            return
 
         wire: Obj = req
         mutations: Optional[List[Obj]] = None
@@ -545,7 +563,8 @@ class CloudSyncHost:
                     # otherwise head the journal for ever); the others go out on the next push.
                     with self._lock:
                         m.refuse_mutations(unsealable_mutations(body, codec, self._routes))
-                    return self._receive(m, {"error": "transport"})
+                    self._receive(m, {"error": "transport"})
+                    return
 
         # Queued for one person: if the session is another person's now, nothing is sent.
         now: Optional[str] = None
@@ -555,14 +574,17 @@ class CloudSyncHost:
             except Exception:  # noqa: BLE001 - an unknown subject does not block a send
                 now = None
         if bound is not None and now is not None and now != bound:
-            return self._receive(m, {"error": "transport"})
+            self._receive(m, {"error": "transport"})
+            return
         res = send_sync(self._deps.ctx, self._deps.tokens, wire)
         ok = "status" in res and res["status"] == 200 and _is_obj(res.get("body"))
         if not e2e or not ok:
             # Server mode, an error answer, or no answer: the machine reads it as it is.
             if e2e and "status" in res and res["status"] == 200:
-                return self._receive(m, {"error": "transport"})
-            return self._receive(m, res)
+                self._receive(m, {"error": "transport"})
+                return
+            self._receive(m, res)
+            return
         try:
             body_out, opened = open_pull(
                 res["body"],
@@ -575,9 +597,12 @@ class CloudSyncHost:
         except Exception:  # noqa: BLE001
             # Locked since the request left, or a repeated mutationId: the answer is dropped and the
             # cursor stays.
-            return self._receive(m, {"error": "transport"})
+            self._receive(m, {"error": "transport"})
+            return
+        # An abandoned request's answer is dropped whole: no open names, no catalog fetch.
+        if not self._receive(m, {"status": 200, "body": body_out}, opened):
+            return
         self._note_opened_keys(body_out, opened)
-        self._receive(m, {"status": 200, "body": body_out}, opened)
         self._maybe_refetch(body_out)
 
     # ── the catalog ──────────────────────────────────────────────────────────────────────────
@@ -684,9 +709,13 @@ class CloudSyncHost:
     def _save(self, persisted: Optional[Obj] = None) -> None:
         """Persist the journal. Committing the debounced edits is what ``persist()`` does by contract.
         The file never holds the root."""
+        self._save_checked(persisted)
+
+    def _save_checked(self, persisted: Optional[Obj] = None) -> bool:
+        """:meth:`_save`, saying whether the file was written (true too when nothing is to be written)."""
         with self._save_lock:
             if self._purged or self._machine is None:
-                return
+                return True
             with self._lock:
                 snapshot = persisted if persisted is not None else self.machine.persist()
             file: CloudSyncFile = {
@@ -695,11 +724,14 @@ class CloudSyncHost:
                 "persisted": snapshot,
                 "catalog": self._served,
                 "openKeys": list(self._open_keys),
+                "refused": self._refused,
+                "forgetPending": self._forget_pending,
             }
             try:
                 self._file.save(file)
             except Exception:  # noqa: BLE001 - failing to persist never fails the call that produced it
-                pass
+                return False
+            return True
 
     # ── the timer ────────────────────────────────────────────────────────────────────────────
 
@@ -744,8 +776,67 @@ class CloudSyncHost:
                 pass
 
     def resume(self) -> None:
-        """A principal signed in: the journal is saved again."""
+        """A principal signed in: the journal is saved again, and what ``account_required`` refused is
+        not refused any more."""
         self._purged = False
+        self._refused = None
+
+    @property
+    def refused(self) -> Optional[str]:
+        """The subject ``account_required`` took away, or ``None`` (see ``CloudSyncFile``)."""
+        return self._refused
+
+    def mark_refused(self, subject: Optional[str]) -> None:
+        """Remember at once, in memory, whom the Worker refused (:meth:`save_blocked` saves it)."""
+        self._refused = subject
+
+    def clear_refused(self) -> None:
+        """A sign-out forgets what was refused: the next sign-in is the person's to make."""
+        if self._refused is None:
+            return
+        self._refused = None
+        self._save()
+
+    def account_required(self, sign_in_url: Optional[str]) -> None:
+        """``account_required`` came from a route the machine does not drive (a key-ring call or a file
+        transfer): the machine takes the same transition as for a ``/sync`` 403 and its events go out at
+        once. A request in flight is abandoned; its answer is dropped in :meth:`_receive`. A no-op before
+        :meth:`start`, with no person signed in, or when already blocked this way."""
+        if not self.started:
+            return
+        with self._lock:
+            self.machine.account_required(sign_in_url)
+        self.touch()
+
+    def save_blocked(self, subject: Optional[str], forget_pending: bool = False) -> None:
+        """The state after ``account_required``, on this path only (sign-out and deactivation keep the
+        full :meth:`purge`): the machine is saved as it stands, so the status is still ``blocked`` after
+        a relaunch; what the person's snapshot held is already gone with the partition. ``subject`` is
+        the one the Worker refused; ``forget_pending`` says the key ring's pin is still to be removed. No
+        timer stays armed. If the file cannot be written the old one (which holds the person's snapshot in
+        the clear) is removed, nothing is saved again until a sign-in, and what was refused is held in
+        memory for this run; raises only if the file could not be removed."""
+        self._open_keys = {}
+        self._refused = subject
+        self._forget_pending = forget_pending
+        self._cancel_timer()
+        if self._save_checked():
+            return
+        with self._save_lock:
+            self._purged = True
+            self._file.remove()
+
+    @property
+    def forget_pending(self) -> bool:
+        """Whether the key ring's pin still has to be removed (see ``CloudSyncFile``)."""
+        return self._forget_pending
+
+    def settle_forget(self) -> None:
+        """The pin is gone: stop retrying."""
+        if not self._forget_pending:
+            return
+        self._forget_pending = False
+        self._save()
 
     def purge(self) -> None:
         """Forget the person's synced data (S6): the machine is rebuilt empty and ``cloud-sync.json``,
@@ -758,6 +849,8 @@ class CloudSyncHost:
             # that exits, must not leave the snapshot on disk. `_purged` stops any save racing this.
             self._remove_quietly()
         self._open_keys = {}
+        self._refused = None
+        self._forget_pending = False
         self._cancel_timer()
         try:
             if self.started:

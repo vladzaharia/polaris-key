@@ -373,8 +373,11 @@ export async function account(client: PolarisKeyClient) {
   if (preview.status === "confirm")
     await client.identity.attach({ confirm: true });
   await client.identity.openAccount(); // { url, opened }
+  // A 600 s token for your own backend: proof of a sign-in, not a license check.
+  const { accessToken } = await client.identity.accessToken();
+  const headers = { authorization: `Bearer ${accessToken}` };
   const { released } = await client.identity.signOut();
-  return { subject, released };
+  return { subject, released, headers };
 }
 ```
 

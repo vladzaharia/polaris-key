@@ -555,6 +555,7 @@ describe("the nav model (nav.ts)", () => {
       "updaters",
       "feed",
       "app-sign-in",
+      "identity-clients",
       "sync-setup",
       "sync-usage",
       "sync-data",

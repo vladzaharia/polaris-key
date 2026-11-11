@@ -9,7 +9,7 @@
 // @pkey-feature core.presentation identity.keyentry identity.account identity.attach
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
 // @pkey-feature sync.keyring identity.exchange identity.link identity.keyreturn identity.devicecode.choice
-// @pkey-feature sync.files sync.files.delta sync.records
+// @pkey-feature sync.files sync.files.delta sync.records identity.accesstoken
 //
 // `cloudSyncPull` / `cloudSyncPush` (U-20.4, sync.settings, WIRE-CONTRACT-V4 section 13.3, 13.4, V5 13.10):
 // the request goes through the browser host's own transport (`sendSync`, over `session.ringRequest`:
@@ -182,7 +182,10 @@ import { fetchDownloadModel } from "../src/browser/distribution.js";
 import { ErrorCode } from "../src/constants.generated.js";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { projectState } from "../src/core/adapter.js";
-import { accountEndpointsOf } from "../src/core/account.js";
+import {
+  accessTokenEndpointOf,
+  accountEndpointsOf,
+} from "../src/core/account.js";
 import {
   choiceEndpointsOf,
   deviceChoiceOf,
@@ -1055,6 +1058,9 @@ async function replay(t: Transcript): Promise<void> {
               linkEndpoint: `${t.baseUrl}/${t.product}/identity/link`,
             }
           : exchangeDiscoveryOf(discovered as Record<string, unknown>),
+      // identity.accesstoken: the token endpoint, only while the last discovery names accessToken.
+      accessTokenEndpoint: () =>
+        accessTokenEndpointOf(discovered as Record<string, unknown> | null),
       // The account endpoints: the last discovery's, else the Worker's standard ones.
       identityEndpoints: () =>
         accountEndpointsOf(discovered as Record<string, unknown> | null) ?? {
@@ -1257,6 +1263,30 @@ async function replay(t: Transcript): Promise<void> {
           observed.subject = r.subject;
         }
         if (r.kind === "refused") observed.code = r.code;
+        break;
+      }
+      case "accessToken": {
+        // identity.accesstoken (I-21b). The recording asks again inside the 600 second window, so
+        // every step bypasses the held token (`refresh`); the reuse rule is pinned by the
+        // client-core and session tests.
+        observed.accessTokenHeld = false;
+        try {
+          const got = await session.accessToken({ refresh: true });
+          observed.result = "ok";
+          observed.accessTokenHeld = got.accessToken !== "";
+          observed.tokenType = got.tokenType;
+          observed.expiresIn = got.expiresIn;
+        } catch (e) {
+          if (!(e instanceof PolarisError)) throw e;
+          if (e.code === "service-unavailable") observed.result = "unavailable";
+          else {
+            observed.result = "refused";
+            if (e.status !== undefined) observed.status = e.status;
+            observed.code = e.wireCode ?? e.code;
+            if (e.retryAfterSeconds !== undefined)
+              observed.retryAfter = e.retryAfterSeconds;
+          }
+        }
         break;
       }
       case "deactivate":
@@ -1629,6 +1659,12 @@ async function replay(t: Transcript): Promise<void> {
             : null;
           observed.nonceEndpoint = ex !== null;
         }
+        // identity.accesstoken: whether the identity fragment names the device exchange.
+        if (t.features.includes("identity.accesstoken"))
+          observed.accessToken =
+            accessTokenEndpointOf(
+              discovered as Record<string, unknown> | null,
+            ) !== null;
         break;
       }
       case "exchange": {
@@ -1906,6 +1942,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       // are the host's; the Node and Python runners replay the connect-links-* and
       // connect-relay-ticket-contact transcripts.
       "connect.links",
+      // connect.local is N/A (runtime) for the same reason: a browser has no sockets and local
+      // links never use the relay; the Node runner replays connect-local-pairing.
+      "connect.local",
     ];
     const expected = TRANSCRIPTS.filter(
       (t) =>

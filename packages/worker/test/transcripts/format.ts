@@ -390,6 +390,23 @@
 // Discovery for these transcripts: a `discover` step also pins `restore` (whether the identity
 // fragment carries `restore: true`) and `restoreEndpoint` (whether its endpoints name `restore`).
 
+// accessToken (I-21.13, WIRE-CONTRACT-V5 §12.13.10, `identity.accesstoken`) — the device exchange of the
+// `identity-access-token` transcript: the product's own app trades its device token for a 600 s access
+// token for its developer's backend. It is the one step; the client is the transcript's own device.
+//   accessToken   a form at `…/identity/token` with `grant_type`
+//     urn:ietf:params:oauth:grant-type:token-exchange, `client_id` (the product slug), `subject_token`
+//     (`{token}`, the device's own `pkeyt_` token), `subject_token_type`
+//     urn:polaris-key:token-type:device and `requested_token_type`
+//     urn:ietf:params:oauth:token-type:access_token, with `X-PKey-Device` and no `Authorization`. A step
+//     with no exchanges is "unavailable": the last discovery names no `accessToken` member (§12.6), so
+//     the client sends nothing and raises `service-unavailable`. `expect`: `result` "ok"
+//     (`accessTokenHeld` true: a compact JWS the client keeps in memory only, `expiresIn` 600 and
+//     `tokenType` "Bearer") | "refused" (`status`, `code`, `accessTokenHeld` false, and on a 429
+//     `retryAfter`, the seconds in the body) | "unavailable" (`accessTokenHeld` false). The token's
+//     bytes are the issuer's (RS256 under a fixed test key); a replayer does not verify them. A
+//     `discover` step in this transcript also pins `accessToken` (whether the identity fragment
+//     carries `accessToken: true`).
+
 // nearbyStart / nearbyApprove / nearbyPoll (I-40.8, WIRE-CONTRACT-V5 §12.11.5, `identity.nearby`) — the
 // nearby approval of the `nearby-*` transcripts, replayed only by an SDK that marks `identity.nearby`
 // implemented. TWO devices take part: D (the transcript's own device, `initial.deviceId`) calls
@@ -589,7 +606,9 @@ export type Action =
   /** I-40.8 (WIRE-CONTRACT-V5 §12.11.5): the nearby approval calls of the `nearby-*` transcripts. */
   | "nearbyStart"
   | "nearbyApprove"
-  | "nearbyPoll";
+  | "nearbyPoll"
+  /** I-21.13 (WIRE-CONTRACT-V5 §12.13.10): the device exchange at `token`, `identity.accessToken()` (feature `identity.accesstoken`). */
+  | "accessToken";
 
 export interface Step {
   action: Action;

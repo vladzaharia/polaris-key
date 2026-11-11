@@ -113,12 +113,20 @@ function insertStatement(
   f: RefreshGrantFields,
   familyStartedAt: number,
   now: number,
+  /** Write the row only while the account's grant for the client exists. */
+  requireGrant = false,
 ): DbStatement {
+  const columns = `(token_hash, family_id, product, client_id, account_id, scope, claims_json, auth_time,
+             family_started_at, created_at, last_used_at, code_hash, redirect_uri)`;
+  const placeholders = "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?";
   return {
-    sql: `INSERT INTO identity_refresh_tokens
-            (token_hash, family_id, product, client_id, account_id, scope, claims_json, auth_time,
-             family_started_at, created_at, last_used_at, code_hash, redirect_uri)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: requireGrant
+      ? `INSERT INTO identity_refresh_tokens ${columns}
+          SELECT ${placeholders}
+           WHERE EXISTS (SELECT 1 FROM identity_client_grants
+                          WHERE product = ? AND account_id = ? AND client_id = ?)`
+      : `INSERT INTO identity_refresh_tokens ${columns}
+          VALUES (${placeholders})`,
     params: [
       h,
       family,
@@ -133,17 +141,39 @@ function insertStatement(
       now,
       f.codeHash ?? null,
       f.redirectUri ?? null,
+      ...(requireGrant ? [f.product, f.accountId, f.clientId] : []),
     ],
   };
 }
 
-/** Open a family at code redemption. Returns the token, shown once. Trims past 10 live families. */
+/**
+ * Open a family at code redemption. Returns the token, shown once. Trims past 10 live families.
+ *
+ * With `requireGrant` the row is written only while the account's grant for the client exists, in
+ * the one statement (`INSERT … SELECT … WHERE EXISTS`), and `null` says it did not: a Disconnect
+ * that landed after the caller read the grant leaves no family behind. The token endpoint always
+ * sets it.
+ */
 export async function issueRefreshFamily(
   env: Env,
   db: Db,
   f: RefreshGrantFields,
   now: number,
-): Promise<{ token: string; familyId: string }> {
+  opts: { requireGrant: true },
+): Promise<{ token: string; familyId: string } | null>;
+export async function issueRefreshFamily(
+  env: Env,
+  db: Db,
+  f: RefreshGrantFields,
+  now: number,
+): Promise<{ token: string; familyId: string }>;
+export async function issueRefreshFamily(
+  env: Env,
+  db: Db,
+  f: RefreshGrantFields,
+  now: number,
+  opts: { requireGrant?: boolean } = {},
+): Promise<{ token: string; familyId: string } | null> {
   const token = mintRefreshToken();
   const familyId = randomId("rf");
   const stmt = insertStatement(
@@ -152,8 +182,11 @@ export async function issueRefreshFamily(
     f,
     now,
     now,
+    opts.requireGrant === true,
   );
-  await db.run(stmt.sql, ...stmt.params);
+  if (opts.requireGrant) {
+    if ((await db.runChanges(stmt.sql, ...stmt.params)) !== 1) return null;
+  } else await db.run(stmt.sql, ...stmt.params);
   // The oldest live families beyond the cap are revoked (a live family has an unspent, unrevoked,
   // unended token).
   const live = await db.all<{ family_id: string }>(

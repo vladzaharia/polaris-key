@@ -79,6 +79,8 @@ public data class IdentityDiscovery(
     val restore: Boolean = false,
     /** `deviceChoice: true` (UK-42.22, section 12.6): the device-code poll may answer `choose`; served only with License on. */
     val deviceChoice: Boolean = false,
+    /** `accessToken: true` (V5 section 12.13.10): the product's issuer is served, so the device exchange answers an access token. */
+    val accessToken: Boolean = false,
 ) {
     /** The device-code start may ask `licenseChoice: app`: `deviceChoice` and all four grant routes are published. */
     val deviceChoiceAvailable: Boolean
@@ -143,6 +145,7 @@ public object Discovery {
             exchange = exchange(fragment.extras["exchange"].objectValue),
             restore = fragment.extras["restore"].boolValue == true && !e["restore"].isNullOrEmpty(),
             deviceChoice = fragment.extras["deviceChoice"].boolValue == true,
+            accessToken = fragment.extras["accessToken"].boolValue == true,
         )
     }
 

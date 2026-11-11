@@ -374,6 +374,12 @@ export interface LocalPairingInput {
   qr?: string;
   /** show: seconds left of the window's 5 minutes. */
   secondsLeft?: number;
+  /** show: which of the window's two views is open; absent is the code. The QR view is the state
+   *  `show-qr`. Switching never renews the window. */
+  view?: "qr";
+  /** show: the window ran out and nothing renewed it. The open view stays, dimmed, says the code
+   *  expired and offers Show a new code in place. */
+  expired?: true;
   /** show: the notice under the time row. */
   notice?: "rotated" | "declined" | "blocked" | "guessing";
   /** show and confirm: a press is being answered; its control keeps its label and is unavailable. */

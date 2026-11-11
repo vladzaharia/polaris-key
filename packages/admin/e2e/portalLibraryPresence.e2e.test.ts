@@ -3,6 +3,7 @@ import type { Page } from "playwright";
 import {
   h1,
   horizontalOverflow,
+  settle,
   shoot,
   startPortal,
   type PortalHarness,
@@ -143,14 +144,19 @@ describe.concurrent("discover grid presence", () => {
   // The shared grid (PX-35): four columns from 1180 px, never five. The three scenario
   // offers four tiles: a full row at every width.
   for (const width of [1280, 1440, 1920]) {
-    // Disabled as flaky (owner 2026-10-23 rule): the cell probe raced the grid render once on CI.
-    it.skip(`no row has an empty cell at ${width}`, async ({ expect }) => {
+    it(`no row has an empty cell at ${width}`, async ({ expect }) => {
       const o = await portal.open("three", "/#/discover", {
         width,
         height: 900,
       });
       try {
         await h1(o.page, "Discover");
+        // The offers section only exists once Discover has loaded (until then the page shows
+        // skeletons): wait for its first tile, so the probe never reads the grid before it renders.
+        await o.page
+          .locator("section[aria-labelledby='offers-h'] ul > li")
+          .first()
+          .waitFor();
         const cells = await o.page.evaluate(() => {
           const grid = document.querySelector(
             "section[aria-labelledby='offers-h'] ul",
@@ -190,7 +196,7 @@ describe.concurrent("library 2-7 grid presence", () => {
             try {
               await h1(o.page, "Your library");
               await o.page.waitForSelector("li[aria-labelledby='key-tile-h']");
-              await o.page.waitForTimeout(300);
+              await settle(o.page);
               await shoot(
                 o.page,
                 `presence-${variant}-${count}-${size.label}-${theme}`,

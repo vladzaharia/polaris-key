@@ -477,7 +477,10 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     /** Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity. */
     public val identity: IdentityClient = IdentityClient(
         core,
-        onAcquired = { syncAfterAcquisition() },
+        onAcquired = {
+            syncAfterAcquisition()
+            noteSignInCompleted()
+        },
         opener = options.accountOpener,
         onSubject = {
             eventFlow.tryEmit(PolarisEvent.Identity(it))
@@ -579,6 +582,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         background = options.cloudSync.background(),
     ).also { api ->
         cloudSyncApi.set(api)
+        keyring.onAccountRequired = api::accountRequiredSoon
         // Registered after Connect's hook: the roster goes first. Then Cloud Sync flushes (bounded) and signs the machine out while
         // the root is still held, the ring forgets, and the synced data is purged (A-3). A root that cannot be deleted stops the
         // sign-out (D-13).
@@ -792,6 +796,11 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     private val syncFlightLock = kotlinx.coroutines.sync.Mutex()
 
     @Volatile private var syncFlight: SyncFlight? = null
+
+    /** The person completed a sign-in during this run: Cloud Sync lifts a refusal of the same subject (WIRE-CONTRACT-V5 11.5). */
+    internal fun noteSignInCompleted() {
+        cloudSyncApi.get()?.signInCompleted()
+    }
 
     /** The post-acquisition sync, forced so a stale ETag cannot 304 away the very first document. */
     private suspend fun syncAfterAcquisition() {

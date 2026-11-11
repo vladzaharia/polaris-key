@@ -3,6 +3,7 @@
 See :mod:`polaris_key.identity.client`.
 """
 
+from .access_token import AccessToken
 from .account import (
     AttachConfirm,
     AttachLicense,
@@ -36,6 +37,7 @@ from .redirect import RedirectSession, SignInError
 from .sign_in import SignInActivation, SignInOutcome, SignInSession
 
 __all__ = [
+    "AccessToken",
     "AutoSignInNeedsSignIn",
     "AutoSignInResult",
     "AutoSignInSignedIn",

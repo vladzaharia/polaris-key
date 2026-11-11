@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { AppWindow, Globe, Monitor, Smartphone, Tv } from "lucide-react";
-import { t, tParts } from "../../lib/copy.js";
+import { t, tParts, type PortalKey } from "../../lib/copy.js";
 import { useLargeTextFlag } from "../../lib/useLargeTextFlag.js";
 
 /**
@@ -309,6 +309,8 @@ export type CardHeaderProps =
       attach?: boolean;
       /** A registered client's request: the headline names the product the person signs in with. */
       via?: string | null;
+      /** Another headline in place of "<App> wants you to sign in" (the sign-out card: "<App> signed you out"). It names the app as `{app}`. */
+      headline?: PortalKey;
     };
 
 const WHERE_GLYPH = {
@@ -466,6 +468,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
   }
   const { variant, icon, name, developer, where, code, art, attach, via } =
     props;
+  const headline = props.headline;
   return (
     <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
       <PaneArt src={art} />
@@ -480,13 +483,14 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
               )}
             >
               {tParts(
-                via
-                  ? "locker.issuer.header"
-                  : attach
-                    ? "signin.attach.header"
-                    : "signin.header.app",
-                [attach && !via ? "product" : "app"],
-                via ? { product: via } : {},
+                headline ??
+                  (via
+                    ? "locker.issuer.header"
+                    : attach
+                      ? "signin.attach.header"
+                      : "signin.header.app"),
+                [attach && !via && !headline ? "product" : "app"],
+                via && !headline ? { product: via } : {},
               ).map((part, i) =>
                 typeof part === "string" ? (
                   part

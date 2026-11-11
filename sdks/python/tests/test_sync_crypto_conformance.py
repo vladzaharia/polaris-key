@@ -1,8 +1,9 @@
-# @pkey-feature sync.keyring sync.e2e sync.files.delta sync.e2e.recovery
+# @pkey-feature sync.keyring sync.e2e sync.files.delta sync.e2e.recovery sync.export
 """The Cloud Sync E2E crypto against ``conformance/corpus/v2/sync-vectors.json`` (U-38.3;
 WIRE-CONTRACT-V5 §13.10, §13.11): hkdfCases, envelopeCases, blindCases, hpkeAnchor, wrapCases,
 recoveryCodeCases, adoptCases and canonicalJsonCases, and (U-22.8) cdcCases, cdcEditCases,
-deltaCases, chunkCases and manifestCases, and (U-22.9) fileStreamCases and transferPlanCases.
+deltaCases, chunkCases and manifestCases, and (U-22.9) fileStreamCases and transferPlanCases, and
+(U-51.5) exportCases (§13.12).
 """
 
 from __future__ import annotations
@@ -13,9 +14,11 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
+from export_fixtures import entries_equal, read_zip, run_row
 
 from polaris_key.core import sync_crypto as sc
 from polaris_key.core import sync_files as sf
+from polaris_key.core.errors import PolarisError
 from polaris_key.update.packs.zstd import select_python_zstd
 
 _ZSTD = select_python_zstd()[0].decode
@@ -291,12 +294,12 @@ def test_chunk(c: Dict[str, Any]) -> None:
             o = sf.open_chunk(root, c["collection"], H(c["idHex"]), obj, _ZSTD)
             assert o.ok and o.plain.hex() == c["plainHex"] and o.codec == codec
         return
-    got = sf.open_chunk(root, c["collection"], H(c["idHex"]), H(c["objectHex"]), _ZSTD)
+    opened = sf.open_chunk(root, c["collection"], H(c["idHex"]), H(c["objectHex"]), _ZSTD)
     want = c["expect"]
     if want["result"] == "ok":
-        assert got.ok and got.plain.hex() == want["plainHex"] and got.codec == want["codec"]
+        assert opened.ok and opened.plain.hex() == want["plainHex"] and opened.codec == want["codec"]
     else:
-        assert not got.ok and got.reason == want["reason"]
+        assert not opened.ok and opened.reason == want["reason"]
     if "seal" in c:
         sealed = sf.seal_chunk(root, c["collection"], H(c["idHex"]), c["seal"]["codec"], H(c["seal"]["bodyHex"]))
         assert sealed.hex() == c["objectHex"]
@@ -323,7 +326,12 @@ def test_chunk_decode_failure_modes() -> None:
     called: List[int] = []
     bomb = bytes([0x28, 0xB5, 0x2F, 0xFD, 0xA0]) + (2 * 1024 * 1024).to_bytes(4, "little") + bytes(8)
     obj2 = sf.seal_chunk(root, "saves", cid, sf.CHUNK_CODEC_ZSTD, bomb)
-    assert sf.open_chunk(root, "saves", cid, obj2, lambda f, n: called.append(n) or a).reason == "size"
+
+    def decode(frame: bytes, n: int) -> bytes:
+        called.append(n)
+        return a
+
+    assert sf.open_chunk(root, "saves", cid, obj2, decode).reason == "size"
     assert called == []
 
 
@@ -679,3 +687,29 @@ def test_verify_reassembly_checks_length_and_hash_after_the_last_piece() -> None
             yield p
 
     assert reason(source(), 200, good) == "plainSize" and taken == [0, 1]
+
+
+# -- exportCases (U-51.5, WIRE-CONTRACT-V5 §13.12) ---------------------------------------------------------
+
+_EXPORT_ROWS: List[Dict[str, Any]] = V["exportCases"]
+
+
+def test_the_corpus_holds_the_export_rows() -> None:
+    assert len(_EXPORT_ROWS) >= 29
+
+
+@pytest.mark.parametrize("row", _EXPORT_ROWS, ids=ids(_EXPORT_ROWS))
+def test_export_case(row: Dict[str, Any]) -> None:
+    sink, source, error, _summary = run_row(row)
+    want = row["expect"]
+    if "refusal" in want:
+        assert isinstance(error, PolarisError) and error.code == want["refusal"]["code"]
+        # Refused before the first byte: only manifests may have been fetched to plan, never a file or a chunk.
+        assert sink.parts == []
+        assert source.stored_bytes < 4096
+        return
+    if error is not None:
+        raise error
+    entries_equal(read_zip(sink.zip), want["entries"])
+    # A sink is handed pieces no larger than a segment plus its tag.
+    assert sink.max_piece <= 1_048_576 + 16

@@ -148,6 +148,18 @@ export const PORTAL_MUTATIONS = {
     invalidates: () => [],
     why: "The app card ends in a redirect back to the app.",
   },
+  signoutConfirm: {
+    label: "Sign out of Polaris Locker from an app's sign-out request",
+    invalidates: () => [],
+    // Awaited: the page waits for the session to say what is true.
+    settle: () => [exact(qk.me())],
+    why: "The page ends in a redirect back to the app, or says the session ended.",
+  },
+  signoutCancel: {
+    label: "Stay signed in after an app's sign-out request",
+    invalidates: () => [],
+    why: "Nothing changes in this session; the page ends in a redirect back to the app.",
+  },
   signOutHere: {
     label: 'Sign this browser out ("Not you?")',
     invalidates: () => [],
@@ -210,6 +222,14 @@ export const PORTAL_MUTATIONS = {
     // A license's own devices never change here, but a restore key is gone, which the product
     // pages do not show; only this list refreshes.
     invalidates: () => [exact(qk.accountDevices())],
+  },
+  changeConnectedApp: {
+    label: "Change which optional items a connected app gets",
+    invalidates: () => [exact(qk.connectedApps())],
+  },
+  disconnectConnectedApp: {
+    label: "Disconnect a connected app",
+    invalidates: () => [exact(qk.connectedApps())],
   },
   claimDiscover: {
     label: "Add a Discover product to the library",
@@ -360,6 +380,18 @@ export async function removeLibraryEntryOrGone(product: string) {
     if (err instanceof HttpError && err.status === 404)
       return { ok: true as const, product, inLibrary: false };
     throw err;
+  }
+}
+
+/** Disconnect where a 404 means the app is gone already (another tab): the same outcome. */
+export async function disconnectConnectedAppOrGone(
+  product: string,
+  clientId: string,
+): Promise<void> {
+  try {
+    await portalApi.disconnectConnectedApp(product, clientId);
+  } catch (err) {
+    if (!(err instanceof HttpError && err.status === 404)) throw err;
   }
 }
 

@@ -26,6 +26,8 @@ func run(t: PKeyTestContext) -> void:
 		return
 	await _refresh(t, h)
 	h.free_server()
+	# The plan holds a lambda that reads the helper: let go of it, or the helper holds itself.
+	h.plan = {}
 
 
 func _pro_doc(h: PKeyLicenseTestSupport) -> String:

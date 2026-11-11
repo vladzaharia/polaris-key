@@ -27,6 +27,8 @@ const SALT_FILE := "cloud-sync.salt"
 const IMPORTED_FILE := "cloud-sync-imported.json"
 ## Open-setting names kept for tombstone mapping; past this the oldest are dropped.
 const OPEN_KEYS_MAX := 4096
+## The longest subject kept as `refused`.
+const REFUSED_MAX := 256
 const _MAGIC := "PKCS"
 const _VERSION := 1
 const _MAX_BYTES := 64 * 1024 * 1024
@@ -56,7 +58,7 @@ func path() -> String:
 
 
 func _empty() -> Dictionary:
-	return {"v": 1, "product": product, "persisted": null, "catalog": null, "openKeys": []}
+	return {"v": 1, "product": product, "persisted": null, "catalog": null, "openKeys": [], "refused": null, "forgetPending": false}
 
 
 func _context() -> PackedByteArray:
@@ -81,6 +83,11 @@ func load_file() -> Dictionary:
 		out["persisted"] = p
 	if is_catalog_shape(raw.get("catalog")):
 		out["catalog"] = raw["catalog"]
+	# The subject `account_required` refused (U-52): not signed in again until a sign-out or another subject.
+	if raw.get("refused") is String and raw["refused"] != "" and (raw["refused"] as String).length() <= REFUSED_MAX:
+		out["refused"] = raw["refused"]
+	# The key ring's stored root could not be removed after `account_required`: retried at start and before sign-in.
+	out["forgetPending"] = raw.get("forgetPending") == true
 	var keys: Variant = raw.get("openKeys")
 	var names: Array = []
 	if keys is Array:

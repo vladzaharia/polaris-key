@@ -189,7 +189,25 @@ export const STEPS = [
     pre: (root, run) => {
       if (existsSync(join(root, PY))) return;
       run(["python3", "-m", "venv", "sdks/python/.venv"]);
-      run([PY, "-m", "pip", "-q", "install", "-e", "sdks/python[dev,keyring]"]);
+      // Pinned like CI: sdks/python/constraints/pyXY.txt for this interpreter (README "Dependency pins").
+      const v = spawnSync(
+        PY,
+        ["-c", "import sys;print('py%d%d' % sys.version_info[:2])"],
+        { cwd: root, encoding: "utf8" },
+      ).stdout.trim();
+      const pins = existsSync(join(root, `sdks/python/constraints/${v}.txt`))
+        ? ["-c", `sdks/python/constraints/${v}.txt`]
+        : [];
+      run([
+        PY,
+        "-m",
+        "pip",
+        "-q",
+        "install",
+        "-e",
+        "sdks/python[dev,keyring]",
+        ...pins,
+      ]);
     },
     argv: () => [PY, "-m", "pytest", "-q", "sdks/python"],
   },

@@ -442,14 +442,18 @@ public struct CloudSyncStatusView: View {
     let onRetry: (() -> Void)?
     /// Counted bytes, 0 to 1, for a determinate bar; nil draws an indeterminate one.
     let fraction: Double?
+    /// Once per stop: asked before the Sync stopped row is announced (nil: always).
+    let claimStop: (@MainActor () -> Bool)?
     @Environment(\.dynamicTypeSize) private var dynamicType
     @Environment(\.polarisKeyStrings) private var strings
 
     public init(
         screen: KitScreen<CloudSyncStatusState>, onUnlock: @escaping () -> Void,
         onReview: @escaping () -> Void, onSignIn: (() -> Void)? = nil,
-        onRetry: (() -> Void)? = nil, fraction: Double? = nil
+        onRetry: (() -> Void)? = nil, fraction: Double? = nil,
+        claimStop: (@MainActor () -> Bool)? = nil
     ) {
+        self.claimStop = claimStop
         self.screen = screen
         self.onUnlock = onUnlock
         self.onReview = onReview
@@ -462,7 +466,8 @@ public struct CloudSyncStatusView: View {
         self.init(
             screen: model.screen, onUnlock: model.onUnlock, onReview: model.onReview,
             onSignIn: model.onSignIn, onRetry: model.onRetry,
-            fraction: model.inputs.cloudSync?.transfer?.fraction)
+            fraction: model.inputs.cloudSync?.transfer?.fraction,
+            claimStop: model.claimStopAnnouncement)
     }
 
     public var body: some View {
@@ -504,17 +509,22 @@ public struct CloudSyncStatusView: View {
                 }
             }
             .onChange(of: line.key) { _, _ in announce(state, line) }
+            // Sync stopped appears on its own (a refusal, or a relaunch that finds the block).
+            .onAppear { if signedOut(line) { announce(state, line) } }
         }
     }
 
-    /// One announcement per state change, the label only: the byte figures are never spoken.
+    /// One announcement per state change, the label only: the byte figures are never spoken. The
+    /// signed-out row is announced as it appears, as a transfer's states are.
     private func announce(_ state: CloudSyncStatusState, _ line: CopyLine) {
-        guard [.transferring, .waiting, .transferFailed].contains(state) else { return }
+        guard [.transferring, .waiting, .transferFailed].contains(state) || signedOut(line) else { return }
+        // The settings view appears again and again while sync stays stopped: say it once per stop.
+        if signedOut(line), let claimStop, !claimStop() { return }
         AccessibilityNotification.Announcement(strings.string(line)).post()
     }
 
     /// A failed sync with nobody signed in is not a fault (ui-core: neutral tone, Sign in to sync).
-    private func signedOut(_ line: CopyLine) -> Bool { line.key == "cloudSync.signedOut" }
+    private func signedOut(_ line: CopyLine) -> Bool { line.key == "cloudSync.syncStopped" }
 
     private enum Tone { case neutral, warning, danger }
 
@@ -534,7 +544,7 @@ public struct CloudSyncStatusView: View {
         case .ringChanged: return ("exclamationmark.triangle", .neutral)
         case .conflict: return ("exclamationmark.triangle", .warning)
         case .transferFailed: return ("exclamationmark.circle", .danger)
-        case .error: return signedOut ? ("person.crop.circle", .neutral) : ("exclamationmark.circle", .danger)
+        case .error: return signedOut ? ("info.circle", .neutral) : ("exclamationmark.circle", .danger)
         }
     }
 
@@ -554,7 +564,8 @@ public struct CloudSyncStatusView: View {
                 .accessibilityHidden(true)
             // The label, then the figures: "Syncing saves… · 38 MB of 61 MB" reads in that order.
             VStack(alignment: .leading, spacing: style.space(.xxs)) {
-                KitText(line, .body)
+                // Sync stopped is neutral: its label is muted, like its glyph.
+                KitText(line, .body, color: signedOut(line) ? .muted : .default)
                 if state == .transferring, let figures = screen.line("cloudSync.transferProgress") {
                     KitText(figures, .meta, color: .muted)
                 }
@@ -598,6 +609,18 @@ public struct CloudSyncKitView: View {
             await host.start()
         }
         .onDisappear { host.stop() }
+        // Sign in to sync, when the app handles none: the kit's own sign-in.
+        .sheet(
+            isPresented: Binding(
+                get: { host.signInModel != nil }, set: { if !$0 { host.closeSignIn() } })
+        ) {
+            if let model = host.signInModel {
+                PolarisKeyScope(model: model) {
+                    SignInView(model: model) { host.closeSignIn() }
+                }
+                .kitSignInSheetShape()
+            }
+        }
         .sheet(
             isPresented: Binding(
                 get: { host.screen != nil }, set: { if !$0 { host.dismiss() } })

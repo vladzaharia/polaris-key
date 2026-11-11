@@ -821,7 +821,7 @@ describe("browser cloud sync host: leaving the principal deletes the synced data
     await b.close();
   });
 
-  it("account_required drops the ring and the record", async () => {
+  it("account_required drops the ring and the person's data, and keeps the machine blocked", async () => {
     const w = new World();
     const { host, ring, b } = await live(w);
     w.push = () =>
@@ -834,7 +834,9 @@ describe("browser cloud sync host: leaving the principal deletes the synced data
     await host.flush(1000);
     expect(ring.forget).toHaveBeenCalled();
     expect(ring.hasRoot()).toBe(false);
-    expect(await b.store.get()).toBeNull();
+    const saved = JSON.parse((await b.store.get())!);
+    expect(saved.persisted.blocked).toBe("account_required");
+    expect(JSON.stringify(saved)).not.toContain('"dark"');
     expect(events.some((e) => e.type === "signedOut")).toBe(true);
     await b.close();
   });

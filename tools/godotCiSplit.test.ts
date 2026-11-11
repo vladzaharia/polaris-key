@@ -6,6 +6,7 @@
  * so every suite runs exactly once per engine and every matrix case runs.
  */
 
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -69,7 +70,7 @@ describe("godot ci selection split", () => {
   });
 });
 
-describe("godot live lane follows dev_live", () => {
+describe("godot live lane runs dev_live on one leg", () => {
   const ci = readFileSync(
     new URL("../.github/workflows/ci.yml", import.meta.url),
     "utf8",
@@ -77,16 +78,10 @@ describe("godot live lane follows dev_live", () => {
   const scope = JSON.parse(
     readFileSync(new URL("./ci-scope.json", import.meta.url), "utf8"),
   ) as {
-    matrices: { godot: Record<string, { include: { part?: string }[] }> };
+    matrices: {
+      godot: Record<string, { include: { godot: string; part?: string }[] }>;
+    };
   };
-
-  // Which suites a PKEY_TEST_PART runs (run_tests.sh); undefined = the unsplit `ci` selection.
-  function runsDevLive(part: string | undefined): boolean {
-    if (part === "matrix") return false;
-    if (part === "editor-a") return set("ci_a").includes("dev_live");
-    if (part === "editor-b") return set("ci_b").includes("dev_live");
-    return set("ci").includes("dev_live");
-  }
 
   // The `if:` of each step of the Godot job that starts, checks, builds or stops pkey dev.
   function liveConditions(): string[] {
@@ -98,22 +93,53 @@ describe("godot live lane follows dev_live", () => {
     return out;
   }
 
-  it("starts pkey dev on exactly the Linux parts that run dev_live", () => {
+  it("has no ci set run dev_live (it is not in any selection a leg runs)", () => {
+    for (const name of [
+      "ci",
+      "ci_a",
+      "ci_b",
+      "ci_p1",
+      "ci_p2",
+      "ci_p3",
+      "ci_p4",
+    ])
+      expect(set(name)).not.toContain("dev_live");
+  });
+
+  it("has run_tests.sh add dev_live to the editor step's last process only under PKEY_TEST_DEV_LIVE", () => {
+    const sh = readFileSync(
+      new URL("../sdks/godot/tools/run_tests.sh", import.meta.url),
+      "utf8",
+    );
+    expect(sh).toContain(
+      '[ "$g" = 4 ] && [ "$name" = editor ] && [ "${PKEY_TEST_DEV_LIVE:-0}" = 1 ] && sel="$sel,dev_live"',
+    );
+  });
+
+  it("sets PKEY_TEST_DEV_LIVE and starts pkey dev on exactly one leg: the 4.7.2 editor", () => {
     const conds = liveConditions().filter((c) => c.includes("matrix.part"));
     expect(conds.length).toBe(4);
-    const parts = new Set<string | undefined>([undefined]);
+    expect(ci).toContain(
+      'if [ "${{ matrix.godot }}" = 4.7.2 ] && [ "${{ matrix.part }}" = editor ]; then export PKEY_TEST_DEV_LIVE=1; fi',
+    );
+    const legs = new Map<string, { godot: string; part: string }>();
     for (const lane of Object.values(scope.matrices.godot))
-      for (const leg of lane.include) parts.add(leg.part);
-    for (const cond of conds)
-      for (const part of parts) {
-        const started = new Function(
+      for (const leg of lane.include)
+        legs.set(`${leg.godot}/${leg.part ?? ""}`, {
+          godot: leg.godot,
+          part: leg.part ?? "",
+        });
+    for (const cond of conds) {
+      const started = [...legs.values()].filter((leg) =>
+        new Function(
           "matrix",
           `return ${cond
             .replace("always() && ", "")
             .replace(/runner\.os == 'Linux'/g, "true")};`,
-        )({ part: part ?? "" });
-        expect({ part, started }).toEqual({ part, started: runsDevLive(part) });
-      }
+        )(leg),
+      );
+      expect(started).toEqual([{ godot: "4.7.2", part: "editor" }]);
+    }
   });
 });
 
@@ -227,5 +253,24 @@ describe("godot legs split every Linux engine", () => {
     expect(ci).toContain('PKEY_UI_MATRIX_SHARDS="${{ matrix.ui_shards }}"');
     expect(ci).toContain('PKEY_UI_MATRIX_SHARD_RANGE="${{ matrix.ui_range }}"');
     expect(ci).toContain("export PKEY_TEST_PARALLEL=1");
+  });
+
+  it("has run_tests.sh fail a run step on the engine's leak report, and prove the pattern on seeded logs", () => {
+    const sh = readFileSync(
+      new URL("../sdks/godot/tools/run_tests.sh", import.meta.url),
+      "utf8",
+    );
+    expect(sh).toContain(
+      'elif [ "$kind" = run ] && [ "$LEAK_GATE" = 1 ] && grep -Eq "$LEAK" "$log"; then',
+    );
+    // The seeded lines match, the suite's own PASS line does not (the pattern is anchored).
+    const script = new URL("../sdks/godot/tools/run_tests.sh", import.meta.url)
+      .pathname;
+    const out = execFileSync("bash", [script, "--self-check"], {
+      encoding: "utf8",
+    });
+    expect(out).toContain("self-check: ok");
+    // The runner can seed a leak, so a real engine run proves the gate end to end.
+    expect(runner).toContain('OS.get_environment("PKEY_TEST_SEED_LEAK")');
   });
 });

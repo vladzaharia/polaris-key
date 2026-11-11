@@ -1,3 +1,5 @@
+# pnpm writes the lockfile in its own format; a changed lockfile must not fail the changed-files check.
+pnpm-lock.yaml
 # Generated artifacts — byte-compared against their emitters (docsCspParity, the docs
 # freshness suite), so prettier must never rewrite them.
 packages/worker/src/docsCsp.generated.ts
@@ -26,6 +28,10 @@ packages/cli/test/fixtures/transport/
 # A-18i's PR-plane generator goldens (byte-compared) and the vendored winget 1.12.0 schemas.
 packages/cli/test/fixtures/pr-golden/
 packages/cli/test/fixtures/winget-schema-1.12.0/
+
+# The mockup kit stylesheet: its fonts, icons and token blocks are written by tools/mockups/build-kit.mjs
+# and byte-checked by `pnpm gen mockup-kit --check`, so prettier must never rewrite it.
+docs/design/mockups/kit/mockup.css
 
 # The setup-wizard mockups: written by docs/design/setup/_src/build.mjs (edit _src, then rebuild).
 docs/design/setup/[0-9]*.html

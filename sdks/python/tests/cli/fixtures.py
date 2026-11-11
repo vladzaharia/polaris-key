@@ -11,7 +11,7 @@ from a fake presentation source (HA-13's seam), never from integrator code.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from polaris_key.ui.core import Theme
 from polaris_key.ui.core.models import (
@@ -102,11 +102,11 @@ def _sign_in(headless: bool, *steps: Tuple[str, object]) -> Callable[[Kit], List
     return draw
 
 
-def _gate(status: str, floating: Optional[str] = None, **kw: object) -> Callable[[Kit], List[Line]]:
+def _gate(status: str, floating: Optional[str] = None, **kw: Any) -> Callable[[Kit], List[Line]]:
     def draw(k: Kit) -> List[Line]:
         # The product page the real `status` verb links to for a state no command fixes.
         portal = "https://polaris.locker/activate?product=tidewater"
-        view = gate_view(status, now=NOW, developer=k.identity.developer, **kw)  # type: ignore[arg-type]
+        view = gate_view(status, now=NOW, developer=k.identity.developer, **kw)
         return screens.gate(k, view, "status", portal, floating)
 
     return draw
@@ -129,7 +129,7 @@ def _done(kind: str, url: Optional[str] = _PAGE, masked: str = "") -> Callable[[
     return draw
 
 
-_ACCOUNT = dict(
+_ACCOUNT: Dict[str, Any] = dict(
     holder="Mara Fennick",
     email="mara@fennick.studio",
     signed_in=True,
@@ -731,5 +731,7 @@ OUT_OF_SCOPE = {
     "AddToAccount": "should tier; the terminal adds a key to an account through login, not a form",
     "SaveConflict": "should tier; a terminal has no synced save to choose between, and no CLI verb for it yet",
     "LinkPairing": "should tier; Cloud Connect pairing has no CLI verb yet",
+    "LocalPairing": "should tier; a terminal pairs with a code through the SDK, no CLI verb yet",
+    "PairedDevices": "should tier; no CLI verb for the paired-device list yet",
     "TransferOffer": "should tier; Direct Transfer has no CLI verb yet",
 }

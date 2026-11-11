@@ -33,14 +33,25 @@ class PolarisError(Exception):
     introduce a code this client predates, and handing the caller the raw value beats
     collapsing it to an opaque "unknown". ``status`` is the HTTP status when the error is an
     answer (``server-error``, a refusal), and ``None`` for a transport failure or a local
-    refusal. ``message`` is the server's own message when it sent one.
+    refusal; ``retry_after_seconds`` is the wait a rate-limit answer named, else ``None``.
+    ``message`` is the server's own message when it sent one.
     """
 
-    def __init__(self, code: str, message: str, *, status: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        *,
+        status: Optional[int] = None,
+        retry_after_seconds: Optional[int] = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
         self.status = status
+        #: The wait a ``rate_limited`` answer named (its ``Retry-After`` header, else the body's
+        #: ``retryAfter``), when it named one.
+        self.retry_after_seconds = retry_after_seconds
 
 
 class InsecureBaseUrlError(PolarisError):

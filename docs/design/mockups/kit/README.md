@@ -3908,3 +3908,15 @@ edited. `sdk.qt-gate`, `sdk.tvos-gate` and `sdk.visionos-gate` are the reference
 - **Qt on KDE Plasma**: `data-pk-platform="kde"` (32px controls at radius 5, Breeze blue under
   native), `.window.kde`, `.kit-actions.end` (affirmative first, then Cancel, right-aligned) and
   `.kit-host.plain` (a host with one dialog form, no welcome grid).
+
+## Pair with a Code (`local-pairing`)
+
+`sdk.react-pair-show`, `sdk.react-pair-enter`, `sdk.react-pair-confirm`, `sdk.react-paired-devices`,
+`sdk.react-pair-off` and `sdk.swiftui-pair-scan`. Appended at the end of `mockup.css`; no earlier rule
+was edited.
+
+- **`.kit-form.short`** in a `.kit-host.plain`: a window under 480px tall insets its form by 24 above
+  and below (not the card padding), so the code and its QR stay side by side with no scroll.
+- Icons added to `build-kit.mjs`: `keyboard` (Enter a code), `scan-qr-code` (Scan a code),
+  `camera-off` (camera access off) and `shield-alert` (a security cue: someone may be guessing, or
+  pairing is being blocked).

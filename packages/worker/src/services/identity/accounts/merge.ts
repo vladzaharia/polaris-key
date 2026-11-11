@@ -11,6 +11,7 @@
  *     one becomes an alias, so a developer's records still resolve; devices bound to the absorbed
  *     subject are re-keyed; the developer gets `subject.merged` (D21);
  *   - a product only the absorbed account touched keeps its subject, now the survivor's;
+ *   - the absorbed account's client grants and refresh families (I-21.15) are deleted, not moved;
  *   - the absorbed account becomes a tombstone that redirects its sessions for 30 days.
  *
  * Every registered store of account × product data re-keys first (`runSubjectMerge`): Config's
@@ -46,6 +47,10 @@ import { randomId } from "../../../platform/crypto.js";
 import { sendNotice } from "../../../core/notify/send.js";
 import { securityNoticeRecipients } from "../../../core/notify/recipients.js";
 import { accountsMergedNotice } from "../../../core/notify/templates.js";
+import {
+  stmtsDeleteAccountIssuerRows,
+  stmtsRevokeAccountRefresh,
+} from "../issuer/lifecycle.js";
 import { stmtSubjectEvent } from "./events.js";
 import { hasScheduledAccountDeletion } from "./lifecycle.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";
@@ -282,6 +287,11 @@ export async function mergeAccounts(
       sql: "DELETE FROM account_product_grants WHERE account_id = ?",
       params: [A],
     },
+    // I-21.15 (D3): the absorbed account's decisions for registered clients are deleted and their
+    // refresh families revoked, not moved: the survivor is asked once more (one Continue), and an
+    // undo of the join restores neither. Revoke first, so the rows that go are already ended.
+    ...stmtsRevokeAccountRefresh(A, now),
+    ...stmtsDeleteAccountIssuerRows(A),
     // PX-W15: terms the absorbed account accepted stay accepted; the survivor's row wins for a
     // version both accepted.
     ...stmtsMoveTermsAcceptances(S, A),

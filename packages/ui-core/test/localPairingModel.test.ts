@@ -244,6 +244,7 @@ describe("LocalPairingModel: show", () => {
     const { m } = make(f);
     await m.show();
     f.seen.pair!.onEnd({ reason: "expired" });
+    // No code was ever shown, so there is nothing to keep on screen: the closed answer.
     expect(m.snapshot).toMatchObject({ step: "closed", closedBy: "expired" });
     expect(m.snapshot.cooldownLeft).toBeUndefined();
     expect(m.view().disabled).toBeUndefined();
@@ -481,6 +482,114 @@ describe("LocalPairingModel: the prompt", () => {
     const v = m.view();
     expect(v.copy).toContain("linkPairing.shares");
     expect(v.copy).not.toContain("localPairing.waitingDevice");
+  });
+});
+
+describe("LocalPairingModel: the code and the QR are two views of one window", () => {
+  it("switches to the QR view and back without renewing or rotating", async () => {
+    const f = fake();
+    const m = await opened(f);
+    const before = m.snapshot;
+    const open = f.log.filter((l) => l === "pair").length;
+    m.showQr();
+    expect(m.view().state).toBe("show-qr");
+    expect(m.view().copy).not.toContain("a11y.linkCode");
+    expect(m.snapshot).toMatchObject({
+      code: before.code,
+      qr: before.qr,
+      rotation: before.rotation,
+      secondsLeft: before.secondsLeft,
+      switches: 1,
+    });
+    m.showCode();
+    expect(m.view().state).toBe("show");
+    expect(m.view().copy).toContain("a11y.linkCode");
+    expect(m.view().copy).not.toContain("a11y.qrPairing");
+    expect(m.snapshot.switches).toBe(2);
+    expect(f.log).not.toContain("renew");
+    expect(f.log.filter((l) => l === "pair")).toHaveLength(open);
+  });
+
+  it("a switch outside the show step does nothing", async () => {
+    const f = fake();
+    const { m } = make(f);
+    await m.start();
+    m.showQr();
+    expect(m.snapshot).toMatchObject({ step: "choose", switches: 0 });
+  });
+
+  it("keeps the view the person is on through a new code", async () => {
+    const f = fake();
+    const m = await opened(f);
+    m.showQr();
+    expect(m.snapshot.qrReveals).toBe(1);
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    expect(m.snapshot).toMatchObject({ view: "qr", code: "4873 0691" });
+    expect(m.view().state).toBe("show-qr");
+    expect(m.snapshot.rotation).toBe(2);
+    // A rotation is not a new reveal: the card breaks and re-forms, it does not start over.
+    expect(m.snapshot.qrReveals).toBe(1);
+    m.showCode();
+    m.showQr();
+    expect(m.snapshot.qrReveals).toBe(2);
+  });
+
+  it("an expired window stays in the view it was in, dimmed, with a new code one press away", async () => {
+    const f = fake();
+    const m = await opened(f);
+    m.showQr();
+    f.seen.pair!.onEnd({ reason: "expired" });
+    expect(m.snapshot).toMatchObject({
+      step: "show",
+      view: "qr",
+      expired: true,
+      secondsLeft: 0,
+    });
+    const v = m.view();
+    expect(v.state).toBe("show-qr");
+    expect(v.copy).toContain("localPairing.failedExpired");
+    expect(v.copy).toContain("localPairing.showNew");
+    expect(v.copy).not.toContain("localPairing.waitingDevice");
+    // The next window opens in place, on the view the person chose, and the card forms again.
+    await m.showNew();
+    expect(m.snapshot).toMatchObject({
+      step: "show",
+      expired: true,
+      busy: "new-code",
+    });
+    f.seen.pair!.onCode(code("1111 2222"));
+    expect(m.snapshot).toMatchObject({
+      view: "qr",
+      code: "1111 2222",
+      qrReveals: 1,
+    });
+    expect(m.snapshot.expired).toBeUndefined();
+    expect(m.view().state).toBe("show-qr");
+  });
+
+  it("the code view expires in place too, and leaving the flow forgets the view", async () => {
+    const f = fake();
+    const m = await opened(f);
+    f.seen.pair!.onEnd({ reason: "expired" });
+    expect(m.view().state).toBe("show");
+    expect(m.view().copy).toContain("localPairing.showNew");
+    m.showQr();
+    await m.cancel();
+    expect(m.snapshot.step).toBe("choose");
+    await m.show();
+    f.seen.pair!.onCode(code("1111 2222"));
+    expect(m.snapshot.view).toBeUndefined();
+  });
+
+  it("says a changed code in the QR view, without the digits", async () => {
+    const f = fake();
+    const m = await opened(f);
+    m.showQr();
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    const copy = m.view().copy;
+    expect(copy).toContain("localPairing.rotatedTitle");
+    expect(copy).toContain("localPairing.rotatedBody");
+    expect(copy).not.toContain("a11y.newCode");
   });
 });
 
@@ -964,29 +1073,29 @@ describe("PairedDevicesModel", () => {
 });
 
 describe("localPairingLayout", () => {
-  it("is two panes from 600 px at the root size, at any height, and always on a TV", () => {
-    expect(localPairingLayout({ width: 600, height: 300 })).toEqual({
-      panes: 2,
-      logo: false,
+  it("is one centred column at every size, the QR never beside the code", () => {
+    for (const w of [
+      { width: 1280, height: 800 },
+      { width: 600, height: 700 },
+      { width: 1100, height: 800, textScale: 2 },
+      { width: 900, height: 300, tv: true },
+    ])
+      expect(localPairingLayout(w).panes).toBe(1);
+  });
+
+  it("a window under 480 tall drops the logo and scrolls, the notice before the QR", () => {
+    for (const width of [390, 720])
+      expect(localPairingLayout({ width, height: 420 })).toEqual({
+        panes: 1,
+        logo: false,
+        scrolls: true,
+        noticeBeforeQr: true,
+      });
+    expect(localPairingLayout({ width: 390, height: 844 })).toEqual({
+      panes: 1,
+      logo: true,
       scrolls: false,
       noticeBeforeQr: false,
     });
-    expect(localPairingLayout({ width: 1200, height: 800 }).logo).toBe(true);
-    expect(
-      localPairingLayout({ width: 1100, height: 800, textScale: 2 }).panes,
-    ).toBe(1);
-    expect(
-      localPairingLayout({ width: 900, height: 300, tv: true }).panes,
-    ).toBe(2);
-  });
-
-  it("a window both narrow and short keeps one column that scrolls, the notice before the QR", () => {
-    expect(localPairingLayout({ width: 390, height: 420 })).toEqual({
-      panes: 1,
-      logo: false,
-      scrolls: true,
-      noticeBeforeQr: true,
-    });
-    expect(localPairingLayout({ width: 390, height: 844 }).scrolls).toBe(false);
   });
 });

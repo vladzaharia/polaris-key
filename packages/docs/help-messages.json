@@ -1351,6 +1351,8 @@
     "value_invalid",
     "op_invalid_for_policy",
     "setting_not_synced",
-    "collection_unknown"
+    "collection_unknown",
+    "sync-export-too-large",
+    "sync-export-failed"
   ]
 }

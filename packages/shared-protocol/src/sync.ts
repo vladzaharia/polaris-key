@@ -153,6 +153,31 @@ export const SYNC_CDC_FORMAT = "pkey-sync-cdc/1";
 /** §13.11.1: the wrap format. */
 export const SYNC_WRAP_FORMAT = "pkey-sync-wrap/1";
 
+/** §13.12: the schema of a device export's `data.json` (`cloudSync.export()`). */
+export const SYNC_EXPORT_FORMAT = "pkey-sync-export/1";
+/** §13.12: the folder of the Cloud Sync store inside an export, as in the portal's zip (U-12.3). */
+export const SYNC_EXPORT_STORE_DIR = "stores/sync.cloudSync/";
+/** §13.12: most entries an export holds; over it the export is refused (`sync-export-too-large`). The portal's zip cap. */
+export const SYNC_EXPORT_MAX_ENTRIES = 65_000;
+/** §13.12: most file bytes (plaintext) an export holds, the zip32 limit; over it the export is refused. The portal's zip cap. */
+export const SYNC_EXPORT_MAX_BYTES = 4_294_967_295;
+/** §13.12: most bytes a browser export holds as a Blob when the host gives no sink (256 MiB). */
+export const SYNC_EXPORT_BLOB_MAX_BYTES = 268_435_456;
+/** §13.12: the most chunk records over every manifest of one export; over it the export is refused. */
+export const SYNC_EXPORT_MAX_CHUNKS = 65_536;
+/** §13.12: zip32 bytes an entry adds besides its data and twice its name: 30 (local header) + 16 (data descriptor) + 46 (central directory). */
+export const SYNC_EXPORT_ZIP_ENTRY_BYTES = 92;
+/** §13.12: zip32 bytes of the end-of-central-directory record. */
+export const SYNC_EXPORT_ZIP_END_BYTES = 22;
+/** §13.12: what an item of `files.json` or `data.json`, not yet known when the plan is made, counts for (plus 6 bytes per byte of its names). */
+export const SYNC_EXPORT_ITEM_RESERVE_BYTES = 1024;
+/** §13.12: most pulls an export makes while waiting for `more: false`; over it the export fails with reason `network`. */
+export const SYNC_EXPORT_MAX_PULLS = 64;
+/** §13.12: longest one wait taken from a `Retry-After`, in milliseconds (the longer one is cut to it). */
+export const SYNC_EXPORT_RETRY_AFTER_MAX_MS = 900_000;
+/** §13.12: most time one export spends waiting in all (rate limits and retries), in milliseconds; over it the export fails with reason `network`. */
+export const SYNC_EXPORT_MAX_WAIT_MS = 5_400_000;
+
 /** §13.11.2: reads of the recovery blob per device a day. */
 export const SYNC_RECOVERY_READS_PER_DAY = 5;
 /** §13.11.4: a reset keeps the old ring this many days, read-only. */

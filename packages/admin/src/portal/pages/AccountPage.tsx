@@ -21,6 +21,10 @@ import {
   DevicesSection,
   devicesVisible,
 } from "../components/account/DevicesSection.js";
+import {
+  ConnectedAppsSection,
+  connectedAppsVisible,
+} from "../components/account/ConnectedAppsSection.js";
 import { AccountCard as SectionCard } from "../components/account/AccountCard.js";
 import { SegmentedRow } from "../components/account/SegmentedRow.js";
 import { DownloadData } from "../components/DownloadData.js";
@@ -29,6 +33,7 @@ import { StepUpInline } from "../components/account/StepUpInline.js";
 import {
   useCancelAccountDeletion,
   useAccountDevices,
+  useConnectedApps,
   useDeleteAccount,
   useExportAccountData,
   usePersonalTokens,
@@ -63,17 +68,25 @@ import { formatDayTime } from "../date.js";
  * Sign-in methods, Connected apps, Packages, Where you're signed in, Appearance, Your data); the
  * after-sign-in nudge and the link-accounts offer render above the column's first card; the
  * Approve-a-device dialog opens from SessionsCard and the `approve` route. Connected apps
- * (PX-31b) goes between Sign-in methods and Packages.
+ * (I-21.15) sits between Sign-in methods and Packages and shows only while the account has one.
  */
 const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: "profile", label: t("profile.title") },
   { id: "methods", label: t("locker.account.methods") },
+  { id: "apps", label: t("locker.apps.title") },
   { id: "packages", label: t("locker.account.packages") },
   { id: "sessions", label: t("locker.account.sessions") },
   { id: "devices", label: t("locker.account.devices") },
   { id: "appearance", label: t("locker.appearance.title") },
   { id: "data", label: t("locker.account.yourData") },
 ];
+
+/** The sections that load after the first paint: a link to one lands once they have settled. */
+const LATE_SECTIONS: ReadonlySet<AccountSection> = new Set([
+  "apps",
+  "packages",
+  "devices",
+]);
 
 export function AccountPage({
   account,
@@ -89,6 +102,13 @@ export function AccountPage({
   const sessionsShown = !sessions.isPending && sessions.data !== null;
   const accountDevices = useAccountDevices();
   const hadDevices = React.useRef(false);
+  const connectedApps = useConnectedApps();
+  const hadApps = React.useRef(false);
+  const appsShown = connectedAppsVisible(
+    connectedApps,
+    hadApps,
+    section === "apps",
+  );
   const devicesShown = devicesVisible(
     accountDevices,
     hadDevices,
@@ -100,6 +120,7 @@ export function AccountPage({
     (s) =>
       (s.id !== "sessions" || sessionsShown) &&
       (s.id !== "devices" || devicesShown) &&
+      (s.id !== "apps" || appsShown) &&
       (s.id !== "packages" || packagesShown),
   );
   const [current, setCurrent] = React.useState<AccountSection>(
@@ -115,9 +136,11 @@ export function AccountPage({
   const settled =
     section === "packages"
       ? !packages.isPending && !sessions.isPending
-      : section === "devices"
-        ? !accountDevices.isPending && !sessions.isPending
-        : true;
+      : section === "apps"
+        ? !connectedApps.isPending && !sessions.isPending
+        : section === "devices"
+          ? !accountDevices.isPending && !sessions.isPending
+          : true;
   React.useEffect(() => {
     if (!section || landed.current || !settled) return;
     landed.current = true;
@@ -132,13 +155,12 @@ export function AccountPage({
         !at ||
         at === document.body ||
         (at instanceof HTMLElement && /^H[123]$/.test(at.tagName));
-      if ((section === "packages" || section === "devices") && refocus && idle)
+      if (LATE_SECTIONS.has(section) && refocus && idle)
         focusSectionHeading(section);
     };
     go(true);
     // The sign-in methods card above fills in a frame later: land again once it has.
-    if (section === "packages" || section === "devices")
-      setTimeout(() => go(true), 400);
+    if (LATE_SECTIONS.has(section)) setTimeout(() => go(true), 400);
   }, [section, settled]);
   const pick = (s: AccountSection): void => {
     setCurrent(s);
@@ -221,6 +243,7 @@ export function AccountPage({
         <div className="min-w-0 flex-1 space-y-6">
           <ProfileCard account={account} />
           <SignInMethods account={account} params={params} />
+          <ConnectedAppsSection shown={appsShown} />
           <PackagesCard />
           <SessionsCard />
           <DevicesSection shown={devicesShown} wanted={section === "devices"} />

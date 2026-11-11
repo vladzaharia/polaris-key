@@ -1,4 +1,4 @@
-// @pkey-feature sync.e2e sync.e2e.recovery
+// @pkey-feature sync.e2e sync.e2e.recovery sync.export
 //
 // The Kotlin conformance runner for the Cloud Sync E2E primitives in
 // conformance/corpus/v2/sync-vectors.json (WIRE-CONTRACT-V5 section 13.10), read in place; it
@@ -12,6 +12,7 @@ package im.plrs.key.conformance
 import im.plrs.key.core.DeviceCurves
 import im.plrs.key.core.JcaDeviceCurves
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.PolarisException
 import im.plrs.key.core.TinkDeviceCurves
 import im.plrs.key.core.X25519Points
 import im.plrs.key.core.arrayValue
@@ -27,6 +28,7 @@ import im.plrs.key.core.sync.SyncHpke
 import im.plrs.key.core.sync.SyncKeys
 import im.plrs.key.core.sync.SyncRecovery
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -360,5 +362,27 @@ class SyncVectorsTest : ConformanceSuite() {
             f.equal(c.s("blobHex"), hex(SyncRecovery.sealAdopt(cur, from, bytes(s.s("oldRootHex")), bytes(s.s("nonceHex"))))) { "${c.s("id")} seal" }
         }
         f.done(list("adoptCases").size)
+    }
+
+    @Test
+    fun exportCases() {
+        val f = Failures("sync export")
+        for (row in list("exportCases")) {
+            val id = row.s("id")
+            val r = ExportCorpus.run(row)
+            val expect = row["expect"] as JsonObject
+            val refusal = expect["refusal"] as? JsonObject
+            if (refusal != null) {
+                f.equal(refusal.s("code"), (r.error as? PolarisException)?.code) { "$id refusal" }
+                f.equal(0, r.sink.bytes().size) { "$id: bytes written before a refusal" }
+            } else if (r.error != null) {
+                f.check(false) { "$id: ${r.error}" }
+            } else {
+                val bad = ExportCorpus.differences(ExportCorpus.read(r.sink.bytes()), expect["entries"] as JsonArray)
+                f.check(bad.isEmpty()) { "$id: $bad" }
+                f.check(r.sink.maxPiece <= 1_048_576 + 16 + 4096) { "$id: a sink write of ${r.sink.maxPiece} bytes" }
+            }
+        }
+        f.done(list("exportCases").size)
     }
 }

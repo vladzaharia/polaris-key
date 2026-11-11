@@ -31,12 +31,14 @@ import {
   type PortalRelease,
   type PortalSession,
   type PortalAccountDevice,
+  type PortalConnectedProduct,
   type PortalCloudSync,
   type PortalStorefrontProduct,
 } from "./api.js";
 import { browser } from "./browser.js";
 import { isSignedOut } from "./errors.js";
 import {
+  disconnectConnectedAppOrGone,
   removeLibraryEntryOrGone,
   removeLicenseOrGone,
   useWrite,
@@ -365,6 +367,38 @@ export function useRemoveAccountDevice() {
       d.product,
       d.deviceId,
     ],
+  });
+}
+
+/**
+ * Account → Connected apps (`GET /api/me/connected-apps`): the client apps the account signed in to,
+ * grouped by product, or `null` on a Worker without the route (the section hides).
+ */
+export function useConnectedApps(): UseQueryResult<
+  PortalConnectedProduct[] | null
+> {
+  return useQuery(pq.connectedApps());
+}
+
+/** Change: only the claims sent switch. */
+export function useChangeConnectedApp() {
+  return useWrite("changeConnectedApp", {
+    toArgs: (v: {
+      product: string;
+      clientId: string;
+      claims: Partial<Record<"name" | "picture" | "email", boolean>>;
+    }): [string, string, typeof v.claims] => [v.product, v.clientId, v.claims],
+  });
+}
+
+/** Disconnect: a `404` (already gone, another tab) is the same outcome and resolves as done. */
+export function useDisconnectConnectedApp() {
+  return useWrite("disconnectConnectedApp", {
+    toArgs: (v: { product: string; clientId: string }): [string, string] => [
+      v.product,
+      v.clientId,
+    ],
+    call: disconnectConnectedAppOrGone,
   });
 }
 

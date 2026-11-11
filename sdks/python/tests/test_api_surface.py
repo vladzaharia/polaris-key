@@ -10,10 +10,12 @@ from polaris_key.connect.links import CloudLinks
 from polaris_key.connect.local_links import LocalLinks
 from polaris_key.connect.nearby import CloudNearby
 from polaris_key.connect.transfer import IncomingOffer, Transfer
+from polaris_key.identity.choice import ChoiceClient
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.auto_sign_in import NearbyNamespace
 from polaris_key.identity.native_redirect import push_request
 from polaris_key.identity.nearby_session import NearbySignInSession
+from polaris_key.identity.redirect import RedirectSession
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
 from polaris_key.license.entitlements import EntitlementsClient
@@ -23,6 +25,8 @@ CLASSES = {
     "ConfigClient": ConfigClient,
     "ConfigSetting": ConfigSetting,
     "IdentityClient": IdentityClient,
+    "ChoiceClient": ChoiceClient,
+    "RedirectSession": RedirectSession,
     "SignInNamespace": SignInNamespace,
     "SignInSession": SignInSession,
     "NearbyNamespace": NearbyNamespace,
@@ -69,10 +73,17 @@ ATTRS = [
     ("identity.signIn.session.reopen", "SignInSession", "reopen"),
     ("identity.signIn.session.cancel", "SignInSession", "cancel"),
     ("identity.signIn.session.wait", "SignInSession", "wait"),
+    ("identity.signIn.session.complete", "RedirectSession", "complete"),
+    ("identity.choice", "IdentityClient", "choice"),
+    ("identity.choice.licenses", "ChoiceClient", "licenses"),
+    ("identity.choice.devices", "ChoiceClient", "devices"),
+    ("identity.choice.complete", "ChoiceClient", "complete"),
+    ("identity.choice.cancel", "ChoiceClient", "cancel"),
     ("identity.autoSignIn", "IdentityClient", "auto_sign_in"),
     ("identity.useLicenseChoice", "IdentityClient", "choice"),
     ("identity.attachLicense", "IdentityClient", "attach"),
     ("identity.openAccount", "IdentityClient", "open_account"),
+    ("identity.accessToken", "IdentityClient", "access_token"),
     ("client.discover", "PolarisKeyClient", "discover"),
     ("client.init", "PolarisKeyClient", "init"),
     ("client.portal", "PolarisKeyClient", "portal"),
@@ -181,11 +192,6 @@ REMOVED = [
     ("license.is_entitled", "LicenseClient", "is_entitled"),
     ("license.entitlement_value", "LicenseClient", "entitlement_value"),
     ("license.get_entitlements", "LicenseClient", "get_entitlements"),
-    ("identity.sign_in_with_browser", "IdentityClient", "sign_in_with_browser"),
-    ("identity.begin_sign_in", "IdentityClient", "begin_sign_in"),
-    ("identity.poll_sign_in", "IdentityClient", "poll_sign_in"),
-    ("identity.wait_for_sign_in", "IdentityClient", "wait_for_sign_in"),
-    ("identity.accept_sign_in", "IdentityClient", "accept_sign_in"),
 ]
 
 @pytest.mark.parametrize("concept,cls,name", ATTRS)

@@ -20,6 +20,9 @@ public class SyncResponse(public val status: Int, public val body: JsonElement?,
 public interface SyncExchange {
     /** The transport's answer to the request in flight; [opened] is the host codec's typed open result (E2E). */
     public fun receive(res: SyncResponse, opened: OpenedBody? = null)
+
+    /** Whether a request is in flight: false once the machine left (`account_required` from another route), so its answer is dropped. */
+    public val awaiting: Boolean
 }
 
 private const val STATUS_OK = 200
@@ -35,6 +38,8 @@ private const val STATUS_UNAVAILABLE = 503
 
 internal class MachineReceive(private val p: MachineParts) : SyncExchange {
     private val core get() = p.core
+
+    override val awaiting: Boolean get() = core.inFlight != null
 
     override fun receive(res: SyncResponse, opened: OpenedBody?) {
         val req = checkNotNull(core.inFlight) { "respond: no request is in flight" }
@@ -81,9 +86,7 @@ internal class MachineReceive(private val p: MachineParts) : SyncExchange {
             core.s.blocked = if (err?.get("code").stringValue == "attestation_required") "attestation" else "forbidden"
             return false
         }
-        p.session.leave("accountRequired", false)
-        core.s.blocked = "account_required"
-        core.events.add(SyncEvent.SignInOffered(err?.get("signInUrl").stringValue))
+        p.account.leave(err?.get("signInUrl").stringValue)
         return null
     }
 

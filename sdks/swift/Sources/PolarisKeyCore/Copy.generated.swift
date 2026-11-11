@@ -173,6 +173,8 @@ public let COPY_CODES: [String: CopyEntry] = [
     "recovery-code-invalid": CopyEntry(title: "Recovery code not valid", message: "That recovery code isn't right. Check it and try again."),
     "sync-encryption-pinned": CopyEntry(title: "Encryption required", message: "This app needs encrypted sync, which isn't available right now. Sync stays off."),
     "sync-file-invalid": CopyEntry(title: "File not opened", message: "The synced file failed its check, so it wasn't used. Try again."),
+    "sync-export-too-large": CopyEntry(title: "Copy too large", message: "The synced data is too big to save as one file. Nothing was saved."),
+    "sync-export-failed": CopyEntry(title: "Copy not saved", message: "The copy of your synced data couldn't be saved. Check the destination and try again."),
     "sync-merge-closed": CopyEntry(title: "Already decided", message: "The choice was already made, or a newer change replaced it. Nothing changed."),
     "invalid-options": CopyEntry(title: "App not set up", message: "The app's licensing isn't set up correctly. Contact the developer."),
     "invalid-argument": CopyEntry(title: "Request not accepted", message: "The app sent a request the licensing bridge could not read. Contact the developer."),

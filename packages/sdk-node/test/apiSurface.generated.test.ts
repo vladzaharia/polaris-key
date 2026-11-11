@@ -105,6 +105,8 @@ it("identity.attachLicense", () =>
   expect("attach" in IdentityClient.prototype).toBe(true));
 it("identity.openAccount", () =>
   expect("openAccount" in IdentityClient.prototype).toBe(true));
+it("identity.accessToken", () =>
+  expect("accessToken" in IdentityClient.prototype).toBe(true));
 it("client.discover", () =>
   expect("discover" in PolarisKeyClient.prototype).toBe(true));
 it("client.init", () =>
@@ -285,11 +287,3 @@ it("removed: license.getEntitlements", () =>
   expect("getEntitlements" in LicenseClient.prototype).toBe(false));
 it("removed: PolarisKeyClient.getCurrentDevice", () =>
   expect("getCurrentDevice" in PolarisKeyClient.prototype).toBe(false));
-it("removed: identity.signInWithBrowser", () =>
-  expect("signInWithBrowser" in IdentityClient.prototype).toBe(false));
-it("removed: identity.beginSignIn", () =>
-  expect("beginSignIn" in IdentityClient.prototype).toBe(false));
-it("removed: identity.pollSignIn", () =>
-  expect("pollSignIn" in IdentityClient.prototype).toBe(false));
-it("removed: identity.waitForSignIn", () =>
-  expect("waitForSignIn" in IdentityClient.prototype).toBe(false));

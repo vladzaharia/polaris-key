@@ -135,6 +135,7 @@ function heldTimers(held: (ms: number) => boolean) {
           t.live = false;
         };
       }
+      // brittle-ok: the timers the test does not hold run for real; this is no wait
       const id = setTimeout(fn, ms);
       return () => clearTimeout(id);
     },

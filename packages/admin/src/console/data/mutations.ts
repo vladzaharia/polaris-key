@@ -166,6 +166,14 @@ export type WriteMethod =
   | "putProductUserOverrides"
   | "updateSignInSettings"
   | "purgeRestoreKeys"
+  | "createIdentityClient"
+  | "updateIdentityClient"
+  | "deleteIdentityClient"
+  | "mintIdentityClientSecret"
+  | "revokeIdentityClientSecret"
+  | "disableIdentityClient"
+  | "enableIdentityClient"
+  | "rotateIssuerKey"
   | "resetProductDeviceFingerprint"
   | "mintBundle"
   | "updateFingerprintPolicy"
@@ -687,6 +695,60 @@ export const MUTATIONS: MutationTable = {
     // The keys are not listed anywhere in the console; the audit row is the trail.
     invalidates: (slug) => [prefix(qk.activity(slug))],
   },
+  createIdentityClient: {
+    label: "client registration",
+    invalidates: (slug) => [
+      prefix(qk.identityClients(slug)),
+      prefix(qk.activity(slug)),
+    ],
+  },
+  updateIdentityClient: {
+    label: "client change",
+    invalidates: (slug) => [
+      prefix(qk.identityClients(slug)),
+      prefix(qk.activity(slug)),
+    ],
+  },
+  deleteIdentityClient: {
+    label: "client delete",
+    invalidates: (slug) => [
+      prefix(qk.identityClients(slug)),
+      prefix(qk.activity(slug)),
+    ],
+  },
+  mintIdentityClientSecret: {
+    label: "client secret",
+    invalidates: (slug) => [
+      prefix(qk.identityClients(slug)),
+      prefix(qk.activity(slug)),
+    ],
+  },
+  revokeIdentityClientSecret: {
+    label: "client secret revoke",
+    invalidates: (slug) => [
+      prefix(qk.identityClients(slug)),
+      prefix(qk.activity(slug)),
+    ],
+  },
+  disableIdentityClient: {
+    label: "client disable",
+    invalidates: (slug) => [
+      prefix(qk.identityClients(slug)),
+      prefix(qk.activity(slug)),
+    ],
+  },
+  enableIdentityClient: {
+    label: "client enable",
+    invalidates: (slug) => [
+      prefix(qk.identityClients(slug)),
+      prefix(qk.activity(slug)),
+    ],
+  },
+  rotateIssuerKey: {
+    label: "issuer key rotation",
+    // The ring changes at once; the product's trail records it.
+    invalidates: (slug) => [prefix(qk.issuerKeys()), prefix(qk.activity(slug))],
+  },
   updateSignInSettings: {
     label: "sign-in settings",
     // `claimByKey` is the same column the Portal page edits.
@@ -1049,6 +1111,8 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => [
       prefix(qk.productSettingsAll(slug)),
       prefix(qk.activity(slug)),
+      // The Clients page reads the issuer switch from its own query.
+      prefix(qk.identityClients(slug)),
     ],
   },
   revertProductSetting: {
@@ -1056,6 +1120,8 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => [
       prefix(qk.productSettingsAll(slug)),
       prefix(qk.activity(slug)),
+      // The Clients page reads the issuer switch from its own query.
+      prefix(qk.identityClients(slug)),
     ],
   },
   createProfile: {

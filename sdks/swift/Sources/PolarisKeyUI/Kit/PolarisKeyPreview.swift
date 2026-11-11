@@ -198,7 +198,7 @@ public struct PolarisKeyPreview: View {
                 Section {
                     CloudSyncStatusView(
                         screen: KitStates.cloudSyncStatus(model.inputs), onUnlock: {},
-                        onReview: {}, onRetry: {},
+                        onReview: {}, onSignIn: {}, onRetry: {},
                         fraction: model.inputs.cloudSync?.transfer?.fraction)
                 }
             }

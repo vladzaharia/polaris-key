@@ -212,6 +212,10 @@
       "reason": "runtime",
       "note": "No iCloud Keychain or Block Store to keep a restore secret in (I-49)."
     },
+    "identity.accesstoken": {
+      "status": "implemented",
+      "note": "I-21b: client.identity.access_token(refresh=False) (a coroutine on the async client) posts the RFC 8693 device exchange (the device's own pkeyt_ token) to discovery's identity token endpoint and returns a 600 second at+jwt for the app's own backend. Only when discovery names accessToken, else the typed service-unavailable. Memory only, reused until 60 seconds before expiry, one request at a time, dropped at sign-out; refresh=True asks again. A refusal keeps its wire code and retry_after_seconds. Proof of the signed-in device, not a licence check. identity-access-token replays in tests/test_transcripts.py."
+    },
     "identity.link": {
       "status": "na",
       "runtime": ["python"],
@@ -490,7 +494,7 @@
     },
     "sync.settings": {
       "status": "implemented",
-      "note": "client.cloud_sync.status()/flush() and the cloudSync event (polaris_key/cloud_sync): one machine per client over the shared keyring, driven by identity events, with typed N/A while the product has no Sync service. tests/test_cloud_sync_host.py; the cloudsync-* transcripts replay in tests/test_transcripts.py."
+      "note": "client.cloud_sync.status()/flush() and the cloudSync event (polaris_key/cloud_sync): one machine per client over the shared keyring, driven by identity events, with typed N/A while the product has no Sync service. tests/test_cloud_sync_host.py, tests/test_cloud_sync_account_required.py (a refusal blocks across a relaunch, the vetted signInUrl, key-ring and file account_required, the in-flight drop); the cloudsync-* transcripts replay in tests/test_transcripts.py."
     },
     "sync.conflict": {
       "status": "implemented",
@@ -580,6 +584,10 @@
     "server.webhooks": {
       "status": "planned",
       "wp": "SP-67"
+    },
+    "sync.export": {
+      "status": "implemented",
+      "note": "client.cloud_sync.export(destination, include_revisions=False, on_progress=None, cancel=None) (cloud_sync/export.py: the plan, the serialisers and a streaming STORED zip writer; cloud_sync/export_host.py: the preconditions, the pulls and their bounds, the file source over the transfer engine and the path destination): a readable zip of the synced data written to <destination>.partial (exclusive create, 0600, fsync) and renamed over the destination; a failure or cancel removes the partial and keeps the old file. The async client's export is a coroutine on a worker thread that cancels with the task. tests/test_sync_crypto_conformance.py replays every exportCases row (zipfile.testzip), tests/test_cloud_sync_export.py the host."
     }
   }
 }

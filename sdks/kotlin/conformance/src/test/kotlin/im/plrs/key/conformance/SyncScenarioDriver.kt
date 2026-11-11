@@ -135,6 +135,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
             "putAt" -> putAt(args).toJson()
             "removeAt" -> machine.removeAt(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
             "delete" -> machine.delete(args[0].stringValue!!, args[1].stringValue!!).toJson()
+            "accountRequired" -> machine.accountRequired(args.getOrNull(0).stringValue).let { CallResult.Ok.toJson() }
             "flush" -> machine.flush().toJson()
             "refresh" -> machine.refresh().toJson()
             else -> fail("$where: the machine slice that ports `$call` has not landed").let { JsonNull }

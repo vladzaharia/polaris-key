@@ -201,12 +201,16 @@ async function installProbe(page: Page): Promise<void> {
     doc.startViewTransition = (...args: unknown[]) => {
       const run: Probe["runs"][number] = { pseudo: [], done: false };
       w.__m.runs.push(run);
-      const seen = new Map<string, Pseudo>();
+      // One record per animation object: every row shares one `match-element` pseudo selector,
+      // and an index in `getAnimations()` shifts as animations finish, so neither a selector nor
+      // an index names one. Sampled on every frame and once more when the transition is ready
+      // (every pseudo animation exists then), so a run of slow frames cannot miss one.
+      const seen = new Map<Animation, Pseudo>();
       let polling = true;
       const poll = (): void => {
-        document.getAnimations().forEach((a, i) => {
+        document.getAnimations().forEach((a) => {
           const pseudo = (a.effect as KeyframeEffect | null)?.pseudoElement;
-          if (!pseudo?.startsWith("::view-transition")) return;
+          if (!pseudo?.startsWith("::view-transition") || seen.has(a)) return;
           const t = a.effect!.getTiming();
           const kf = (a.effect as KeyframeEffect).getKeyframes();
           const first = kf[0] as Record<string, unknown> | undefined;
@@ -216,7 +220,7 @@ async function installProbe(page: Page): Promise<void> {
             (["transform", "width", "height"] as const).some(
               (p) => first?.[p] !== last?.[p],
             );
-          seen.set(`${i}:${pseudo}`, {
+          seen.set(a, {
             pseudo,
             name: (a as CSSAnimation).animationName ?? "",
             duration: Number(t.duration),
@@ -230,6 +234,9 @@ async function installProbe(page: Page): Promise<void> {
       const t = (original as (...a: unknown[]) => { finished: Promise<void> })(
         ...args,
       );
+      void (t as unknown as { ready: Promise<void> }).ready
+        .then(poll)
+        .catch(() => undefined);
       void t.finished
         .catch(() => undefined)
         .then(() => {
@@ -266,6 +273,14 @@ const doneRuns = async (page: Page): Promise<Probe["runs"]> => {
     .catch(() => undefined);
   return (await probe(page)).runs;
 };
+/** Two animation frames: what the page needs to start an animation its render asked for. */
+const frames = (page: Page): Promise<void> =>
+  page.evaluate(
+    () =>
+      new Promise<void>((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => r())),
+      ),
+  );
 const violations = (page: Page): Promise<string[]> =>
   page.evaluate(() => (window as unknown as { __v: string[] }).__v);
 const running = (page: Page): Promise<string[]> =>
@@ -408,8 +423,8 @@ describe("Platform → Status: the 30-second poll", () => {
           await expect
             .poll(() => served.hits[OPS] ?? 0, { timeout: 6000 })
             .toBeGreaterThan(before);
-          // Let the render and any animation it starts begin.
-          await page.waitForTimeout(250);
+          // Let the render and any animation it starts begin: two frames after the answer.
+          await frames(page);
         };
         if (SHOTS)
           await frameStrip(page, name, go, {
@@ -448,9 +463,10 @@ describe("Platform → Status: the 30-second poll", () => {
       ];
       await run("poll-changed", () => page.clock.fastForward(POLL));
       // The server's hit is not the render: on a slow runner the answer lands after run()'s fixed
-      // wait. Wait for the changed word to be on the page, then let its animation begin.
+      // wait. Wait for the changed word to be on the page, then two frames for its animation to
+      // begin (a reduced-motion run starts none, so there is no start event to wait for).
       await page.getByText("Degraded", { exact: true }).first().waitFor();
-      await page.waitForTimeout(250);
+      await frames(page);
       const changed = await probe(page);
       const after = await facts(page);
       const afterTops = await tops(page);
@@ -524,7 +540,7 @@ describe("a status pill pops its changed word", () => {
       window.dispatchEvent(new Event("visibilitychange")),
     );
     await page.getByText("Disabled", { exact: true }).first().waitFor();
-    await page.waitForTimeout(150);
+    await frames(page);
     const started = (await probe(page)).started;
     await closeContext(page.context());
     return started;
@@ -657,8 +673,7 @@ describe("list audit: the portal (Polaris Locker)", () => {
   });
 
   for (const variant of VARIANTS) {
-    // Disabled as flaky (owner 2026-10-23 rule): the glide count read 1 of 2 once on CI.
-    it.skip(`the Library's Grid/List switch: the new view rises into the section's own glide (${variant})`, async () => {
+    it(`the Library's Grid/List switch: the new view rises into the section's own glide (${variant})`, async () => {
       const s = await portal.open("twelve", "/", {
         theme: variant === "light" ? "light" : "dark",
         reducedMotion: variant === "reduced" ? "reduce" : "no-preference",
@@ -687,7 +702,9 @@ describe("list audit: the portal (Polaris Locker)", () => {
         // By the numbers the new view rises (`fast`) while two survivors still move, but they are
         // the section's own box and the page footer, which glide into the space the list rises in
         // (the strips show nothing crossing). Pinned, so a change here gets a new strip review.
-        expect(c[0]!.enterTimings).toEqual({ "120+200": 2 });
+        // One entering view, one animation: the probe keys each animation by identity, where the
+        // old index key could count the same one twice (the "2 of 1" that read 1 of 2 under load).
+        expect(c[0]!.enterTimings).toEqual({ "120+200": 1 });
       }
       expect(await s.violations()).toEqual([]);
       await s.close();

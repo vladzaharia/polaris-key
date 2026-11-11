@@ -387,6 +387,9 @@ class Room extends RefCounted:
 		_nap_cancel = true
 		_id = null
 		_wipe()
+		# A stopped room needs no one to keep it alive. Its loop ends the next time it is woken; if the ticket
+		# call it waits on never answers (its object is gone), nothing would ever release the room.
+		_hold = null
 
 
 	## The link was removed: its sessions end `peer_revoked`, then the room stops.
@@ -409,6 +412,9 @@ class Room extends RefCounted:
 		_nap_cancel = true
 		_id = null
 		_wipe()
+		# A stopped room needs no one to keep it alive. Its loop ends the next time it is woken; if the ticket
+		# call it waits on never answers (its object is gone), nothing would ever release the room.
+		_hold = null
 
 
 	func _wipe() -> void:

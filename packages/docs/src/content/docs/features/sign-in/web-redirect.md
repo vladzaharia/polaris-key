@@ -7,7 +7,7 @@ sidebar:
   order: 3
 ---
 
-A web app sends the person's browser to Polaris Locker, the person confirms on the sign-in card, and the browser comes back with a one-time code. The app trades the code for a device token. The shape is OAuth 2.1's authorization code flow with PKCE. The token never appears in a URL. A desktop or mobile app uses the [native redirect](/docs/features/sign-in/native-redirect/) instead.
+A web app sends the person's browser to Polaris Locker, the person confirms on the sign-in card, and the browser comes back with a one-time code. The app trades the code for a device token. The shape is OAuth 2.1's authorization code flow with PKCE. The token never appears in a URL. A desktop or mobile app uses the [native redirect](/docs/features/sign-in/native-redirect/) instead. A website or partner app that uses a standard OpenID Connect library registers as a client and signs people in with [your product](/docs/features/sign-in/sign-in-with-product/).
 
 It needs the product's Identity service on. With it off, `authorize` and `token` answer as an unknown route.
 

@@ -16,7 +16,9 @@
 
 import {
   Fragment,
+  Suspense,
   forwardRef,
+  lazy,
   useEffect,
   useId,
   useLayoutEffect,
@@ -46,6 +48,7 @@ import {
   button,
   callout,
   plain,
+  lightCardStage,
   qrCode,
   since,
   text,
@@ -53,12 +56,16 @@ import {
   type KitCtx,
 } from "./parts.js";
 
+// The Light Card is a canvas renderer with its own physics: it loads with the QR, apart from this
+// screen's first paint, and the plain QR shows until it has (and stays when it cannot draw).
+const LightCardQr = lazy(() => import("./lightCardQr.js"));
+
 // ── Rules ────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * The window rule of `localPairingLayout` (ui-core): two panes from 600 px at the root text size, so
- * 200 % text keeps one column; a window under 480 tall drops the logo; narrow and short, the one
- * column scrolls with the notice before the QR. The ui-matrix `localLayout` rows pin the rule.
+ * The window rule of `localPairingLayout` (ui-core): one centred column at every size, the code or
+ * the QR but never both; a window under 480 tall drops the logo and the column scrolls with the
+ * notice before the QR. The ui-matrix `localLayout` rows pin the rule.
  */
 const LOCAL_CSS = `${PAIR_SHARED_CSS}
 @layer polaris-key {
@@ -130,16 +137,6 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 .pk-root .pair-show [data-ghost] {
   visibility: hidden;
 }
-.pk-root .pair-show .qr[data-ghost] {
-  inline-size: 11.5rem;
-  aspect-ratio: 1;
-  margin: 0;
-}
-@container pk (max-height: 30rem) {
-  .pk-root .pair-show .qr[data-ghost] {
-    inline-size: 10rem;
-  }
-}
 .pk-root .pair-skel {
   display: block;
   inline-size: 3.5ch;
@@ -197,6 +194,40 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 }
 .pk-root .pair-show .qr svg {
   inline-size: 11.5rem;
+}
+.pk-root .pair-codeblock {
+  inline-size: min(100%, 24rem);
+}
+/* The Light Card: a night stage in both themes, as wide as the column up to 24 rem; the card is half
+   of it, and never under 12 rem. */
+.pk-root .pair-show .qr[data-lightcard] {
+  inline-size: 100%;
+  max-inline-size: 24rem;
+  margin: 0;
+}
+.pk-root .pair-show .qr[data-lightcard] canvas,
+.pk-root .pair-show .qr[data-lightcard] .stage-fill {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--pk-kit-radius-group);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, white 6%, transparent);
+}
+.pk-root .pair-show .qr[data-pending] .stage-fill {
+  background: color-mix(in oklab, black 100%, var(--pk-accent-fg) 4%);
+}
+.pk-root .pair-show .pair-codeblock,
+.pk-root .pair-show > .pair-time,
+.pk-root .pair-show .pair-wait,
+.pk-root .pair-show .pair-foot {
+  justify-self: center;
+}
+/* A window that ran out: the digits dim, and the card dims in its own canvas. */
+.pk-root .pair-show[data-expired] .pair-code {
+  color: var(--pk-text-muted);
+}
+.pk-root .pair-show > .pair-time[data-expired] {
+  color: var(--pk-text-strong);
 }
 .pk-root .pair-live {
   display: contents;
@@ -310,34 +341,9 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 .pk-root .btn[aria-disabled="true"][data-variant="primary"] {
   opacity: 0.6;
 }
-@container pk (min-width: 37.5rem) {
-  .pk-root[data-component="LocalPairing"]:is([data-state="show"], [data-state="opening"]) .stage[data-kind="screen"] .card {
-    inline-size: min(46rem, 100%);
-  }
-  .pk-root .pair-show {
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: var(--pk-space-6);
-    align-items: start;
-  }
-  .pk-root .pair-show > * {
-    grid-column: 1;
-  }
-  .pk-root .pair-show > .pair-codeblock {
-    align-self: center;
-  }
-  .pk-root .pair-show > .qr {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: center;
-  }
-  .pk-root .pair-show > .pair-codeblock {
-    grid-row: 1;
-  }
-}
-/* Short windows drop the kit's logo: the window already shows its own. Short and wide keeps both
-   panes beside each other and the QR beside the code and the waiting row, so nothing scrolls;
-   short and narrow keeps one column that scrolls, with the notice before the QR so a wrong code is
-   not left under it. */
+/* The window is one column at every size: the digits or the QR, never both. A window under 480 tall
+   drops the kit's logo and the column scrolls, with the notice before the QR so a warning is not
+   left under it. */
 .pk-root .pair-foot {
   display: flex;
   flex-wrap: wrap;
@@ -356,64 +362,67 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
   .pk-root[data-component="LocalPairing"] .pair-stack {
     gap: var(--pk-space-2);
   }
-  @container pk (min-width: 37.5rem) {
-    .pk-root[data-component="LocalPairing"]:is([data-state="show"], [data-state="opening"]) .stage[data-kind="screen"] {
-      align-content: start;
-      padding-block: var(--pk-space-3);
-    }
-    .pk-root[data-component="LocalPairing"]:is([data-state="show"], [data-state="opening"]) .card {
-      gap: var(--pk-space-2);
-      padding-block: var(--pk-space-4);
-    }
-    .pk-root .pair-show {
-      row-gap: var(--pk-space-2);
-    }
-    .pk-root .pair-show > .qr {
-      grid-row: 1 / span 2;
-    }
-    .pk-root .pair-show .qr svg {
-      inline-size: 10rem;
-    }
-    /* A notice is one line: its words side by side and its action at the end, and the waiting
-       row is as tall as its text, so Cancel stays in the first view. */
-    .pk-root .pair-show .pair-notice {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      column-gap: var(--pk-space-3);
-      row-gap: 0;
-      padding-block: var(--pk-space-2);
-    }
-    .pk-root .pair-show .pair-notice .notice-glyph {
-      inset-block-start: var(--pk-space-3);
-    }
-    .pk-root .pair-show .pair-notice .btn[data-variant="link"] {
-      margin-inline-start: auto;
-      min-block-size: 1.5rem;
-    }
-    .pk-root .pair-show .pair-wait {
-      padding-block: var(--pk-space-1);
-    }
+  .pk-root[data-component="LocalPairing"] .stage[data-kind="screen"] {
+    align-content: start;
+    overflow-y: auto;
   }
-  @container pk (max-width: 37.49rem) {
-    .pk-root[data-component="LocalPairing"] .stage[data-kind="screen"] {
-      align-content: start;
-      overflow-y: auto;
-    }
-    .pk-root .pair-show > .pair-codeblock {
-      order: 1;
-    }
-    .pk-root .pair-show .pair-notice {
-      order: 2;
-    }
-    .pk-root .pair-show > .qr {
-      order: 3;
-    }
-    .pk-root .pair-show > .pair-wait,
-    .pk-root .pair-show > .pair-foot {
-      order: 4;
-    }
+  .pk-root .pair-show .pair-notice {
+    order: 2;
   }
+  .pk-root .pair-show > .qr,
+  .pk-root .pair-show > .pair-time {
+    order: 3;
+  }
+  .pk-root .pair-show > .pair-wait,
+  .pk-root .pair-show > .pair-foot {
+    order: 4;
+  }
+  /* Everything gives back height so Cancel stays in the first view. */
+  .pk-root[data-component="LocalPairing"]:is([data-state="show"], [data-state="show-qr"]) .stage[data-kind="screen"] {
+    padding-block: var(--pk-space-3);
+  }
+  .pk-root[data-component="LocalPairing"]:is([data-state="show"], [data-state="show-qr"]) .card {
+    gap: var(--pk-space-2);
+    padding-block: var(--pk-space-4);
+  }
+  .pk-root .pair-show {
+    gap: var(--pk-space-2);
+  }
+  .pk-root .pair-show .pair-wait {
+    padding-block: var(--pk-space-1);
+  }
+}
+/* A laptop window (45 rem or more wide, so 200 % text keeps one column, and under 900 tall): the QR view is two columns, the stage beside
+   the title, the line, the time, the waiting row and the buttons. Still one method per screen. */
+@media (max-height: 899px) {
+@container pk (min-width: 45rem) {
+  .pk-root[data-component="LocalPairing"][data-state="show-qr"] .stage[data-kind="screen"] .card {
+    inline-size: min(46rem, 100%);
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--pk-space-6);
+    row-gap: var(--pk-space-3);
+    align-items: start;
+  }
+  .pk-root[data-component="LocalPairing"][data-state="show-qr"] .card > * {
+    grid-column: 1;
+  }
+  .pk-root[data-component="LocalPairing"][data-state="show-qr"] .card > .pair-show {
+    display: contents;
+  }
+  .pk-root[data-component="LocalPairing"][data-state="show-qr"] .card > .pair-show > .qr {
+    grid-column: 2;
+    grid-row: 1 / span 12;
+    align-self: center;
+    order: 0;
+  }
+  .pk-root[data-component="LocalPairing"][data-state="show-qr"] .card > .pair-show > .qr[data-lightcard] {
+    inline-size: clamp(15rem, calc(100dvh - 9rem), 24rem);
+  }
+  .pk-root[data-component="LocalPairing"][data-state="show-qr"] .card > .pair-show > :not(.qr) {
+    justify-self: start;
+    order: 0;
+  }
+}
 }
 /* Paired devices. */
 .pk-root .pair-rows[data-loading] .pair-row {
@@ -705,6 +714,21 @@ function TimeRow(props: { c: KitCtx }): ReactNode {
   const left = Math.max(0, c.input.localPairing?.secondsLeft ?? 0);
   const r = 9;
   const whole = 2 * Math.PI * r;
+  if (has(c, "localPairing.failedExpired"))
+    // The window ran out: no countdown, the ring empty, and the sentence told once.
+    return (
+      <p
+        className="pair-time"
+        data-expired=""
+        data-key="localPairing.failedExpired"
+        role="status"
+      >
+        <svg className="pair-ring" viewBox="0 0 24 24" aria-hidden="true">
+          <circle className="track" cx="12" cy="12" r={r} />
+        </svg>
+        <span>{text(c, "localPairing.failedExpired")}</span>
+      </p>
+    );
   return (
     <>
       <p
@@ -776,6 +800,7 @@ const Code = forwardRef<
 });
 
 function Waiting(props: { c: KitCtx }): ReactNode {
+  if (!has(props.c, "localPairing.waitingDevice")) return null;
   return (
     <p
       className="pair-wait"
@@ -853,6 +878,10 @@ function Disabled(props: {
 export interface LocalExtras {
   changed: readonly number[];
   rotation: number;
+  /** How many times the person switched views (an announcement follows each switch). */
+  switches: number;
+  /** How many times the QR view was revealed in this window (the card forms on the first). */
+  qrReveals: number;
   name: string;
   labels?: Readonly<Record<string, string>>;
 }
@@ -901,24 +930,53 @@ function ChooseBody(props: { c: KitCtx }): ReactNode {
 }
 
 /** Cancel and Enter a code instead, on one row (the window's two ways out). */
-function ShowFoot(props: { c: KitCtx }): ReactNode {
-  const { c } = props;
+function ShowFoot(props: {
+  c: KitCtx;
+  link: "localPairing.toQr" | "localPairing.toCode";
+  ghost?: boolean;
+}): ReactNode {
+  const { c, link, ghost } = props;
+  // A window that ran out offers its next one in place, as the one filled control.
+  const again = has(c, "localPairing.showNew") && c.input.localPairing?.expired;
   return (
     <div className="pair-foot">
       <div className="pair-actions">
+        {again ? <NewCode c={c} variant="primary" /> : null}
         {button(c, "common.cancel", "secondary")}
       </div>
-      <div className="links" data-part="links">
-        {button(c, "localPairing.toEnter", "link")}
-      </div>
+      {ghost ? (
+        // The opening step holds the link's place; it is not there to press yet.
+        <div className="links" data-ghost="" aria-hidden="true">
+          <span className="btn" data-variant="link">
+            {plain(c, link)}
+          </span>
+        </div>
+      ) : (
+        <div className="links" data-part="links">
+          {button(c, link, "link")}
+        </div>
+      )}
     </div>
   );
+}
+
+/** What a screen reader is told after the person switches views: the new view's line, spoken once
+ *  the (new) live region exists, so it is read as news and not as part of the page. */
+function SwitchNote(props: { text: string; on: boolean }): ReactNode {
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    setSaid(props.on ? props.text : "");
+  }, []);
+  return <Announce>{said}</Announce>;
 }
 
 /** The window is opening: the code tile holds its place (its bars appear after the DL7 delay), so a
  *  slow start is never mistaken for nothing happening. */
 function OpeningBody(props: { c: KitCtx }): ReactNode {
   const { c } = props;
+  useEffect(() => {
+    void import("./lightCardQr.js");
+  }, []);
   return (
     <div className="pair-show" data-opening="">
       <div className="pair-codeblock">
@@ -931,15 +989,55 @@ function OpeningBody(props: { c: KitCtx }): ReactNode {
           <span>{plain(c, "localPairing.expires", { time: "5:00" })}</span>
         </p>
       </div>
-      <figure className="qr" data-ghost="" aria-hidden="true" />
       <p className="pair-wait" data-ghost="" aria-hidden="true">
         <span className="pair-dot" />
         <span>{plain(c, "localPairing.waitingDevice")}</span>
       </p>
-      <ShowFoot c={c} />
+      <ShowFoot c={c} link="localPairing.toQr" ghost />
     </div>
   );
 }
+
+/** What a notice says to a screen reader: its two lines, then anything more (the new digits). */
+function Told(props: {
+  c: KitCtx;
+  said: readonly [string, string] | undefined;
+  children?: ReactNode;
+}): ReactNode {
+  const { c, said } = props;
+  return (
+    <Announce>
+      {said ? (
+        <>
+          {unstop(plain(c, said[0]))}. {unstop(plain(c, said[1]))}.{" "}
+          {props.children}
+        </>
+      ) : null}
+    </Announce>
+  );
+}
+
+/** Show a new code: unavailable, with its label, while the next window is being opened. */
+function NewCode(props: { c: KitCtx; variant: "primary" | "link" }): ReactNode {
+  const renewing = props.c.input.localPairing?.busy === "new-code";
+  return (
+    <Disabled
+      c={props.c}
+      k="localPairing.showNew"
+      variant={props.variant}
+      off={renewing}
+      busy={renewing}
+    />
+  );
+}
+
+/** The two lines each notice says, on screen and to a screen reader, in both views. */
+const NOTICE_WORDS: Record<string, readonly [string, string]> = {
+  rotated: ["localPairing.rotatedTitle", "localPairing.rotatedBody"],
+  declined: ["localPairing.notPairedWith", "localPairing.rotatedBody"],
+  blocked: ["localPairing.blockedTitle", "localPairing.blockedBody"],
+  guessing: ["localPairing.rotatedTitle", "localPairing.tooManyAgainBody"],
+};
 
 function ShowBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
   const { c, x } = props;
@@ -948,6 +1046,10 @@ function ShowBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
   const renewing = p.busy === "new-code";
   const tile = useRef<HTMLSpanElement | null>(null);
   const seen = useRef(x.rotation);
+  // The Light Card's chunk loads while the code is on screen, so the first switch has no wait.
+  useEffect(() => {
+    void import("./lightCardQr.js");
+  }, []);
   // A new code can remove the control the person pressed (the notice's action); focus then falls to
   // the page, so it goes to the code, which is what changed.
   useEffect(() => {
@@ -956,29 +1058,18 @@ function ShowBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
     const at = document.activeElement;
     if (!at || at === document.body) tile.current?.focus();
   }, [x.rotation]);
-  const again = (
-    <Disabled
-      c={c}
-      k="localPairing.showNew"
-      variant="link"
-      off={renewing}
-      busy={renewing}
-    />
-  );
-  const words: Record<string, readonly [string, string]> = {
-    rotated: ["localPairing.rotatedTitle", "localPairing.rotatedBody"],
-    declined: ["localPairing.notPairedWith", "localPairing.rotatedBody"],
-    blocked: ["localPairing.blockedTitle", "localPairing.blockedBody"],
-    guessing: ["localPairing.rotatedTitle", "localPairing.tooManyAgainBody"],
-  };
-  const said = n ? words[n] : undefined;
+  const again = <NewCode c={c} variant="link" />;
+  const said = n ? NOTICE_WORDS[n] : undefined;
   return (
-    <div className="pair-show" data-notice={n}>
+    <div
+      className="pair-show"
+      data-notice={n}
+      data-expired={p.expired ? "" : undefined}
+    >
       <div className="pair-codeblock">
         <Code ref={tile} c={c} changed={x.changed} rotation={x.rotation} />
         <TimeRow c={c} />
       </div>
-      {qrCode(c, p.qr ?? null, "a11y.qrPairing")}
       <div className="pair-live">
         {n === "rotated" || n === "declined" || n === "guessing" ? (
           <Notice
@@ -1003,20 +1094,88 @@ function ShowBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
         ) : null}
       </div>
       {/* What a screen reader is told, apart from the notice so its action is not read as news. */}
-      <Announce>
-        {said ? (
-          <>
-            {unstop(plain(c, said[0]))}. {unstop(plain(c, said[1]))}.{" "}
-            {n !== "blocked" ? (
-              <span data-key="a11y.newCode">
-                {plain(c, "a11y.newCode", { code: spellOut(p.code ?? "") })}
-              </span>
-            ) : null}
-          </>
+      <Told c={c} said={said}>
+        {said && n !== "blocked" ? (
+          <span data-key="a11y.newCode">
+            {plain(c, "a11y.newCode", { code: spellOut(p.code ?? "") })}
+          </span>
         ) : null}
-      </Announce>
+      </Told>
+      <SwitchNote
+        on={x.switches > 0}
+        text={plain(c, "localPairing.showBody")}
+      />
       <Waiting c={c} />
-      <ShowFoot c={c} />
+      <ShowFoot c={c} link="localPairing.toQr" />
+    </div>
+  );
+}
+
+/** The product's look for the Light Card: its accent where the theme supplies one (the Polaris
+ *  violet otherwise) and its mark for the centre (the Polaris star otherwise). */
+function productLook(c: KitCtx): {
+  accent: string | null;
+  mark: string | null;
+} {
+  const id = c.resolved.identity;
+  const own =
+    id.accentSource === "integrator" ||
+    id.accentSource === "product" ||
+    id.accentSource === "icon";
+  const scheme = c.resolved.theme.scheme === "light" ? "light" : "dark";
+  return {
+    accent: own ? (id.accent[scheme] ?? null) : null,
+    mark: c.resolved.iconUrl ?? null,
+  };
+}
+
+/** The window's QR view: the Light Card alone (the plain QR where it cannot draw), with the time, the
+ *  waiting row and a way back to the code. The window is the code view's: nothing here renews it,
+ *  and a new code redraws the card. What the code view announces is announced here, without the
+ *  digits. */
+function QrBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
+  const { c, x } = props;
+  const p = c.input.localPairing!;
+  const n = p.notice;
+  const warn = n === "blocked" || n === "guessing";
+  const said = n ? NOTICE_WORDS[n] : undefined;
+  const look = productLook(c);
+  return (
+    <div
+      className="pair-show"
+      data-view="qr"
+      data-notice={n}
+      data-expired={p.expired ? "" : undefined}
+    >
+      {p.qr ? (
+        <Suspense fallback={lightCardStage(c, "a11y.qrPairing")}>
+          <LightCardQr
+            c={c}
+            data={p.qr}
+            labelKey="a11y.qrPairing"
+            expired={p.expired === true}
+            accent={look.accent}
+            mark={look.mark}
+            settled={x.qrReveals > 1}
+          />
+        </Suspense>
+      ) : null}
+      <TimeRow c={c} />
+      <div className="pair-live">
+        {warn && said ? (
+          <Notice
+            c={c}
+            title={said[0]}
+            body={said[1]}
+            glyph={GLYPHS.warning("notice-glyph")}
+          />
+        ) : null}
+      </div>
+      {/* The notice is told by a region that was in the page before it. */}
+      <Told c={c} said={said} />
+      <SwitchNote on={x.switches > 0} text={plain(c, "localPairing.qrBody")} />
+      <Waiting c={c} />
+      <ShowFoot c={c} link="localPairing.toCode" />
     </div>
   );
 }
@@ -1276,6 +1435,8 @@ function localBody(c: KitCtx, x: LocalExtras): ReactNode {
       return <OpeningBody c={c} />;
     case "show":
       return <ShowBody c={c} x={x} />;
+    case "show-qr":
+      return <QrBody c={c} x={x} />;
     case "closed":
       return <ClosedBody c={c} />;
     case "enter":
@@ -1380,6 +1541,8 @@ export function LocalPairing(props: LocalPairingProps): ReactNode {
         localBody(c, {
           changed: [],
           rotation: 0,
+          switches: 0,
+          qrReveals: 0,
           name: "",
           labels: props.categoryLabels,
         })
@@ -1420,6 +1583,8 @@ function DrivenPairing(
   const x: LocalExtras = {
     changed: snapshot.changed,
     rotation: snapshot.rotation,
+    switches: snapshot.switches,
+    qrReveals: snapshot.qrReveals,
     name: snapshot.name,
     labels: props.categoryLabels,
   };
@@ -1444,8 +1609,13 @@ function DrivenPairing(
             void model.show();
             break;
           case "localPairing.enter":
-          case "localPairing.toEnter":
             void model.enter();
+            break;
+          case "localPairing.toQr":
+            model.showQr();
+            break;
+          case "localPairing.toCode":
+            model.showCode();
             break;
           case "localPairing.toShow":
             void model.toShow();

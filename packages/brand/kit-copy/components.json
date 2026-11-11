@@ -1386,7 +1386,11 @@
           "copy": ["cloudSync.conflict", "common.review"]
         },
         "error": {
-          "copy": ["cloudSync.error", "cloudSync.signedOut", "cloudSync.signIn"]
+          "copy": [
+            "cloudSync.error",
+            "cloudSync.syncStopped",
+            "cloudSync.signIn"
+          ]
         },
         "locked": {
           "copy": ["cloudSync.locked", "cloudSync.unlock"]
@@ -1767,7 +1771,6 @@
             "localPairing.title",
             "localPairing.showBody",
             "a11y.busy",
-            "localPairing.toEnter",
             "common.cancel"
           ]
         },
@@ -1776,14 +1779,34 @@
             "localPairing.title",
             "localPairing.showBody",
             "a11y.linkCode",
-            "a11y.qrPairing",
             "localPairing.expires",
             "localPairing.waitingDevice",
-            "localPairing.toEnter",
+            "localPairing.failedExpired",
+            "localPairing.toQr",
             "localPairing.rotatedTitle",
             "localPairing.rotatedBody",
             "localPairing.notPairedWith",
             "a11y.newCode",
+            "localPairing.showNew",
+            "localPairing.blockedTitle",
+            "localPairing.blockedBody",
+            "localPairing.tooManyAgainBody",
+            "common.cancel",
+            "a11y.busy"
+          ]
+        },
+        "show-qr": {
+          "copy": [
+            "localPairing.qrTitle",
+            "localPairing.qrBody",
+            "a11y.qrPairing",
+            "localPairing.expires",
+            "localPairing.waitingDevice",
+            "localPairing.toCode",
+            "localPairing.rotatedTitle",
+            "localPairing.rotatedBody",
+            "localPairing.notPairedWith",
+            "localPairing.failedExpired",
             "localPairing.showNew",
             "localPairing.blockedTitle",
             "localPairing.blockedBody",

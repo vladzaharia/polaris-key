@@ -232,6 +232,7 @@ extension IdentityClient {
     func markSignedOut(_ provider: (any PlatformIdentityProvider)? = nil, serverRevoked: Bool = true) async {
         await core.bumpSignOutGeneration()
         await core.setExplicitSignOut(true)
+        await accessTokens.clear()
         await restoreAfterSignOut(serverRevoked: serverRevoked)
         await (provider ?? platformProvider.current)?.signOutCleanup()
     }

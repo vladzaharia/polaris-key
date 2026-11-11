@@ -15,7 +15,10 @@
 //     to that request. It works once, for 120 s, and holds neither `state`, the challenge nor the
 //     redirect URI (R1-07).
 
-import { REQUEST_HANDLE_PATTERN } from "@polaris-key/protocol/identity";
+import {
+  END_SESSION_HANDLE_PATTERN,
+  REQUEST_HANDLE_PATTERN,
+} from "@polaris-key/protocol/identity";
 import { hashKey } from "../platform/crypto.js";
 import type { Env } from "../platform/env.js";
 import { randomToken } from "../platform/random.js";
@@ -35,6 +38,7 @@ export function binderCookie(binder: string, maxAgeSeconds: number): string {
 }
 
 const HANDLE_RE = new RegExp(REQUEST_HANDLE_PATTERN);
+const END_SESSION_HANDLE_RE = new RegExp(END_SESSION_HANDLE_PATTERN);
 
 async function bindRef(env: Env, token: string) {
   return artefactRef("signin-bind", await hashKey(token, env.KEY_HASH_PEPPER));
@@ -42,13 +46,15 @@ async function bindRef(env: Env, token: string) {
 
 /**
  * What a token carries. `request`: the card's binder for one request handle, redeemed on the
- * customer host. The two `device-*` kinds (the device-code pages on the customer host): the
+ * customer host. `signout` (I-21.12, §12.13.9): the same for an end-session handle (`eo_`), redeemed at
+ * `/signout`. The two `device-*` kinds (the device-code pages on the customer host): the
  * flow's binder crossing to the API host for the IdP leg and its callback (`device-start`, with
  * the authorize URL read back from the store, never from a query), and back to the customer
  * host for the approval page (`device-approve`).
  */
 export type BindPayload =
   | { kind: "request"; handle: string; binder: string }
+  | { kind: "signout"; handle: string; binder: string }
   | { kind: "device-start"; slug: string; binder: string; next: string }
   | { kind: "device-approve"; slug: string; binder: string };
 
@@ -87,6 +93,12 @@ export async function consumeBindToken(
       HANDLE_RE.test(v.handle)
     )
       return { kind: "request", handle: v.handle, binder: v.binder };
+    if (
+      v.kind === "signout" &&
+      typeof v.handle === "string" &&
+      END_SESSION_HANDLE_RE.test(v.handle)
+    )
+      return { kind: "signout", handle: v.handle, binder: v.binder };
     if (typeof v.slug === "string" && SLUG_RE.test(v.slug)) {
       if (v.kind === "device-approve")
         return { kind: "device-approve", slug: v.slug, binder: v.binder };

@@ -11,6 +11,21 @@ const PRODUCT := "diceroll"
 const PRODUCT_URL := "https://key.example.test/diceroll/sync/files/saves/slot1/upload/u1"
 const BEARER := "tok-3f9a-secret-bearer"
 
+## The facade nodes the tests made: a Node is not reference counted, so the suite frees them at its end.
+static var _owned: Array[Node] = []
+
+
+static func _own(n: Node) -> Node:
+	_owned.append(n)
+	return n
+
+
+static func _free_owned() -> void:
+	for n in _owned:
+		if is_instance_valid(n):
+			n.free()
+	_owned.clear()
+
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _apple(t)
@@ -18,6 +33,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _apple_guards(t)
 	await _android_guards(t)
 	await PKeyTestFixtures.frames(10)
+	_free_owned()
 	return true
 
 
@@ -35,7 +51,7 @@ func _ctx() -> Dictionary:
 ## The facade, the plugin fake and a channel that is open.
 func _a_rig() -> Dictionary:
 	var f := PKeyFakeAndroidNative.new()
-	var a := PKeyAndroid.new()
+	var a := _own(PKeyAndroid.new())
 	a.platform = "android"
 	a.native = f
 	var ch := PKeyAndroidBulk.create(_ctx, f, a)
@@ -51,8 +67,8 @@ static func _done(f: PKeyFakeAndroidNative, req: int, transfer: String, status :
 
 func _android(t: PKeyTestContext) -> void:
 	var f0 := PKeyFakeAndroidNative.new()
-	t.check("android bulk: no channel with a plugin whose probe is not refused", PKeyAndroidBulk.create(_ctx, Partial.new(), PKeyAndroid.new()) == null)
-	t.check("android bulk: a plugin with all seven ops makes a channel", PKeyAndroidBulk.create(_ctx, f0, PKeyAndroid.new()) != null)
+	t.check("android bulk: no channel with a plugin whose probe is not refused", PKeyAndroidBulk.create(_ctx, Partial.new(), _own(PKeyAndroid.new())) == null)
+	t.check("android bulk: a plugin with all seven ops makes a channel", PKeyAndroidBulk.create(_ctx, f0, _own(PKeyAndroid.new())) != null)
 	t.check(
 			"android bulk: urls split into origin and path, userinfo and fragments refused",
 			PKeyAndroidBulk.split_url("https://h:8443/a/b?version=2") == {"origin": "https://h:8443", "path": "/a/b?version=2"}
@@ -62,7 +78,7 @@ func _android(t: PKeyTestContext) -> void:
 	)
 
 	# Before open, and after a refused open, nothing is sent.
-	var cold := PKeyAndroidBulk.create(_ctx, f0, PKeyAndroid.new())
+	var cold := PKeyAndroidBulk.create(_ctx, f0, _own(PKeyAndroid.new()))
 	var r0: Dictionary = await cold.put(_a_head(1), PackedByteArray([1]))
 	t.check("android bulk: a request before open fails and touches nothing", r0 == {"fail": "network"} and f0.sb_ops.is_empty())
 	f0.bulk_open_ok = false
@@ -267,7 +283,7 @@ class StatusPlugin:
 
 func _bulk_rig() -> Dictionary:
 	var fake := PKeyFakeAppleNative.Bulk.new()
-	var apple := PKeyApple.new()
+	var apple := _own(PKeyApple.new())
 	apple.native = fake
 	apple.platform = "ios"
 	var ch := PKeyAppleBulk.create(PRODUCT, "https://key.example.test", "/var/state/ns", apple)
@@ -291,11 +307,11 @@ func _until(f: Callable) -> void:
 func _apple(t: PKeyTestContext) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	# Where there is none.
-	var bare := PKeyApple.new()
+	var bare := _own(PKeyApple.new())
 	bare.platform = "ios"
 	bare.native = PKeyFakeAppleNative.new()
 	t.check("apple bulk: a native without the binary entry gives no channel", PKeyAppleBulk.create(PRODUCT, "https://k.test", "/s", bare) == null)
-	var other := PKeyApple.new()
+	var other := _own(PKeyApple.new())
 	other.platform = "android"
 	other.native = PKeyFakeAppleNative.Bulk.new()
 	t.check("apple bulk: off iOS there is no channel", PKeyAppleBulk.create(PRODUCT, "https://k.test", "/s", other) == null)
@@ -303,7 +319,7 @@ func _apple(t: PKeyTestContext) -> void:
 		PKeyAppleBulk.origin_of("http://127.0.0.1:8787") == "http://127.0.0.1:8787" and PKeyAppleBulk.origin_of("nope") == "")
 
 	# The pick (D-10): the option decides, and a channel the app set wins.
-	var apple := PKeyApple.new()
+	var apple := _own(PKeyApple.new())
 	apple.native = PKeyFakeAppleNative.Bulk.new()
 	apple.platform = "ios"
 	var opts := PKeyOptions.new()
@@ -462,9 +478,9 @@ func _android_guards(t: PKeyTestContext) -> void:
 	var plugin := StatusPlugin.new()
 	for status in [0, 1]:
 		plugin.status = status
-		t.check("android bulk: a plugin whose probe answers other than bad input gives no channel (status %d)" % status, PKeyAndroidBulk.create(_ctx, plugin, PKeyAndroid.new()) == null)
+		t.check("android bulk: a plugin whose probe answers other than bad input gives no channel (status %d)" % status, PKeyAndroidBulk.create(_ctx, plugin, _own(PKeyAndroid.new())) == null)
 	plugin.status = PKeyAndroidBulk.BAD_INPUT
-	t.check("android bulk: a plugin whose probe answers bad input gives a channel", PKeyAndroidBulk.create(_ctx, plugin, PKeyAndroid.new()) != null)
+	t.check("android bulk: a plugin whose probe answers bad input gives a channel", PKeyAndroidBulk.create(_ctx, plugin, _own(PKeyAndroid.new())) != null)
 
 	var rig: Dictionary = await _a_rig()
 	var f: PKeyFakeAndroidNative = rig["f"]

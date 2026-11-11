@@ -1100,10 +1100,12 @@ Before it touches production the unprivileged `verify` job requires, in order:
 1. the tag to be semver `vMAJOR.MINOR.PATCH` (optionally with a prerelease suffix);
 2. the tagged commit to be an ancestor of `origin/main`; and
 3. the CI workflow's `CI OK` check run on that exact commit SHA to have concluded `success`
-   (`tools/require-ci-ok.sh`). The check run is read only through `ci.yml`'s own push runs of
-   that SHA, so a job named `CI OK` in another workflow cannot satisfy it; the push to `next`
-   that `promote.yml` fast-forwards from counts, a pull request run does not (it runs a subset
-   of the lanes). While CI is queued or in progress the gate polls for up to 120 minutes. It
+   (`tools/require-ci-ok.sh`), in a run that checked every lane on the full matrices (its
+   `Full run (every lane, full matrices)` job succeeded: a push to `main`, or a dispatch of
+   `ci.yml` on the SHA, `gh workflow run ci.yml --ref main`). The check run is read only through
+   `ci.yml`'s own push and dispatch runs of that SHA, so a job named `CI OK` in another workflow
+   cannot satisfy it; the narrowed push to `next` that `promote.yml` fast-forwards from does not
+   (it runs the floor and the latest of each matrix), and neither does a pull request run. While CI is queued or in progress the gate polls for up to 120 minutes. It
    fails closed: any other conclusion (including `cancelled`, which a newer push causes), no
    such check run, or an API error is a refusal. The other workflows' check runs (Publish SDKs,
    native desktop, flatpak, feed closure) and the advisory jobs no longer gate the deploy.

@@ -64,6 +64,11 @@ import { discoverVisibility } from "./portal/store/visibility.js";
 import { identityMaintenance } from "./maintenance.js";
 import { platformConnectionSeedJob } from "./connections/seed.js";
 import { restoreServed } from "./restore/gate.js";
+import { issuerServed } from "./issuer/served.js";
+import {
+  IDENTITY_ISSUER_SERVICES_LISTENER,
+  issuerServicesListener,
+} from "./issuer/servicesListener.js";
 import {
   IDENTITY_RESTORE_LISTENER,
   restoreDeviceListener,
@@ -103,6 +108,8 @@ export const identityService: ServiceDescriptor = {
     // I-49.8: Identity off or back on ends every restore key (`DELETE restore` is 404 while off).
     onServicesChange: {
       [IDENTITY_RESTORE_SERVICES_LISTENER]: restoreServicesListener,
+      // I-21.15: Identity off ends the product's client refresh families.
+      [IDENTITY_ISSUER_SERVICES_LISTENER]: issuerServicesListener,
     },
     // P0-49: run by an operator through the migration runner, never by a tick.
     migrations: [platformConnectionSeedJob],
@@ -228,6 +235,10 @@ export const identityService: ServiceDescriptor = {
           }
         : {}),
       ...(nearbyOn ? { nearby: true as const } : {}),
+      // I-21.13 (§12.6, §12.13.10): the device exchange, while the issuer is served.
+      ...((await issuerServed(db, product.slug))
+        ? { accessToken: true as const }
+        : {}),
       // I-15 (§12.6, §12.12): the native redirect classes, named while `request` is served.
       nativeRedirect: await nativeRedirectDiscovery(
         { env, db, ...(settings ? { registry: settings } : {}) },

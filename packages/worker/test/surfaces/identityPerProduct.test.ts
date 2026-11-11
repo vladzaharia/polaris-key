@@ -299,6 +299,7 @@ describe("every app-sign-in entry refuses a product with Identity off (PX-W17)",
       "auth/start",
       "auth/device",
       "auth/device/verify",
+      "end-session",
     ]);
     for (const entry of IDENTITY_NAVIGATION_ENTRIES) {
       for (const method of ["GET", "HEAD"]) {
@@ -336,8 +337,12 @@ describe("every app-sign-in entry refuses a product with Identity off (PX-W17)",
     for (const entry of IDENTITY_NAVIGATION_ENTRIES) {
       for (const [method, label, headers] of notNavigations) {
         const res = await route(w, method, `/djdl/identity/${entry}`, headers);
-        // I-21.5 (V5 §12.8 rule 3): `authorize` also takes a navigating form POST.
-        if (entry === "authorize" && label === "a navigating POST") {
+        // I-21.5 (V5 §12.8 rule 3): `authorize` also takes a navigating form POST, and so does
+        // `end-session` (I-21.12, §12.13.9).
+        if (
+          (entry === "authorize" || entry === "end-session") &&
+          label === "a navigating POST"
+        ) {
           expect(res.status).toBe(303);
           continue;
         }

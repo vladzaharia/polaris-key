@@ -16,6 +16,8 @@ import Foundation
 import PolarisKeyCore
 import XCTest
 
+@testable import PolarisKey
+
 /// What the scenario driver needs of a machine. The machine (U-07.2) conforms in the test target
 /// until the host owns it; every answer is the plain JSON the corpus compares.
 protocol SyncScenarioMachine: AnyObject {
@@ -58,6 +60,10 @@ private struct SyncScenarioFile {
     let root: [String: JSONValue]
     var scenarios: [[String: JSONValue]] { (root["scenarios"]?.arrayValue ?? []).compactMap(\.objectValue) }
     var settingCases: [[String: JSONValue]] { (root["settingCases"]?.arrayValue ?? []).compactMap(\.objectValue) }
+    /// The one sign-in URL rule every host applies (U-52).
+    var signInUrlCases: [[String: JSONValue]] {
+        (root["signInUrlCases"]?.arrayValue ?? []).compactMap(\.objectValue)
+    }
     /// The records binding of cloudSync.saves (plans/U-22.5.md): a second family, replayed in full.
     var fileRecordScenarios: [[String: JSONValue]] {
         let family = root["fileRecordCases"]?.objectValue
@@ -199,6 +205,18 @@ final class SyncScenariosTests: XCTestCase {
         for sc in scenarios {
             try runScenario(
                 sc, name: sc["name"]?.stringValue ?? "?", make: Self.makeMachine, product: f.root["product"] ?? .null)
+        }
+    }
+
+    // MARK: - signInUrlCases (in full)
+
+    func testSignInUrlCases() throws {
+        let cases = try file().signInUrlCases
+        XCTAssertFalse(cases.isEmpty)
+        for c in cases {
+            let name = c["name"]?.stringValue ?? "?"
+            let got = safeSignInUrl(c["url"]?.stringValue, origin: c["origin"]?.stringValue ?? "")
+            XCTAssertEqual(got, c["expect"]?.stringValue, name)
         }
     }
 
@@ -395,6 +413,9 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
         case "delete": r = machine.delete(str(0), str(1))
         case "flush": r = machine.flush()
         case "refresh": r = machine.refresh()
+        case "accountRequired":
+            machine.accountRequired(signInUrl: a.first?.stringValue)
+            r = .ok
         default:
             XCTFail("unknown call \(name)")
             r = .failed("unknown")

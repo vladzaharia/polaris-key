@@ -59,6 +59,7 @@ import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
 import { handlePlatformConnections } from "./handlers/platformConnections.js";
+import { handlePlatformIssuerKeys } from "./handlers/platformIssuerKeys.js";
 import { handleProducts } from "./handlers/products.js";
 import { handleIntegration } from "./handlers/integration.js";
 import {
@@ -306,6 +307,21 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   }),
   ...rows(["POST"], "/platform/feeds/bootstrap", "platform", platform),
   ...rows(["GET", "PUT", "POST"], "/platform/feeds/**", "platform", platform),
+  // I-21.14: the issuer key rings (read) and the emergency rotation, which drops every earlier
+  // key at once: a Superadmin (the handler asks) with a fresh step-up.
+  ...rows(
+    ["GET"],
+    "/platform/issuer-keys",
+    "platform",
+    handlePlatformIssuerKeys,
+  ),
+  ...rows(
+    ["POST"],
+    "/platform/issuer-keys/:slug/rotate",
+    "platform",
+    handlePlatformIssuerKeys,
+    { stepUp: true },
+  ),
   // I-31: the platform's OIDC connections. Reads and the dry checks (discovery, the test) need
   // the platform area; every change is a step-up write. A token reaches none of them.
   ...rows(
@@ -497,6 +513,31 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // I-49.5: purging a product's silent-restore keys signs nobody out but retires every backed-up
   // credential: a sign-in proven in the last five minutes, ahead of Identity's prefix.
   ...rows(["POST"], `${P}/identity/restore/purge`, "signin", product, {
+    stepUp: true,
+  }),
+  // I-21.14: a registered client is a way in for another site's people. Creating one, minting its
+  // secret, enabling it again and deleting it each need a fresh sign-in; narrowing (disable, revoke
+  // a secret, edit) does not. A literal row beats Identity's prefix for every method, so each
+  // path lists them all.
+  ...rows(["GET"], `${P}/identity/clients`, "signin", product),
+  ...rows(["POST"], `${P}/identity/clients`, "signin", product, {
+    stepUp: true,
+  }),
+  ...rows(["GET", "PATCH"], `${P}/identity/clients/:id`, "signin", product),
+  ...rows(["DELETE"], `${P}/identity/clients/:id`, "signin", product, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], `${P}/identity/clients/:id/secrets`, "signin", product, {
+    stepUp: true,
+  }),
+  ...rows(
+    ["DELETE"],
+    `${P}/identity/clients/:id/secrets/:secretId`,
+    "signin",
+    product,
+  ),
+  ...rows(["POST"], `${P}/identity/clients/:id/disable`, "signin", product),
+  ...rows(["POST"], `${P}/identity/clients/:id/enable`, "signin", product, {
     stepUp: true,
   }),
   ...SERVICE_SLUGS.flatMap(serviceRows),

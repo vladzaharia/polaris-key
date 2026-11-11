@@ -25,7 +25,7 @@ export const MAX_CONNECTABLE = 8;
 export const MAX_PAIRED = 32;
 /** The longest name a person may give a paired device. */
 export const MAX_NAME = 64;
-/** Seconds a new code waits after Too many tries (LP1 F9). */
+/** Seconds a new code waits after Too many tries. */
 export const COOLDOWN_SECONDS = 30;
 
 const FAILED_BODY = {
@@ -39,6 +39,7 @@ export type LocalPairingState =
   | "choose"
   | "opening"
   | "show"
+  | "show-qr"
   | "closed"
   | "enter"
   | "joining"
@@ -122,24 +123,54 @@ export function localPairingView(
           "localPairing.title",
           "localPairing.showBody",
           "a11y.busy",
-          "localPairing.toEnter",
+
           "common.cancel",
         ],
         focus: "heading",
       });
     case "show": {
-      const n = p.notice;
+      // The window ran out and nothing renewed it: the view stays, dimmed, and offers a new code.
+      const gone = p.expired === true;
+      const n = gone ? undefined : p.notice;
       const renewing = p.busy === "new-code";
+      const timeLines = gone
+        ? ["localPairing.failedExpired", "localPairing.showNew"]
+        : ["localPairing.expires", "localPairing.waitingDevice"];
+      // The window's second view: the QR with its own title and body, and no digits. What the code
+      // view announces is announced here too, without the digits.
+      if (p.view === "qr")
+        return makeView(ctx, C, {
+          state: "show-qr",
+          copy: [
+            "localPairing.qrTitle",
+            "localPairing.qrBody",
+            "a11y.qrPairing",
+            ...timeLines,
+            "localPairing.toCode",
+            "common.cancel",
+            n === "blocked" && "localPairing.blockedTitle",
+            n === "blocked" && "localPairing.blockedBody",
+            (n === "guessing" || n === "rotated") &&
+              "localPairing.rotatedTitle",
+            n === "guessing" && "localPairing.tooManyAgainBody",
+            (n === "rotated" || n === "declined") && "localPairing.rotatedBody",
+            n === "declined" && "localPairing.notPairedWith",
+            renewing && "a11y.busy",
+          ],
+          args: { time: countdown(p.secondsLeft ?? 0), device },
+          disabled: [renewing && "localPairing.showNew"],
+          ...(gone ? { primary: "localPairing.showNew" } : {}),
+          tone: n === "blocked" || n === "guessing" ? "neutral" : null,
+          focus: "heading",
+        });
       return makeView(ctx, C, {
         state: "show",
         copy: [
           "localPairing.title",
           "localPairing.showBody",
           p.code && "a11y.linkCode",
-          "a11y.qrPairing",
-          "localPairing.expires",
-          "localPairing.waitingDevice",
-          "localPairing.toEnter",
+          ...timeLines,
+          "localPairing.toQr",
           "common.cancel",
           (n === "rotated" || n === "guessing") && "localPairing.rotatedTitle",
           n === "rotated" && "localPairing.rotatedBody",
@@ -159,6 +190,7 @@ export function localPairingView(
           device,
         },
         disabled: [renewing && "localPairing.showNew"],
+        ...(gone ? { primary: "localPairing.showNew" } : {}),
         tone: n ? "neutral" : null,
         focus: "heading",
       });
@@ -557,7 +589,7 @@ export interface WindowSize {
 
 /** How the show screen lays out for a window size (UI-KITS 4.3, LocalPairing). */
 export interface LocalPairingLayout {
-  /** 2: the QR sits beside the code; 1: under it. */
+  /** Always 1: the code and the QR are two views of the window, never on one screen. */
   panes: 1 | 2;
   /** False in a window under 480 tall: it shows its own logo, so the kit's would only cost room. */
   logo: boolean;
@@ -569,20 +601,12 @@ export interface LocalPairingLayout {
 }
 
 /**
- * Two panes from 600 px of window at the root text size (so 200 % text keeps one column), at any
- * height, and always on a TV. A window under 480 tall drops the logo. A window both narrow and
- * short keeps one column that scrolls, with the notice before the QR.
+ * One centred column at every size: a screen shows the digits or the QR, never both. A window under
+ * 480 tall drops the logo and the column scrolls, with the notice before the QR.
  */
 export function localPairingLayout(w: WindowSize): LocalPairingLayout {
-  const scale = w.textScale && w.textScale > 0 ? w.textScale : 1;
-  const panes = w.tv === true || w.width / scale >= 600 ? 2 : 1;
   const short = w.height < 480 && w.tv !== true;
-  return {
-    panes,
-    logo: !short,
-    scrolls: panes === 1 && short,
-    noticeBeforeQr: panes === 1 && short,
-  };
+  return { panes: 1, logo: !short, scrolls: short, noticeBeforeQr: short };
 }
 
 /** The pairing screens' models, by name. */

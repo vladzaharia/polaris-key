@@ -29,6 +29,7 @@ import {
   settingRefused,
 } from "../../core/console/respond.js";
 import { actorOf, audit, auditStatementFor } from "../../core/audit.js";
+import { handleClientsAdmin } from "./issuer/consoleAdmin.js";
 import { purgeProductRestore } from "./restore/store.js";
 import { writeSettings } from "../../core/settings/write.js";
 import {
@@ -84,6 +85,8 @@ export async function handleIdentityAdmin(
   // I-49.5: the operator's "Purge restore keys" (step-up, typed confirmation; the route table).
   if (rest.length === 2 && rest[0] === "restore" && rest[1] === "purge")
     return handleRestorePurge(ctx);
+  // I-21.14: the registered clients of Sign in with <Product>.
+  if (rest[0] === "clients") return handleClientsAdmin(ctx, rest.slice(1));
   if (rest.length !== 1) return null;
   if (rest[0] === "portal") return handlePortalSettings(ctx);
   if (rest[0] === "sign-in-settings") return handleSignInSettings(ctx);

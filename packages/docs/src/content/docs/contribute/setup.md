@@ -99,7 +99,20 @@ A narrowed run's `CI OK` means: every lane touched since its own base passed on 
 every other lane was green at its base. `CI OK` counts a skipped lane as passed only on a
 narrowed run, which is sound because a lane is skipped only when it was green at its base; on a
 full run a skipped job fails it. `deploy.yml`, `publish-sdks.yml` and `promote.yml` rely on
-`CI OK` (`tools/require-ci-ok.sh`), and a narrowed `CI OK` on `next` is the same proof.
+`CI OK` (`tools/require-ci-ok.sh`), and a narrowed `CI OK` on `next` is the same proof for a
+promotion.
+
+A push to `next` runs the floor and the latest of each matrix, as a pull request does: Godot
+4.5.2 and 4.6.3, the Windows and macOS desktop legs, Python on macOS and emulator API 34 are left
+out. The full matrices run nightly on `next`'s HEAD (`nightly-advisory.yml` dispatches `ci.yml`
+with every scoped suite in full and the Worker's test files shuffled), on a push to `main`, on a
+tag, and on demand. A `v*` tag needs more than `CI OK`: `deploy.yml` accepts only a run whose
+`Full run (every lane, full matrices)` job succeeded on the tagged SHA (a push to `main` or a
+dispatch; never a push to `next`). The lead dispatches it before tagging:
+
+```sh
+gh workflow run ci.yml --ref main
+```
 
 ## Pre-commit hooks
 

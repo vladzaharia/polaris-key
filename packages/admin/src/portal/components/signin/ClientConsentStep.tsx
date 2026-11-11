@@ -1,13 +1,5 @@
 import * as React from "react";
-import {
-  BadgeCheck,
-  ImageIcon,
-  Lock,
-  Mail,
-  RefreshCw,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 import type { AppConsentView } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
 import { Switch } from "../../../ui/Switch.js";
@@ -30,34 +22,31 @@ import {
   RequestGone,
 } from "./requestParts.js";
 import { useTermsCheck } from "./TermsCheck.js";
-
-const GLYPH = {
-  name: UserRound,
-  picture: ImageIcon,
-  email: Mail,
-  entitlements: BadgeCheck,
-  offline: RefreshCw,
-} as const;
+import { CLIENT_GLYPH as GLYPH } from "./clientGets.js";
 
 /** One item of what the client asks for: its glyph, its words (and value), then a switch or the lock. */
-function ClientRow({
+export function ClientRow({
   line,
   person,
+  lock = t("locker.issuer.required"),
   on,
   onToggle,
 }: {
   line: ClientLine;
-  person: AppConsentView["person"];
+  /** The person's name and picture, shown for those two items; Connected apps shows neither. */
+  person?: AppConsentView["person"];
+  /** The words beside the lock on an item the person cannot switch. */
+  lock?: string;
   on: boolean;
   onToggle: () => void;
 }): React.ReactElement {
   const id = React.useId();
   const Glyph = GLYPH[line.id];
-  const value = line.id === "name" ? person.displayName : null;
+  const value = line.id === "name" ? person?.displayName : null;
   const switched = line.claim && !line.required;
   const body = (
     <>
-      {line.id === "picture" && person.avatarUrl ? (
+      {line.id === "picture" && person?.avatarUrl ? (
         <img
           src={person.avatarUrl}
           alt=""
@@ -66,7 +55,7 @@ function ClientRow({
       ) : (
         <Glyph aria-hidden className="size-5 shrink-0 text-fg-muted" />
       )}
-      <span className="min-w-[9ch] flex-[1_1_9ch] [overflow-wrap:anywhere]">
+      <span className="min-w-[9ch] flex-[1_1_9ch] [overflow-wrap:break-word]">
         {line.text}
         {value ? (
           <span className="block text-sm/5 text-fg-muted">{value}</span>
@@ -81,14 +70,14 @@ function ClientRow({
           aria-label={line.label}
         />
       ) : (
-        <span className="inline-flex shrink-0 items-center gap-1 text-sm/5 text-fg-muted">
-          <Lock aria-hidden className="size-4" />
-          {t("locker.issuer.required")}
+        <span className="inline-flex min-w-0 items-center gap-1 text-sm/5 text-fg-muted">
+          <Lock aria-hidden className="size-4 shrink-0" />
+          {lock}
         </span>
       )}
     </>
   );
-  const row = "flex min-h-12 items-center gap-x-3 px-4 py-3 text-fg";
+  const row = "flex min-h-12 flex-wrap items-center gap-x-3 px-4 py-3 text-fg";
   return (
     <li>
       {switched ? (

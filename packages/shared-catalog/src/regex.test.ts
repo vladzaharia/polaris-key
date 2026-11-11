@@ -164,17 +164,15 @@ describe("compileLinearPattern — refuses what it cannot match linearly", () =>
     // `(?:)` emits no instructions, so a budget charged only on emission never fires while the
     // expansion still recurses: five nested `{100}`s is 10^10 traversals of a zero-instruction
     // program. Compilation has to refuse it, and refuse it *fast*: the point is compile-time
-    // cost, which no assertion on the throw can see.
+    // cost. There is no stopwatch here: a refusal that still expanded would not return at all, so
+    // the throw arriving within the test's own timeout is the bound.
     const bomb = "(?:(?:(?:(?:(?:){100}){100}){100}){100}){100}";
-    const t0 = performance.now();
     expect(() => compileLinearPattern(bomb)).toThrow(UnsupportedPatternError);
     expect(() => compileLinearPattern(bomb)).toThrow(/instruction budget/);
     // The three-level form from the report refuses just as fast.
     expect(() => compileLinearPattern("(?:(?:(?:){100}){100}){100}")).toThrow(
       /instruction budget/,
     );
-    // A budget of a couple of thousand steps is microseconds; a second is pure CI slack.
-    expect(performance.now() - t0).toBeLessThan(1000);
   });
 
   it("charges traversal cheaply enough that real patterns still compile", () => {

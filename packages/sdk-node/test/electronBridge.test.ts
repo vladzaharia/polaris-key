@@ -642,8 +642,8 @@ describe("PolarisBridge v5 over IPC (SP-N10, SP-31)", () => {
       visit(source);
     }
     // I-10a.9: the adapter's `account(feature, method)` helper passes the method as a variable,
-    // so the scan cannot read these three; they are the adapter's account calls.
-    for (const m of ["subject", "attach", "openAccount"])
+    // so the scan cannot read these; they are the adapter's account calls (accessToken: I-21b).
+    for (const m of ["subject", "attach", "openAccount", "accessToken"])
       calls.add(`identity.${m}`);
     // UK-42.22.7: the adapter's `choiceCall(method, args)` passes the method as a variable too.
     for (const m of ["licenses", "devices", "complete", "cancel"])

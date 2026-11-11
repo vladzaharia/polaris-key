@@ -1033,6 +1033,8 @@ export function exposePolarisBridge(
         ...(r.attached ? { attached: r.attached } : {}),
       };
     },
+    "identity.accessToken": async (a) =>
+      client.identity.accessToken({ refresh: bag(a).refresh === true }),
     "identity.openAccount": async () => {
       await client.identity.openAccount();
       return null;

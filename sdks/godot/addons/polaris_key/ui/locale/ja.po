@@ -2112,10 +2112,10 @@ msgstr "競合している変更があります。"
 msgid "cloudSync.error"
 msgstr "同期できませんでした。後でもう一度お試しください。"
 
-#. You're signed out.
-#. CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it.
-msgid "cloudSync.signedOut"
-msgstr "サインアウトしています。"
+#. Sync stopped.
+#. CloudSyncStatus: a small sync status. Shown instead of the error line when sync stopped because this device has no signed-in account for it; Sign in to sync sits beside it. Say the sync stopped, not that the person is signed out: the app may still show them as signed in. Not an error.
+msgid "cloudSync.syncStopped"
+msgstr "同期が停止しました。"
 
 #. Sign in to sync
 #. CloudSyncStatus: a small sync status. Syncing needs an account.
@@ -3414,6 +3414,16 @@ msgstr[0] "キー入力の残り{left}回"
 #. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.key.noEntries"
 msgstr "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりにサインインで{product}を使えます。"
+
+#. Check your connection.
+#. Body of a request card that could not be reached because the network failed; a Try again button follows.
+msgid "signin.unreachable.network"
+msgstr "接続を確認してください。"
+
+#. Wait a moment.
+#. Body of a request card refused for too many attempts; a Try again button follows.
+msgid "signin.unreachable.wait"
+msgstr "しばらくお待ちください。"
 
 #. Continue without an account
 #. License key step (SIGN-IN.md §3.9).
@@ -6293,13 +6303,13 @@ msgctxt "macos"
 msgid "localPairing.pairedDevices"
 msgstr "ペアリング済みのデバイス"
 
-#. Scan or enter this code on the other device.
+#. Enter this code on the other device.
 #. Pair with a Code: show: what to do with the code.
 msgid "localPairing.showBody"
-msgstr "もう一方のデバイスでこのコードをスキャンするか入力してください。"
+msgstr "もう一方のデバイスでこのコードを入力してください。"
 
 #. QR code with the pairing code
-#. Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code.
+#. Pair with a Code: Screen reader label; never shown. Names the QR in the QR view.
 msgid "a11y.qrPairing"
 msgstr "ペアリングコードを含む QR コード"
 
@@ -6313,15 +6323,35 @@ msgstr "有効期限まで {time}"
 msgid "localPairing.waitingDevice"
 msgstr "もう一方のデバイスを待っています…"
 
-#. Enter a code instead
-#. Pair with a Code: show: withdraws this code and opens the field.
-msgid "localPairing.toEnter"
-msgstr "代わりにコードを入力"
+#. Scan to pair
+#. Pair with a Code: QR view: the title.
+msgid "localPairing.qrTitle"
+msgstr "スキャンしてペアリング"
 
-#. macos: Enter a Code Instead
+#. Point the other device’s camera here.
+#. Pair with a Code: QR view: what to do with the QR.
+msgid "localPairing.qrBody"
+msgstr "もう一方のデバイスのカメラをここに向けてください。"
+
+#. Show a QR code
+#. Pair with a Code: code view: the quiet link to the QR view of the same window.
+msgid "localPairing.toQr"
+msgstr "QRコードを表示"
+
+#. macos: Show a QR Code
 msgctxt "macos"
-msgid "localPairing.toEnter"
-msgstr "代わりにコードを入力"
+msgid "localPairing.toQr"
+msgstr "QRコードを表示"
+
+#. Show the code instead
+#. Pair with a Code: QR view: the quiet link back to the code view of the same window.
+msgid "localPairing.toCode"
+msgstr "代わりにコードを表示"
+
+#. macos: Show the Code Instead
+msgctxt "macos"
+msgid "localPairing.toCode"
+msgstr "代わりにコードを表示"
 
 #. Wrong code entered
 #. Pair with a Code: show: after a wrong guess.
@@ -8214,6 +8244,26 @@ msgstr "選択済み"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-merge-closed.message"
 msgstr "すでに選択済みか、より新しい変更に置き換えられています。何も変更されていません。"
+
+#. Copy too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.title"
+msgstr "コピーが大きすぎます"
+
+#. The synced data is too big to save as one file. Nothing was saved.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.message"
+msgstr "同期したデータが大きすぎて、1つのファイルに保存できません。何も保存されていません。"
+
+#. Copy not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.title"
+msgstr "コピーを保存できません"
+
+#. The copy of your synced data couldn't be saved. Check the destination and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.message"
+msgstr "同期したデータのコピーを保存できませんでした。保存先を確認して、もう一度お試しください。"
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

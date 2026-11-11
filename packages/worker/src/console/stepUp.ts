@@ -10,13 +10,6 @@
  * proved with `auth_time`, never by an ordinary sign-in.
  */
 
-import {
-  STEP_UP_MAX_AGE_SECONDS,
-  isSteppedUp,
-} from "../core/console/session.js";
-import type { AdminSession } from "../core/console/session.js";
-import { err } from "../core/console/respond.js";
-
 export interface StepUpRoute {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Path under `/manage/api`, with `:slug`, `:subject`, `:id` placeholders. */
@@ -145,6 +138,31 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "POST",
+    path: "/products/:slug/identity/clients",
+    why: "registers a client that can sign another site's people in with this product",
+  },
+  {
+    method: "DELETE",
+    path: "/products/:slug/identity/clients/:id",
+    why: "deletes a client with its secrets and the grants people gave it",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/identity/clients/:id/secrets",
+    why: "mints a client secret, a long-lived credential shown once",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/identity/clients/:id/enable",
+    why: "lets a disabled client sign people in again",
+  },
+  {
+    method: "POST",
+    path: "/platform/issuer-keys/:slug/rotate",
+    why: "drops every issuer key at once, so every token they signed stops verifying",
+  },
+  {
+    method: "POST",
     path: "/platform/connections",
     why: "adds a sign-in provider and seals its secret",
   },
@@ -225,16 +243,4 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
 ];
 
-/** A 403 `step_up_required` when the session has no recent proven re-authentication, else null. */
-export function requireStepUp(
-  session: AdminSession,
-  now: number,
-): Response | null {
-  if (isSteppedUp(session, now)) return null;
-  return err(
-    403,
-    "step_up_required",
-    "Sign in again to confirm it's you. This needs a sign-in from the last 5 minutes.",
-    { maxAgeSeconds: STEP_UP_MAX_AGE_SECONDS },
-  );
-}
+export { requireStepUp } from "../core/console/stepUp.js";

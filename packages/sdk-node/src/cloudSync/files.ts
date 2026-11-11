@@ -46,12 +46,14 @@ import {
 } from "@polaris-key/client-core/sync";
 import { PolarisError } from "@polaris-key/client-core";
 import { ErrorCode } from "../constants.generated.js";
+import { fromWorkerOrigin } from "@polaris-key/ui-core/browser/sdk/core/signInUrl.js";
 import { readCappedBytes, readCappedText } from "../core/boundedBody.js";
 import type { CoreContext } from "../core/context.js";
 import {
   codeForStatus,
   parseErrorBody,
   retryAfterSeconds,
+  signInUrlOf,
 } from "../core/http.js";
 
 /** The most a JSON answer of a file route may be. */
@@ -106,6 +108,15 @@ export interface NodeFileTransportDeps {
   >;
   /** The device bearer now, or null when signed out. */
   token: () => string | null;
+  /** Told when a route answers `account_required` (V5 §11.5), with the answer's `signInUrl`
+   *  unvetted and the person signed in when the call started. The call still returns its refusal.
+   *  Only an answer from the Worker's own origin counts. */
+  onAccountRequired?: (
+    signInUrl: string | null,
+    forSubject: string | null,
+  ) => void;
+  /** Who is signed in now, read when a call starts. */
+  subject?: () => string | null;
 }
 
 type Refusal = Extract<FileReply<unknown>, { ok: false }>;
@@ -119,6 +130,8 @@ const bad = (detail: string): TransferError =>
 /** The routes of §13.2 as an engine `FileTransport`. */
 export class NodeFileTransport implements FileTransport {
   readonly #d: NodeFileTransportDeps;
+  /** The person signed in when the call that got each answer started. */
+  readonly #subjectOf = new WeakMap<Response, string | null>();
 
   constructor(deps: NodeFileTransportDeps) {
     this.#d = deps;
@@ -166,6 +179,7 @@ export class NodeFileTransport implements FileTransport {
   ): Promise<{ res: Response } | { refusal: Refusal }> {
     const { ctx } = this.#d;
     if (!isFilesPath(ctx.product, path)) throw bad("route"); // The builders already checked; this is the closed list.
+    const forSubject = this.#d.subject?.() ?? null;
     const token = this.#d.token();
     if (token === null)
       return {
@@ -223,6 +237,7 @@ export class NodeFileTransport implements FileTransport {
         refusal: { ok: false, status: res.status, code: "redirect_refused" },
       };
     }
+    this.#subjectOf.set(res, forSubject);
     return { res };
   }
 
@@ -238,10 +253,20 @@ export class NodeFileTransport implements FileTransport {
         : {};
     const { error: _error, ...top } = parsed.body;
     const { code: _code, message: _message, ...inner } = nested;
+    let code = parsed.code ?? codeForStatus(res.status);
+    if (res.status === 403 && parsed.code === ErrorCode.accountRequired) {
+      // Only the Worker's own answer counts; from anywhere else it is an ordinary 403.
+      if (fromWorkerOrigin(res, new URL(this.#d.ctx.baseUrl).origin))
+        this.#d.onAccountRequired?.(
+          signInUrlOf(parsed.body),
+          this.#subjectOf.get(res) ?? null,
+        );
+      else code = codeForStatus(403);
+    }
     return {
       ok: false,
       status: res.status,
-      code: parsed.code ?? codeForStatus(res.status),
+      code,
       ...(seconds !== undefined ? { retryAfterSeconds: seconds } : {}),
       body: { ...top, ...inner },
     };

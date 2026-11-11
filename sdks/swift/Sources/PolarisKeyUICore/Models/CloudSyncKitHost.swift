@@ -79,10 +79,15 @@ public final class CloudSyncKitHostModel {
     public private(set) var recoveryModel: RecoveryCodeModel?
     /// "New recovery code" could not make one (the previous code still works).
     public private(set) var newCodeFailed = false
-    /// Where the sign-in offer goes: the host app opens its own sign-in. nil hides the row's button.
+    /// Where the sign-in offer goes: the host app opens its own sign-in. nil leaves it to the kit's
+    /// own sign-in, when the host was made over a client (`init(client:)`; `CloudSyncKitView` shows
+    /// it as a sheet); with neither, the row has no button.
     public var onSignIn: (@MainActor () -> Void)? { didSet { rebuildStatus() } }
+    /// The kit's own sign-in, while it is open: the model behind `CloudSyncKitView`'s sign-in sheet.
+    public private(set) var signInModel: PolarisKeyGateModel?
 
     private let source: CloudSyncSource
+    private let client: PolarisKeyClient?
     private let services: Set<KitService>?
     private var shown: KitCloudSync.State?
     private var signedOut = false
@@ -94,6 +99,30 @@ public final class CloudSyncKitHostModel {
     public init(source: CloudSyncSource, services: Set<KitService>? = nil) {
         self.source = source
         self.services = services
+        self.client = nil
+    }
+
+    /// The live host over `client`: the row follows `client.cloudSync`, and Sign in to sync opens the
+    /// kit's own sign-in unless `onSignIn` handles it.
+    public init(client: PolarisKeyClient, services: Set<KitService>? = nil) {
+        self.source = CloudSyncSource(client: client)
+        self.services = services
+        self.client = client
+    }
+
+    /// Opens the kit's own sign-in (a fresh gate model over the client, the form already started).
+    public func openSignIn() {
+        guard let client, signInModel == nil else { return }
+        let model = PolarisKeyGateModel(client: client)
+        model.beginSignIn()
+        signInModel = model
+    }
+
+    /// Closes the kit's own sign-in; the row follows the machine's own events.
+    public func closeSignIn() {
+        signInModel?.cancelSignIn()
+        signInModel = nil
+        Task { await refresh() }
     }
 
     /// Starts following `client.events`, and reads the status once. Call from the view's `.task`.
@@ -196,6 +225,9 @@ public final class CloudSyncKitHostModel {
         rebuildStatus()
     }
 
+    /// Whether this stop has been announced: one announcement per stop, not per appearance.
+    private var stopAnnounced = false
+
     private func rebuildStatus() {
         guard let state = shown else {
             status = nil
@@ -206,9 +238,22 @@ public final class CloudSyncKitHostModel {
         inputs.cloudSync = KitCloudSync(
             state: state, signedIn: state == .error && signedOut ? false : nil,
             lastSynced: state == .synced ? lastSynced.map(Self.relative) : nil)
-        status = CloudSyncStatusModel(
+        let row = CloudSyncStatusModel(
             inputs: inputs, onUnlock: { [weak self] in self?.openUnlock() },
-            onReview: { [weak self] in self?.openReview() }, onSignIn: signedOut ? onSignIn : nil)
+            onReview: { [weak self] in self?.openReview() }, onSignIn: signedOut ? (onSignIn ?? ownSignIn) : nil)
+        if !(state == .error && signedOut) { stopAnnounced = false }
+        row.claimStopAnnouncement = { [weak self] in
+            guard let self, !self.stopAnnounced else { return false }
+            self.stopAnnounced = true
+            return true
+        }
+        status = row
+    }
+
+    /// The kit's own sign-in as the row's action, where the host has a client.
+    private var ownSignIn: (@MainActor () -> Void)? {
+        guard client != nil else { return nil }
+        return { [weak self] in self?.openSignIn() }
     }
 
     private static func relative(_ date: Date) -> String {

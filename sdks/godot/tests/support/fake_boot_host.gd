@@ -10,12 +10,31 @@ extends RefCounted
 signal changed()
 signal _answered(event: Dictionary)
 
+static var _all: Array[WeakRef] = []
+
 var calls: Array = []
 ## The stage whose work is waiting for an answer, or "".
 var waiting_stage := ""
 ## Set before `changed` is emitted, so the re-check is recorded as "gate*".
 var recheck := false
 var update_result: PKeyResult = null
+
+
+func _init() -> void:
+	_all.append(weakref(self))
+
+
+## Ends every wait a test left pending (a boot that was still running when its test ended): a coroutine left
+## suspended at exit is reported as a leak by some engines. The event is one PKeyBoot's machine does not know.
+## Answering can start the next stage, which waits again: the caller repeats until this returns false.
+static func release_all() -> bool:
+	var any := false
+	for ref in _all:
+		var host := ref.get_ref() as PKeyFakeBootHost
+		if host != null and host.waiting_stage != "":
+			host.answer({"type": "test.released"})
+			any = true
+	return any
 
 
 func shell(_opts: Dictionary) -> Dictionary:

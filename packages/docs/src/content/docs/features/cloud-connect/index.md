@@ -7,7 +7,7 @@ sidebar:
   order: 1
 ---
 
-Cloud Connect (service slug `connect`) lets one person's devices find each other and open an encrypted channel, on the local network or through a relay. It needs sign-in: the devices it links are the ones signed in to the same account. End users see it as **Nearby Devices**. With the product's opt-in, two people can also pair devices of different accounts, which end users see as **Pair with Someone Nearby**.
+Cloud Connect (service slug `connect`) lets one person's devices find each other and open an encrypted channel, on the local network or through a relay. It needs sign-in: the devices it links are the ones signed in to the same account. End users see it as **Nearby Devices**. With the product's opt-in, two people can also pair devices of different accounts, which end users see as **Pair with Someone Nearby**. With another opt-in, two devices with no account can pair by a code on one network, which end users see as **Pair with a Code**: see [Local Links](/docs/features/cloud-connect/local-links/).
 
 **Direct Transfer** is the data that crosses such a channel: a file, a save or a setting sent from one of a person's devices to another without going through Cloud Sync's storage.
 
@@ -25,7 +25,7 @@ Declare it with `modules: { connect: { enabled: true } }` in `.pkey/product`. It
 
 ## Settings
 
-The `connect:` block in `.pkey/product` sets `relay` (on by default) and `interAccount` (off by default); see [Cloud Connect settings](/docs/build/manifest/product/#cloud-connect-settings-connect). Nothing reads them until the relay ships. A person's relay bytes per day are the `pkey.cloudConnect.relayBytes` entitlement: 256 MiB when unset, 16 MiB without a usable license, at most 4 GiB. A product's relay is capped at 500 GiB a month.
+The `connect:` block in `.pkey/product` sets `relay` (on by default), `interAccount` and `localPairing` (off by default); see [Cloud Connect settings](/docs/build/manifest/product/#cloud-connect-settings-connect). Nothing reads them until the relay ships. A person's relay bytes per day are the `pkey.cloudConnect.relayBytes` entitlement: 256 MiB when unset, 16 MiB without a usable license, at most 4 GiB. A product's relay is capped at 500 GiB a month.
 
 ## In a web app
 

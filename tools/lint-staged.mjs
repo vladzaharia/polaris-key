@@ -34,7 +34,7 @@ export const SDKS = [
     owns: (f) => /^sdks\/python\/.+\.py$/.test(f),
     venv: true,
     setup:
-      'cd sdks/python && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"',
+      'cd sdks/python && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]" -c constraints/py314.txt',
     fix: (files) =>
       `sdks/python/.venv/bin/ruff check --fix ${files.join(" ")}   (E501 and mypy findings are fixed by hand)`,
   },

@@ -116,7 +116,8 @@ async function open(opts: {
   const page = await ctx.newPage();
   await page.goto(`${base}/manage.html#/p/djdl/license/licenses`);
   await page.locator("[data-page-title]").first().waitFor({ timeout: 15_000 });
-  await page.waitForTimeout(300);
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(() => document.getAnimations().length === 0);
   return {
     page,
     expire: () => (expired = true),
@@ -213,8 +214,7 @@ describe("the session-ended overlay in the built console", () => {
     await closeContext(page.context());
   });
 
-  // Disabled as flaky (owner 2026-10-23): focus-return race after Escape. Re-enable once dialog focus settling is awaited deterministically.
-  it.skip("Escape leaves the page as it is and returns focus to where it was", async () => {
+  it("Escape leaves the page as it is and returns focus to where it was", async () => {
     const s = await open({
       viewport: { width: 1440, height: 900 },
       scheme: "light",
@@ -270,7 +270,15 @@ describe("the session-ended overlay in the built console", () => {
       });
       await dialog.waitFor({ timeout: 10_000 });
       // Measure the sheet at rest, not mid-slide.
-      await page.waitForTimeout(900);
+      await page.evaluate(() =>
+        Promise.all(
+          document
+            .querySelector('[role="alertdialog"]')!
+            .getAnimations({ subtree: true })
+            .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+            .map((a) => a.finished.catch(() => undefined)),
+        ),
+      );
       const box = (await dialog.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(390);

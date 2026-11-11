@@ -75,6 +75,7 @@ import {
   type SyncStateRecord,
   type SyncStateStore,
 } from "./store.js";
+import { dropAbandoned } from "../../core/abandoned.js";
 import { sendSync, type ProductRequest } from "./transport.js";
 import {
   joinWriterElection,
@@ -291,8 +292,12 @@ export class BrowserCloudSyncHost {
   #queued: Array<TabMessage & { t: "edit" }> = [];
   #forgetting: Promise<void> = Promise.resolve();
   #offPage: Array<() => void> = [];
-  readonly #principal = new Set<() => void>();
+  readonly #principal = new Set<(fresh?: string) => void>();
   #bound: string | null = null;
+  /** The subject `account_required` took away (saved with the record; see `SyncStateRecord`). */
+  #refused: string | null = null;
+  /** The key ring's pin is still to be removed (saved with the blocked record). */
+  #forgetPending = false;
   readonly #statusListeners = new Set<() => void>();
 
   /** The open MergeRequests of this page: the machine's and the saves layer's (plans/U-08.md). It
@@ -397,7 +402,7 @@ export class BrowserCloudSyncHost {
   }
 
   /** Another tab signed a person in or out. */
-  onPrincipal(fn: () => void): () => void {
+  onPrincipal(fn: (fresh?: string) => void): () => void {
     this.#principal.add(fn);
     return () => this.#principal.delete(fn);
   }
@@ -407,9 +412,12 @@ export class BrowserCloudSyncHost {
     this.#bound = subject;
   }
 
-  /** Tell the other tabs the person changed here. */
-  notePrincipal(): void {
-    this.#deps.channel.post({ t: "principal" });
+  /** Tell the other tabs the person changed here; `fresh` is the subject a person just completed a
+   *  sign-in as. */
+  notePrincipal(fresh?: string): void {
+    this.#deps.channel.post(
+      fresh === undefined ? { t: "principal" } : { t: "principal", fresh },
+    );
   }
 
   /** The keys the machine can hold a value for: the declared settings and the open ones. */
@@ -484,6 +492,8 @@ export class BrowserCloudSyncHost {
   #adopt(rec: SyncStateRecord): void {
     this.#rev = rec.rev;
     this.#openKeys = new Set(rec.openKeys);
+    this.#refused = rec.refused;
+    this.#forgetPending = rec.forgetPending;
     this.#mirror = vetted(this.#opts.catalog);
     this.#served = vetted(rec.catalog);
     this.#build(rec.persisted);
@@ -686,7 +696,7 @@ export class BrowserCloudSyncHost {
       ) {
         for (const req of reqs) {
           this.#used++;
-          await this.#exchange(req);
+          await this.#exchange(req).catch(dropAbandoned);
         }
       }
       this.#emit();
@@ -761,9 +771,10 @@ export class BrowserCloudSyncHost {
       // Locked since the request left: the answer is dropped and the cursor stays.
       return m.receive({ error: "transport" });
     }
-    this.#noteOpenedKeys(opened.body, opened.opened);
     const answer: SyncResponse = { status: 200, body: opened.body };
+    // `receive` first: an answer for an abandoned request throws (see `dropAbandoned`) and stops here.
     m.receive(answer, opened.opened);
+    this.#noteOpenedKeys(opened.body, opened.opened);
     await this.#maybeRefetch(opened.body);
   }
 
@@ -857,7 +868,14 @@ export class BrowserCloudSyncHost {
     if (
       events.some((e) => e.type === "signedOut" && FORGETTING.has(e.reason))
     ) {
-      this.#forgetting = this.#forgetting.then(() => this.#forgetAll());
+      // `account_required` keeps the machine as it stands; every other leave purges it.
+      const blocked = events.some(
+        (e) => e.type === "signedOut" && e.reason === "accountRequired",
+      );
+      const was = this.#bound;
+      this.#forgetting = this.#forgetting.then(() =>
+        this.#forgetAll(blocked ? { subject: was } : null),
+      );
     }
     this.#fan(events);
   }
@@ -880,8 +898,11 @@ export class BrowserCloudSyncHost {
   }
 
   /** Drop the ring (the root first), then the record. Each is tried whatever the other did; a
-   *  failure is logged and never thrown. */
-  async #forgetAll(): Promise<void> {
+   *  failure is logged and never thrown. With `blocked` (after `account_required`) the record is
+   *  not deleted: the machine is saved as it stands. */
+  async #forgetAll(
+    blocked: { subject: string | null } | null = null,
+  ): Promise<void> {
     // The root leaves first (a save codec stops with it: `sync-locked`), then the save transfers
     // (running writes, journal, chunk cache); the pin and the record go with the rest.
     await Promise.resolve(this.#deps.ring.lock?.()).catch(() => {
@@ -890,14 +911,22 @@ export class BrowserCloudSyncHost {
     await (this.#deps.purgeSaves?.() ?? Promise.resolve()).catch(() => {
       this.#deps.log?.("cloud sync: the save transfers could not be deleted");
     });
-    const ring = this.#deps.ring.forget().catch(() => {
-      // The root is already gone (`forget` locks first); only the pin failed to go.
-      this.#deps.log?.("cloud sync: the key ring pin could not be removed");
-    });
-    const data = this.purge().catch(() => {
+    const ring = this.#deps.ring.forget().then(
+      () => true,
+      () => {
+        // The root is already gone (`forget` locks first); only the pin failed to go.
+        this.#deps.log?.("cloud sync: the key ring pin could not be removed");
+        return false;
+      },
+    );
+    // After `account_required` the pin is still to be removed until it is: the record says so.
+    const data = (
+      blocked === null ? this.purge() : this.#saveBlocked(blocked.subject, true)
+    ).catch(() => {
       this.#deps.log?.("cloud sync: the synced data could not be deleted");
     });
-    await Promise.all([ring, data]);
+    const [removed] = await Promise.all([ring, data]);
+    if (blocked !== null && removed) await this.settleForget();
   }
 
   // ── Other tabs ───────────────────────────────────────────────────────────────────────────
@@ -916,10 +945,16 @@ export class BrowserCloudSyncHost {
       case "ack":
         this.#outbox.delete(m.id);
         return;
+      case "accountRequired":
+        // A follower's route saw it; only the writer's machine can take it, and only if it still
+        // holds the person the follower's call started for.
+        if (this.isWriter && m.forSubject === this.#bound)
+          this.accountRequired(m.signInUrl, m.forSubject);
+        return;
       case "principal":
         for (const fn of this.#principal) {
           try {
-            fn();
+            fn(m.fresh);
           } catch {
             // A listener's failure is its own.
           }
@@ -999,15 +1034,26 @@ export class BrowserCloudSyncHost {
    * missing record after we had written one means a purge, which we follow.
    */
   #save(persisted?: SyncStateRecord["persisted"]): Promise<void> {
-    if (this.#purged || !this.isWriter) return Promise.resolve();
+    return this.#saveChecked(persisted).then(() => undefined);
+  }
+
+  /** `#save`, saying whether the store took it. */
+  #saveChecked(persisted?: SyncStateRecord["persisted"]): Promise<boolean> {
+    if (this.#purged || !this.isWriter) return Promise.resolve(true);
     const journal = persisted ?? this.machine.persist();
     const next = this.#write.then(() => this.#saveNow(journal));
-    this.#write = next.catch(() => undefined);
+    this.#write = next.then(
+      () => undefined,
+      () => undefined,
+    );
     return next;
   }
 
-  async #saveNow(journal: SyncStateRecord["persisted"]): Promise<void> {
-    if (this.#purged || !this.isWriter) return;
+  /** False only when the store failed (a save that has nothing to write, or loses the race to a
+   *  newer record, is not a failure). */
+  async #saveNow(journal: SyncStateRecord["persisted"]): Promise<boolean> {
+    if (this.#purged || !this.isWriter) return true;
+    let saved = true;
     try {
       await this.#withStateLock(async () => {
         const raw = await this.#deps.store.get();
@@ -1034,6 +1080,8 @@ export class BrowserCloudSyncHost {
           persisted: journal,
           catalog: this.#served,
           openKeys: [...this.#openKeys],
+          refused: this.#refused,
+          forgetPending: this.#forgetPending,
         };
         if (this.#purged) return;
         await this.#deps.store.put(JSON.stringify(rec));
@@ -1042,7 +1090,9 @@ export class BrowserCloudSyncHost {
       });
     } catch {
       // A store that fails keeps the journal in memory; the next save tries again.
+      saved = false;
     }
+    return saved;
   }
 
   // ── Timer, flush, purge, close ───────────────────────────────────────────────────────────
@@ -1081,9 +1131,11 @@ export class BrowserCloudSyncHost {
     void this.flush(SYNC_SIGNOUT_FLUSH_MS);
   }
 
-  /** A principal signed in: the record is saved again. */
+  /** A principal signed in: the record is saved again, and what `account_required` refused is not
+   *  refused any more. */
   resume(): void {
     this.#purged = false;
+    this.#refused = null;
   }
 
   /** Offer the legacy local values to the machine (the machine runs it once per install). */
@@ -1101,6 +1153,8 @@ export class BrowserCloudSyncHost {
   async purge(): Promise<void> {
     this.#purged = true;
     this.#openKeys = new Set();
+    this.#refused = null;
+    this.#forgetPending = false;
     this.#outbox.clear();
     this.#queued = [];
     this.#clearTimer();
@@ -1170,5 +1224,80 @@ export class BrowserCloudSyncHost {
     this.#closed = true;
     this.#role?.release();
     this.#deps.channel.close();
+  }
+
+  /** The subject `account_required` took away, or null (see `SyncStateRecord.refused`). */
+  get refused(): string | null {
+    return this.#refused;
+  }
+
+  /** A sign-out forgets what was refused: the next sign-in is the person's to make. */
+  async clearRefused(): Promise<void> {
+    if (this.#refused === null) return;
+    this.#refused = null;
+    await this.#save();
+  }
+
+  /**
+   * `account_required` came from a route the machine does not drive (a key-ring call or a file
+   * transfer): the writer's machine takes the same transition as for a `/sync` 403 and its events
+   * go out at once; a follower tab hands it to the writer. A request in flight is abandoned; its
+   * answer is dropped (`dropAbandoned`). A no-op before `start()`, with no person signed in, or when
+   * already blocked this way.
+   */
+  accountRequired(signInUrl: string | null, forSubject: string | null): void {
+    if (!this.started) return;
+    if (forSubject !== this.#bound) return;
+    if (!this.isWriter) {
+      this.#deps.channel.post({ t: "accountRequired", signInUrl, forSubject });
+      return;
+    }
+    this.machine.accountRequired(signInUrl);
+    this.#emit();
+  }
+
+  /**
+   * The record after `account_required`, on this path only (sign-out and deactivation keep the full
+   * `purge`): the machine is saved as it stands, so the status is still `blocked` after a relaunch,
+   * and what the person's snapshot held is already gone with the partition. `subject` is the one
+   * the Worker refused. The other tabs ask the session who it is again.
+   */
+  async #saveBlocked(
+    subject: string | null,
+    forgetPending: boolean,
+  ): Promise<void> {
+    this.#openKeys = new Set();
+    this.#refused = subject;
+    this.#forgetPending = forgetPending;
+    this.#clearTimer();
+    if (!(await this.#saveChecked())) {
+      // The new record could not be written, so the old one (which holds the person's snapshot in
+      // the clear) must not stay: it is removed, nothing is saved again until a sign-in, and what
+      // was refused is held in memory for this run.
+      this.#purged = true;
+      await this.#withStateLock(() => removeSyncState(this.#deps.store)).catch(
+        () => {
+          this.#deps.log?.("cloud sync: the synced data could not be deleted");
+        },
+      );
+    }
+    // The file journal and chunk cache go too, whether or not the saves layer was ever built.
+    await this.#deps.onPurge?.().catch(() => {
+      this.#deps.log?.("cloud sync: the file state could not be deleted");
+    });
+    this.#deps.channel.post({ t: "principal" });
+    this.#noteStatus();
+  }
+
+  /** Whether the key ring's pin still has to be removed (see `SyncStateRecord.forgetPending`). */
+  get forgetPending(): boolean {
+    return this.#forgetPending;
+  }
+
+  /** The pin is gone: stop retrying. */
+  async settleForget(): Promise<void> {
+    if (!this.#forgetPending) return;
+    this.#forgetPending = false;
+    await this.#save();
   }
 }

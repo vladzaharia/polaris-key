@@ -601,6 +601,14 @@
       "title": "Já decidido",
       "message": "A escolha já foi feita ou foi substituída por uma alteração mais recente. Nada foi alterado."
     },
+    "sync-export-too-large": {
+      "title": "Cópia grande demais",
+      "message": "Os dados sincronizados são grandes demais para um único arquivo. Nada foi salvo."
+    },
+    "sync-export-failed": {
+      "title": "Cópia não salva",
+      "message": "Não foi possível salvar a cópia dos seus dados sincronizados. Verifique o destino e tente novamente."
+    },
     "invalid-options": {
       "title": "App não configurado",
       "message": "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor."

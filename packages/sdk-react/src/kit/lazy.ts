@@ -51,3 +51,19 @@ export function encodeQr(data: string): ReturnType<Qr["encodeQr"]> | null {
   }
   return qr.encodeQr(data);
 }
+
+/** The same for the Light Card (UK-67): error-correction level Q, so the star can be cleared. */
+export function encodeQrLevelQ(
+  data: string,
+): ReturnType<Qr["encodeQr"]> | null {
+  if (qr === null) {
+    void preloadParts();
+    return null;
+  }
+  return qr.encodeQr(data, 1, -1, "Q");
+}
+
+/** True once the QR encoder has loaded (a null from it then means the text cannot be encoded). */
+export function qrLoaded(): boolean {
+  return qr !== null;
+}

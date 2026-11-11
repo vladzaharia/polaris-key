@@ -1717,10 +1717,10 @@
       "role": "body",
       "note": "CloudSyncStatus: a small sync status."
     },
-    "cloudSync.signedOut": {
-      "value": "You're signed out.",
+    "cloudSync.syncStopped": {
+      "value": "Sync stopped.",
       "role": "body",
-      "note": "CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it."
+      "note": "CloudSyncStatus: a small sync status. Shown instead of the error line when sync stopped because this device has no signed-in account for it; Sign in to sync sits beside it. Say the sync stopped, not that the person is signed out: the app may still show them as signed in. Not an error."
     },
     "cloudSync.signIn": {
       "value": "Sign in to sync",
@@ -2942,6 +2942,301 @@
       "value": "Sign in with your {product} account.",
       "role": "body",
       "note": "Lede of the sign-in step for a registered client's request. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.signout.title": {
+      "value": "Sign out of Polaris Locker too?",
+      "role": "title",
+      "note": "Title of the sign-out page a relying party's end-session request opens (Sign in with <Product>, I-21.12)."
+    },
+    "locker.signout.body": {
+      "value": "Polaris Locker can still sign you in to apps in this browser.",
+      "role": "body",
+      "note": "Body of the sign-out page's question. No arguments."
+    },
+    "locker.signout.confirm": {
+      "value": "Sign out",
+      "role": "button",
+      "note": "Primary button of the sign-out page: ends this browser's Polaris Locker session and no other."
+    },
+    "locker.signout.stay": {
+      "value": "Stay signed in",
+      "role": "button",
+      "note": "Second button of the sign-out page: ends nothing."
+    },
+    "locker.signout.none.title": {
+      "value": "You're not signed in to Polaris Locker",
+      "role": "title",
+      "note": "Title of the sign-out page when this browser has no Polaris Locker session."
+    },
+    "locker.signout.back": {
+      "value": "Back to {app}",
+      "role": "button",
+      "note": "Button that returns to the client (the sign-out page with no session). Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.signout.open": {
+      "value": "Open Polaris Locker",
+      "role": "button",
+      "note": "Button of a sign-out page that has no client to return to."
+    },
+    "locker.signout.done.title": {
+      "value": "You're signed out of Polaris Locker",
+      "role": "title",
+      "note": "Title after Sign out, when the request has no return to the client."
+    },
+    "locker.signout.done.again": {
+      "value": "Sign in again",
+      "role": "button",
+      "note": "Button after Sign out, with no return: the Polaris Locker sign-in."
+    },
+    "locker.signout.stayed.title": {
+      "value": "You're still signed in to Polaris Locker",
+      "role": "title",
+      "note": "Title after Stay signed in, when the request has no return to the client."
+    },
+    "locker.signout.titleNoApp": {
+      "value": "Sign out of Polaris Locker?",
+      "role": "title",
+      "note": "Title of the sign-out page when the request named no client."
+    },
+    "locker.signout.header": {
+      "value": "{app} signed you out",
+      "role": "title",
+      "note": "Headline of the sign-out page's header when a registered client asked. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.signout.headerProduct": {
+      "value": "{app}",
+      "role": "title",
+      "note": "Headline of the sign-out page's header when the request named no client: the product's name alone. Arguments: {app} = the product's name (never translated)."
+    },
+    "locker.signout.returning": {
+      "value": "Returning you to {app}",
+      "role": "title",
+      "note": "Title of the sign-out page while it returns to the client at once (no session here to end). Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.signout.opening": {
+      "value": "Opening Polaris Locker",
+      "role": "title",
+      "note": "Title of the sign-out page's loading step."
+    },
+    "locker.signout.expired.title": {
+      "value": "This page has expired",
+      "role": "title",
+      "note": "Title of the sign-out page when its request has been used or has expired."
+    },
+    "locker.signout.expired.in": {
+      "value": "You're still signed in to Polaris Locker.",
+      "role": "body",
+      "note": "Body of the expired sign-out page when this browser still has a Polaris Locker session."
+    },
+    "locker.signout.expired.out": {
+      "value": "You're not signed in to Polaris Locker.",
+      "role": "body",
+      "note": "Body of the expired sign-out page when this browser has no Polaris Locker session."
+    },
+    "locker.signout.expired.signOut": {
+      "value": "Sign out of Polaris Locker",
+      "role": "button",
+      "note": "Button of the expired sign-out page: ends this browser's Polaris Locker session."
+    },
+    "locker.signout.returnFailed": {
+      "value": "Couldn't return you to {app}.",
+      "role": "body",
+      "note": "Callout of the sign-out page when it could not send the person back to the client; the button beside it is Back to the client. Arguments: {app} = the client's name, or the product's when none (never translated)."
+    },
+    "locker.apps.title": {
+      "value": "Connected Apps",
+      "role": "title",
+      "note": "Title of the Account section that lists the apps the person signed in to with a product's account, and its entry in the section nav."
+    },
+    "locker.apps.subtitle": {
+      "value": "Apps you've signed in to, and what each one gets.",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Line under the section title."
+    },
+    "locker.apps.group": {
+      "value": "Signed in with {product}",
+      "role": "title",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Heading of one product's group of apps. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.apps.by": {
+      "value": "by {developer}",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). The developer of a partner app, after its name. Arguments: {developer} = the developer's name (never translated)."
+    },
+    "locker.apps.lastUsed": {
+      "value": "last used {when}",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Meta line: when the app last used the sign-in, after a dot (lowercase). Arguments: {when} = a relative time such as '3 hours ago' (already localized)."
+    },
+    "locker.apps.connected": {
+      "value": "Connected {date}",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Meta line: the day the app was connected. Arguments: {date} = a short date such as 'Aug 12, 2026' (already localized)."
+    },
+    "locker.apps.off": {
+      "value": "{product} turned this app off",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Row of an app that cannot sign anyone in now (its client, its product's sign-in or the issuer is off). Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.apps.neverUsed": {
+      "value": "never used",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Meta line of an app that never used the sign-in, after the connected date; lowercase, follows a dot."
+    },
+    "locker.apps.offPill": {
+      "value": "Turned off",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Small pill after the name of an app that cannot sign anyone in now."
+    },
+    "locker.apps.chip.name": {
+      "value": "Screen name",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip: the screen name an app gets."
+    },
+    "locker.apps.chip.picture": {
+      "value": "Picture",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip: the picture an app gets."
+    },
+    "locker.apps.chip.email": {
+      "value": "Email",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip: the email address an app gets."
+    },
+    "locker.apps.chip.entitlements": {
+      "value": "{product} features",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip or item in the Also line: which of a product's features the person has. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.apps.chip.offline": {
+      "value": "Stays signed in",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip or item in the Also line: the app keeps the person signed in while they are away."
+    },
+    "locker.apps.also": {
+      "value": "Also: {detail}",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Muted line listing the items an app always gets (the person cannot switch them off). Arguments: {detail} = the item labels, comma separated."
+    },
+    "locker.apps.none": {
+      "value": "No connected apps.",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Shown after the last app was disconnected."
+    },
+    "locker.error.loadFailedApps": {
+      "value": "Couldn't load your connected apps.",
+      "role": "body",
+      "note": "Account, Connected apps failed to load; the Try again button is separate."
+    },
+    "locker.apps.gets": {
+      "value": "What {app} gets",
+      "role": "label",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Name of the list of what an app gets, and the heading of the Change panel. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.not.name": {
+      "value": "Not your screen name",
+      "role": "label",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Chip for the screen name the person declined."
+    },
+    "locker.apps.not.picture": {
+      "value": "Not your picture",
+      "role": "label",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Chip for the picture the person declined."
+    },
+    "locker.apps.not.email": {
+      "value": "Not your email",
+      "role": "label",
+      "note": "Account, Connected Apps (I-21.15). Chip for the email address the person declined."
+    },
+    "locker.apps.change": {
+      "value": "Change",
+      "role": "button",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Opens the panel that switches the optional items an app gets."
+    },
+    "locker.apps.changeName": {
+      "value": "Change what {app} gets",
+      "role": "a11y",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Accessible name of Change. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.needed": {
+      "value": "Needed",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Marks an item the app needs and the person cannot switch off; Disconnect removes it. The heading names the app."
+    },
+    "locker.apps.saved": {
+      "value": "Saved what {app} gets",
+      "role": "hint",
+      "note": "Account, Connected Apps (I-21.15). Toast after Save; the toast region is the one announcement. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.saveFailed": {
+      "value": "Couldn't save. Try again.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Callout when Save was refused."
+    },
+    "locker.apps.disconnect": {
+      "value": "Disconnect",
+      "role": "button",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). The row's Disconnect button."
+    },
+    "locker.apps.disconnectName": {
+      "value": "Disconnect {app}",
+      "role": "a11y",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Accessible name of the row's Disconnect and the confirm's danger button. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnectAsk": {
+      "value": "Disconnect {app}?",
+      "role": "title",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Heading of the Disconnect confirm. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnectBody": {
+      "value": "{app} loses access within 10 minutes. It keeps what it already received; ask {developer} to delete it.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). What Disconnect does, for an app with a named developer. Arguments: {app} = the app's name, {developer} = its developer (never translated)."
+    },
+    "locker.apps.disconnectBodyNoDev": {
+      "value": "{app} loses access within 10 minutes. It keeps what it already received; ask its developer to delete it.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). What Disconnect does, for an app with no named developer. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnectAgain": {
+      "value": "Signing in again asks what to share.",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Second line of the Disconnect confirm."
+    },
+    "locker.apps.keep": {
+      "value": "Keep {app}",
+      "role": "button",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Closes the Disconnect confirm. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnected": {
+      "value": "{app} is disconnected",
+      "role": "hint",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Toast and announcement after Disconnect. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.disconnectFailed": {
+      "value": "Couldn't disconnect {app}. Try again.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Callout when Disconnect failed. Arguments: {app} = the app's name (never translated)."
+    },
+    "locker.apps.conflict": {
+      "value": "This app's access changed. Reload to see it.",
+      "role": "body",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Callout when Change was refused because the app's access changed underneath (a concurrent change or a new consent); Reload is the button beside it."
+    },
+    "locker.apps.reload": {
+      "value": "Reload",
+      "role": "button",
+      "note": "Account, Connected apps (Sign in with a product, I-21.15). Button beside the conflict callout: reads the list again."
+    },
+    "signin.unreachable.network": {
+      "value": "Check your connection.",
+      "role": "body",
+      "note": "Body of a request card that could not be reached because the network failed; a Try again button follows."
+    },
+    "signin.unreachable.wait": {
+      "value": "Wait a moment.",
+      "role": "body",
+      "note": "Body of a request card refused for too many attempts; a Try again button follows."
     },
     "signin.key.skip": {
       "value": "Continue without an account",
@@ -9482,14 +9777,14 @@
       "note": "Pair with a Code: the link to the paired devices list."
     },
     "localPairing.showBody": {
-      "value": "Scan or enter this code on the other device.",
+      "value": "Enter this code on the other device.",
       "role": "body",
       "note": "Pair with a Code: show: what to do with the code."
     },
     "a11y.qrPairing": {
       "value": "QR code with the pairing code",
       "role": "a11y",
-      "note": "Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code."
+      "note": "Pair with a Code: Screen reader label; never shown. Names the QR in the QR view."
     },
     "localPairing.expires": {
       "value": "Expires in {time}",
@@ -9501,10 +9796,25 @@
       "role": "label",
       "note": "Pair with a Code: show: shown while the code is open."
     },
-    "localPairing.toEnter": {
-      "value": "Enter a code instead",
+    "localPairing.qrTitle": {
+      "value": "Scan to pair",
+      "role": "title",
+      "note": "Pair with a Code: QR view: the title."
+    },
+    "localPairing.qrBody": {
+      "value": "Point the other device’s camera here.",
+      "role": "body",
+      "note": "Pair with a Code: QR view: what to do with the QR."
+    },
+    "localPairing.toQr": {
+      "value": "Show a QR code",
       "role": "button",
-      "note": "Pair with a Code: show: withdraws this code and opens the field."
+      "note": "Pair with a Code: code view: the quiet link to the QR view of the same window."
+    },
+    "localPairing.toCode": {
+      "value": "Show the code instead",
+      "role": "button",
+      "note": "Pair with a Code: QR view: the quiet link back to the code view of the same window."
     },
     "localPairing.rotatedTitle": {
       "value": "Wrong code entered",

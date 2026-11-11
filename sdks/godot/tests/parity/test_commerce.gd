@@ -227,9 +227,12 @@ func _steam(t: PKeyTestContext) -> void:
 	t.check("restore: owned Steam DLC is claimed", r.ok and _claims().size() == 1)
 	r = await sdk.commerce.claim_steam(1234560)
 	t.check("claim_steam: the helper claims and syncs", r.ok and r.store == "steam")
-	sdk.commerce.steam = Object.new()
+	var bare := Object.new()
+	sdk.commerce.steam = bare
 	var t2: PKeyResult = await PKeyCommerce.steam_ticket(sdk.commerce.steam, BINDING)
 	t.check("claim_steam: a GodotSteam without the Web API ticket call is unsupported/dependency", not t2.ok and t2.code == PKeyErrors.UNSUPPORTED and t2.detail["reason"] == "dependency")
+	sdk.commerce.steam = null
+	bare.free()
 	sdk.queue_free()
 
 

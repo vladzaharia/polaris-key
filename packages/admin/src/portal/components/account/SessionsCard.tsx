@@ -5,7 +5,6 @@ import { LogOut, Monitor, ScanLine, Smartphone } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { Expand } from "../../../ui/motion/index.js";
-import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import { formatRelative } from "../../../lib/format.js";
 import { PORTAL_FMT } from "../../date.js";
@@ -188,9 +187,8 @@ function SessionRow({
             onClick={() =>
               end.mutate(session.id, {
                 onSuccess: () => {
-                  const text = t("locker.sessions.signedOutOne", { name });
-                  toast.success(text);
-                  announce(text);
+                  // The toast's region is the announcement.
+                  toast.success(t("locker.sessions.signedOutOne", { name }));
                   // The row leaves with the refetch: focus goes to the section first.
                   focusHeading();
                 },

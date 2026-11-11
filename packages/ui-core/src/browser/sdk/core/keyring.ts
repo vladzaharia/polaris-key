@@ -7,7 +7,11 @@
 // bytes. No type here carries `R`, and no error or status names a code.
 
 import type { Unsupported } from "@polaris-key/client-core";
-import type { FileCodec, HostCodec } from "@polaris-key/client-core/sync";
+import type {
+  FileCodec,
+  HostCodec,
+  SyncCryptoPort,
+} from "@polaris-key/client-core/sync";
 import { Feature } from "../constants.generated.js";
 import { UnsupportedError } from "./caps.js";
 
@@ -107,6 +111,17 @@ export interface KeyringClient {
    * while this device holds no root. Build one per operation; do not keep it across a lock.
    */
   fileCodec?(collection: string): Promise<FileCodec | null>;
+  /**
+   * What the device export derives file keys with (WIRE-CONTRACT-V5 §13.12): a crypto port over the
+   * vault's non-extractable handle and the placeholder root input it answers to (the root's bytes
+   * are never read), and `alive()`, which turns false once the ring locks. Null while this device
+   * holds no root. Use it for one export; do not keep it across a lock.
+   */
+  exportKeys?(): Promise<{
+    port: SyncCryptoPort;
+    root: Uint8Array;
+    alive(): boolean;
+  } | null>;
 }
 
 /** A ring client for a transport that cannot hold a ring: every verb throws the typed unsupported. */
@@ -205,6 +220,7 @@ export function lazyKeyring(load: () => Promise<KeyringClient>): KeyringClient {
     codec: () => engine?.codec() ?? null,
     fileCodec: async (collection: string) =>
       (await ready()).fileCodec?.(collection) ?? null,
+    exportKeys: async () => (await ready()).exportKeys?.() ?? null,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

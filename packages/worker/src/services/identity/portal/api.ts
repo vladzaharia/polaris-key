@@ -128,6 +128,7 @@ import {
   signInReplaceView,
   signInRequestView,
 } from "../passthrough/routes.js";
+import { endSessionView, handleEndSessionAnswer } from "../issuer/signout.js";
 import {
   handleSignInCancel,
   handleSignInContinue,
@@ -187,6 +188,11 @@ import { handleProductSync } from "./syncSummary.js";
 import { handleProfileApi } from "./profile.js";
 import { accountMayOpenConsole } from "../consoleAccount.js";
 import { consoleOrigin } from "../../../core/hosts.js";
+import {
+  handleConnectedAppChange,
+  handleConnectedAppDisconnect,
+  handleConnectedApps,
+} from "./connectedApps.js";
 import { AdminBodyError, readBody } from "../../../core/http/body.js";
 import { bestRow } from "../../../core/http/routes.js";
 import { handleStorefrontName, storefrontView } from "./storefrontName.js";
@@ -2040,6 +2046,39 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
       return view.status === 200 ? portalJson(view.body) : notFound();
     },
   },
+  // I-21.12 (§12.13.9): Polaris Locker's "Sign out of Polaris Locker too?" for an end-session
+  // handle. The binder cookie, not a session: the person may have none on this host. The handlers
+  // own the same-origin, CSRF and budget checks (`issuer/signout.ts`).
+  {
+    path: "signout/requests/:request",
+    auth: "none",
+    handler: async (c, m) =>
+      c.req.method !== "GET"
+        ? err(405, "method_not_allowed")
+        : endSessionView(
+            c.env,
+            c.db,
+            c.req,
+            m.params.request!,
+            c.now,
+            c.hooksFor,
+          ),
+  },
+  ...(["confirm", "cancel"] as const).map(
+    (action): PortalApiRoute => ({
+      path: `signout/requests/:request/${action}`,
+      auth: "none",
+      handler: (c, m) =>
+        handleEndSessionAnswer(
+          c.req,
+          c.env,
+          c.db,
+          m.params.request!,
+          action,
+          c.now,
+        ),
+    }),
+  ),
   // I-07: the login card's pre-authentication routes (email code and link, the email gate).
   // `signin/requests/*` is PX-W13's: the request view above, and its app-consent, licence and
   // continue views below, which need the session. `signin/requests` itself and anything deeper
@@ -2175,6 +2214,45 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
     handler: async (c, _m, s) =>
       methodNotAllowedUnless(c.req, "GET") ??
       handleAccountDevices(c.db, s.session, c.now),
+  },
+  // I-21.15: Connected apps. The registered clients the person signed in to, Change what a client
+  // gets, and Disconnect. Every id is read against (product, this account).
+  {
+    path: "me/connected-apps",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async (c, _m, s) =>
+      methodNotAllowedUnless(c.req, "GET") ??
+      handleConnectedApps(c.env, c.db, s.session, c.hooksFor, c.now),
+  },
+  {
+    path: "me/connected-apps/:product/:client",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async (c, m, s) =>
+      c.req.method === "PATCH"
+        ? handleConnectedAppChange(
+            c.req,
+            c.env,
+            c.db,
+            s.session,
+            c.hooksFor,
+            m.params.product!,
+            m.params.client!,
+            c.now,
+          )
+        : c.req.method === "DELETE"
+          ? handleConnectedAppDisconnect(
+              c.env,
+              c.db,
+              s.session,
+              m.params.product!,
+              m.params.client!,
+              c.now,
+            )
+          : err(405, "method_not_allowed"),
   },
   {
     path: "me/devices/:product/:device",

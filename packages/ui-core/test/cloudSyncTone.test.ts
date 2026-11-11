@@ -37,9 +37,9 @@ describe("CloudSyncStatus", () => {
     });
     expect([...v.copy].sort()).toEqual([
       "cloudSync.signIn",
-      "cloudSync.signedOut",
+      "cloudSync.syncStopped",
     ]);
-    expect(v.decisions.primary).toBe("cloudSync.signIn");
+    expect(v.decisions.primary).toBeNull();
     expect(v.decisions.tone).toBe("neutral");
   });
 

@@ -309,6 +309,8 @@ export const DOCS_REDIRECT_TIERS: Readonly<
   "/docs/help/code/swap-failed/index.html": "public",
   "/docs/help/code/swap-refused/index.html": "public",
   "/docs/help/code/sync-encryption-pinned/index.html": "public",
+  "/docs/help/code/sync-export-failed/index.html": "public",
+  "/docs/help/code/sync-export-too-large/index.html": "public",
   "/docs/help/code/sync-failed/index.html": "public",
   "/docs/help/code/sync-file-invalid/index.html": "public",
   "/docs/help/code/sync-locked/index.html": "public",

@@ -344,7 +344,7 @@ describe("403 reasons (§2.5)", () => {
     }
   });
 
-  it("still signs out on account_required (negative control)", () => {
+  it("still signs out on account_required and keeps the status (negative control)", () => {
     const { m } = started();
     m.set(VOL, 0.5);
     commit(m);
@@ -359,6 +359,47 @@ describe("403 reasons (§2.5)", () => {
     });
     m.refresh();
     expect(m.status().state).toBe("blocked");
+  });
+});
+
+describe("accountRequired (U-52)", () => {
+  const URL = "https://key.plrs.im/signin?product=demo";
+
+  it("does what the 403 does, with the root, and survives a relaunch", () => {
+    const { m, opts } = started({ hasRoot: true });
+    expect(m.hasRoot).toBe(true);
+    m.set(VOL, 0.5);
+    commit(m);
+    m.takeRequests();
+    m.takeEvents();
+    m.accountRequired(URL);
+    expect(m.hasRoot).toBe(false);
+    expect(m.journal()).toEqual({});
+    expect(m.status()).toEqual({
+      state: "blocked",
+      pending: 0,
+      reason: "account_required",
+    });
+    expect(m.takeEvents()).toContainEqual({
+      type: "signedOut",
+      reason: "accountRequired",
+      unsynced: 1,
+    });
+    const again = relaunch(m, opts);
+    expect(again.hasRoot).toBe(false);
+    expect(again.status().state).toBe("blocked");
+    expect(again.takeRequests()).toEqual([]);
+  });
+
+  it("is a no-op with no subject and when already blocked (negative control)", () => {
+    const local = new CloudSyncMachine(options({ subject: null }));
+    local.accountRequired(URL);
+    expect(local.status().state).toBe("local");
+    const { m } = started();
+    m.accountRequired(URL);
+    m.takeEvents();
+    m.accountRequired(URL);
+    expect(m.takeEvents()).toEqual([]);
   });
 });
 

@@ -544,6 +544,21 @@
       "verdict": "pass",
       "date": "2026-10-28",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-42.22/ (BUILT reviews of the Done step and the account rows: FIX, then PASS on re-check after the blocking findings were fixed)"
+    },
+    "P2-11": {
+      "verdict": "pass",
+      "date": "2026-11-10",
+      "evidence": "BUILT UX review (lead notes, kept locally)"
+    },
+    "I-10a": {
+      "verdict": "pass",
+      "date": "2026-11-10",
+      "evidence": "BUILT UX review (lead notes, kept locally)"
+    },
+    "I-10b": {
+      "verdict": "pass",
+      "date": "2026-11-10",
+      "evidence": "BUILT UX review (lead notes, kept locally)"
     }
   }
 }

@@ -157,6 +157,8 @@ val checkStandalone = tasks.register("checkStandalone") {
         name to configurations.named(name).flatMap { it.incoming.resolutionResult.rootComponent }
     }
     inputs.property("classpaths", standaloneClasspaths)
+    // A task action may not reference script-level values (configuration cache), so it holds a copy.
+    val sdkGroupId = sdkGroup
     doLast {
         val offenders = mutableListOf<String>()
         for ((name, rootProvider) in roots) {
@@ -169,7 +171,7 @@ val checkStandalone = tasks.register("checkStandalone") {
                 val id = c.id
                 if (c !== root) {
                     if (id is ProjectComponentIdentifier) offenders += "$name: project ${id.projectPath}"
-                    if (id is ModuleComponentIdentifier && id.group == sdkGroup) offenders += "$name: ${id.group}:${id.module}"
+                    if (id is ModuleComponentIdentifier && id.group == sdkGroupId) offenders += "$name: ${id.group}:${id.module}"
                 }
                 for (d in c.dependencies) {
                     when (d) {
@@ -177,7 +179,7 @@ val checkStandalone = tasks.register("checkStandalone") {
                         // An unresolvable request is still a declared dependency.
                         is UnresolvedDependencyResult -> when (val r = d.requested) {
                             is ProjectComponentSelector -> offenders += "$name: project ${r.projectPath} (unresolved)"
-                            is ModuleComponentSelector -> if (r.group == sdkGroup) offenders += "$name: ${r.group}:${r.module} (unresolved)"
+                            is ModuleComponentSelector -> if (r.group == sdkGroupId) offenders += "$name: ${r.group}:${r.module} (unresolved)"
                         }
                     }
                 }

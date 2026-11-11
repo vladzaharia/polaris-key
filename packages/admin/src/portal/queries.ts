@@ -9,6 +9,7 @@ import {
   type PortalMethods,
   type PortalSession,
   type PortalAccountDevice,
+  type PortalConnectedProduct,
   type PortalCloudSync,
 } from "./api.js";
 
@@ -43,6 +44,7 @@ export const qk = {
   methods: () => ["portal", "methods"] as const,
   sessions: () => ["portal", "sessions"] as const,
   accountDevices: () => ["portal", "accountDevices"] as const,
+  connectedApps: () => ["portal", "connectedApps"] as const,
   link: () => ["portal", "link"] as const,
   // The app card's reads (PX-14a): under the request's handle, so a new request never shows the
   // last one's answer.
@@ -51,6 +53,8 @@ export const qk = {
   signinDevices: (h: string, license: string) =>
     ["portal", "signinDevices", h, license] as const,
   signinConsent: (h: string) => ["portal", "signinConsent", h] as const,
+  // I-21.12: the sign-out page's request, under its handle.
+  signoutRequest: (h: string) => ["portal", "signoutRequest", h] as const,
 };
 
 /** Every portal query (the whole cache of this app). */
@@ -272,6 +276,14 @@ export const pq = {
         orNull(async () => (await portalApi.accountDevices()).devices),
     }),
 
+  /** The client apps the account signed in to, or `null` on a Worker without the route. */
+  connectedApps: () =>
+    queryOptions({
+      queryKey: qk.connectedApps(),
+      queryFn: (): Promise<PortalConnectedProduct[] | null> =>
+        orNull(async () => (await portalApi.connectedApps()).products),
+    }),
+
   /** The app asking (works before sign-in: the binder cookie, not a session). */
   signinRequest: (handle: string | null) =>
     queryOptions({
@@ -279,6 +291,15 @@ export const pq = {
       queryFn: () => portalApi.signinRequest(handle!),
       enabled: handle !== null,
       staleTime: 60_000,
+    }),
+
+  /** The end-session request (works before sign-in: the binder cookie, not a session). */
+  signoutRequest: (handle: string) =>
+    queryOptions({
+      queryKey: qk.signoutRequest(handle),
+      queryFn: () => portalApi.signoutRequest(handle),
+      staleTime: 0,
+      retry: false,
     }),
 
   signinLicenses: (handle: string, enabled: boolean) =>

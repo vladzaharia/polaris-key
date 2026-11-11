@@ -120,7 +120,7 @@
       "jscpd:duplicate": 18
     },
     "packages/admin/e2e/dataMotion.e2e.test.ts": {
-      "jscpd:duplicate": 37
+      "jscpd:duplicate": 36
     },
     "packages/admin/e2e/deviceMotion.e2e.test.ts": {
       "jscpd:duplicate": 12
@@ -183,7 +183,7 @@
       "jscpd:duplicate": 14
     },
     "packages/admin/e2e/pollMotion.e2e.test.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 9
     },
     "packages/admin/e2e/portal.e2e.test.ts": {
       "jscpd:duplicate": 7
@@ -558,7 +558,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/portal/pages/SignInPage.tsx": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/admin/src/ui/Dialog.tsx": {
       "jscpd:duplicate": 1
@@ -570,9 +570,6 @@
       "jscpd:duplicate": 3
     },
     "packages/admin/src/ui/Section.tsx": {
-      "jscpd:duplicate": 1
-    },
-    "packages/admin/src/ui/auth/CodeEntry.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/admin/src/ui/data-table/FilterBar.tsx": {
@@ -729,7 +726,7 @@
       "jscpd:duplicate": 2
     },
     "packages/admin/test/motion/consoleNavigation.test.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/admin/test/motion/expand.test.tsx": {
       "jscpd:duplicate": 1
@@ -816,7 +813,7 @@
       "jscpd:duplicate": 3
     },
     "packages/admin/test/portalDeviceMotion.test.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/admin/test/portalDiscoverCount.test.tsx": {
       "jscpd:duplicate": 2
@@ -1581,7 +1578,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/cloudSync/api.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/sdk-node/src/cloudSync/files.ts": {
       "jscpd:duplicate": 8
@@ -2057,7 +2054,7 @@
     "packages/sdk-react/test/browser/holders.browser.test.tsx": {
       "jscpd:duplicate": 7
     },
-    "packages/sdk-react/test/browser/kit.browser.test.tsx": {
+    "packages/sdk-react/test/browser/kitSuite.tsx": {
       "jscpd:duplicate": 7
     },
     "packages/sdk-react/test/browser/motion.browser.test.tsx": {
@@ -2382,7 +2379,7 @@
       "jscpd:duplicate": 7
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/api.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/collection.ts": {
       "jscpd:duplicate": 1
@@ -4968,7 +4965,7 @@
       "jscpd:duplicate": 1
     },
     "tools/sync-scenarios.ts": {
-      "jscpd:duplicate": 32
+      "jscpd:duplicate": 30
     },
     "tools/ui-matrix.ts": {
       "jscpd:duplicate": 20

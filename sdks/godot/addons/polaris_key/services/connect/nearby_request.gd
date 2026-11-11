@@ -17,10 +17,27 @@ var _core: PKeyPeerNearbyRequester
 
 func _init(core: PKeyPeerNearbyRequester) -> void:
 	_core = core
-	core.approvers_changed.connect(func(list: Array) -> void: approvers_changed.emit(list))
-	core.result.connect(func(status: String) -> void: result.emit(status))
-	core.record.connect(func(record_type: int, body: PackedByteArray) -> void: record.emit(record_type, body))
-	core.closed.connect(func(code: StringName) -> void: closed.emit(code))
+	# Methods, not lambdas: a lambda holds `self`, and `core` holds the connection, a cycle that outlives the request.
+	core.approvers_changed.connect(_on_approvers_changed)
+	core.result.connect(_on_result)
+	core.record.connect(_on_record)
+	core.closed.connect(_on_closed)
+
+
+func _on_approvers_changed(list: Array) -> void:
+	approvers_changed.emit(list)
+
+
+func _on_result(status: String) -> void:
+	result.emit(status)
+
+
+func _on_record(record_type: int, body: PackedByteArray) -> void:
+	record.emit(record_type, body)
+
+
+func _on_closed(code: StringName) -> void:
+	closed.emit(code)
 
 
 func _to_string() -> String:

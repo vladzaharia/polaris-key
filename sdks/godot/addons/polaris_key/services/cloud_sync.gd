@@ -22,6 +22,9 @@ extends RefCounted
 ##   PolarisKey.cloud_sync.transfers() the saves being written now (PKeyTransfer handles)
 ##                                     and, on the same stream, `transferProgress`, `transferDone` and
 ##                                     `transferFailed` (a cancelled write is `transferDone` with state "cancelled")
+##   PolarisKey.cloud_sync.export(destination, options)   a readable (decrypted) zip of the synced data at a path
+##                                     (U-51; a coroutine; PKeyCloudSyncExporter, core/sync/sync_export.gd), and
+##                                     `cancel_export()` to stop it
 ##   PolarisKey.config.set_value / clear / setting(k).sync()   routed through the machine while a
 ##                                     person is signed in
 ##
@@ -45,6 +48,15 @@ extends RefCounted
 ##        written after the sign-in succeeded and apart from the state file
 ##   A-7  the mode comes from app code only (`PKeyOptions.cloud_sync_encryption`); licence state is never
 ##        read or written from here
+##   A-8  `account_required` (U-52): from `/sync`, a key-ring call or a file route, the machine drops the
+##        partition and the root and stays blocked; the root and pin are forgotten, the transfers purged, the
+##        machine saved as it stands (not purged) with the refused subject, and a relaunch stays blocked. A
+##        sign-in the person completes in this run lifts the refusal, the cached subject replayed at launch
+##        does not. A forget that failed is saved (`forgetPending`), retried at start and before sign-in,
+##        which waits for it. If the blocked state cannot be rewritten, the file goes and the refusal stays
+##        in memory
+##   A-9  a key-ring or file call's `account_required` counts for the person it was made for (noted when the
+##        call starts) and only from the Worker's own URL with no redirect; else it is an ordinary 403
 ## No event, log line or error carries a value or the root (H-11).
 ##
 ## "Connect leave" (the first link of the sign-out chain once Cloud Connect exists in Godot) plugs in as
@@ -64,6 +76,7 @@ const TransferCodec := preload("res://addons/polaris_key/services/cloud_sync/tra
 const FilesTransport := preload("res://addons/polaris_key/services/cloud_sync/files_transport.gd")
 const SavesRecords := preload("res://addons/polaris_key/services/cloud_sync/saves_records.gd")
 const Journal := preload("res://addons/polaris_key/services/cloud_sync/journal.gd")
+const Exporter := preload("res://addons/polaris_key/services/cloud_sync/export_host.gd")
 
 ## The reasons the machine leaves a principal, each of which drops the key ring.
 const FORGETTING := ["signOut", "accountRequired", "subjectChanged"]
@@ -107,6 +120,8 @@ var _cache_for: Variant = null
 var _keep_subject: Variant = null
 ## The records handles handed out, by collection name (one per name, so its signals persist).
 var _collections := {}
+## The export in flight (one per client), built on first use.
+var _exporter: Exporter = null
 
 
 ## Build the host over this Core. `emit` is `func(data: Dictionary)`: one cloudSync event.
@@ -237,6 +252,51 @@ func flush() -> PKeyResult:
 	return status()
 
 
+## A readable copy of the synced data (settings, records and files, decrypted) as a zip at `destination`, an
+## absolute path or one under `user://` (U-51; WIRE-CONTRACT-V5 13.12). The SDK never picks a place, never
+## uploads, shows no prompt and logs no value, id or path: the app already holds the data and decides when.
+## `options`: `include_revisions` (bool, default false: the live file of each record only) and `on_progress`
+## (a Callable taking `{done, total, waiting}`; `waiting` is true while a throttle is waited out).
+##
+## It sends what is waiting, pulls what the Worker holds, reads the files as `saves.read` does (so it spends the
+## hourly file allowance and may wait out a `Retry-After`, bounded), writes `<destination>.partial`, and renames
+## it over the destination: a failure or `cancel_export()` removes the partial and keeps the old file. A
+## coroutine; ok with `{path, bytes, entries, settings, records, files, skipped, unsynced}` (`skipped` lists what
+## could not be read or was cut short). A failure is `account_required`, `sync-locked`, `sync-encryption-pinned`,
+## `cancelled`, `sync-export-too-large` (nothing written) or `sync-export-failed` with `detail.reason`
+## `destination`, `network` or `busy` (one export runs at a time). The typed `product` N/A when the product does
+## not run the Sync service.
+func export(destination: String, options: Dictionary = {}) -> PKeyResult:
+	var refused: Variant = _core.require_service("sync", PKeyConstants.Feature.SYNC_EXPORT) if _core != null else PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	if refused != null:
+		return refused
+	if _exporter == null:
+		_exporter = Exporter.new({
+			"host": Callable(self, "_export_host"),
+			"attach": Callable(self, "attach"),
+			"flush": Callable(self, "flush"),
+			"subject": Callable(self, "_export_subject"),
+			"local_only": _core.local_only,
+		})
+	return await _exporter.run(destination, options)
+
+
+## The exporter's views of this API (Callables on `self` do not keep it alive; a lambda would).
+func _export_host() -> Node:
+	return host
+
+
+func _export_subject() -> String:
+	return _core.cache.subject if _core != null else ""
+
+
+## Stops the export in flight (nothing happens when none runs): it removes its partial, leaves the old
+## destination and answers `cancelled`.
+func cancel_export() -> void:
+	if _exporter != null:
+		_exporter.cancel()
+
+
 # ── The saves ─────────────────────────────────────────────────────────────────────────────────
 
 
@@ -251,6 +311,8 @@ func _build_saves() -> void:
 	var tr := FilesTransport.make_transport(host, _core.local_only)
 	var transport := FilesTransport.new(tr, port.request_context)
 	_files = transport
+	transport.on_account_required = Callable(self, "account_required_for")
+	transport.subject_now = Callable(self, "machine_subject")
 	# D-10: the bulk channel is used only when the app opted in and the platform supplied one.
 	var opts: PKeyOptions = _core.options
 	var channel: Object = PKeyAppleBulk.pick(opts, _core.product, _core.base_url, host.state_dir())
@@ -378,6 +440,32 @@ static func _remove_tree(path: String) -> void:
 	DirAccess.remove_absolute(path)
 
 
+## A key-ring call or a Cloud Sync file route answered 403 `account_required` (U-52, WIRE-CONTRACT-V5
+## section 11.5): the same transition as a `/sync` 403. The root leaves memory at once, the saves'
+## transfers are cancelled and deleted, the ring forgets its stored root and pin, the machine is saved
+## as it stands (blocked, no partition) and sign-in is offered, with `sign_in_url` vetted (A-5). A
+## request in flight is cancelled and its answer dropped. Nothing happens with nobody signed in.
+func account_required(sign_in_url: Variant = null) -> void:
+	if _closed or host == null or not is_instance_valid(host) or not host.is_started():
+		return
+	host.account_required(sign_in_url)
+
+
+## The same, for an answer to a call made while `subject` was the machine's person (null: nobody): an answer
+## that arrives after that person signed out or was replaced is ignored (A-9).
+func account_required_for(sign_in_url: Variant, subject: Variant) -> void:
+	if _closed or host == null or not is_instance_valid(host) or not host.is_started():
+		return
+	host.account_required(sign_in_url, true, subject)
+
+
+## The person the machine is signed in as now, or null. A key-ring or file call notes it when it starts.
+func machine_subject() -> Variant:
+	if host == null or not is_instance_valid(host) or not host.is_started() or host.machine() == null:
+		return null
+	return host.machine().subject()
+
+
 # ── What the SDK calls ────────────────────────────────────────────────────────────────────────
 
 
@@ -405,6 +493,9 @@ func attach() -> void:
 	_config._use_sync(_port)
 	# A journal saved while signed in still names its subject.
 	_subject = host.machine().subject()
+	# A forget that failed after `account_required` is retried before anything else.
+	if host.forget_pending():
+		await _forget(true)
 	# A-2: an empty stored subject is unknown (offline boot, discovery not loaded): nothing changes.
 	var stored: String = _core.cache.subject
 	if stored != "":
@@ -486,6 +577,9 @@ func _allow_ring_holds() -> void:
 
 func close() -> void:
 	_closed = true
+	if _exporter != null:
+		_exporter.cancel()
+		_exporter = null
 	for handle: PKeyCollection in _collections.values():
 		handle.close()
 	_collections = {}
@@ -533,6 +627,10 @@ func _on_identity(kind: String, subject: String) -> void:
 		return
 	if subject == "":
 		return  # unknown (A-2)
+	# A person who completes a sign-in in this run lifts a refusal of that same subject (a relinked or cleared
+	# binding comes back); the cached subject replayed at launch does not come through here.
+	if kind == "signedIn" or kind == "activated":
+		host.lift_refusal(subject)
 	if subject != _subject:
 		await _sign_in(subject)
 
@@ -540,6 +638,15 @@ func _on_identity(kind: String, subject: String) -> void:
 func _sign_in(subject: String) -> void:
 	if host == null or not host.is_started():
 		return
+	# The subject `account_required` refused stays signed out until a sign-out or another subject.
+	if host.refused() == subject:
+		return
+	# A forget that failed after `account_required` is retried first; sign-in waits for it.
+	if host.forget_pending():
+		await _forget(true)
+		if host.forget_pending():
+			push_warning("Cloud Sync: sign-in waits for the key ring to forget")
+			return
 	# Another person: the first one leaves (unsent edits dropped, then forgotten) before this one starts.
 	# The device credential is already the new person's, so nothing is sent for the old one (A-1).
 	if _subject != null and _subject != subject:
@@ -605,6 +712,8 @@ func _leave() -> void:
 	var m: Object = host.machine()
 	if m.subject() == null:
 		_subject = null  # A-4: a stale subject is dropped when the machine holds none
+		if host.refused() != null:
+			await _forget()  # a sign-out clears the refusal: the blocked state and its local edits go
 		return
 	m.sign_out(false)
 	host.deliver_events()
@@ -620,15 +729,18 @@ func _on_events(events: Array) -> void:
 		_merge.feed(events)
 	var left := false
 	var involuntary := false
+	# `account_required` keeps the machine's saved state (blocked, no partition); every other leave purges it.
+	var keep_state := true
 	for e: Dictionary in events:
 		if e.get("type") == "signedOut" and FORGETTING.has(e.get("reason")):
 			left = true
 			involuntary = involuntary or e["reason"] == "accountRequired" or e["reason"] == "subjectChanged"
+			keep_state = keep_state and e["reason"] == "accountRequired"
 	# The root leaves memory before anything else runs.
 	if left:
 		_forgot = true
 		_forgets += 1
-		_forget_task()
+		_forget_task(keep_state)
 	var offers: Array = []
 	for e: Dictionary in events:
 		if e.get("type") == "signInOffered":
@@ -650,7 +762,7 @@ func _on_events(events: Array) -> void:
 func _deliver(e: Dictionary) -> void:
 	var out := e.duplicate()
 	if e.get("type") == "signInOffered":
-		out["signInUrl"] = safe_sign_in_url(e.get("signInUrl"), _core.base_url)
+		out["signInUrl"] = safe_sign_in_url(e.get("signInUrl"), worker_origin(_core.base_url))
 	if _emit.is_valid():
 		_emit.call(out)
 
@@ -665,14 +777,16 @@ func _after_forget(offers: Array, involuntary: bool) -> void:
 		_deliver(o)
 
 
-func _forget_task() -> void:
-	await _forget()
+func _forget_task(keep_state := false) -> void:
+	await _forget(keep_state)
 	_forgets -= 1
 
 
 ## Drop the ring (the root first), then the synced data. Each step is tried whatever the other did; a
-## failure is logged, never raised, and never replaces the sign-out's own error.
-func _forget() -> void:
+## failure is logged, never raised, and never replaces the sign-out's own error. `keep_state`: after
+## `account_required` the machine's saved state stays (it says blocked), so only the root, the pin and the
+## saves' transfers go.
+func _forget(keep_state := false) -> void:
 	_forgot = true
 	# The bulk channel closes first: its requests carry the person's sealed bodies and bearer, and nothing may
 	# be queued once the journal goes or the ring locks.
@@ -686,14 +800,21 @@ func _forget() -> void:
 		_keyring.lock()
 	if saves != null:
 		await saves.purge()
+	var ring_failed := false
 	if _keyring != null:
 		var r: Variant = await _keyring.forget()
 		if r is PKeyResult and not r.ok:
 			push_warning("Cloud Sync: the key ring pin could not be removed")
+			ring_failed = true
 			if _in_sign_out:
 				# D-13: a root that cannot be deleted must not be left behind under a signed-out device.
 				_forget_error = r
 				return
+	if keep_state:
+		# The saved state says whether the ring still holds a root to remove: retried at start and before sign-in.
+		if host != null and is_instance_valid(host):
+			host.set_forget_pending(ring_failed)
+		return
 	if host != null and is_instance_valid(host):
 		var removed: bool = await host.purge()
 		if not removed:
@@ -713,28 +834,72 @@ func _join_chain() -> void:
 		push_warning("Cloud Sync: a forget is still waiting")
 
 
-## A sign-in URL fit to hand to the app (A-5): no control character or whitespace; a path is resolved
-## against the Worker origin; only an https URL on that origin is kept. Else null.
+## A sign-in URL fit to hand to the app: https on the Worker's origin (`https://host[:port]`), normalised, else
+## null. `https://` or `//` start an authority that must be exactly the Worker's host (and port; 443 is the
+## default); any other `scheme:`, userinfo, a trailing dot, a lookalike host, a backslash, whitespace or a
+## control or non-ASCII character answers null. Anything else is a path on the origin; there is no path
+## restriction. The rule is the same in every SDK and pinned by the corpus's `signInUrlCases`; it uses no URL
+## library. `base_url` is the Worker's origin (`worker_origin`); an origin with a path or not https answers null.
 static func safe_sign_in_url(url: Variant, base_url: String) -> Variant:
 	if not (url is String) or url == "":
 		return null
 	var s: String = url
 	for i in s.length():
 		var c := s.unicode_at(i)
-		if c <= 0x20 or c == 0x7f or (c >= 0x80 and c <= 0x9f):
+		if c < 0x21 or c > 0x7e or c == 0x5c:
 			return null
-	var base := PKeyTransport.parse_url(base_url)
-	if base.is_empty():
+	var om := _origin_re().search(base_url.to_lower())
+	if om == null:
 		return null
-	var resolved := s
-	if s.begins_with("/"):
-		if s.begins_with("//") or s.contains("\\"):
+	var host := om.get_string(1)
+	var port := int(om.get_string(2)) if om.get_string(2) != "" else 443
+	var rest := ""
+	var has_authority := false
+	if s.to_lower().begins_with("https://"):
+		rest = s.substr(8)
+		has_authority = true
+	elif s.begins_with("//"):
+		rest = s.substr(2)
+		has_authority = true
+	var tail := s
+	if has_authority:
+		var end := -1
+		for i in rest.length():
+			if rest[i] == "/" or rest[i] == "?" or rest[i] == "#":
+				end = i
+				break
+		var authority := (rest if end < 0 else rest.substr(0, end)).to_lower()
+		var allowed := PackedStringArray(["%s:%d" % [host, port]])
+		if port == 443:
+			allowed = PackedStringArray([host, "%s:443" % host])
+		if not allowed.has(authority):
 			return null
-		resolved = PKeyTransport.resolve(base_url, s)
-	var u := PKeyTransport.parse_url(resolved)
-	if u.is_empty() or u["scheme"] != "https" or u["origin"] != base["origin"]:
+		tail = "" if end < 0 else rest.substr(end)
+	elif _scheme_re().search(s) != null:
 		return null
-	return resolved
+	if not tail.begins_with("/"):
+		tail = "/" + tail
+	return "https://%s%s%s" % [host, "" if port == 443 else ":%d" % port, tail]
+
+
+## The origin (`https://host[:port]`) of the client's base URL, which may carry a path; "" when it is not https.
+static func worker_origin(base_url: String) -> String:
+	var u := PKeyTransport.parse_url(base_url)
+	if u.is_empty() or u["scheme"] != "https":
+		return ""
+	return "https://%s%s" % [u["host"], "" if u["port"] == 443 else ":%d" % u["port"]]
+
+
+static func _origin_re() -> RegEx:
+	var re := RegEx.new()
+	re.compile("^https://([a-z0-9.-]+)(?::([0-9]{1,5}))?$")
+	return re
+
+
+static func _scheme_re() -> RegEx:
+	var re := RegEx.new()
+	re.compile("^[A-Za-z][A-Za-z0-9+.-]*:")
+	return re
 
 
 ## The saves' port onto this API: every dependency PKeySaves holds is a method here, which reaches the API

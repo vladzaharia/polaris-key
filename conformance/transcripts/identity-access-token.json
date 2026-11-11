@@ -1,0 +1,556 @@
+{
+  "transcriptVersion": 1,
+  "id": "identity-access-token",
+  "description": "The device exchange (I-21.13, WIRE-CONTRACT-V5 §12.13.10, D6): the product's own app trades its device token for a 600 second access token for its developer's backend. Discovery names accessToken: true while the product's issuer is served. The app posts a token-exchange form to token: grant_type urn:ietf:params:oauth:grant-type:token-exchange, client_id the product slug, subject_token its own device token, subject_token_type urn:polaris-key:token-type:device and requested_token_type urn:ietf:params:oauth:token-type:access_token, with X-PKey-Device and no Authorization. The answer is exactly access_token (a compact RS256 JWS the client keeps in memory), issued_token_type, token_type Bearer, expires_in 600 and an empty scope: never a refresh token or an id_token. A device that is not signed in is 400 invalid_grant; the budget is ten a minute per device and network (429 rate_limited with retryAfter); with the issuer turned off the exchange is 400 invalid_request and discovery names no accessToken, so the client sends nothing and raises service-unavailable.",
+  "features": ["core.discover", "identity.accesstoken"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"],
+    "token": "pkeyt_DvIeHjr2cDuNVNDCrLDSUpZfgS3KLWnEf1G5P8KO3IU"
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 5,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-identity",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys",
+                    "register": "https://key.plrs.im/djdl/devices/register"
+                  },
+                  "portal": {
+                    "enabled": true,
+                    "activate": "https://key.plrs.im/activate?product=djdl"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": { "enabled": false },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": {
+                    "enabled": true,
+                    "configured": true,
+                    "issuer": "https://key.plrs.im/djdl/identity",
+                    "account": true,
+                    "keyEntryLimit": 10,
+                    "restore": true,
+                    "nearby": true,
+                    "accessToken": true,
+                    "nativeRedirect": {
+                      "loopback": true,
+                      "schemes": [],
+                      "claimedHttps": []
+                    },
+                    "endpoints": {
+                      "authStart": "https://key.plrs.im/djdl/identity/auth/start",
+                      "authCallback": "https://key.plrs.im/djdl/identity/auth/callback",
+                      "authDeviceStart": "https://key.plrs.im/djdl/identity/auth/device/start",
+                      "authDeviceEntry": "https://key.plrs.im/djdl/identity/auth/device",
+                      "authDeviceVerify": "https://key.plrs.im/djdl/identity/auth/device/verify",
+                      "authDevicePoll": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                      "authorize": "https://key.plrs.im/djdl/identity/authorize",
+                      "token": "https://key.plrs.im/djdl/identity/token",
+                      "request": "https://key.plrs.im/djdl/identity/request",
+                      "signinReturn": "https://key.plrs.im/signin/return",
+                      "choiceLicenses": "https://key.plrs.im/djdl/identity/choice/licenses",
+                      "choiceDevices": "https://key.plrs.im/djdl/identity/choice/devices",
+                      "choiceComplete": "https://key.plrs.im/djdl/identity/choice/complete",
+                      "choiceCancel": "https://key.plrs.im/djdl/identity/choice/cancel",
+                      "attach": "https://key.plrs.im/djdl/identity/attach",
+                      "subject": "https://key.plrs.im/djdl/identity/subject",
+                      "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "restore": "https://key.plrs.im/djdl/identity/restore",
+                      "nonce": "https://key.plrs.im/djdl/identity/nonce",
+                      "link": "https://key.plrs.im/djdl/identity/link",
+                      "nearbyStart": "https://key.plrs.im/djdl/identity/nearby/start",
+                      "nearbyApprove": "https://key.plrs.im/djdl/identity/nearby/approve",
+                      "nearbyPoll": "https://key.plrs.im/djdl/identity/nearby/poll",
+                      "accountPortal": "https://key.plrs.im/#/p/djdl"
+                    }
+                  },
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false },
+                  "connect": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "services": {
+          "license": false,
+          "config": true,
+          "release": false,
+          "distribution": false,
+          "update": false,
+          "identity": true,
+          "sync": false,
+          "commerce": false,
+          "connect": false
+        },
+        "accessToken": true
+      }
+    },
+    {
+      "action": "accessToken",
+      "note": "Signed in: the exchange answers a 600 second access token. Nothing else rides with it.",
+      "args": {},
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "pkeyt_DvIeHjr2cDuNVNDCrLDSUpZfgS3KLWnEf1G5P8KO3IU",
+                  "subject_token_type": "urn:polaris-key:token-type:device",
+                  "requested_token_type": "urn:ietf:params:oauth:token-type:access_token"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkZzNDAyRUxzY2U4TE1Femt3QTNoVEIzQWIzX1hxN0R1X2NyQk8tVEtFcWMiLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL2tleS5wbHJzLmltL2RqZGwvaWRlbnRpdHkiLCJzdWIiOiJwc19kUzd4bnhBc0R3bXp4bHpZS2NXZDlBIiwiYXVkIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsL2lkZW50aXR5IiwiY2xpZW50X2lkIjoiZGpkbCIsImlhdCI6MTcwMDAwMDA2MCwiZXhwIjoxNzAwMDAwNjYwLCJqdGkiOiJOSjZqNjI3Y2hlUEJJNWtMeG1lQzV3Iiwic2NvcGUiOiIifQ.GtpXfX1pRvHoRbnr2wCaE_pEj1GdoagE6VVSrPZZycOovFB9SS2vr3GYm0lLW2euOzWJE5jjMCVN05z6hIwkBFZdLVPrJDwy_RdyDerK153hC5ZlOsLJ5fzTmCY9GRS67xZE1Dog6NIRK-K0ZMQzpiBpJaQ_3Tyrro_ZQBBOWyjnLjwiIKxSjMVef6xBCjj8qywjmwFrGzCFhoUnD9-XfZ4SotRZGlPMId5HojBhJ1XgCx_TnQCR4jH6S0FkHC5WHqyaFUmSh_gbiMSgbfFULQbxaVbTb5gtGdAs4b7PfXdGAR8ArGNj4oRDnN_y9IrmdKLIvvKPWcw2jho2Uwil-w",
+                "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "token_type": "Bearer",
+                "expires_in": 600,
+                "scope": ""
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "accessTokenHeld": true,
+        "tokenType": "Bearer",
+        "expiresIn": 600
+      }
+    },
+    {
+      "action": "accessToken",
+      "note": "The eleventh call of the minute: 429 rate_limited, retryAfter in the body.",
+      "args": {},
+      "now": 1700000120,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "pkeyt_DvIeHjr2cDuNVNDCrLDSUpZfgS3KLWnEf1G5P8KO3IU",
+                  "subject_token_type": "urn:polaris-key:token-type:device",
+                  "requested_token_type": "urn:ietf:params:oauth:token-type:access_token"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 429,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "rate_limited", "retryAfter": 60 }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 429,
+        "code": "rate_limited",
+        "accessTokenHeld": false,
+        "retryAfter": 60
+      }
+    },
+    {
+      "action": "accessToken",
+      "note": "The device is signed out elsewhere: no sign-in to exchange. The one invalid_grant.",
+      "args": {},
+      "now": 1700000300,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "pkeyt_DvIeHjr2cDuNVNDCrLDSUpZfgS3KLWnEf1G5P8KO3IU",
+                  "subject_token_type": "urn:polaris-key:token-type:device",
+                  "requested_token_type": "urn:ietf:params:oauth:token-type:access_token"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 400,
+        "code": "invalid_grant",
+        "accessTokenHeld": false
+      }
+    },
+    {
+      "action": "accessToken",
+      "note": "The developer turned the issuer off after the client read discovery: the token type is unknown, 400 invalid_request.",
+      "args": {},
+      "now": 1700000360,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "pkeyt_DvIeHjr2cDuNVNDCrLDSUpZfgS3KLWnEf1G5P8KO3IU",
+                  "subject_token_type": "urn:polaris-key:token-type:device",
+                  "requested_token_type": "urn:ietf:params:oauth:token-type:access_token"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "invalid_request",
+                "error_description": "subject_token_type is not supported."
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 400,
+        "code": "invalid_request",
+        "accessTokenHeld": false
+      }
+    },
+    {
+      "action": "discover",
+      "note": "Discovery afterwards names no accessToken.",
+      "args": {},
+      "now": 1700000420,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 5,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-identity",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys",
+                    "register": "https://key.plrs.im/djdl/devices/register"
+                  },
+                  "portal": {
+                    "enabled": true,
+                    "activate": "https://key.plrs.im/activate?product=djdl"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": { "enabled": false },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": {
+                    "enabled": true,
+                    "configured": true,
+                    "issuer": "https://key.plrs.im/djdl/identity",
+                    "account": true,
+                    "keyEntryLimit": 10,
+                    "restore": true,
+                    "nearby": true,
+                    "nativeRedirect": {
+                      "loopback": true,
+                      "schemes": [],
+                      "claimedHttps": []
+                    },
+                    "endpoints": {
+                      "authStart": "https://key.plrs.im/djdl/identity/auth/start",
+                      "authCallback": "https://key.plrs.im/djdl/identity/auth/callback",
+                      "authDeviceStart": "https://key.plrs.im/djdl/identity/auth/device/start",
+                      "authDeviceEntry": "https://key.plrs.im/djdl/identity/auth/device",
+                      "authDeviceVerify": "https://key.plrs.im/djdl/identity/auth/device/verify",
+                      "authDevicePoll": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                      "authorize": "https://key.plrs.im/djdl/identity/authorize",
+                      "token": "https://key.plrs.im/djdl/identity/token",
+                      "request": "https://key.plrs.im/djdl/identity/request",
+                      "signinReturn": "https://key.plrs.im/signin/return",
+                      "choiceLicenses": "https://key.plrs.im/djdl/identity/choice/licenses",
+                      "choiceDevices": "https://key.plrs.im/djdl/identity/choice/devices",
+                      "choiceComplete": "https://key.plrs.im/djdl/identity/choice/complete",
+                      "choiceCancel": "https://key.plrs.im/djdl/identity/choice/cancel",
+                      "attach": "https://key.plrs.im/djdl/identity/attach",
+                      "subject": "https://key.plrs.im/djdl/identity/subject",
+                      "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "restore": "https://key.plrs.im/djdl/identity/restore",
+                      "nonce": "https://key.plrs.im/djdl/identity/nonce",
+                      "link": "https://key.plrs.im/djdl/identity/link",
+                      "nearbyStart": "https://key.plrs.im/djdl/identity/nearby/start",
+                      "nearbyApprove": "https://key.plrs.im/djdl/identity/nearby/approve",
+                      "nearbyPoll": "https://key.plrs.im/djdl/identity/nearby/poll",
+                      "accountPortal": "https://key.plrs.im/#/p/djdl"
+                    }
+                  },
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false },
+                  "connect": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "services": {
+          "license": false,
+          "config": true,
+          "release": false,
+          "distribution": false,
+          "update": false,
+          "identity": true,
+          "sync": false,
+          "commerce": false,
+          "connect": false
+        },
+        "accessToken": false
+      }
+    },
+    {
+      "action": "accessToken",
+      "note": "Discovery names no accessToken: the client sends nothing.",
+      "args": {},
+      "now": 1700000480,
+      "exchanges": { "ordered": false, "items": [] },
+      "expect": { "result": "unavailable", "accessTokenHeld": false }
+    }
+  ]
+}

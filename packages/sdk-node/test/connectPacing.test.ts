@@ -137,10 +137,15 @@ describe("D-12: Connect stops before sign-out, within a bound", () => {
     await until(() => b.cloudConnect.peers().some((p) => p.deviceId === A));
     const out = await b.cloudConnect.open(A);
     // A session whose close never settles: a graceful stop would wait for it for ever.
-    out.close = () => new Promise<void>(() => undefined);
-    const t0 = Date.now();
+    let closeCalls = 0;
+    out.close = () => {
+      closeCalls++;
+      return new Promise<void>(() => undefined);
+    };
+    // The stop settling at all is the bound: a graceful wait on the held close would never
+    // return (the test would time out), so no stopwatch is needed.
     await b.cloudConnect.stopForSignOut(50);
-    expect(Date.now() - t0).toBeLessThan(2000);
+    expect(closeCalls).toBe(1);
     expect(b.cloudConnect.status()).toMatchObject({
       running: false,
       relay: "off",

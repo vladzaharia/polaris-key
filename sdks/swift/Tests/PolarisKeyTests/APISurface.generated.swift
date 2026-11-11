@@ -42,6 +42,7 @@ func apiSurface() async {
     _ = SignInSession.cancel  // identity.signIn.session.cancel
     _ = SignInSession.wait  // identity.signIn.session.wait
     _ = SignInSession.complete  // identity.signIn.session.complete
+    _ = \IdentityClient.choice  // identity.choice
     _ = ChoiceNamespace.licenses(grant:)  // identity.choice.licenses
     _ = ChoiceNamespace.devices(grant:licenseId:)  // identity.choice.devices
     _ = ChoiceNamespace.complete(grant:choice:)  // identity.choice.complete
@@ -52,6 +53,7 @@ func apiSurface() async {
     _ = LinkNamespace.decline  // identity.link.decline
     _ = IdentityClient.attach  // identity.attachLicense
     _ = IdentityClient.openAccount  // identity.openAccount
+    _ = IdentityClient.accessToken(refresh:)  // identity.accessToken
     _ = \PolarisKeyClient.events  // events
     _ = CloudSyncClient.status  // cloudSync.status
     _ = CloudSyncClient.flush  // cloudSync.flush
@@ -68,6 +70,7 @@ func apiSurface() async {
     _ = SaveTransfer.resume  // cloudSync.transfer.resume
     _ = SaveTransfer.cancel  // cloudSync.transfer.cancel
     _ = \PolarisKeyClient.events  // cloudSync.transferEvent
+    _ = CloudSyncClient.export(to:options:)  // cloudSync.export
     _ = CloudSyncClient.collection(_:)  // cloudSync.collection
     _ = PolarisKeyClient.discover  // client.discover
     _ = \PolarisKeyClient.portal  // client.portal

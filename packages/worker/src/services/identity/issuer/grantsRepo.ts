@@ -84,6 +84,50 @@ export async function listAccountGrants(
   return rows.map(toGrant);
 }
 
+/** Every grant of the account, across products, newest first (Connected apps; erasure reads it too). */
+export async function listAllAccountGrants(
+  db: Db,
+  accountId: string,
+): Promise<ClientGrant[]> {
+  const rows = await db.all<Row>(
+    `SELECT * FROM identity_client_grants WHERE account_id = ?
+     ORDER BY granted_at DESC, product, client_id`,
+    accountId,
+  );
+  return rows.map(toGrant);
+}
+
+/**
+ * A Change: rewrite which optional claims the person granted and declined. An UPDATE, never an
+ * upsert, so a grant that a Disconnect just deleted is not brought back; `granted_at`, the scopes
+ * and the scope hash are kept. The statement's change count is 1 when the grant still existed.
+ */
+export function changeGrantClaimsStatement(
+  g: Pick<
+    ClientGrant,
+    "product" | "accountId" | "clientId" | "claimsGranted" | "claimsDeclined"
+  >,
+  now: number,
+  /** The `changedAt` of the grant the claims were worked out from: the write lands only if it still is. */
+  expectedChangedAt: number,
+): DbStatement {
+  return {
+    sql: `UPDATE identity_client_grants
+             SET claims_granted_json = ?, claims_declined_json = ?, changed_at = ?
+           WHERE product = ? AND account_id = ? AND client_id = ? AND changed_at = ?`,
+    params: [
+      JSON.stringify(g.claimsGranted),
+      JSON.stringify(g.claimsDeclined),
+      // Strictly after the value it replaces, so two writes in one second still tell apart.
+      Math.max(now, expectedChangedAt + 1),
+      g.product,
+      g.accountId,
+      g.clientId,
+      expectedChangedAt,
+    ],
+  };
+}
+
 /** The upsert of a decision, as a statement for a batch. `granted_at` is kept across a change. */
 export function clientGrantStatement(
   g: Omit<ClientGrant, "grantedAt" | "changedAt" | "lastUsedAt">,
@@ -99,7 +143,7 @@ export function clientGrantStatement(
        claims_declined_json = excluded.claims_declined_json,
        scopes_json = excluded.scopes_json,
        scope_hash = excluded.scope_hash,
-       changed_at = excluded.changed_at`,
+       changed_at = MAX(excluded.changed_at, identity_client_grants.changed_at + 1)`,
     params: [
       g.accountId,
       g.clientId,
@@ -172,4 +216,34 @@ export async function disconnectClient(
   const stmts = disconnectStatements(product, accountId, clientId, now);
   const counts = await batchCounts(db, stmts);
   return (counts[1] ?? 0) === 1;
+}
+
+/** People who used each client since `since`, and how many hold a grant at all (console usage). */
+export async function clientUsage(
+  db: Db,
+  product: string,
+  since: number,
+): Promise<
+  Map<string, { recent: number; total: number; lastUsedAt: number | null }>
+> {
+  const rows = await db.all<{
+    client_id: string;
+    recent: number;
+    total: number;
+    last_used: number | null;
+  }>(
+    `SELECT client_id,
+            SUM(CASE WHEN last_used_at >= ? THEN 1 ELSE 0 END) AS recent,
+            COUNT(*) AS total,
+            MAX(last_used_at) AS last_used
+       FROM identity_client_grants WHERE product = ? GROUP BY client_id`,
+    since,
+    product,
+  );
+  return new Map(
+    rows.map((r) => [
+      r.client_id,
+      { recent: r.recent, total: r.total, lastUsedAt: r.last_used },
+    ]),
+  );
 }
