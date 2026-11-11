@@ -48,6 +48,14 @@
  * sign-in begun, approved and collected, a published release and a read of the update feed. A lane
  * whose suite skipped itself, or never saw its variables, cannot go green.
  *
+ * A lane whose tests run under a scoped turbo selection (the React suite, on a push whose changes
+ * left its package out of `turbo run test --filter=...[$JS_BASE]`) passes `--scope-package <name>` to
+ * `start`. `start` asks tools/ci-js-affected.mjs whether that package is in the run's test scope
+ * (always, when JS_BASE is unset or turbo cannot say) and records the answer in `<dir>/scope.json`.
+ * `stop` skips the request-log check, with a one-line notice, only when that file says the package
+ * was out of scope: the suite never ran, so no traffic is owed. In scope, with the file missing or
+ * unreadable, or on a full run, the check is exactly as strict as before.
+ *
  * Exit 0: done. Exit 1: failed (a `::error::` annotation under Actions, details on stderr). Exit 2:
  * usage. POSIX only: the lanes are Linux and macOS.
  */
@@ -68,7 +76,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CLI_DIR = path.resolve(HERE, "..");
@@ -80,12 +88,13 @@ const ENV_NAMES = ["PKEY_DEV_BASE_URL", "PKEY_DEV_CONFIG", "PKEY_DEV_APPROVE"];
 const MIN_NODE = [22, 13];
 const BASE_URL = /^http:\/\/127\.0\.0\.1:[0-9]{1,5}$/;
 const MARKER = ".pkey-dev-ci";
+const SCOPE_FILE = "scope.json";
 const LOG_TAIL_LINES = 300;
 /** One request line of the server's log, `HH:MM:SS METHOD /path -> status 12ms` (worker/dev/server.ts). */
 const LOG_LINE = /^\d{2}:\d{2}:\d{2} ([A-Z]+) (\S+) -> (\d+) \d+ms$/;
 
 const USAGE = `Usage:
-  node start-dev-ci.mjs start --lang <lang> [--dir <state dir>] [--timeout <seconds>]
+  node start-dev-ci.mjs start --lang <lang> [--dir <state dir>] [--timeout <seconds>] [--scope-package <name>]
   node start-dev-ci.mjs check
   node start-dev-ci.mjs stop  --lang <lang> | --dir <state dir> [--job-status <status>]
 <lang> is any \`pkey sdk --lang\` value: node, react, python, swift, kotlin, godot.`;
@@ -397,6 +406,38 @@ function exportEnv(env) {
   }
 }
 
+/** Records whether the lane's package is in this run's test scope (`--scope-package`), for `stop`. */
+async function recordScope(dir, pkg) {
+  const { affected } = await import(
+    pathToFileURL(
+      path.join(HERE, "..", "..", "..", "tools", "ci-js-affected.mjs"),
+    ).href
+  );
+  const base = process.env.JS_BASE || undefined;
+  const inScope = affected(pkg, base) !== false;
+  writeFileSync(
+    path.join(dir, SCOPE_FILE),
+    `${JSON.stringify({ package: pkg, base: base ?? null, inScope }, null, 2)}\n`,
+  );
+  log(
+    inScope
+      ? `${pkg} is in this run's test scope`
+      : `${pkg} is not in this run's test scope (base ${base})`,
+  );
+}
+
+/** The package `start` recorded as out of this run's test scope, or undefined (in scope, or unknown). */
+function outOfScopePackage(dir) {
+  try {
+    const scope = JSON.parse(readFileSync(path.join(dir, SCOPE_FILE), "utf8"));
+    return scope.inScope === false && typeof scope.package === "string"
+      ? scope.package
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function start(values) {
   if (!values.lang) usage("start needs --lang <lang>");
   if (process.platform === "win32")
@@ -661,7 +702,12 @@ async function stop(values) {
   }
   log(`pkey dev in ${dir}: ${result === "gone" ? "already gone" : result}`);
   printLog(dir, "pkey dev server log");
-  if (status === "success") verifyTraffic(dir);
+  const skipped = status === "success" ? outOfScopePackage(dir) : undefined;
+  if (skipped)
+    log(
+      `${skipped} was not in this run's test scope: its suite did not run, so the request log is not checked`,
+    );
+  else if (status === "success") verifyTraffic(dir);
   else if (status)
     log(`job status ${status}: the lane's traffic is not checked`);
 }
@@ -676,6 +722,7 @@ async function main(argv) {
         lang: { type: "string" },
         dir: { type: "string" },
         timeout: { type: "string" },
+        "scope-package": { type: "string" },
         "job-status": { type: "string" },
         help: { type: "boolean", short: "h" },
       },

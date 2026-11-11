@@ -302,8 +302,18 @@ jobs:
       # that otherwise passed unless the server's request log shows the traffic SP-41's B1-B5 make
       # (activations, refusals, a config change, a sign-in, a release, the update feed): a suite that
       # skipped itself cannot pass. The same three steps and contract serve every SDK lane below.
+      # This job's test step is scoped on a push with a js base (`--filter=...[$JS_BASE]`, below), so
+      # the React suite may not run at all (a push that changed only packages/admin/e2e selects no
+      # package here). `start` is therefore given `--scope-package` and asks tools/ci-js-affected.mjs,
+      # with the same JS_BASE and turbo selection, whether @polaris-key/react is in the run's scope;
+      # it records the answer, and `stop` skips the request-log check, with a notice, only when the
+      # package was out of scope. In scope, or on a full run (no JS_BASE), the check is as strict as
+      # ever. The Python, Swift, Kotlin and Godot lanes run their whole suite whenever their job
+      # runs (the job is gated by tools/ci-scope.json, not by turbo), so they never pass the flag.
       - name: Start pkey dev (React live lane)
-        run: node packages/cli/scripts/start-dev-ci.mjs start --lang react
+        run: node packages/cli/scripts/start-dev-ci.mjs start --lang react --scope-package @polaris-key/react
+        env:
+          JS_BASE: ${{ needs.changes.outputs.js-base }}
       - name: Check the pkey dev lane (variables, config, server)
         run: node packages/cli/scripts/start-dev-ci.mjs check
       # The docs snippet lane's Swift, Kotlin and GDScript blocks compile in the `docs-snippets` jobs
