@@ -65,7 +65,8 @@ class AccessToken:
     expires_in: int
     #: Epoch seconds, by the SDK's clock.
     expires_at: int
-    token_type: str = "Bearer"
+    #: Always ``"Bearer"``; left out of ``repr`` with the credential it labels.
+    token_type: str = field(default="Bearer", repr=False)
 
 
 def access_token_form(client_id: str, device_token: str) -> str:
