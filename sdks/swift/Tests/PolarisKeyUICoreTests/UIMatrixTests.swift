@@ -23,7 +23,7 @@ final class UIMatrixTests: XCTestCase {
 
     static let families = [
         "gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings", "paywall",
-        "cloudSync", "saveConflict", "holders", "connect",
+        "cloudSync", "saveConflict", "holders", "connect", "local",
     ]
 
     func testTheMatrixIsTheVersionTheCoreImplements() throws {
@@ -43,6 +43,27 @@ final class UIMatrixTests: XCTestCase {
     func testSaveConflictFamily() throws { try runFamily("saveConflict") }
     func testHoldersFamily() throws { try runFamily("holders") }
     func testConnectFamily() throws { try runFamily("connect") }
+    func testLocalFamily() throws { try runFamily("local") }
+
+    func testLocalLayoutRows() throws {
+        let matrix = try UIMatrix.load()
+        let rows = try XCTUnwrap(matrix.raw["localLayout"] as? [[String: Any]])
+        XCTAssertFalse(rows.isEmpty)
+        for row in rows {
+            let name = row["name"] as? String ?? "?"
+            let window = try XCTUnwrap(row["window"] as? [String: Any])
+            let expect = try XCTUnwrap(row["expect"] as? [String: Any])
+            let got = KitLocalPairingLayout.of(
+                width: (window["width"] as? NSNumber)?.doubleValue ?? 0,
+                height: (window["height"] as? NSNumber)?.doubleValue ?? 0,
+                textScale: (window["textScale"] as? NSNumber)?.doubleValue ?? 1,
+                tv: window["tv"] as? Bool ?? false)
+            XCTAssertEqual(got.panes, expect["panes"] as? Int, name)
+            XCTAssertEqual(got.logo, expect["logo"] as? Bool, name)
+            XCTAssertEqual(got.scrolls, expect["scrolls"] as? Bool, name)
+            XCTAssertEqual(got.noticeBeforeQr, expect["noticeBeforeQr"] as? Bool, name)
+        }
+    }
 
     func testThemeFamily() throws {
         let matrix = try UIMatrix.load()
@@ -122,6 +143,9 @@ final class UIMatrixTests: XCTestCase {
             XCTAssertEqual(got.state, state, name)
             XCTAssertEqual(got.copyKeys, copy, name)
             XCTAssertEqual(got.actions.map(\.rawValue).sorted(), actions, name)
+            XCTAssertEqual(
+                got.disabledKeys.sorted(), (expect["disabled"] as? [String] ?? []).sorted(),
+                "\(name): disabled")
             if state == "hidden" {
                 XCTAssertTrue(
                     got.copy.isEmpty && got.actions.isEmpty, "\(name): hidden renders nothing")
