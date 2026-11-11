@@ -137,9 +137,22 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
   visibility: hidden;
 }
 .pk-root .pair-show .qr[data-ghost] {
-  inline-size: min(100%, var(--pair-stage));
+  inline-size: var(--pair-stage);
+  max-inline-size: 100%;
   aspect-ratio: 1;
   margin: 0;
+}
+/* A window under 480 tall has no room for the stage beside the code: it draws the plain QR (the
+   Light Card steps aside), and the opening step holds that tile's size. */
+@media (max-height: 480px) {
+  .pk-root .pair-show .qr[data-ghost] {
+    inline-size: 11.5rem;
+  }
+}
+@container pk (max-height: 30rem) {
+  .pk-root .pair-show .qr[data-ghost] {
+    inline-size: 10rem;
+  }
 }
 .pk-root .pair-skel {
   display: block;
@@ -205,11 +218,17 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 }
 @container pk (min-width: 37.5rem) {
   .pk-root .pair-show {
+    --pair-stage: 17rem;
+  }
+}
+@container pk (min-width: 48rem) {
+  .pk-root .pair-show {
     --pair-stage: 23rem;
   }
 }
 .pk-root .pair-show .qr[data-lightcard] {
-  inline-size: min(100%, var(--pair-stage));
+  inline-size: var(--pair-stage);
+  max-inline-size: 100%;
 }
 .pk-root .pair-show .qr[data-lightcard] canvas {
   display: block;
@@ -392,9 +411,6 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
     }
     .pk-root .pair-show .qr svg {
       inline-size: 10rem;
-    }
-    .pk-root .pair-show {
-      --pair-stage: 17rem;
     }
     /* A notice is one line: its words side by side and its action at the end, and the waiting
        row is as tall as its text, so Cancel stays in the first view. */

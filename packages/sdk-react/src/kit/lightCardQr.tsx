@@ -456,6 +456,23 @@ class Guard extends Component<
   }
 }
 
+/** True in a window too short for the stage beside the code (under 480 tall): the plain QR. */
+function useShortWindow(): boolean {
+  const query = "(max-height: 480px)";
+  const [short, setShort] = useState<boolean>(
+    () => typeof matchMedia === "function" && matchMedia(query).matches,
+  );
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const mq = matchMedia(query);
+    const update = (): void => setShort(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+  return short;
+}
+
 /** The Light Card in place of the plain QR. */
 export default function LightCardQr(props: LightCardQrProps): ReactNode {
   const { c, data, labelKey } = props;
@@ -465,7 +482,8 @@ export default function LightCardQr(props: LightCardQrProps): ReactNode {
     cache.current = { data, qr: encodeQrLevelQ(data) };
   const qr = cache.current.qr;
   const plainQr = qrCode(c, data, labelKey);
-  if (failed || !qr || !c.view.copy.includes(labelKey)) return plainQr;
+  const short = useShortWindow();
+  if (short || failed || !qr || !c.view.copy.includes(labelKey)) return plainQr;
   return (
     <Guard fallback={plainQr}>
       <Canvas
