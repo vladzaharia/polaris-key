@@ -88,6 +88,8 @@ class Attachment extends RefCounted:
 	var session: PKeyConnectSession
 	## The `{id, pending}` of each contact the session was given, in its order: a mode-c session names one.
 	var contacts: Array = []
+	## The `{id, label, categories, tag}` of each local link the session was given, in its order: a mode-l session names one.
+	var locals: Array = []
 
 	var _link: PKeyPeerLink
 	var _docs: Docs
@@ -138,6 +140,12 @@ class Attachment extends RefCounted:
 			session = PKeyConnectSession.new(_link, "", info["caps"], info["hello"], _role, _remote, _path, _budget)
 			session.contact = {"id": contacts[index]["id"], "pending": contacts[index]["pending"]}
 			session.contact_tag = str(contacts[index].get("tag", ""))
+		elif int(info.get("local_index", -1)) >= 0 and int(info["local_index"]) < locals.size():
+			# Mode l (section 15.12): the pin has passed; the session has a local link and no device id.
+			var ref: Dictionary = locals[int(info["local_index"])]
+			session = PKeyConnectSession.new(_link, "", info["caps"], info["hello"], _role, _remote, _path, _budget)
+			session.local = {"id": ref["id"], "label": ref.get("label"), "categories": (ref["categories"] as Array).duplicate()}
+			session.local_tag = str(ref.get("tag", ""))
 		elif str(info.get("peer_device_id", "")) != "":
 			session = PKeyConnectSession.new(_link, info["peer_device_id"], info["caps"], info["hello"], _role, _remote, _path, _budget)
 		else:
@@ -145,7 +153,7 @@ class Attachment extends RefCounted:
 			return
 		session.peer_static = (info.get("remote_static", PackedByteArray()) as PackedByteArray).duplicate()
 		# A contact session joins Direct Transfer through `links.adopt`, once its link has been checked.
-		if _xfer.is_valid() and session.contact.is_empty() and (info["caps"] as Array).has(PKeyPeerXfer.CAP):
+		if _xfer.is_valid() and session.contact.is_empty() and session.local.is_empty() and (info["caps"] as Array).has(PKeyPeerXfer.CAP):
 			_xfer.call(session)
 		opened.emit(session)
 		settled.emit()

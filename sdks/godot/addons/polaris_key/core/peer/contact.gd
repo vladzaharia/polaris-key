@@ -63,6 +63,20 @@ static func _key32(v: Variant) -> Variant:
 
 
 ## Unsigned byte order of two equal-length byte strings.
+static func byte_compare(a: PackedByteArray, b: PackedByteArray) -> int:
+	return _byte_compare(a, b)
+
+
+## An 8-byte big-endian integer.
+static func u64be(n: int) -> PackedByteArray:
+	return _u64be(n)
+
+
+## At most 8 distinct categories of `[a-z0-9-]{1,32}`.
+static func valid_cats(cats: Array) -> bool:
+	return _valid_cats(cats)
+
+
 static func _byte_compare(a: PackedByteArray, b: PackedByteArray) -> int:
 	for i in a.size():
 		if a[i] != b[i]:

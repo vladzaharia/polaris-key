@@ -793,7 +793,7 @@
           "reason": "runtime"
         }
       ],
-      "note": "CC-29b.G1 to CC-29b.G4 build it after CC-19b and CC-20b (WIRE-CONTRACT-V5 section 15.12); web has no LAN."
+      "note": "GDScript lane done (CC-29b.G1 to G3b; WIRE-CONTRACT-V5 section 15.12): cloud_connect.local_links has pair (window, renew, floor), join, cancel_join, dials_left, list, rename, remove, set_reachable, on_change, open (mode l over the LAN, one dial per link, a cooldown after a failed dial, no relay) and on_link, over pkey.connect.local.v1, with the cached discovery localPairing gate. A listener of its own (local_lan.gd) serves local links with no account, advertises at most 8 m=l names, binds nothing while no link is held, ends sessions peer_bye when the gate goes off and peer_revoked on remove, and Direct Transfer runs in mode l (the offer names a local link). It stays planned: the native lanes (the m=l and m=q slots on the Apple and Android adapters, export checks) are CC-29b.G4, and the local listener is a second listener beside the account one until the unified pairing pipeline; web has no LAN."
     },
     "connect.app": {
       "status": "implemented",

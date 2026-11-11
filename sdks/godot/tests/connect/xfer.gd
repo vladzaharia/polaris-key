@@ -37,6 +37,13 @@ func run(t: PKeyTestContext) -> void:
 		for r in rows:
 			ran += int(_row(t, s, r))
 	t.check("every machine row ran green", ran == 197, "%d/197" % ran)
+	# Mode l (section 15.12): the category rule of mode c applies, and the session runs transfers.
+	var local_rows: Array = (j.data as Dictionary)["local"]["xfer"]
+	t.check("mode l row count", local_rows.size() == 7, "%d" % local_rows.size())
+	var local_ran := 0
+	for r in local_rows:
+		local_ran += int(_row(t, "local", r))
+	t.check("every mode l row ran green", local_ran == local_rows.size(), "%d/%d" % [local_ran, local_rows.size()])
 	_extras(t)
 	_delivered(t)
 

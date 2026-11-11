@@ -67,6 +67,10 @@ var path: String
 var contact: Dictionary = {}
 ## A one-way tag of the secret the session opened under (not the secret); "" for a session with no link.
 var contact_tag := ""
+## A session opened under a local link (mode l, section 15.12): {id, label?, categories}, with no device id. Empty otherwise.
+var local: Dictionary = {}
+## A one-way tag of the link secret the session opened under (not the secret); "" for a session with no local link.
+var local_tag := ""
 
 var _link: Object
 var _budget: Budget
@@ -145,7 +149,7 @@ func flush_xfer() -> void:
 
 
 func _hold_xfer(type: int, body: PackedByteArray) -> bool:
-	if _ended or contact.is_empty() or not caps.has(PKeyPeerXfer.CAP) or _xfer.is_valid():
+	if _ended or (contact.is_empty() and local.is_empty()) or not caps.has(PKeyPeerXfer.CAP) or _xfer.is_valid():
 		return false
 	if _held_xfer.size() >= MAX_HELD_XFER or _held_xfer_bytes + body.size() > MAX_HELD_XFER_BYTES:
 		return false

@@ -18,6 +18,8 @@ extends RefCounted
 ##                       PKeyConnectSession (`session.path` says which), or a typed failure. A coroutine
 ##   links               the inter-account links (`cloud_connect.links`, services/connect/links.gd): `pair`, `list`,
 ##                       `remove`, `set_reachable`, `open` and the signal `link(session)`
+##   local_links         local links with no account (`cloud_connect.local_links`, services/connect/local_links.gd): `pair`,
+##                       `join`, `dials_left`, `cancel_join`, `list`, `rename`, `remove`, `set_reachable` and `on_change`
 ##   status()            {running, lan, lan_reason, lan_error, relay, relay_error, relay_reason}
 ##   transfer            Direct Transfer (PKeyCloudTransfer): `send`, `on_offer`, `result`, `cancel`. On
 ##                       unless `start` is given `transfer = false` (then `xfer/1` is not listed); `transfer`
@@ -54,6 +56,10 @@ const LAN_ATTEMPT_SECONDS := 4.0
 ## Inter-account links (`cloud_connect.links`): pair, list, remove, open and the `link` signal. Gated by
 ## discovery's `interAccount`; the adverts and rooms run only while Cloud Connect does.
 var links: PKeyCloudLinks = null
+
+## Local links, with no account (`cloud_connect.local_links`): pair, join, list, rename, remove and set_reachable. Gated
+## by discovery's `localPairing`; pairing needs no `start`.
+var local_links: PKeyCloudLocalLinks = null
 
 ## Nearby approval (`cloud_connect.nearby`): gated by Identity's discovery, it works with Connect stopped.
 var nearby: PKeyCloudNearby = null
@@ -120,6 +126,11 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 	# `links.open_link`, and drops what a removed link left unfinished.
 	links.adopt = Callable(transfer, "attach")
 	links.removed = Callable(self, "_forget_left")
+	local_links = PKeyCloudLocalLinks.new(core, client, {
+		"tree": _tree, "lane": Callable(self, "_links_lane"), "pump": Callable(self, "_links_pump"), "web": Callable(self, "_on_web"),
+	})
+	local_links.removed = Callable(self, "_forget_left")
+	local_links.adopt = Callable(transfer, "attach")
 
 
 func _to_string() -> String:
@@ -284,21 +295,29 @@ func _offload(work: Callable) -> Variant:
 
 
 func _open_link(id: String) -> PKeyResult:
+	if _local_records().any(func(rec: Dictionary) -> bool: return str(rec["id"]) == id):
+		return await local_links.open(id)
 	return await links.open_link(id)
 
 
+## The ids of the links held: the inter-account links and the local links.
 func _link_ids() -> Array:
 	var ids: Array = []
-	for rec: Dictionary in _link_records():
+	for rec: Dictionary in _link_records() + _local_records():
 		ids.append(str(rec["id"]))
 	return ids
 
 
 func _link_record(id: String) -> Dictionary:
-	for rec: Dictionary in _link_records():
+	for rec: Dictionary in _link_records() + _local_records():
 		if str(rec["id"]) == id:
 			return rec
 	return {}
+
+
+func _local_records() -> Array:
+	var l := local_links.list()
+	return l.detail if l.ok and l.detail is Array else []
 
 
 func _transfer_dir(root: String) -> String:

@@ -308,7 +308,7 @@ class Machine extends RefCounted:
 	## own HELLO value), `peer_key` (32 raw bytes of the remote static key), `handler`
 	## (Callable(ask: Dictionary) -> "accept" | "decline" | "ask"; invalid = decline every offer),
 	## `host_limit` (bytes, -1 none), `free` (Callable() -> bytes still free, -1 unlimited),
-	## `categories` (mode c), `partials` (the kept partials of this peer key), `rehash`
+	## `categories` (modes c and l), `partials` (the kept partials of this peer key), `rehash`
 	## (Callable(ref, offset) -> a started HashingContext fed with the first `offset` bytes the store
 	## re-read, or null when it could not), `new_ref` (Callable(id, sha256) -> a partial's name;
 	## default `partial_path`), `withhold_acks` and `delivered` (this peer's view of a
@@ -607,7 +607,7 @@ class Machine extends RefCounted:
 
 	func _on_record(type: int, body: PackedByteArray, more: bool) -> void:
 		# Step 1: the mode and the capability.
-		if (_mode != "a" and _mode != "c") or not _caps.has(PKeyPeerXfer.CAP):
+		if (_mode != "a" and _mode != "c" and _mode != "l") or not _caps.has(PKeyPeerXfer.CAP):
 			_out["close"] = CLOSE_NOT_ALLOWED
 			_closed = true
 		elif more or not PKeyPeerXfer.is_xfer_type(type):
@@ -731,7 +731,7 @@ class Machine extends RefCounted:
 				or (kept != null and kept.get("held", false) == true):
 			return "busy"
 		# Step 5: the category, before the person is asked.
-		if _mode == "c" and (not f.has("cat") or not _cats.has(f["cat"])):
+		if (_mode == "c" or _mode == "l") and (not f.has("cat") or not _cats.has(f["cat"])):
 			return "category"
 		return ""
 

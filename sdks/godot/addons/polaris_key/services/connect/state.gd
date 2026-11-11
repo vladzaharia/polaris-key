@@ -51,6 +51,9 @@ var sealer: PKeyRecordSealer = null
 var unique_id := OS.get_unique_id()
 
 var _memory: bool
+var _file := FILE
+var _salt_file := SALT_FILE
+var _context := "pkey-connect/1 state/"
 var _root_ok := true
 var _plain_ok := false
 var _mem := PackedByteArray()
@@ -82,6 +85,32 @@ static func for_tests(p_product: String, root := "user://pkey", memory := false)
 	s.unique_id = ""
 	s._plain_ok = true
 	return s
+
+
+## A store of another record beside this one: the same product, directory, sealer and persistence, its own file
+## (`file`, with the key salt `file + ".salt"`) and its own sealing context (`context` plus the product). Nothing
+## is shared with this store but the settings.
+func sibling(file: String, context: String) -> PKeyConnectState:
+	var s := PKeyConnectState.new(product, dir.get_base_dir(), _memory, sealer)
+	s.dir = dir
+	s.sealer = sealer
+	s.unique_id = unique_id
+	s._root_ok = _root_ok
+	s._plain_ok = _plain_ok
+	s._file = file
+	s._salt_file = file + ".salt"
+	s._context = context
+	return s
+
+
+## The record's bytes as they rest (opened), null for none, or a failure for one that cannot be used.
+func read_bytes() -> PKeyResult:
+	return _read_bytes()
+
+
+## Store `bytes` in place of the held record.
+func write_bytes(bytes: PackedByteArray) -> PKeyResult:
+	return _store_bytes(bytes)
 
 
 func _to_string() -> String:
@@ -133,7 +162,7 @@ func clear() -> PKeyResult:
 	_mem = PackedByteArray()
 	if _memory or not _root_ok:
 		return PKeyResult.success()
-	for f in [FILE, SALT_FILE]:
+	for f in [_file, _salt_file]:
 		var p := dir.path_join(f)
 		if FileAccess.file_exists(p) and DirAccess.remove_absolute(p) != OK:
 			return _fault("remove")
@@ -141,7 +170,7 @@ func clear() -> PKeyResult:
 	var d := DirAccess.open(dir)
 	if d != null:
 		for name in d.get_files():
-			if name.begins_with(FILE + ".tmp-") and DirAccess.remove_absolute(dir.path_join(name)) != OK:
+			if name.begins_with(_file + ".tmp-") and DirAccess.remove_absolute(dir.path_join(name)) != OK:
 				return _fault("remove")
 	return PKeyResult.success()
 
@@ -151,7 +180,7 @@ func _no_seal_possible() -> bool:
 
 
 func _seal_context() -> PackedByteArray:
-	return ("pkey-connect/1 state/%s" % product).to_utf8_buffer()
+	return (_context + product).to_utf8_buffer()
 
 
 func _store_bytes(rec: PackedByteArray) -> PKeyResult:
@@ -166,13 +195,13 @@ func _store_bytes(rec: PackedByteArray) -> PKeyResult:
 		bytes = _SEALED_MAGIC.to_ascii_buffer()
 		bytes.append(_SEALED_VERSION)
 		bytes.append_array(sealed.detail)
-	return _write_file(FILE, bytes, sealer == null and not _plain_ok)
+	return _write_file(_file, bytes, sealer == null and not _plain_ok)
 
 
 func _read_bytes() -> PKeyResult:
 	if persistence() == "memory":
 		return PKeyResult.success(_mem.duplicate() if not _mem.is_empty() else null)
-	var path := dir.path_join(FILE)
+	var path := dir.path_join(_file)
 	if not FileAccess.file_exists(path):
 		return PKeyResult.success(null)
 	if sealer != null:
@@ -239,7 +268,7 @@ func _write_file(file: String, bytes: PackedByteArray, encrypt: bool) -> PKeyRes
 
 ## The file passphrase, or null on a salt fault, or "" when no salt exists and `create` is false.
 func _passphrase(create: bool) -> Variant:
-	var salt_path := dir.path_join(SALT_FILE)
+	var salt_path := dir.path_join(_salt_file)
 	var salt := PackedByteArray()
 	if FileAccess.file_exists(salt_path):
 		salt = FileAccess.get_file_as_bytes(salt_path)
@@ -249,7 +278,7 @@ func _passphrase(create: bool) -> Variant:
 		if not create:
 			return ""
 		salt = Crypto.new().generate_random_bytes(32)
-		if not _write_file(SALT_FILE, salt, false).ok:
+		if not _write_file(_salt_file, salt, false).ok:
 			return null
 	var ctx := HashingContext.new()
 	ctx.start(HashingContext.HASH_SHA256)
