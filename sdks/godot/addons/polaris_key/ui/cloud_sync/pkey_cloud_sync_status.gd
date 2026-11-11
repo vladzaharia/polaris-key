@@ -385,6 +385,11 @@ func _arrange(m: Dictionary) -> void:
 	# takes the room and wraps.
 	var room := minf(role("card_width_wide") - card_padding_x(), room_x()) - _glyph.get_combined_minimum_size().x - float(sep)
 	_text.custom_minimum_size.x = minf(ceilf(text_width(_text, _text.text)) + 2.0, maxf(room, 0.0))
+	# An action longer than the line (a German label, a large game font) wraps at its words in the room
+	# beside the glyph, instead of widening the card past the screen.
+	if room > 1.0 and _action.custom_minimum_size.x > room:
+		_action.custom_minimum_size.x = floorf(room)
+		_action.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_action_pad.add_theme_constant_override("margin_left", 0)
 	_action_pad.add_theme_constant_override("margin_right", 0)
 
