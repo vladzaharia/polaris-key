@@ -17,6 +17,9 @@ export function focusClear(el: HTMLElement | null | undefined): void {
   // A control inside the bar is always on screen: it needs no margin, and scrolling for it would
   // push the heading out of the first viewport.
   if (!bar || bar.contains(el)) return;
+  // A bar that is not docked (a two-pane card's end pane lays it out in the grid) covers nothing:
+  // there is no margin to keep, and scrolling for it would push the card's top out of view.
+  if (getComputedStyle(bar).position === "static") return;
   const clear = (): void => {
     el.style.scrollMarginBottom = `${bar.offsetHeight}px`;
     // A screen taller than a short window keeps its title in the first viewport (DL1): a button

@@ -1101,9 +1101,10 @@ jobs:
 
   # The hosted XCTest project on an iOS simulator. On this 3-vCPU runner a new simulator stays busy
   # for minutes and StoreKit Testing stalled inside that window, so the simulator boots first and
-  # PlatformHostTests/run.sh waits for it to go quiet (60 s while the flaky StoreKit purchase,
-  # refund and AppTransaction tests are disabled; the warm-up and the later waits return with them). It needs nothing the other Apple jobs
-  # build, only Xcode, the simulator runtime and XcodeGen.
+  # PlatformHostTests/run.sh waits for it to go quiet (with the flaky StoreKit purchase, refund and
+  # AppTransaction tests disabled it waits for the gate host to launch instead; the quiet wait, the warm-up
+  # and the later waits return with them). It needs nothing the other Apple jobs build, only Xcode, the
+  # simulator runtime and XcodeGen.
   apple-hosted:
     name: Apple platform hosted tests (macos-26, iOS simulator)
     needs: changes
@@ -1711,7 +1712,10 @@ jobs:
           arch: x86_64
           force-avd-creation: false
           disable-animations: true
-          emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect
+          # A cold boot: the first attempt restored the cached quick-boot snapshot, and a guest that
+          # came back from it broken (`adb shell input keyevent 82` killed, 137, before the script ran)
+          # came back broken the same way from the same snapshot a few seconds later.
+          emulator-options: -no-window -no-snapshot-save -no-snapshot-load -noaudio -no-boot-anim -gpu swiftshader_indirect
           script: bash tools/ci-emulator-run.sh ${{ runner.temp }}/emulator-attempt-2.log
       - name: Fail the job when the instrumented tests failed
         if: ${{ !cancelled() && steps.emulator.outcome == 'failure' && steps.emulator2.outcome != 'success' }}

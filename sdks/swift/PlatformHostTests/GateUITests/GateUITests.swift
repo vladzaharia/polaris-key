@@ -26,10 +26,28 @@ final class GateUITests: XCTestCase {
         app = XCUIApplication()
     }
 
+    /// Each test leaves a quiet simulator: the host and Safari (the portal link opens it) stop, so the
+    /// next test's launch is not competing with a browser still drawing.
+    override func tearDown() {
+        app.terminate()
+        XCUIApplication(bundleIdentifier: "com.apple.mobilesafari").terminate()
+    }
+
+    /// Runs a launch or an activation. A loaded simulator sometimes answers "Failed to launch ...:
+    /// Timed out attempting to launch" for an app it then runs: that one report is expected and the
+    /// app's own state decides, once, whether to ask again. Any other failure is reported as usual.
+    private func launchingOnce(_ start: () -> Void) {
+        let options = XCTExpectedFailure.Options()
+        options.isStrict = false
+        options.issueMatcher = { $0.compactDescription.contains("Timed out attempting to launch") }
+        XCTExpectFailure("the simulator's launch request can time out once", options: options) { start() }
+        if !app.wait(for: .runningForeground, timeout: 30) { start() }
+    }
+
     @discardableResult
     private func launch(_ scenario: String, extra: [String] = []) -> XCUIApplication {
         app.launchArguments = ["-pkScenario", scenario] + extra
-        app.launch()
+        launchingOnce { app.launch() }
         // Readiness is the app's own state, not a delay: the test goes on once it is in the foreground.
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the gate host did not reach the foreground")
         return app
@@ -195,7 +213,7 @@ final class GateUITests: XCTestCase {
         XCTAssertTrue(
             safari.wait(for: .runningForeground, timeout: 20),
             "Replace a device opens the portal link")
-        app.activate()
+        launchingOnce { app.activate() }
     }
 
     // ── sign-in ──────────────────────────────────────────────────────────────────────────
