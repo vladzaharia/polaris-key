@@ -140,7 +140,7 @@
                 "content-type": "application/json; charset=utf-8"
               },
               "body": {
-                "redirect": "http://127.0.0.1:49152/pkey/callback?code=fYEiWuGr_RT9CCjVMjS48IcyONHuhqQgM70H0RPodzc&state=tidewater-state-0123456789&iss=https%3A%2F%2Fpolaris.locker%2Fdjdl%2Fidentity&request=rq_Zevmk4E2xFaz9mjCTOBz1Q"
+                "redirect": "http://127.0.0.1:49152/pkey/callback?code=fYEiWuGr_RT9CCjVMjS48IcyONHuhqQgM70H0RPodzc&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity&request=rq_Zevmk4E2xFaz9mjCTOBz1Q"
               }
             }
           }
@@ -180,7 +180,7 @@
       "action": "redirectComplete",
       "note": "The app redeems the code at the API host's token endpoint, exactly as in the twin.",
       "args": {
-        "callbackUrl": "http://127.0.0.1:49152/pkey/callback?code=fYEiWuGr_RT9CCjVMjS48IcyONHuhqQgM70H0RPodzc&state=tidewater-state-0123456789&iss=https%3A%2F%2Fpolaris.locker%2Fdjdl%2Fidentity&request=rq_Zevmk4E2xFaz9mjCTOBz1Q",
+        "callbackUrl": "http://127.0.0.1:49152/pkey/callback?code=fYEiWuGr_RT9CCjVMjS48IcyONHuhqQgM70H0RPodzc&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity&request=rq_Zevmk4E2xFaz9mjCTOBz1Q",
         "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
         "state": "tidewater-state-0123456789"
       },

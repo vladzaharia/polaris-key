@@ -26,7 +26,6 @@ import im.plrs.key.identity.redirectEntropy
 import im.plrs.key.identity.replayNativeCallback
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.serialization.json.JsonObject
-import java.net.URLDecoder
 
 /**
  * The loopback listener of a recorded conversation: the recorded port, no socket. The redirect is handed to the
@@ -145,7 +144,7 @@ object NativeReplay {
         transcript: Transcript,
         url: String,
     ): SignInOutcome {
-        val issuer = queryValue(url, "iss")?.let { URLDecoder.decode(it, "UTF-8") } ?: "${transcript.baseUrl}/${transcript.product}/identity"
+        val issuer = "${transcript.baseUrl}/${transcript.product}/identity"
         val recorded = ReplayPending(
             url.substringBefore('?'),
             args["state"].stringValue ?: RECORDED_STATE,

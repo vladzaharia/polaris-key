@@ -125,7 +125,7 @@
                 "content-type": "application/json; charset=utf-8"
               },
               "body": {
-                "redirect": "https://app.example/auth/callback?code=Aih3h6-0UFpmz73qcIidLcGbOh3FHOzUs22QmGxb8qo&state=tidewater-state-0123456789&iss=https%3A%2F%2Fpolaris.locker%2Fdjdl%2Fidentity"
+                "redirect": "https://app.example/auth/callback?code=Aih3h6-0UFpmz73qcIidLcGbOh3FHOzUs22QmGxb8qo&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity"
               }
             }
           }
@@ -137,7 +137,7 @@
       "action": "redirectComplete",
       "note": "The SDK redeems the code at the API host's token endpoint, exactly as in the twin.",
       "args": {
-        "callbackUrl": "https://app.example/auth/callback?code=Aih3h6-0UFpmz73qcIidLcGbOh3FHOzUs22QmGxb8qo&state=tidewater-state-0123456789&iss=https%3A%2F%2Fpolaris.locker%2Fdjdl%2Fidentity",
+        "callbackUrl": "https://app.example/auth/callback?code=Aih3h6-0UFpmz73qcIidLcGbOh3FHOzUs22QmGxb8qo&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity",
         "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
         "state": "tidewater-state-0123456789"
       },

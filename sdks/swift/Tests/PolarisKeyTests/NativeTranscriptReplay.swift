@@ -102,7 +102,6 @@ enum NativeReplay {
             return try await client.identity.signIn.handleRedirect(url)
         }
         let base = "\(transcript.baseUrl)/\(transcript.product)/identity"
-        let parts = URLComponents(string: url)
         let redirectUri = String(url.prefix(while: { $0 != "?" }))
         guard let cls = NativeRedirect.classify(redirectUri) else {
             throw ReplayError("the recorded callback is at no native redirect URI: \(redirectUri)")
@@ -112,7 +111,7 @@ enum NativeReplay {
             state: step.args["state"]?.stringValue ?? recordedState,
             codeVerifier: step.args["codeVerifier"]?.stringValue ?? recordedVerifier,
             clientId: transcript.product,
-            issuer: parts?.queryItems?.first { $0.name == "iss" }?.value ?? "\(base)",
+            issuer: "\(base)",
             authorizeEndpoint: "\(base)/authorize", tokenEndpoint: "\(base)/token",
             choiceApp: session.licenseChoice == .app, keyReturn: step.args["keyReturn"] == .bool(true))
         let flow = NativeFlow(

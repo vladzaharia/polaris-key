@@ -470,7 +470,6 @@
       "detekt:complexity.CyclomaticComplexMethod": 4,
       "detekt:complexity.LongMethod": 2,
       "detekt:exceptions.SwallowedException": 1,
-      "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.MaxLineLength": 1,
       "detekt:style.ReturnCount": 4,
       "detekt:style.ThrowsCount": 1,

@@ -62,7 +62,7 @@ import {
   buildSignInUrl,
 } from "../../../core/licensing/manageUrl.js";
 import { cardJson } from "../card/http.js";
-import { issuerOf } from "./authorize.js";
+import { issuerFor } from "./authorize.js";
 import { issueAuthorizationCode } from "./code.js";
 import { takeSignInRequest } from "./request.js";
 import { takeNativeOnce, withLoopbackRequest } from "./pushedStore.js";
@@ -247,7 +247,7 @@ export async function handleSignInKeyReturn(
   const target = new URL(authz.redirectUri);
   target.searchParams.set("code", code);
   if (authz.state !== null) target.searchParams.set("state", authz.state);
-  target.searchParams.set("iss", issuerOf(req, product));
+  target.searchParams.set("iss", issuerFor(req, authz, product));
   return cardJson({
     redirect: withLoopbackRequest(target.toString(), record, handle),
   });
