@@ -8224,10 +8224,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "planned": "CC-29.15",
-          "reason": "the Swift port lands in slice .15f"
-        },
+        "swift": {},
         "kotlin": {}
       },
       "layer": "client",
@@ -8245,10 +8242,7 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "planned": "CC-29.15",
-          "reason": "the Swift port lands in slice .15f"
-        },
+        "swift": {},
         "kotlin": {}
       },
       "layer": "client",
