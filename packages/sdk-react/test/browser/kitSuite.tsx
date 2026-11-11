@@ -401,7 +401,14 @@ async function mount(
     </Component>,
   );
   const mounted = host;
-  await domUntil(mounted, () => mounted.querySelector(".pk-root") !== null);
+  // A licensed gate draws no kit root: the app it lets through is what there is to wait for.
+  const licensed = scene.id === "PolarisKeyGate.licensed";
+  await domUntil(
+    mounted,
+    () =>
+      mounted.querySelector(licensed ? "[data-host-content]" : ".pk-root") !==
+      null,
+  );
   // A launch locale's copy pack loads on demand: wait for the kit to redraw in it.
   if (locale !== undefined)
     await domUntil(
@@ -713,77 +720,79 @@ async function gateToast(
 /** One of the kit suite's three parts (kit.0..2.browser.test.tsx): each file registers a slice, so
  *  `maxWorkers` runs them side by side. */
 export function registerKitPart(part: number): void {
-  describe("the gate's toasts after a key activation and a sign-in", () => {
-    if (part !== 0) return;
-    for (const kind of ["entries", "signed-in"] as const)
-      for (const size of SIZES.filter((s) =>
-        ["320", "390", "1440"].includes(s.label),
-      ))
-        it(`${kind} ${size.label} dark`, async () => {
-          await page.viewport(size.width, size.height);
-          await gateToast(kind);
-          if (__PKEY_KIT_SHOTS__)
-            await commands.kitShot(
-              `${__PKEY_KIT_SHOTS__}/react.Gate.toast-${kind}/${size.label}-dark.png`,
-            );
-          const toast = document.querySelector('[data-part="toast"]')!;
-          expect(toast.textContent).toContain(
-            kind === "entries" ? "2 key entries left" : "Pro license",
-          );
-          expect(inFirstViewport(toast)).toBeNull();
-          expect(sidewaysOverflow().join("\n")).toBe("");
-          expect(document.querySelector("[data-host-content]")).not.toBeNull();
-        });
-  });
-
-  describe("the live gate's two key refusals, with its chrome", () => {
-    if (part !== 1) return;
-    for (const kind of ["key-entry-limit", "license-owned"] as const)
-      for (const scheme of SCHEMES)
+  if (part === 0)
+    describe("the gate's toasts after a key activation and a sign-in", () => {
+      for (const kind of ["entries", "signed-in"] as const)
         for (const size of SIZES.filter((s) =>
-          ["320", "390", "844x390", "1440"].includes(s.label),
+          ["320", "390", "1440"].includes(s.label),
         ))
-          it(`${kind} ${size.label} ${scheme}`, async () => {
+          it(`${kind} ${size.label} dark`, async () => {
             await page.viewport(size.width, size.height);
-            await gateToast(kind, scheme);
+            await gateToast(kind);
             if (__PKEY_KIT_SHOTS__)
               await commands.kitShot(
-                `${__PKEY_KIT_SHOTS__}/react.Gate.refusal-${kind}/${size.label}-${scheme}.png`,
+                `${__PKEY_KIT_SHOTS__}/react.Gate.toast-${kind}/${size.label}-dark.png`,
               );
-            expect(document.querySelector("#pk-key")).toBeNull();
-            expect(sidewaysOverflow().join("\n")).toBe("");
-            expect(smallTargets().join("\n")).toBe("");
-            expect(
-              inFirstViewport(
-                document.querySelector('[data-variant="primary"]'),
-              ),
-            ).toBeNull();
-            expect((await contrast()).join("\n")).toBe("");
-          });
-  });
-
-  describe("a refusal's Sign in that fails to start", () => {
-    if (part !== 1) return;
-    for (const kind of ["key-entry-limit", "license-owned"] as const)
-      it(`${kind} says so on the step`, async () => {
-        await page.viewport(1440, 900);
-        signInFails = true;
-        try {
-          await gateToast(kind);
-          if (__PKEY_KIT_SHOTS__)
-            await commands.kitShot(
-              `${__PKEY_KIT_SHOTS__}/react.Gate.refusal-${kind}-signin-fails/1440-dark.png`,
+            const toast = document.querySelector('[data-part="toast"]')!;
+            expect(toast.textContent).toContain(
+              kind === "entries" ? "2 key entries left" : "Pro license",
             );
-          expect(
-            document.querySelector(
-              '[data-key="core.codes.sign-in-failed.message"]',
-            ),
-          ).not.toBeNull();
-        } finally {
-          signInFails = false;
-        }
-      });
-  });
+            expect(inFirstViewport(toast)).toBeNull();
+            expect(sidewaysOverflow().join("\n")).toBe("");
+            expect(
+              document.querySelector("[data-host-content]"),
+            ).not.toBeNull();
+          });
+    });
+
+  if (part === 1)
+    describe("the live gate's two key refusals, with its chrome", () => {
+      for (const kind of ["key-entry-limit", "license-owned"] as const)
+        for (const scheme of SCHEMES)
+          for (const size of SIZES.filter((s) =>
+            ["320", "390", "844x390", "1440"].includes(s.label),
+          ))
+            it(`${kind} ${size.label} ${scheme}`, async () => {
+              await page.viewport(size.width, size.height);
+              await gateToast(kind, scheme);
+              if (__PKEY_KIT_SHOTS__)
+                await commands.kitShot(
+                  `${__PKEY_KIT_SHOTS__}/react.Gate.refusal-${kind}/${size.label}-${scheme}.png`,
+                );
+              expect(document.querySelector("#pk-key")).toBeNull();
+              expect(sidewaysOverflow().join("\n")).toBe("");
+              expect(smallTargets().join("\n")).toBe("");
+              expect(
+                inFirstViewport(
+                  document.querySelector('[data-variant="primary"]'),
+                ),
+              ).toBeNull();
+              expect((await contrast()).join("\n")).toBe("");
+            });
+    });
+
+  if (part === 1)
+    describe("a refusal's Sign in that fails to start", () => {
+      for (const kind of ["key-entry-limit", "license-owned"] as const)
+        it(`${kind} says so on the step`, async () => {
+          await page.viewport(1440, 900);
+          signInFails = true;
+          try {
+            await gateToast(kind);
+            if (__PKEY_KIT_SHOTS__)
+              await commands.kitShot(
+                `${__PKEY_KIT_SHOTS__}/react.Gate.refusal-${kind}-signin-fails/1440-dark.png`,
+              );
+            expect(
+              document.querySelector(
+                '[data-key="core.codes.sign-in-failed.message"]',
+              ),
+            ).not.toBeNull();
+          } finally {
+            signInFails = false;
+          }
+        });
+    });
 
   describe("the React kit at every size", () => {
     for (const [sceneIndex, scene] of SCENES.entries())
@@ -935,215 +944,226 @@ export function registerKitPart(part: number): void {
     return out;
   }
 
-  describe("the save screens at the §7.1 sizes", () => {
-    if (part !== 2) return;
-    for (const [name, row] of Object.entries(SAVE_ROWS).filter(([n]) =>
-      ["choose", "full", "deleted", "failed"].includes(n),
-    ))
-      for (const size of SAVE_SIZES)
-        for (const scheme of SCHEMES)
-          it(`${name} ${size.label} ${scheme}`, async () => {
-            await check(
-              { id: `SaveConflict.${name}`, row },
-              scheme,
-              size,
-              "polaris-key",
-            );
-            const kit = document.querySelector<HTMLElement>(".pk-root")!;
-            // Layout first: scrolling for the hit tests below moves everything.
-            if (name !== "failed") {
-              const box = (sel: string) =>
-                kit.querySelector(sel)!.getBoundingClientRect();
-              const card = box("[data-side=remote]");
-              const mine = box("[data-side=local]");
-              const keep = box('[data-key="saveConflict.keepThis"]');
-              if (size.label === "844x390" || size.label === "640x360") {
-                // Two panes, both starting at the top; each pane is at least 18 rem wide.
-                expect(
-                  card.right,
-                  "cards left of the choices",
-                ).toBeLessThanOrEqual(keep.left + 1);
-                expect(card.width, "pane of 18rem").toBeGreaterThanOrEqual(288);
-                expect(keep.width, "pane of 18rem").toBeGreaterThanOrEqual(288);
-                for (const r of [
-                  box("h1"),
-                  mine,
-                  card,
-                  keep,
-                  box('[data-key="common.cancel"]'),
-                ]) {
-                  expect(r.top, "top edge on screen").toBeGreaterThanOrEqual(0);
-                  expect(r.bottom, "in the first viewport").toBeLessThanOrEqual(
-                    size.height,
+  if (part === 2)
+    describe("the save screens at the §7.1 sizes", () => {
+      for (const [name, row] of Object.entries(SAVE_ROWS).filter(([n]) =>
+        ["choose", "full", "deleted", "failed"].includes(n),
+      ))
+        for (const size of SAVE_SIZES)
+          for (const scheme of SCHEMES)
+            it(`${name} ${size.label} ${scheme}`, async () => {
+              await check(
+                { id: `SaveConflict.${name}`, row },
+                scheme,
+                size,
+                "polaris-key",
+              );
+              const kit = document.querySelector<HTMLElement>(".pk-root")!;
+              // Layout first: scrolling for the hit tests below moves everything.
+              if (name !== "failed") {
+                const box = (sel: string) =>
+                  kit.querySelector(sel)!.getBoundingClientRect();
+                const card = box("[data-side=remote]");
+                const mine = box("[data-side=local]");
+                const keep = box('[data-key="saveConflict.keepThis"]');
+                if (size.label === "844x390" || size.label === "640x360") {
+                  // Two panes, both starting at the top; each pane is at least 18 rem wide.
+                  expect(
+                    card.right,
+                    "cards left of the choices",
+                  ).toBeLessThanOrEqual(keep.left + 1);
+                  expect(card.width, "pane of 18rem").toBeGreaterThanOrEqual(
+                    288,
+                  );
+                  expect(keep.width, "pane of 18rem").toBeGreaterThanOrEqual(
+                    288,
+                  );
+                  for (const r of [
+                    box("h1"),
+                    mine,
+                    card,
+                    keep,
+                    box('[data-key="common.cancel"]'),
+                  ]) {
+                    expect(r.top, "top edge on screen").toBeGreaterThanOrEqual(
+                      0,
+                    );
+                    expect(
+                      r.bottom,
+                      "in the first viewport",
+                    ).toBeLessThanOrEqual(size.height);
+                  }
+                } else {
+                  expect(
+                    card.bottom,
+                    "versions before choices",
+                  ).toBeLessThanOrEqual(keep.top + 1);
+                  expect(mine.top, "versions on screen").toBeGreaterThanOrEqual(
+                    0,
                   );
                 }
-              } else {
-                expect(
-                  card.bottom,
-                  "versions before choices",
-                ).toBeLessThanOrEqual(keep.top + 1);
-                expect(mine.top, "versions on screen").toBeGreaterThanOrEqual(
-                  0,
-                );
               }
-            }
-            expect(unreachable(kit).join("\n")).toBe("");
-            // The screen's type: at most four sizes (the title, the product's name, the body and the
-            // meta; the monogram's letter is a mark) and three weights, as in the native kits.
-            const type = typeUse(kit);
-            expect(
-              new Set(Object.keys(type).map((k) => k.split("/")[0])).size,
-              `sizes: ${JSON.stringify(type)}`,
-            ).toBeLessThanOrEqual(4);
-            expect(
-              new Set(Object.keys(type).map((k) => k.split("/")[1])).size,
-              `weights: ${JSON.stringify(type)}`,
-            ).toBeLessThanOrEqual(3);
-            const h1 = kit.querySelector("h1")!;
-            expect(h1).not.toBeNull();
-            // Focus lands on the heading, on the choice and on a failed one alike.
-            expect(
-              document.activeElement === h1 ||
-                h1.contains(document.activeElement),
-            ).toBe(true);
-            if (name === "failed") return;
-            // One block in reading order: the choices stack in one column, the reason sits under
-            // Keep both, Cancel last; no two controls overlap.
-            const rects = (key: string) =>
-              kit.querySelector(`[data-key="${key}"]`)?.getBoundingClientRect();
-            const keys = [
-              "saveConflict.keepThis",
-              deleted(name)
-                ? "saveConflict.acceptDelete"
-                : "saveConflict.keepOther",
-              ...(deleted(name) ? [] : ["saveConflict.keepBoth"]),
-              ...(name === "full" ? ["saveConflict.bothFull"] : []),
-              "common.cancel",
-            ];
-            let prev: DOMRect | undefined;
-            for (const key of keys) {
-              const r = rects(key);
-              expect(r, key).toBeDefined();
-              if (prev) {
-                expect(
-                  r!.top,
-                  `${key} sits below the one before`,
-                ).toBeGreaterThanOrEqual(prev.bottom - 1);
-                expect(
-                  Math.abs(r!.left - rects(keys[0]!)!.left),
-                  `${key} stays on the first choice's side`,
-                ).toBeLessThanOrEqual(size.width / 2);
+              expect(unreachable(kit).join("\n")).toBe("");
+              // The screen's type: at most four sizes (the title, the product's name, the body and the
+              // meta; the monogram's letter is a mark) and three weights, as in the native kits.
+              const type = typeUse(kit);
+              expect(
+                new Set(Object.keys(type).map((k) => k.split("/")[0])).size,
+                `sizes: ${JSON.stringify(type)}`,
+              ).toBeLessThanOrEqual(4);
+              expect(
+                new Set(Object.keys(type).map((k) => k.split("/")[1])).size,
+                `weights: ${JSON.stringify(type)}`,
+              ).toBeLessThanOrEqual(3);
+              const h1 = kit.querySelector("h1")!;
+              expect(h1).not.toBeNull();
+              // Focus lands on the heading, on the choice and on a failed one alike.
+              expect(
+                document.activeElement === h1 ||
+                  h1.contains(document.activeElement),
+              ).toBe(true);
+              if (name === "failed") return;
+              // One block in reading order: the choices stack in one column, the reason sits under
+              // Keep both, Cancel last; no two controls overlap.
+              const rects = (key: string) =>
+                kit
+                  .querySelector(`[data-key="${key}"]`)
+                  ?.getBoundingClientRect();
+              const keys = [
+                "saveConflict.keepThis",
+                deleted(name)
+                  ? "saveConflict.acceptDelete"
+                  : "saveConflict.keepOther",
+                ...(deleted(name) ? [] : ["saveConflict.keepBoth"]),
+                ...(name === "full" ? ["saveConflict.bothFull"] : []),
+                "common.cancel",
+              ];
+              let prev: DOMRect | undefined;
+              for (const key of keys) {
+                const r = rects(key);
+                expect(r, key).toBeDefined();
+                if (prev) {
+                  expect(
+                    r!.top,
+                    `${key} sits below the one before`,
+                  ).toBeGreaterThanOrEqual(prev.bottom - 1);
+                  expect(
+                    Math.abs(r!.left - rects(keys[0]!)!.left),
+                    `${key} stays on the first choice's side`,
+                  ).toBeLessThanOrEqual(size.width / 2);
+                }
+                prev = r!;
               }
-              prev = r!;
-            }
-            const first = rects("saveConflict.keepThis")!;
-            const second = rects(keys[1]!)!;
-            expect(Math.abs(first.left - second.left)).toBeLessThanOrEqual(1);
-            const actions =
-              kit.querySelector<HTMLElement>('[data-dock="none"]')!;
-            expect(getComputedStyle(actions).position).toBe("static");
-          });
+              const first = rects("saveConflict.keepThis")!;
+              const second = rects(keys[1]!)!;
+              expect(Math.abs(first.left - second.left)).toBeLessThanOrEqual(1);
+              const actions =
+                kit.querySelector<HTMLElement>('[data-dock="none"]')!;
+              expect(getComputedStyle(actions).position).toBe("static");
+            });
 
-    for (const size of SAVE_SIZES.filter((s) =>
-      ["390", "1440"].includes(s.label),
-    ))
-      for (const scheme of SCHEMES)
-        it(`reopened ${size.label} ${scheme}: one visible line, under the lede, above the cards`, async () => {
-          await check(
-            { id: "SaveConflict.reopened", row: SAVE_ROWS.reopened },
-            scheme,
-            size,
-            "polaris-key",
-          );
-          const kit = document.querySelector<HTMLElement>(".pk-root")!;
-          const lines = [
-            ...kit.querySelectorAll('[data-key="saveConflict.reopened"]'),
-          ].filter((el) => visible(el));
-          expect(lines, "exactly one visible reopened line").toHaveLength(1);
-          const line = lines[0]!;
-          // The announcement lives in the hidden status node, not a second drawn line.
-          expect(line.querySelector("svg"), "the info glyph").not.toBeNull();
-          const lede = kit.querySelector('[data-part="lede"]')!;
-          const cards = kit.querySelector('[data-part="save-cards"]')!;
-          expect(lede.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-            line.getBoundingClientRect().top + 1,
-          );
-          expect(line.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-            cards.getBoundingClientRect().top + 1,
-          );
-          expect(getComputedStyle(line).color).not.toBe(
-            getComputedStyle(lede).color,
-          );
-          expect(
-            kit.querySelector('[role="status"]')?.textContent,
-            "announced",
-          ).toMatch(/Choose again/);
-        });
-
-    for (const [name, row] of Object.entries(SAVE_ROWS).filter(([n]) =>
-      ["counted", "unknown"].includes(n),
-    ))
       for (const size of SAVE_SIZES.filter((s) =>
-        ["390", "844x390", "1440", "1280-zoom400"].includes(s.label),
+        ["390", "1440"].includes(s.label),
       ))
         for (const scheme of SCHEMES)
-          it(`transfer ${name} ${size.label} ${scheme}`, async () => {
+          it(`reopened ${size.label} ${scheme}: one visible line, under the lede, above the cards`, async () => {
             await check(
-              { id: `CloudSyncStatus.${name}`, row },
+              { id: "SaveConflict.reopened", row: SAVE_ROWS.reopened },
               scheme,
               size,
               "polaris-key",
             );
             const kit = document.querySelector<HTMLElement>(".pk-root")!;
-            const bar = kit.querySelector<HTMLElement>('[role="progressbar"]')!;
+            const lines = [
+              ...kit.querySelectorAll('[data-key="saveConflict.reopened"]'),
+            ].filter((el) => visible(el));
+            expect(lines, "exactly one visible reopened line").toHaveLength(1);
+            const line = lines[0]!;
+            // The announcement lives in the hidden status node, not a second drawn line.
+            expect(line.querySelector("svg"), "the info glyph").not.toBeNull();
+            const lede = kit.querySelector('[data-part="lede"]')!;
+            const cards = kit.querySelector('[data-part="save-cards"]')!;
+            expect(lede.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+              line.getBoundingClientRect().top + 1,
+            );
+            expect(line.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+              cards.getBoundingClientRect().top + 1,
+            );
+            expect(getComputedStyle(line).color).not.toBe(
+              getComputedStyle(lede).color,
+            );
             expect(
-              bar.getBoundingClientRect().width,
-              "the bar has a width",
-            ).toBeGreaterThan(0);
-            // The label first, then its figures.
-            const text = kit.textContent ?? "";
-            if (name === "counted")
-              expect(text.indexOf("Syncing saves")).toBeLessThan(
-                text.indexOf("38 MB of 61 MB"),
-              );
+              kit.querySelector('[role="status"]')?.textContent,
+              "announced",
+            ).toMatch(/Choose again/);
           });
-  });
 
-  describe("the Cloud Sync strip in a flex app bar", () => {
-    if (part !== 2) return;
-    for (const size of SAVE_SIZES.filter((s) =>
-      ["390", "1280"].includes(s.label),
-    ))
-      it(`keeps its width and its Try again on screen at ${size.label}`, async () => {
-        await page.viewport(size.width, size.height);
-        document.body.style.margin = "0";
-        host = document.createElement("div");
-        document.body.append(host);
-        root = createRoot(host);
-        root.render(
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <b>App</b>
-            <Kit.CloudSyncStatus
-              input={{ cloudSync: { state: "transfer-failed" } }}
-              theme={{ product: PRODUCT, colorScheme: "light" }}
-            />
-          </div>,
-        );
-        await domUntil(host!, () => host!.querySelector(".pk-root") !== null);
-        await document.fonts.ready;
-        await frame();
-        await frame();
-        const strip = host.querySelector<HTMLElement>(".pk-root")!;
-        expect(
-          strip.getBoundingClientRect().width,
-          "not collapsed",
-        ).toBeGreaterThan(120);
-        const retry = host.querySelector('[data-key="common.tryAgain"]')!;
-        expect(retry.getBoundingClientRect().right).toBeLessThanOrEqual(
-          size.width,
-        );
-      });
-  });
+      for (const [name, row] of Object.entries(SAVE_ROWS).filter(([n]) =>
+        ["counted", "unknown"].includes(n),
+      ))
+        for (const size of SAVE_SIZES.filter((s) =>
+          ["390", "844x390", "1440", "1280-zoom400"].includes(s.label),
+        ))
+          for (const scheme of SCHEMES)
+            it(`transfer ${name} ${size.label} ${scheme}`, async () => {
+              await check(
+                { id: `CloudSyncStatus.${name}`, row },
+                scheme,
+                size,
+                "polaris-key",
+              );
+              const kit = document.querySelector<HTMLElement>(".pk-root")!;
+              const bar = kit.querySelector<HTMLElement>(
+                '[role="progressbar"]',
+              )!;
+              expect(
+                bar.getBoundingClientRect().width,
+                "the bar has a width",
+              ).toBeGreaterThan(0);
+              // The label first, then its figures.
+              const text = kit.textContent ?? "";
+              if (name === "counted")
+                expect(text.indexOf("Syncing saves")).toBeLessThan(
+                  text.indexOf("38 MB of 61 MB"),
+                );
+            });
+    });
+
+  if (part === 2)
+    describe("the Cloud Sync strip in a flex app bar", () => {
+      for (const size of SAVE_SIZES.filter((s) =>
+        ["390", "1280"].includes(s.label),
+      ))
+        it(`keeps its width and its Try again on screen at ${size.label}`, async () => {
+          await page.viewport(size.width, size.height);
+          document.body.style.margin = "0";
+          host = document.createElement("div");
+          document.body.append(host);
+          root = createRoot(host);
+          root.render(
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <b>App</b>
+              <Kit.CloudSyncStatus
+                input={{ cloudSync: { state: "transfer-failed" } }}
+                theme={{ product: PRODUCT, colorScheme: "light" }}
+              />
+            </div>,
+          );
+          await domUntil(host!, () => host!.querySelector(".pk-root") !== null);
+          await document.fonts.ready;
+          await frame();
+          await frame();
+          const strip = host.querySelector<HTMLElement>(".pk-root")!;
+          expect(
+            strip.getBoundingClientRect().width,
+            "not collapsed",
+          ).toBeGreaterThan(120);
+          const retry = host.querySelector('[data-key="common.tryAgain"]')!;
+          expect(retry.getBoundingClientRect().right).toBeLessThanOrEqual(
+            size.width,
+          );
+        });
+    });
 
   const deleted = (name: string): boolean => name === "deleted";
 }

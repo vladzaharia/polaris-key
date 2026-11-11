@@ -13,7 +13,15 @@ import type { ReactNode } from "react";
 import { join } from "node:path";
 
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   Copy,
   viewOf,
@@ -145,11 +153,13 @@ beforeAll(() => {
 // A key whose argument the corpus row leaves out is not drawn (never as `{name}`); the kit says so,
 // once per key, so the set is kept for the file.
 const dropped = new Set<string>();
-vi.spyOn(console, "warn").mockImplementation((m: unknown) => {
+const warn = vi.spyOn(console, "warn").mockImplementation((m: unknown) => {
   const hit = /^\[pk\] (\S+) has no value/.exec(String(m));
   if (hit) dropped.add(hit[1]!);
 });
 afterEach(cleanup);
+// The module graph outlives this file: give console.warn back.
+afterAll(() => warn.mockRestore());
 
 // "License for this device" labels a licence line: with none drawn (its seat is missing), it goes too.
 function labelGone(copy: string[], key: string): boolean {

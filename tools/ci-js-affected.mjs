@@ -54,7 +54,10 @@ export function affected(
       run(["run", "test", "--dry=json", `--filter=...[${base}]`]),
     );
     return [pkg, ...(EXTRA_INPUTS[pkg] ?? [])].some((p) => selected.has(p));
-  } catch {
+  } catch (e) {
+    process.stderr.write(
+      `ci-js-affected: turbo could not select against ${base}, running the suite: ${String(e?.message ?? e).split("\n")[0]}\n`,
+    );
     return true;
   }
 }

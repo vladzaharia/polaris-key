@@ -24,3 +24,16 @@ provideTable("en", fullEn);
 
 // A jsdom test loads signed documents: see the file.
 import "../../../tools/jsdom-ed25519.js";
+
+// The kit warns once per row it leaves out for want of a fact (`usableKey`), and the suites run
+// every file in one module graph: forget what an earlier file was warned of, so a file that reads
+// those warnings (the ui-matrix test) sees each one on its own first draw, in any file order.
+import { beforeAll } from "vitest";
+
+beforeAll(() => {
+  (
+    (globalThis as Record<symbol, unknown>)[
+      Symbol.for("polaris-key.kit.warnedRows")
+    ] as Set<string> | undefined
+  )?.clear();
+});

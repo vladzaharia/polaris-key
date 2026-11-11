@@ -227,6 +227,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # turbo's `...[js-base]` needs the merge base: full history, no blobs (as in `changes`).
+          fetch-depth: 0
+          filter: blob:none
       - uses: ./.github/actions/setup-js
       # With a js base (a push to next where only packages/ changed since the js jobs were last
       # green) the suite runs when turbo's `...[base]` selection holds the package; else always.
@@ -249,6 +253,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # turbo's `...[js-base]` needs the merge base: full history, no blobs (as in `changes`).
+          fetch-depth: 0
+          filter: blob:none
       - uses: ./.github/actions/setup-js
       - id: affected
         run: node tools/ci-js-affected.mjs @polaris-key/admin --github-output
@@ -267,6 +275,10 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # turbo's `...[js-base]` needs the merge base: full history, no blobs (as in `changes`).
+          fetch-depth: 0
+          filter: blob:none
       - uses: ./.github/actions/setup-js
       # The docs snippet lane (packages/docs/test/snippets) compiles every Python code block on a
       # covered docs page against the SDK with mypy, so it needs the SDK's own venv (with the Qt kit).
@@ -1089,9 +1101,10 @@ jobs:
 
   # The hosted XCTest project on an iOS simulator. On this 3-vCPU runner a new simulator stays busy
   # for minutes and StoreKit Testing stalled inside that window, so the simulator boots first and
-  # PlatformHostTests/run.sh waits for it to go quiet (60 s while the flaky StoreKit purchase,
-  # refund and AppTransaction tests are disabled; the warm-up and the later waits return with them). It needs nothing the other Apple jobs
-  # build, only Xcode, the simulator runtime and XcodeGen.
+  # PlatformHostTests/run.sh waits for it to go quiet (with the flaky StoreKit purchase, refund and
+  # AppTransaction tests disabled it waits for the gate host to launch instead; the quiet wait, the warm-up
+  # and the later waits return with them). It needs nothing the other Apple jobs build, only Xcode, the
+  # simulator runtime and XcodeGen.
   apple-hosted:
     name: Apple platform hosted tests (macos-26, iOS simulator)
     needs: changes
@@ -1720,7 +1733,10 @@ jobs:
           force-avd-creation: false
           disk-size: 2048M
           disable-animations: true
-          emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect
+          # A cold boot: the first attempt restored the cached quick-boot snapshot, and a guest that
+          # came back from it broken (`adb shell input keyevent 82` killed, 137, before the script ran)
+          # came back broken the same way from the same snapshot a few seconds later.
+          emulator-options: -no-window -no-snapshot-save -no-snapshot-load -noaudio -no-boot-anim -gpu swiftshader_indirect
           script: bash tools/ci-emulator-run.sh ${{ runner.temp }}/emulator-attempt-2.log
       - name: Fail the job when the instrumented tests failed
         if: ${{ !cancelled() && steps.emulator.outcome == 'failure' && steps.emulator2.outcome != 'success' }}

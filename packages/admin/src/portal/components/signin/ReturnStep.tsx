@@ -30,7 +30,6 @@ export function ReturnStep({
   tier?: string | null;
   onReturn: () => void;
 }): React.ReactElement {
-  const [left, setLeft] = React.useState(RETURN_SECONDS);
   // The timer is the phone's (§3.10): on a desktop window the person returns when ready.
   const [stopped, setStopped] = React.useState(
     () => window.matchMedia?.("(min-width: 40rem)").matches === true,
@@ -38,12 +37,45 @@ export function ReturnStep({
   const timerShown = !stopped;
   const [inside, setInside] = React.useState(false);
   const fired = React.useRef(false);
+  // The countdown is a budget and the moment it last started running, read against the clock, not
+  // a count of timer ticks: a late tick cannot make it drift, and a pinned clock holds it still.
+  const [timer, setTimer] = React.useState<{
+    budget: number;
+    since: number | null;
+  }>(() => ({
+    budget: RETURN_SECONDS * 1000,
+    since: stopped ? null : Date.now(),
+  }));
+  const [now, setNow] = React.useState(() => Date.now());
+  const running = !stopped && !inside && !fired.current;
+  const left = Math.max(
+    0,
+    Math.ceil(
+      (timer.since === null
+        ? timer.budget
+        : timer.budget - (now - timer.since)) / 1000,
+    ),
+  );
 
   React.useEffect(() => {
-    if (stopped || inside || fired.current) return;
-    const id = window.setInterval(() => setLeft((s) => s - 1), 1000);
+    const at = Date.now();
+    setNow(at);
+    setTimer((t) =>
+      running
+        ? t.since === null
+          ? { budget: t.budget, since: at }
+          : t
+        : t.since === null
+          ? t
+          : { budget: Math.max(0, t.budget - (at - t.since)), since: null },
+    );
+  }, [running]);
+
+  React.useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [stopped, inside]);
+  }, [running]);
 
   React.useEffect(() => {
     if (left > 0 || stopped || fired.current) return;
