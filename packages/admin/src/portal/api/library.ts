@@ -90,6 +90,40 @@ export interface PortalAccountDevice {
   restored: boolean;
 }
 
+/** One item of what a connected app gets (`GET /api/me/connected-apps`, in ConsentStep's order). */
+export interface PortalConnectedGet {
+  item: "name" | "picture" | "email" | "entitlements" | "offline";
+  granted: boolean;
+  /** The app needs it and the person cannot switch it: only Disconnect removes it. */
+  fixed: boolean;
+}
+
+/** A client app the account signed in to with a product's account. */
+export interface PortalConnectedApp {
+  clientId: string;
+  name: string;
+  /** The developer's name; `null` when neither the app nor the product names one. */
+  developer: string | null;
+  /** Another company's app (it names a developer of its own). */
+  partner: boolean;
+  /** A same-origin `/media/` path, or `null`. */
+  iconUrl: string | null;
+  /** Where it returns people; `null` for an app on this device. */
+  returnHost: string | null;
+  /** `false` while the app is switched off (its client, the product's sign-in or the issuer). */
+  available: boolean;
+  gets: PortalConnectedGet[];
+  grantedAt: number;
+  lastUsedAt: number | null;
+}
+
+export interface PortalConnectedProduct {
+  product: string;
+  name: string;
+  iconUrl: string | null;
+  clients: PortalConnectedApp[];
+}
+
 export interface PortalLicenseDetail extends PortalLicenseSummary {
   keys: PortalKey[];
   devices: PortalDevice[];
@@ -522,6 +556,27 @@ export const libraryApi = {
       `/api/me/devices/${enc(product)}/${enc(deviceId)}`,
       { method: "DELETE" },
     ),
+
+  /** The client apps the account signed in to, grouped by product (I-21.15). */
+  connectedApps: () =>
+    call<{ products: PortalConnectedProduct[] }>("/api/me/connected-apps"),
+
+  /** Switches optional claims for one app: only the ones sent change. */
+  changeConnectedApp: (
+    product: string,
+    clientId: string,
+    claims: Partial<Record<"name" | "picture" | "email", boolean>>,
+  ) =>
+    call<PortalConnectedApp>(
+      `/api/me/connected-apps/${enc(product)}/${enc(clientId)}`,
+      { method: "PATCH", body: JSON.stringify({ claims }) },
+    ),
+
+  /** Ends the app's access; a `404` means it is already gone. */
+  disconnectConnectedApp: (product: string, clientId: string) =>
+    call<void>(`/api/me/connected-apps/${enc(product)}/${enc(clientId)}`, {
+      method: "DELETE",
+    }),
 
   library: () => call<PortalLibrary>("/api/library").then(libraryFromWire),
 

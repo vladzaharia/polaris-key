@@ -29,7 +29,7 @@ export function DeviceGlyph({
 }
 
 /** Focus a confirm's heading as it opens, then bring the opened region into view. */
-function focusOnOpen(headingRef: React.RefObject<HTMLElement | null>) {
+export function focusOnOpen(headingRef: React.RefObject<HTMLElement | null>) {
   return {
     onOpen: () => headingRef.current?.focus({ preventScroll: true }),
     onOpened: (region: HTMLElement) =>
@@ -174,7 +174,9 @@ export function RemoveTail({
  * The confirm that opens in place under a row (the expand pattern, S-23 §6.1): focus goes to its
  * heading as soon as it shows, Escape keeps the device, and once it has opened the region is
  * brought into view. Under 22rem the two buttons stack full width, Remove last (§8's sheet
- * buttons).
+ * buttons). Connected apps' Disconnect (I-21.15) reuses it with its own wording: `copy` replaces
+ * the heading, the failure line, the Keep label and the danger button's label and accessible
+ * name; `note` is one muted line under the consequences.
  */
 export function RemovePanel({
   id,
@@ -186,16 +188,28 @@ export function RemovePanel({
   removing,
   onKeep,
   onRemove,
+  copy,
+  note,
 }: {
   id: string;
   open: boolean;
   name: string;
   headingRef: React.RefObject<HTMLHeadingElement | null>;
-  consequences: React.ReactNode;
+  consequences?: React.ReactNode;
   error: boolean;
   removing: boolean;
   onKeep: () => void;
   onRemove: () => void;
+  copy?: {
+    title: string;
+    failed: string;
+    keep: string;
+    confirm: string;
+    confirmName: string;
+    /** One sentence in place of the consequences list. */
+    body?: string;
+  };
+  note?: string;
 }): React.ReactElement {
   return (
     <Expand id={id} open={open} {...focusOnOpen(headingRef)}>
@@ -213,29 +227,37 @@ export function RemovePanel({
             tabIndex={-1}
             className="font-medium text-fg-strong outline-none"
           >
-            {t("locker.devices.removeAsk", { name })}
+            {copy?.title ?? t("locker.devices.removeAsk", { name })}
           </h3>
-          <ul className="list-disc space-y-1 ps-5 text-sm text-fg">
-            {consequences}
-          </ul>
+          {copy?.body ? (
+            <p className="text-sm text-fg">{copy.body}</p>
+          ) : (
+            <ul className="list-disc space-y-1 ps-5 text-sm text-fg">
+              {consequences}
+            </ul>
+          )}
+          {note ? <p className="text-sm text-fg-muted">{note}</p> : null}
           {error ? (
             <p role="alert" className="text-sm text-danger">
-              {t("devices.removeFailed", { device: name })}
+              {copy?.failed ?? t("devices.removeFailed", { device: name })}
             </p>
           ) : null}
           <div className="flex flex-col gap-2 @[22rem]:flex-row @[22rem]:justify-end">
             <Button variant="outline" onClick={onKeep}>
-              {t("locker.methods.keepIt")}
+              {copy?.keep ?? t("locker.methods.keepIt")}
             </Button>
             {/* "Remove": the heading above already names the device; the name stays in the
                 accessible name. */}
             <Button
               variant="danger"
-              aria-label={t("locker.freeDevice.removeName", { device: name })}
+              aria-label={
+                copy?.confirmName ??
+                t("locker.freeDevice.removeName", { device: name })
+              }
               loading={removing}
               onClick={onRemove}
             >
-              {t("devices.remove")}
+              {copy?.confirm ?? t("devices.remove")}
             </Button>
           </div>
         </div>

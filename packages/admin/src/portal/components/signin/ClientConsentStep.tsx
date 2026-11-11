@@ -1,13 +1,5 @@
 import * as React from "react";
-import {
-  BadgeCheck,
-  ImageIcon,
-  Lock,
-  Mail,
-  RefreshCw,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 import type { AppConsentView } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
 import { Switch } from "../../../ui/Switch.js";
@@ -30,14 +22,7 @@ import {
   RequestGone,
 } from "./requestParts.js";
 import { useTermsCheck } from "./TermsCheck.js";
-
-const GLYPH = {
-  name: UserRound,
-  picture: ImageIcon,
-  email: Mail,
-  entitlements: BadgeCheck,
-  offline: RefreshCw,
-} as const;
+import { CLIENT_GLYPH as GLYPH } from "./clientGets.js";
 
 /** One item of what the client asks for: its glyph, its words (and value), then a switch or the lock. */
 function ClientRow({

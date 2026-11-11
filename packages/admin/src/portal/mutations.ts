@@ -223,6 +223,14 @@ export const PORTAL_MUTATIONS = {
     // pages do not show; only this list refreshes.
     invalidates: () => [exact(qk.accountDevices())],
   },
+  changeConnectedApp: {
+    label: "Change which optional items a connected app gets",
+    invalidates: () => [exact(qk.connectedApps())],
+  },
+  disconnectConnectedApp: {
+    label: "Disconnect a connected app",
+    invalidates: () => [exact(qk.connectedApps())],
+  },
   claimDiscover: {
     label: "Add a Discover product to the library",
     invalidates: (product: string) => [
@@ -372,6 +380,18 @@ export async function removeLibraryEntryOrGone(product: string) {
     if (err instanceof HttpError && err.status === 404)
       return { ok: true as const, product, inLibrary: false };
     throw err;
+  }
+}
+
+/** Disconnect where a 404 means the app is gone already (another tab): the same outcome. */
+export async function disconnectConnectedAppOrGone(
+  product: string,
+  clientId: string,
+): Promise<void> {
+  try {
+    await portalApi.disconnectConnectedApp(product, clientId);
+  } catch (err) {
+    if (!(err instanceof HttpError && err.status === 404)) throw err;
   }
 }
 
