@@ -50,6 +50,38 @@ class LocalMachinesTest {
     }
 
     @Test
+    fun dialsLeftReadsTwoAsciiDigitsKeepsNothingAndSpendsNothing() {
+        val budget = DialBudget()
+        for (text in listOf("", "4", "ab12", "4 a", "\u0664\u0668")) assertNull(text, dialsLeft(budget, text, 0.0))
+        repeat(4) { assertEquals(2, dialsLeft(budget, "48", 0.0)) }
+        assertEquals(2, dialsLeft(budget, " 4-8 12-3", 0.0))
+        budget.takeIfAllowed("48", 0.0)
+        assertEquals(1, dialsLeft(budget, "4812 3456", 1.0))
+        assertEquals(2, dialsLeft(budget, "49", 1.0))
+        budget.takeIfAllowed("48", 1.0)
+        assertEquals(0, dialsLeft(budget, "48", 2.0))
+        // The window slides: 300 s after the first dial one is back.
+        assertEquals(1, dialsLeft(budget, "48", 300.0))
+    }
+
+    @Test
+    fun theNameplateMemoryIsSafeAcrossThreadsAndForgetsAfter300Seconds() {
+        val memory = NameplateMemory()
+        val start = CountDownLatch(1)
+        val threads = (0 until 8).map { i ->
+            Thread {
+                start.await()
+                for (n in 0 until 25) memory.shown("%02d".format(i * 12 + n % 12), 10.0)
+            }.also { it.start() }
+        }
+        start.countDown()
+        threads.forEach { it.join() }
+        assertEquals(96, memory.recent(10.0).size)
+        assertEquals(96, memory.recent(309.0).size)
+        assertTrue(memory.recent(310.0).isEmpty())
+    }
+
+    @Test
     fun aZeroKIsRefusedWhateverTheBackendDoes() {
         val sid = ByteArray(10)
         val share = ByteArray(32).also { it[0] = 9 }

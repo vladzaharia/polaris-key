@@ -207,6 +207,11 @@ internal class LocalSource(
     val notify: () -> Unit,
     /** Called by [notify] and when the gate moves. Returns the unsubscribe. */
     val onChange: (() -> Unit) -> (() -> Unit),
+    /**
+     * The host-facing change feed (`localLinks.onChange`): a pairing was stored, a link was renamed, forgotten, re-marked or
+     * seen, or the gate flipped. Returns the unsubscribe.
+     */
+    val onView: (() -> Unit) -> (() -> Unit),
     /** The links with their keys decoded, or none while the gate is off or the store cannot be used. The caller wipes them. */
     val live: suspend () -> List<LiveLocal>,
     /** A session opened under a link: its last-seen time moves (hourly). */
@@ -215,10 +220,34 @@ internal class LocalSource(
     override fun toString(): String = "LocalSource"
 }
 
+/** Callbacks that are told together: a fault in one never stops the others. */
+internal class Subscribers {
+    private val fns = CopyOnWriteArrayList<() -> Unit>()
+
+    /** Subscribe [fn]; returns the unsubscribe. */
+    fun add(fn: () -> Unit): () -> Unit {
+        fns += fn
+        return { fns -= fn }
+    }
+
+    fun fire() {
+        for (f in fns.toList()) {
+            try {
+                f()
+            } catch (e: Exception) {
+                // a listener cannot stop the others
+            }
+        }
+    }
+}
+
 /** The client's local-link support: the gate, the store, the change listeners. */
 internal class LocalSupport(private val core: CoreContext, private val options: ConnectOptions) {
     val gate = LocalGateKeeper()
-    private val listeners = CopyOnWriteArrayList<() -> Unit>()
+    private val listeners = Subscribers()
+
+    /** The host-facing feed of `localLinks.onChange`. */
+    private val viewers = Subscribers()
     private var storage: DeviceKeyStorage? = null
     private val warned = java.util.concurrent.atomic.AtomicBoolean(false)
 
@@ -234,19 +263,11 @@ internal class LocalSupport(private val core: CoreContext, private val options: 
     fun allowed(): Boolean = gate.gate.allowed
 
     fun notifyChanged() {
-        for (f in listeners.toList()) {
-            try {
-                f()
-            } catch (e: Exception) {
-                // a listener cannot stop the others
-            }
-        }
+        viewers.fire()
+        listeners.fire()
     }
 
-    fun onChange(fn: () -> Unit): () -> Unit {
-        listeners += fn
-        return { listeners -= fn }
-    }
+    fun onChange(fn: () -> Unit): () -> Unit = listeners.add(fn)
 
     /**
      * The record's home: the file store in the state directory, or memory when there is no directory or the host's device
@@ -301,14 +322,18 @@ internal class LocalSupport(private val core: CoreContext, private val options: 
     suspend fun touch(ref: LocalRef) {
         val bucket = core.now() / HOUR_SECONDS * HOUR_SECONDS
         try {
+            var wrote = false
             store.update { rows ->
                 val row = rows.firstOrNull { it.id == ref.id }
                 if (row == null || bucket <= (row.lastSeen ?: 0L)) {
                     null
                 } else {
+                    wrote = true
                     rows.map { if (it.id == ref.id) it.copy(lastSeen = bucket) else it }
                 }
             }
+            // The host's list shows the time; the adverts and sessions do not depend on it.
+            if (wrote) viewers.fire()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -324,6 +349,7 @@ internal class LocalSupport(private val core: CoreContext, private val options: 
         store = store,
         notify = ::notifyChanged,
         onChange = ::onChange,
+        onView = viewers::add,
         live = ::live,
         touch = ::touch,
     )

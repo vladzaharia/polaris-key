@@ -17,6 +17,7 @@
 
 package im.plrs.key.core.peer
 
+import im.plrs.key.core.PairingCodeFailedReason
 import im.plrs.key.core.StrictJson
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.boolValue
@@ -140,6 +141,96 @@ public fun drawNameplate(source: DrawSource, inUse: Collection<String> = emptyLi
         // 200 or more is drawn again, and so is a nameplate in use while one is free.
         if (v < NAMEPLATE_LIMIT && (all || n !in used)) return n
     }
+}
+
+/**
+ * The nameplates this device showed for one product in windows that closed less than [LOCAL_DIAL_BUDGET_SECONDS] ago
+ * (section 15.12, "The code"), in memory. The shower's draw skips them, so a renewed window never reuses the nameplate
+ * of the window just closed, whose dials a joiner may have spent. Hold one per product for the life of the process,
+ * like [DialBudget]. Thread-safe.
+ */
+public class NameplateMemory {
+    private val lock = Any()
+    private val closed = HashMap<String, Double>()
+
+    /** The window that showed [nameplate] closed at the monotonic time [t] (seconds). */
+    public fun shown(nameplate: String, t: Double) {
+        synchronized(lock) { closed[nameplate] = maxOf(t, closed[nameplate] ?: t) }
+    }
+
+    private fun recentLocked(t: Double): List<String> {
+        closed.entries.removeAll { t - it.value >= LOCAL_DIAL_BUDGET_SECONDS }
+        return closed.keys.toList()
+    }
+
+    /** The nameplates of windows that closed less than 300 s before [t]. */
+    public fun recent(t: Double): List<String> = synchronized(lock) { recentLocked(t) }
+
+    /**
+     * The shower's draw, in two tiers. First among the nameplates this memory does not hold: the adverts of other
+     * windows are not authenticated, so they never steer it. Only when it holds all 100, the one that closed longest
+     * ago (the lowest on a tie), with no byte read. Null when the source runs out.
+     */
+    public fun draw(source: DrawSource, t: Double): String? = synchronized(lock) {
+        val held = recentLocked(t)
+        if (held.size < NAMEPLATE_MOD) {
+            drawNameplate(source, held)
+        } else {
+            closed.entries.sortedBy { it.key }.minByOrNull { it.value }?.key
+        }
+    }
+
+    override fun toString(): String = "NameplateMemory"
+}
+
+/** The SDK's renewal floor (section 15.12, "The code"): refuse a new window for this long after a hard end. */
+public const val LOCAL_RENEW_COOLDOWN_SECONDS: Int = 30
+
+/** Two windows that ended after a wrong guess within this many seconds start the cooldown. */
+public const val LOCAL_RENEW_WRONG_SECONDS: Int = 600
+
+/** How many such windows start the cooldown. */
+public const val LOCAL_RENEW_WRONG_LIMIT: Int = 2
+
+/**
+ * How a window ended, for [RenewFloor]: [TooManyTries] (the fifth failed guess) or [WrongCode] (any other end of a
+ * window that had counted a failed guess, a `renew()` replacement included).
+ */
+public enum class RenewEnd { TooManyTries, WrongCode }
+
+/** What [RenewFloor.check] answers: whether a window may open, and else the whole seconds until it may. */
+public data class RenewVerdict(val allowed: Boolean, val retryIn: Int)
+
+/**
+ * The renewal floor, one per product for the life of the process, beside [DialBudget]. After a [RenewEnd.TooManyTries]
+ * end, or the second [RenewEnd.WrongCode] end within 600 s, no window opens for 30 s, so a host that renews from
+ * `onEnd` with no person cannot give a guesser windows at machine speed. Times are monotonic seconds. In memory only.
+ * Thread-safe.
+ */
+public class RenewFloor {
+    private val lock = Any()
+    private var until = Double.NEGATIVE_INFINITY
+    private var wrong = ArrayList<Double>()
+
+    /** A window ended at [t]. */
+    public fun ended(end: RenewEnd, t: Double) {
+        synchronized(lock) {
+            if (end == RenewEnd.WrongCode) {
+                wrong = ArrayList(wrong.filter { t - it < LOCAL_RENEW_WRONG_SECONDS })
+                wrong += t
+            }
+            if (end == RenewEnd.TooManyTries || wrong.size >= LOCAL_RENEW_WRONG_LIMIT) {
+                until = maxOf(until, t + LOCAL_RENEW_COOLDOWN_SECONDS)
+            }
+        }
+    }
+
+    /** Whether a window may open at [t], and else the whole seconds until it may. */
+    public fun check(t: Double): RenewVerdict = synchronized(lock) {
+        if (t >= until) RenewVerdict(true, 0) else RenewVerdict(false, Math.ceil(until - t).toInt())
+    }
+
+    override fun toString(): String = "RenewFloor"
 }
 
 /**
@@ -387,10 +478,13 @@ public sealed class JoinInput {
     public class Qr(public val instance: String) : JoinInput()
 
     public object Invalid : JoinInput()
+
+    /** A QR for another app. */
+    public object OtherApp : JoinInput()
 }
 
-/** How one dial ended. */
-public enum class DialOutcome { Transport, BeforeC2, AfterC2 }
+/** How one dial ended. [Budget] is a dial the joiner's budget stopped in the middle of a join (nothing was dialled). */
+public enum class DialOutcome { Transport, BeforeC2, AfterC2, Budget }
 
 /** What a join answers once no dial is left. */
 public enum class JoinResult(public val wire: String) {
@@ -410,9 +504,16 @@ public class JoinPlan(private val input: JoinInput) {
     private var dials = 0
     private var transport = false
     private var afterC2 = false
+    private var budgetStopped = false
+    private var spentAtStart = false
 
     /** Whether anything is browsed at all. */
-    public val browses: Boolean get() = input !is JoinInput.Invalid
+    public val browses: Boolean get() = input !is JoinInput.Invalid && input !is JoinInput.OtherApp && !spentAtStart
+
+    /** The nameplate's dials were spent before the join began: nothing is browsed or dialled. */
+    public fun startSpent() {
+        spentAtStart = true
+    }
 
     public val kept: List<String> get() = keptNames.toList()
 
@@ -425,7 +526,7 @@ public class JoinPlan(private val input: JoinInput) {
         val match = when (input) {
             is JoinInput.Code -> n == input.nameplate
             is JoinInput.Qr -> instance == input.instance
-            JoinInput.Invalid -> false
+            JoinInput.Invalid, JoinInput.OtherApp -> false
         }
         if (!match || instance in keptNames || keptNames.size >= LOCAL_JOIN_KEPT) return false
         keptNames += instance
@@ -441,16 +542,31 @@ public class JoinPlan(private val input: JoinInput) {
         when (outcome) {
             DialOutcome.Transport -> transport = true
             DialOutcome.AfterC2 -> afterC2 = true
+            DialOutcome.Budget -> budgetStopped = true
             DialOutcome.BeforeC2 -> Unit
         }
     }
 
     /** The answer once no dial is left (or the browse ran out). */
     public fun result(): JoinResult = when {
-        input is JoinInput.Invalid -> JoinResult.PairingCodeFailed
+        !browses -> JoinResult.PairingCodeFailed
         transport -> JoinResult.Transport
-        afterC2 -> JoinResult.PairingCodeFailed
+        afterC2 || budgetStopped -> JoinResult.PairingCodeFailed
         else -> JoinResult.PairingNotFound
+    }
+
+    /**
+     * Of a [JoinResult.PairingCodeFailed] result, why, as a [PairingCodeFailedReason] value (section 15.12, "Errors"); null for
+     * any other result. The first that applies wins: invalid or other-app (the parse), spent (refused at the start), wrong (a
+     * dial ended after C2), spent (the budget stopped a dial in the middle of the join).
+     */
+    public fun reason(): String? = when {
+        result() != JoinResult.PairingCodeFailed -> null
+        input is JoinInput.Invalid -> PairingCodeFailedReason.invalid
+        input is JoinInput.OtherApp -> PairingCodeFailedReason.otherApp
+        spentAtStart -> PairingCodeFailedReason.spent
+        afterC2 -> PairingCodeFailedReason.wrong
+        else -> PairingCodeFailedReason.spent
     }
 }
 
@@ -495,7 +611,20 @@ public class DialBudget {
         DialVerdict(allowed, used)
     }
 
+    /** The dials a join of this nameplate may still make now: 2 less the dials spent. */
+    public fun left(nameplate: String, t: Double): Int = synchronized(lock) { LOCAL_DIAL_BUDGET - recent(nameplate, t).size }
+
     override fun toString(): String = "DialBudget"
+}
+
+/**
+ * The dials left for the nameplate a person has typed so far (`localLinks.dialsLeft`): null unless the text, with ASCII
+ * spaces and hyphens removed, starts with two ASCII digits. It reads those two digits only, keeps nothing and spends
+ * nothing.
+ */
+public fun dialsLeft(budget: DialBudget, text: String, t: Double): Int? {
+    val head = text.filter { it != ' ' && it != '-' }.take(2)
+    return if (head.length == 2 && head.all { it in '0'..'9' }) budget.left(head, t) else null
 }
 
 // -- The pairing window (section 15.12, "The pairing window") -------------------------------------

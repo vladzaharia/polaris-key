@@ -21,12 +21,16 @@ import im.plrs.key.core.peer.GATED_CALLS
 import im.plrs.key.core.peer.HandshakeLimiter
 import im.plrs.key.core.peer.JoinInput
 import im.plrs.key.core.peer.JoinPlan
+import im.plrs.key.core.peer.LOCAL_DIAL_BUDGET_SECONDS
 import im.plrs.key.core.peer.LOCAL_GROUP_PER_MINUTE
 import im.plrs.key.core.peer.LOCAL_JOIN_BROWSE_SECONDS
 import im.plrs.key.core.peer.LOCAL_JOIN_CANDIDATES
 import im.plrs.key.core.peer.LOCAL_PAIR_FAILURES
 import im.plrs.key.core.peer.LOCAL_PAIR_SECONDS
 import im.plrs.key.core.peer.LOCAL_QR_SECRET_BYTES
+import im.plrs.key.core.peer.LOCAL_RENEW_COOLDOWN_SECONDS
+import im.plrs.key.core.peer.LOCAL_RENEW_WRONG_LIMIT
+import im.plrs.key.core.peer.LOCAL_RENEW_WRONG_SECONDS
 import im.plrs.key.core.peer.LocalAdmission
 import im.plrs.key.core.peer.LocalExchange
 import im.plrs.key.core.peer.LocalExchangeEvent
@@ -36,6 +40,7 @@ import im.plrs.key.core.peer.LocalTxtResult
 import im.plrs.key.core.peer.MAX_LINK_SECRETS
 import im.plrs.key.core.peer.MAX_LIVE_LOCAL_ADVERTS
 import im.plrs.key.core.peer.MAX_LOCAL_LINKS
+import im.plrs.key.core.peer.NameplateMemory
 import im.plrs.key.core.peer.PairingWindow
 import im.plrs.key.core.peer.PayloadVerdict
 import im.plrs.key.core.peer.PeerMode
@@ -43,6 +48,8 @@ import im.plrs.key.core.peer.PeerRecord
 import im.plrs.key.core.peer.QrVerdict
 import im.plrs.key.core.peer.RecordAssembler
 import im.plrs.key.core.peer.RecordMode
+import im.plrs.key.core.peer.RenewEnd
+import im.plrs.key.core.peer.RenewFloor
 import im.plrs.key.core.peer.TxtResult
 import im.plrs.key.core.peer.base32Lower
 import im.plrs.key.core.peer.browseLocalInstance
@@ -202,33 +209,12 @@ class PeerMatrixLocalTest : ConformanceSuite() {
     @Test
     fun admissionTheGroupsBudgetThenTheSharedLimiterThatOnlyAFailedTrialSpends() {
         val f = Failures("peer-matrix local admission")
-        for (r in rows(l["admission"])) admissionRow(f, r)
-        f.done(11)
-    }
-
-    /**
-     * The two rows of the Node/Python corpus that hold an admission open and settle it later (`later`, `settle`), kept here
-     * until the corpus on this branch carries them: a refund reaches the group's live count after other messages came in, and a
-     * late failure spends the shared budget when it is settled.
-     */
-    @Test
-    fun anAdmissionHeldOpenIsSettledByALaterEvent() {
-        val f = Failures("peer-matrix local admission (later, settle)")
-        val fixture = """
-            [{"id": "a-refund-after-other-messages", "events": [{"t": 0, "group": "g1", "opens": true, "later": true},
-              {"t": 1, "group": "g2", "opens": false}, {"t": 2, "group": "g3", "opens": false}, {"t": 3, "settle": 0},
-              {"t": 4, "group": "g1", "opens": false}, {"t": 5, "group": "g1", "opens": false}, {"t": 6, "group": "g1", "opens": false}],
-              "want": [{"result": "tried"}, {"result": "tried", "hit": false}, {"result": "tried", "hit": false},
-              {"result": "settled", "hit": true}, {"result": "tried", "hit": false}, {"result": "tried", "hit": false},
-              {"result": "refused", "by": "group"}]},
-             {"id": "a-late-failure-spends-the-shared-budget-when-settled", "events": [{"t": 0, "group": "g1", "opens": false, "later": true},
-              {"t": 1, "group": "g2", "opens": false}, {"t": 2, "settle": 0}, {"t": 3, "group": "g1", "opens": false},
-              {"t": 4, "group": "g1", "opens": false}],
-              "want": [{"result": "tried"}, {"result": "tried", "hit": false}, {"result": "settled", "hit": false},
-              {"result": "tried", "hit": false}, {"result": "refused", "by": "group"}]}]
-        """.trimIndent()
-        for (r in rows(kotlinx.serialization.json.Json.parseToJsonElement(fixture))) admissionRow(f, r)
-        f.done(2)
+        val admission = rows(l["admission"])
+        for (r in admission) admissionRow(f, r)
+        // The rows that hold an admission open and settle it later (`later`, `settle`) are in the corpus.
+        val settled = admission.filter { r -> rows(r["events"]).any { it["later"] != null || it["settle"] != null } }
+        f.check(settled.size >= 2) { "the later/settle admission rows" }
+        f.done(13)
     }
 
     // -- codes ----------------------------------------------------------------------------------------
@@ -510,26 +496,13 @@ class PeerMatrixLocalTest : ConformanceSuite() {
     fun join() {
         val f = Failures("peer-matrix local join")
         for (r in rows(l["join"])) {
-            val i = r.o("input")
-            val plan = JoinPlan(
-                when (i.s("kind")) {
-                    "code" -> JoinInput.Code(i.s("nameplate"))
-                    "qr" -> JoinInput.Qr(i.s("instance"))
-                    else -> JoinInput.Invalid
-                },
-            )
+            val plan = JoinPlan(joinInputOf(r.o("input")))
             for (a in rows(r["adverts"])) plan.see(a.s("instance"), a.s("h") == "current" || a.s("h") == "previous", a.s("n"))
             val dialled = ArrayList<String>()
             for (o in strings(r["dials"])) {
                 val next = plan.next() ?: break
                 dialled += next
-                plan.ended(
-                    when (o) {
-                        "transport" -> DialOutcome.Transport
-                        "before-c2" -> DialOutcome.BeforeC2
-                        else -> DialOutcome.AfterC2
-                    },
-                )
+                plan.ended(outcomeOf(o))
             }
             val got = mapOf<String, Any?>(
                 "browsed" to plan.browses,
@@ -540,6 +513,103 @@ class PeerMatrixLocalTest : ConformanceSuite() {
             f.equal(plain(r["want"]), got) { r.s("id") }
         }
         f.done(20)
+    }
+
+    /** One `nameplateMemory` row: the draws it makes, as the corpus states them. */
+    private fun drawsOf(r: JsonObject): List<Map<String, Any?>> {
+        val memory = NameplateMemory()
+        val got = ArrayList<Map<String, Any?>>()
+        for (e in rows(r["events"])) {
+            val shown = e["shown"].stringValue
+            if (shown != null) {
+                memory.shown(shown, e.d("t"))
+            } else {
+                val stream = Stream(e.s("draw"))
+                got += mapOf("nameplate" to memory.draw(stream.source, e.d("t")), "consumed" to stream.at.toLong())
+            }
+        }
+        return got
+    }
+
+    @Test
+    fun nameplateMemory() {
+        val f = Failures("peer-matrix local nameplateMemory")
+        val m = l.o("nameplateMemory")
+        f.equal(LOCAL_DIAL_BUDGET_SECONDS, m.i("seconds")) { "seconds" }
+        for (r in rows(m["rows"])) f.equal(plain(r["want"]), drawsOf(r)) { r.s("id") }
+        f.done(8)
+    }
+
+    /** One `renewFloor` row: the answers of its checks. */
+    private fun checksOf(r: JsonObject): List<Map<String, Any?>> {
+        val floor = RenewFloor()
+        val got = ArrayList<Map<String, Any?>>()
+        for (e in rows(r["events"])) {
+            when (e["ended"].stringValue) {
+                null -> floor.check(e.d("t")).let { got += mapOf("allowed" to it.allowed, "retryIn" to it.retryIn.toLong()) }
+                "too-many-tries" -> floor.ended(RenewEnd.TooManyTries, e.d("t"))
+                else -> floor.ended(RenewEnd.WrongCode, e.d("t"))
+            }
+        }
+        return got
+    }
+
+    @Test
+    fun renewFloor() {
+        val f = Failures("peer-matrix local renewFloor")
+        val m = l.o("renewFloor")
+        f.equal(
+            listOf(LOCAL_RENEW_COOLDOWN_SECONDS, LOCAL_RENEW_WRONG_SECONDS, LOCAL_RENEW_WRONG_LIMIT),
+            listOf(m.i("cooldownSeconds"), m.i("wrongSeconds"), m.i("wrongLimit")),
+        ) { "constants" }
+        for (r in rows(m["rows"])) f.equal(plain(r["want"]), checksOf(r)) { r.s("id") }
+        f.done(7)
+    }
+
+    private fun joinInputOf(i: JsonObject): JoinInput = when (i.s("kind")) {
+        "code" -> JoinInput.Code(i.s("nameplate"))
+        "qr" -> JoinInput.Qr(i.s("instance"))
+        "other-app" -> JoinInput.OtherApp
+        else -> JoinInput.Invalid
+    }
+
+    private fun outcomeOf(wire: String): DialOutcome = when (wire) {
+        "transport" -> DialOutcome.Transport
+        "before-c2" -> DialOutcome.BeforeC2
+        "budget" -> DialOutcome.Budget
+        else -> DialOutcome.AfterC2
+    }
+
+    /** The plan of one `joinReasons` row: a typed code whose budget was spent at the start is told to the plan, as the joiner does. */
+    private fun planOf(r: JsonObject): JoinPlan {
+        val i = r.o("input")
+        val plan = JoinPlan(joinInputOf(i))
+        if (i.s("kind") == "code") {
+            val budget = DialBudget()
+            budget.spend(i.s("nameplate"), 0.0, r.i("budget"))
+            if (!budget.check(i.s("nameplate"), 1.0).allowed) plan.startSpent()
+        }
+        // Two matching adverts, so a plan that browses has a dial for each outcome.
+        for (n in listOf("a", "b")) plan.see(i.sOrNull("instance") ?: "p1-$n", true, i.sOrNull("nameplate") ?: "00")
+        return plan
+    }
+
+    private fun reasonOf(r: JsonObject): Map<String, Any?> {
+        val plan = planOf(r)
+        for (o in strings(r["dials"])) {
+            if (plan.next() == null) break
+            plan.ended(outcomeOf(o))
+        }
+        return mapOf("result" to plan.result().wire, "reason" to plan.reason())
+    }
+
+    @Test
+    fun joinReasons() {
+        val f = Failures("peer-matrix local joinReasons")
+        val m = l.o("joinReasons")
+        f.equal(listOf("invalid", "other-app", "spent-at-start", "wrong", "spent-mid-join"), strings(m["precedence"])) { "precedence" }
+        for (r in rows(m["rows"])) f.equal(plain(r["want"]), reasonOf(r)) { r.s("id") }
+        f.done(9)
     }
 
     @Test

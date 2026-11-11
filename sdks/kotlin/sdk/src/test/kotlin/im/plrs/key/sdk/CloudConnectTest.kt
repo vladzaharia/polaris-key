@@ -747,4 +747,37 @@ class CloudConnectTest {
         c.discover()
         until { w.net.kinds() == listOf("m=l") }
     }
+
+    @Test
+    fun localLinksOnChangeFollowsTheGateTheListAndTheLastSeenTime() = runBlocking {
+        val w = World()
+        val c = w.client(w.a, signedIn = false)
+        val links = c.cloudConnect.localLinks
+        var n = 0
+        val off = links.onChange { n++ }
+        // The gate flips on: an event, in both directions.
+        w.connectFragment = localFragment
+        c.discover()
+        assertTrue(links.localPairing())
+        val flipped = n
+        assertTrue(flipped >= 1)
+        w.connectFragment = """{"enabled":true,"relay":true,"endpoints":{"identity":"x","devices":"y"}}"""
+        c.discover()
+        assertFalse(links.localPairing())
+        assertTrue(n > flipped)
+        // Rename is an event even with the gate off (never gated); a last-seen write is one, a repeat in the hour is not.
+        val id = linkRow(c)
+        val before = n
+        assertTrue(links.rename(id, "Studio"))
+        assertEquals(before + 1, n)
+        val row = c.connect.local.store.rows().single()
+        val ref = LocalRef(id, row.label, row.cats, row.peerKey, localTag(im.plrs.key.core.Base64Url.decode(row.secret)!!))
+        c.connect.local.touch(ref)
+        assertEquals(before + 2, n)
+        c.connect.local.touch(ref)
+        assertEquals(before + 2, n)
+        off()
+        links.rename(id, "Again")
+        assertEquals(before + 2, n)
+    }
 }

@@ -4,6 +4,10 @@
 // is made). It never retries a failed code by itself, and a QR is never limited. The choices over one browse are :core's
 // `JoinPlan`. Mirrors sdk-node's `connect/localJoiner.ts`.
 //
+// Cancelling (the caller's coroutine, or the gate going off) closes the dial, stops the browse and wipes the QR secret, the
+// generator, the scalar, the ISK and the PSK of the dial in flight. It refunds no dial: the budget was taken when the dial was
+// made, in one step, before anything suspends.
+//
 // A typed code's Elligator map runs per dial, between a chosen advert and its connection (at most twice per code in 300 s,
 // the accepted case of the spec); a QR's is made before anything is dialled.
 
@@ -18,6 +22,8 @@
 package im.plrs.key.sdk
 
 import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.LocalLinksCap
+import im.plrs.key.core.PairingCodeFailedReason
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.peer.CodeVerdict
 import im.plrs.key.core.peer.CpaceKind
@@ -74,12 +80,15 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.net.SocketFactory
 
 private const val MILLIS = 1000
@@ -87,6 +96,7 @@ private const val DIAL_MILLIS = 10_000
 private const val KEY_BYTES = 32
 private const val CLOSE_WAIT_MILLIS = 2_000L
 private const val SPENT = "That code did not work. Wait a few minutes, or ask the other device for a new code."
+private const val OTHER_APP = "This code is for another app."
 
 private class Candidate(val hosts: List<String>, val port: Int, val socketFactory: SocketFactory?)
 
@@ -111,10 +121,9 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
     private var done = false
     private var current: LocalAttempt? = null
     private val result = CompletableDeferred<LocalPaired>()
-    private var qrInvalidDetail: String? = null
 
-    /** A code whose dials are spent answers with the hint to wait or ask for a new code. */
-    private var budgetSpent = false
+    /** Key material of the dial in flight (the scalar, the generator, the ISK, the PSK): wiped when the join ends. */
+    private val secrets = ArrayList<ByteArray>()
 
     init {
         var input: JoinInput = JoinInput.Invalid
@@ -134,7 +143,7 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
                     qrSecret = q.secret
                 }
 
-                QrVerdict.OtherApp -> qrInvalidDetail = "This code is for another app."
+                QrVerdict.OtherApp -> input = JoinInput.OtherApp
 
                 QrVerdict.Invalid -> Unit
             }
@@ -144,19 +153,25 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
 
     override fun toString(): String = "LocalJoiner"
 
-    /** Stop the join: it answers `peer-closed` and every connection in flight closes. */
+    /** Stop the join (the gate went off): it answers `peer-closed`, reason `closed`, and every connection in flight closes. */
     fun cancel() {
-        finish(PolarisException(ErrorCode.peerClosed, "The pairing was closed."))
+        finish(LocalPairingException(ErrorCode.peerClosed, "The pairing was closed.", reason = LocalPairFailureReason.Closed.wire))
     }
 
     suspend fun run(): LocalPaired {
         try {
             start()
             return result.await()
+        } catch (e: CancellationException) {
+            // The caller's coroutine was cancelled: the dial closes and every secret is wiped. No dial is refunded.
+            finish(e)
+            throw e
         } finally {
-            // A session that is closing gets a moment to flush its CLOSE record.
-            if (synchronized(lock) { current } != null) withTimeoutOrNull(CLOSE_WAIT_MILLIS) { sessionOver.await() }
-            scope.cancel()
+            withContext(NonCancellable) {
+                // A session that is closing gets a moment to flush its CLOSE record.
+                if (synchronized(lock) { current } != null) withTimeoutOrNull(CLOSE_WAIT_MILLIS) { sessionOver.await() }
+                scope.cancel()
+            }
         }
     }
 
@@ -168,7 +183,7 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
         // A code whose dials are spent answers at once and browses nothing; a QR is never limited.
         val np = nameplate
         if (np != null && !budget.check(np, o.mono()).allowed) {
-            budgetSpent = true
+            synchronized(lock) { plan.startSpent() }
             finish(failed(false))
             return
         }
@@ -202,14 +217,26 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
         }
     }
 
-    private fun failed(notFound: Boolean): PolarisException = if (notFound) {
-        PolarisException(ErrorCode.pairingNotFound, "The other device was not found on this network.")
-    } else {
-        PolarisException(
-            ErrorCode.pairingCodeFailed,
-            qrInvalidDetail
-                ?: if (budgetSpent) SPENT else "That code did not work.",
-        )
+    private fun failed(notFound: Boolean): PolarisException {
+        if (notFound) return LocalPairingException(ErrorCode.pairingNotFound, "The other device was not found on this network.")
+        // The plan's reason; a failure it cannot name is a wrong code.
+        val reason = synchronized(lock) { plan.reason() } ?: PairingCodeFailedReason.wrong
+        val message = when (reason) {
+            PairingCodeFailedReason.otherApp -> OTHER_APP
+            PairingCodeFailedReason.spent -> SPENT
+            else -> "That code did not work."
+        }
+        return LocalPairingException(ErrorCode.pairingCodeFailed, message, reason = reason)
+    }
+
+    /** Why a session that reached the transport ended without a link (`peer-closed`'s reason). */
+    private fun closeReason(a: LocalAttempt, c: SessionClosed): LocalPairFailureReason = when {
+        // This person said no, or the other device did (a `peer_bye` before any link was exchanged).
+        a.declined || (c.byPeer && c.code == PeerCloseCode.peer_bye.name) -> LocalPairFailureReason.Declined
+
+        c.code == PeerCloseCode.peer_timeout.name -> LocalPairFailureReason.Timeout
+
+        else -> LocalPairFailureReason.Closed
     }
 
     /** Browse over and nothing is dialling: the answer is the plan's. */
@@ -293,8 +320,7 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
         if (np != null) {
             // Taken in one step when the dial is made, so joins that overlap (on any thread) cannot multiply the dials.
             if (!budget.takeIfAllowed(np, t, 1).allowed) {
-                budgetSpent = true
-                ended(DialOutcome.BeforeC2)
+                ended(DialOutcome.Budget)
                 synchronized(lock) { browseOver = true }
                 return
             }
@@ -307,7 +333,10 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
         // A typed code's map runs now, once per dial and at most twice per code in 300 s.
         val gen = qrGen?.copyOf() ?: cpaceGenerator(cpacePrsCode(requireNotNull(password)), ci, sid)
         val y = cpaceScalar(o.random)
+        keep(y, gen)
         try {
+            // A join cancelled while the generator was being made stops here: the finally wipes what it made.
+            if (synchronized(lock) { done }) return
             dialWith(y, gen, sid, c)
         } finally {
             y.fill(0)
@@ -348,6 +377,7 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
             return
         }
         val isk = cpaceIsk(sid, y, ya, reply, initiator = true)
+        if (isk != null) keep(isk)
         if (isk == null || synchronized(lock) { done }) {
             isk?.fill(0)
             pipe.close()
@@ -355,8 +385,15 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
             return
         }
         val psk = cpacePsk(isk, src.slug)
+        keep(psk)
         try {
-            session(pipe, psk, isk, src.store.count(), o.mono() - at)
+            val held = src.store.count()
+            // Cancelled while the store was read: nothing starts, and the finally wipes the keys.
+            if (synchronized(lock) { done }) {
+                pipe.close()
+                return
+            }
+            session(pipe, psk, isk, held, o.mono() - at)
         } finally {
             // The session is over: its channel needed the keys for the handshake only.
             isk.fill(0)
@@ -386,13 +423,19 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
 
     private suspend fun session(pipe: TcpPipe, psk: ByteArray, isk: ByteArray, held: Int, elapsed: Double) {
         val a = LocalAttempt()
-        synchronized(lock) { current = a }
+        synchronized(lock) {
+            if (done) {
+                pipe.close()
+                return
+            }
+            current = a
+        }
         val key = o.random(KEY_BYTES)
         a.linkKey = key
-        var up = false
+        val up = AtomicBoolean(false)
         val handlers = LinkHandlers<Unit>(
             onEstablished = { _, e ->
-                up = true
+                up.set(true)
                 // The first session that reaches the transport ends the dial.
                 ended(DialOutcome.Transport)
                 a.hello = e.hello
@@ -405,46 +448,43 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
                 }
             },
             onLocalLink = { e -> a.storing = scope.launch { store(a, e) } },
-            onClosed = { c ->
-                scope.launch {
-                    a.closed = SessionClosed(c.code, c.byPeer)
-                    a.storing?.join()
-                    a.linkKey.fill(0)
-                    a.closers.fire(SessionClosed(c.code, c.byPeer))
-                    if (!up) ended(DialOutcome.AfterC2)
-                    if (!a.linked && !synchronized(lock) { done }) {
-                        if (up) {
-                            finish(
-                                if (a.failure == LocalPairFailureReason.Full) {
-                                    localFull()
-                                } else {
-                                    PolarisException(
-                                        ErrorCode.peerClosed,
-                                        if (a.declined) "The pairing was declined." else "The pairing ended before it finished.",
-                                    )
-                                },
-                            )
-                        }
-                    }
-                    sessionOver.complete(Unit)
-                }
-            },
+            onClosed = { c -> scope.launch { sessionClosed(a, SessionClosed(c.code, c.byPeer), up) } },
             anonymous = true,
         )
         val link = PeerLink(pipe, scope, handlers, maxOf(1.0, LOCAL_ATTEMPT_SECONDS - elapsed)) { send, onEvent ->
             PeerChannel(
-                NoiseRole.initiator, src.slug, RawNoiseStatic(key), null, HelloInfo(hostPlatform(), src.slug, o.label), send, onEvent,
+                NoiseRole.initiator, src.slug, RawNoiseStatic(key), null, HelloInfo(pairingPlatform(), src.slug, o.label), send, onEvent,
                 caps = emptyList(), mode = PeerMode.q,
                 pair = PairingOptions(psk, isk, held, cats, o.label, elapsed),
             )
         }
         a.link = link
         scope.launch { link.run() }
+        // Cancelled while the session was being made: `finish` found no link to close, so it is closed here.
+        if (synchronized(lock) { done }) scope.launch { link.close(PeerCloseCode.peer_bye) }
         link.start()
         sessionOver.await()
     }
 
     private val sessionOver = CompletableDeferred<Unit>()
+
+    /** The session ended: a pairing that reached the transport and made no link answers `peer-closed`, with why. */
+    private suspend fun sessionClosed(a: LocalAttempt, c: SessionClosed, up: AtomicBoolean) {
+        a.closed = c
+        a.storing?.join()
+        a.linkKey.fill(0)
+        a.closers.fire(c)
+        if (!up.get()) ended(DialOutcome.AfterC2)
+        if (!a.linked && up.get() && !synchronized(lock) { done }) finish(endedWithoutLink(a, c))
+        sessionOver.complete(Unit)
+    }
+
+    private fun endedWithoutLink(a: LocalAttempt, c: SessionClosed): PolarisException {
+        if (a.failure == LocalPairFailureReason.Full) return localFull()
+        val why = closeReason(a, c)
+        val message = if (why == LocalPairFailureReason.Declined) "The pairing was declined." else "The pairing ended before it finished."
+        return LocalPairingException(ErrorCode.peerClosed, message, reason = why.wire)
+    }
 
     private suspend fun store(a: LocalAttempt, e: SessionEvent.LocalLinked) {
         try {
@@ -455,6 +495,17 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
         } catch (x: Exception) {
             a.failure = LocalPairFailureReason.Closed
             finish(x)
+        }
+    }
+
+    /** Hold a secret until the join ends; one made after it ended is wiped at once. */
+    private fun keep(vararg made: ByteArray) {
+        synchronized(lock) {
+            if (done) {
+                for (k in made) k.fill(0)
+            } else {
+                secrets += made
+            }
         }
     }
 
@@ -476,6 +527,11 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
         qrSecret?.fill(0)
         qrGen?.fill(0)
         current?.linkKey?.fill(0)
+        // Every key made for the dial in flight goes; one made after this is wiped at once by [keep].
+        synchronized(lock) {
+            for (k in secrets) k.fill(0)
+            secrets.clear()
+        }
         if (ok != null) {
             result.complete(ok)
         } else {
