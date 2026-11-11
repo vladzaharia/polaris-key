@@ -47,6 +47,7 @@ const ENVELOPE_KEYS = [
   "cardOpacity",
   "orbit",
   "dim",
+  "ink",
   "check",
   "flare",
   "ambient",
@@ -285,6 +286,19 @@ describe("size, colours and a view that comes back", () => {
     const q = qrOf(golden.rows);
     expect(cardGeometry(q, 0.6).side).toBeCloseTo(264, 9);
     expect(cardGeometry(q, 0.6).half).toBeGreaterThan(cardGeometry(q).half);
+  });
+
+  it("fades the dark modules toward the paper while the code expires", () => {
+    const tl = dispatchTimeline(createTimeline(0), "expired", 5);
+    const at = (t: number) => envelopeAt(tl, t).ink;
+    expect(at(5)).toBe(1);
+    expect(at(5.5)).toBeLessThan(1);
+    expect(at(6)).toBeCloseTo(LIGHT_CARD.inkExpired, 9);
+    expect(at(60)).toBeCloseTo(LIGHT_CARD.inkExpired, 9);
+    // A new code brings the ink back as the card breaks.
+    const again = dispatchTimeline(tl, "newCode", 9);
+    expect(envelopeAt(again, 9).ink).toBeCloseTo(LIGHT_CARD.inkExpired, 9);
+    expect(envelopeAt(again, 9.45).ink).toBe(1);
   });
 
   it("takes the product's accent for the glow and leaves violet the default", () => {

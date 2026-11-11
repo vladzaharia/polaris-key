@@ -353,6 +353,29 @@ describe("the show screen's window rule", () => {
   ] as const;
   for (const [width, height] of LAPTOPS)
     for (const scheme of SCHEMES)
+      it(`${width}x${height} ${scheme}: the expired QR view keeps Show a new code and Cancel in view, centred or beside`, async () => {
+        await page.viewport(width, height);
+        const kit = await mount(find("the QR stays dimmed"), scheme, 16);
+        await until(() => kit.querySelector(".qr canvas, .qr svg"), "the QR");
+        for (const k of ["common.cancel", "localPairing.showNew"])
+          expect(
+            kit.querySelector(`[data-key="${k}"]`)!.getBoundingClientRect()
+              .bottom,
+            `${k} below the fold`,
+          ).toBeLessThanOrEqual(innerHeight + 0.5);
+        expect(
+          kit.querySelector('[data-key="localPairing.toCode"]'),
+        ).toBeNull();
+        if (width >= 720 && height >= 540 && height <= 900)
+          expect(
+            document.documentElement.scrollHeight,
+            "the window scrolls",
+          ).toBeLessThanOrEqual(document.documentElement.clientHeight + 1);
+        await shoot("window.show-qr-expired", `${width}x${height}-${scheme}`);
+      });
+
+  for (const [width, height] of LAPTOPS)
+    for (const scheme of SCHEMES)
       it(`${width}x${height} ${scheme}: the QR view keeps Cancel and the way back in view`, async () => {
         await page.viewport(width, height);
         const kit = await mount(find(SHOW_QR), scheme, 16);
@@ -364,6 +387,11 @@ describe("the show screen's window rule", () => {
             `${k} below the fold`,
           ).toBeLessThanOrEqual(innerHeight + 0.5);
         noSideways();
+        if (width >= 720 && height >= 540)
+          expect(
+            document.documentElement.scrollHeight,
+            "the window scrolls",
+          ).toBeLessThanOrEqual(document.documentElement.clientHeight + 1);
         await shoot("window.show-qr", `laptop-${width}x${height}-${scheme}`);
       });
 
@@ -755,7 +783,18 @@ describe("the QR view: expiry, announcements and the first reveal", () => {
       "the expired line",
     );
     expect(kit.querySelector(".qr canvas"), "still the card").not.toBeNull();
-    expect(key(kit, "localPairing.toCode")).not.toBeNull();
+    // Said once: the title names the state, with no instruction, no switch and no time row.
+    expect(
+      kit.querySelector<HTMLElement>('[data-part="title"]')!.textContent,
+    ).toBe("Code expired");
+    expect(key(kit, "localPairing.qrBody")).toBeNull();
+    expect(key(kit, "localPairing.toCode")).toBeNull();
+    expect(key(kit, "localPairing.expires")).toBeNull();
+    expect(
+      [...kit.querySelectorAll("*")].filter(
+        (e) => e.children.length === 0 && e.textContent === "The code expired.",
+      ),
+    ).toHaveLength(1);
     expect(key(kit, "localPairing.waitingDevice")).toBeNull();
     const again = key(kit, "localPairing.showNew")!;
     expect(again.getAttribute("data-variant")).toBe("primary");
@@ -767,6 +806,15 @@ describe("the QR view: expiry, announcements and the first reveal", () => {
     press(again);
     await until(() => f.calls.pair === 2, "the next window");
     f.seen.pair!.onCode(code("1111 2222"));
+    // The pressed button is gone: focus goes to the stage, and the change is said.
+    await until(
+      () => document.activeElement === kit.querySelector(".qr"),
+      "focus on the stage",
+    );
+    await until(
+      () => said(kit).includes("The code changed"),
+      "the announcement",
+    );
     await tickUntil(
       () => !key(kit, "localPairing.failedExpired"),
       "the new code",
@@ -779,6 +827,23 @@ describe("the QR view: expiry, announcements and the first reveal", () => {
       () => paints.at(-1)?.phase === "refreshing",
       "the new code's break",
     );
+  });
+
+  it("settles an expired card to one still frame: the loop stops", async () => {
+    const { f, kit } = await inQr();
+    f.seen.pair!.onEnd({ reason: "expired" });
+    await tickUntil(() => paints.at(-1)?.phase === "expired", "expired");
+    for (let i = 0; i < 150; i++) {
+      clk.t += 1 / 60;
+      await frame();
+    }
+    const parked = paints.length;
+    for (let i = 0; i < 30; i++) {
+      clk.t += 1 / 60;
+      await frame();
+    }
+    expect(paints.length, "paints after it settled").toBe(parked);
+    expect(kit.querySelector(".qr canvas")).not.toBeNull();
   });
 
   it("expires in place on the code view too, digits kept", async () => {

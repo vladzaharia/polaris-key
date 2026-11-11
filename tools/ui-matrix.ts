@@ -7648,19 +7648,23 @@ function localFamily(a: A): Draft[] {
       LP,
       "show-qr",
       [
-        "localPairing.qrTitle",
-        "localPairing.qrBody",
+        "core.codes.sign-in-expired.title",
         "a11y.qrPairing",
-        "localPairing.failedExpired",
         "localPairing.showNew",
-        "localPairing.toCode",
         "common.cancel",
       ],
       {
         ...inv(
           "An expired window is never waiting: no time left, no waiting row.",
           {
-            copy: ["localPairing.expires", "localPairing.waitingDevice"],
+            copy: [
+              "localPairing.expires",
+              "localPairing.waitingDevice",
+              "localPairing.title",
+              "localPairing.qrTitle",
+              "localPairing.toQr",
+              "localPairing.toCode",
+            ],
           },
         ),
         notApplicable: QR_LATER,
@@ -7672,19 +7676,23 @@ function localFamily(a: A): Draft[] {
       LP,
       "show",
       [
-        "localPairing.title",
-        "localPairing.showBody",
+        "core.codes.sign-in-expired.title",
         "a11y.linkCode",
-        "localPairing.failedExpired",
         "localPairing.showNew",
-        "localPairing.toQr",
         "common.cancel",
       ],
       {
         ...inv(
           "An expired window is never waiting: no time left, no waiting row.",
           {
-            copy: ["localPairing.expires", "localPairing.waitingDevice"],
+            copy: [
+              "localPairing.expires",
+              "localPairing.waitingDevice",
+              "localPairing.title",
+              "localPairing.qrTitle",
+              "localPairing.toQr",
+              "localPairing.toCode",
+            ],
           },
         ),
         notApplicable: QR_LATER,
@@ -7720,12 +7728,9 @@ function localFamily(a: A): Draft[] {
       LP,
       "show-qr",
       [
-        "localPairing.qrTitle",
-        "localPairing.qrBody",
+        "core.codes.sign-in-expired.title",
         "a11y.qrPairing",
-        "localPairing.failedExpired",
         "localPairing.showNew",
-        "localPairing.toCode",
         "common.cancel",
         "a11y.busy",
       ],

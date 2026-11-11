@@ -15533,17 +15533,21 @@
         "copy": [
           "a11y.qrPairing",
           "common.cancel",
-          "localPairing.failedExpired",
-          "localPairing.qrBody",
-          "localPairing.qrTitle",
-          "localPairing.showNew",
-          "localPairing.toCode"
+          "core.codes.sign-in-expired.title",
+          "localPairing.showNew"
         ],
         "actions": ["cancel"]
       },
       "mustNot": {
         "invariant": "An expired window is never waiting: no time left, no waiting row.",
-        "copy": ["localPairing.expires", "localPairing.waitingDevice"]
+        "copy": [
+          "localPairing.expires",
+          "localPairing.qrTitle",
+          "localPairing.title",
+          "localPairing.toCode",
+          "localPairing.toQr",
+          "localPairing.waitingDevice"
+        ]
       },
       "notApplicable": {
         "sdks": ["godot"],
@@ -15567,17 +15571,21 @@
         "copy": [
           "a11y.linkCode",
           "common.cancel",
-          "localPairing.failedExpired",
-          "localPairing.showBody",
-          "localPairing.showNew",
-          "localPairing.title",
-          "localPairing.toQr"
+          "core.codes.sign-in-expired.title",
+          "localPairing.showNew"
         ],
         "actions": ["cancel"]
       },
       "mustNot": {
         "invariant": "An expired window is never waiting: no time left, no waiting row.",
-        "copy": ["localPairing.expires", "localPairing.waitingDevice"]
+        "copy": [
+          "localPairing.expires",
+          "localPairing.qrTitle",
+          "localPairing.title",
+          "localPairing.toCode",
+          "localPairing.toQr",
+          "localPairing.waitingDevice"
+        ]
       },
       "notApplicable": {
         "sdks": ["godot"],
@@ -15642,11 +15650,8 @@
           "a11y.busy",
           "a11y.qrPairing",
           "common.cancel",
-          "localPairing.failedExpired",
-          "localPairing.qrBody",
-          "localPairing.qrTitle",
-          "localPairing.showNew",
-          "localPairing.toCode"
+          "core.codes.sign-in-expired.title",
+          "localPairing.showNew"
         ],
         "actions": ["cancel"],
         "disabled": ["localPairing.showNew"]

@@ -142,6 +142,7 @@ function drawCard(
   g: CardGeometry,
   alpha: number,
   look: Look,
+  ink = 1,
 ): void {
   if (alpha <= 0.01) return;
   const { x0, y0, side, cell } = g;
@@ -158,7 +159,8 @@ function drawCard(
   ctx.restore();
 
   ctx.save();
-  ctx.globalAlpha = alpha;
+  // The dark modules fade toward the paper when the code has expired, so it cannot be scanned.
+  ctx.globalAlpha = alpha * ink;
   ctx.fillStyle = COLORS.ink;
   for (let i = 0; i < g.darks.length; i += 2) {
     ctx.beginPath();
@@ -262,7 +264,7 @@ function paint(
   ctx.fillStyle = rgbaOf(COLORS.night, 0.24);
   ctx.fillRect(0, 0, S, S);
   const geometry = shownGeometry(sim, env);
-  drawCard(ctx, geometry, env.cardOpacity * env.dim, look);
+  drawCard(ctx, geometry, env.cardOpacity * env.dim, look, env.ink);
   const sp = spritesOf(look.tints);
   const p = sim.particles;
   ctx.globalCompositeOperation = "lighter";
@@ -291,7 +293,7 @@ function paintStill(
   ctx.globalAlpha = 1;
   ctx.fillStyle = rgbaOf(COLORS.night);
   ctx.fillRect(0, 0, S, S);
-  drawCard(ctx, g, env.cardOpacity * env.dim, look);
+  drawCard(ctx, g, env.cardOpacity * env.dim, look, env.ink);
   if (env.check > 0) drawCheck(ctx, look);
 }
 
@@ -364,6 +366,7 @@ function Canvas(props: {
     sim: LightCardSim;
     data: string;
     draw: () => void;
+    wake: () => void;
   } | null>(null);
   const reduced = useReducedMotion(cv);
   const latest = useRef(props);
@@ -443,13 +446,23 @@ function Canvas(props: {
         settled: props.settled || props.expired,
       });
       if (props.expired) expire(sim);
-      const state = { sim, data: props.data, draw: () => undefined };
+      const state = {
+        sim,
+        data: props.data,
+        draw: () => undefined,
+        wake: () => {
+          parked = false;
+          sync();
+        },
+      };
       live.current = state;
       ctx.fillStyle = rgbaOf(COLORS.night);
       ctx.fillRect(0, 0, LIGHT_CARD.stage, LIGHT_CARD.stage);
       let raf = 0;
       let lastPaint = -Infinity;
       let running = false;
+      // An expired card that has finished dimming is drawn once and the loop stops.
+      let parked = false;
       let visible = true;
       let onScreen = true;
       const frame = (): void => {
@@ -464,6 +477,13 @@ function Canvas(props: {
           expire(sim);
         const env = simEnvelope(sim);
         paint(ctx, sim, env, look.current);
+        if (
+          env.phase === "expired" &&
+          env.age >= LIGHT_CARD.durations.expireOrbit + 0.3
+        ) {
+          parked = true;
+          sync();
+        }
         seam().onPaint?.({
           rate: env0.frameRate,
           now,
@@ -473,7 +493,7 @@ function Canvas(props: {
         });
       };
       const sync = (): void => {
-        const want = visible && onScreen;
+        const want = visible && onScreen && !parked;
         if (want && !running) {
           running = true;
           resume(sim, clockOf());
@@ -544,6 +564,7 @@ function Canvas(props: {
     const s = live.current;
     if (!s || s.data === props.data) return;
     s.data = props.data;
+    s.wake();
     if (!newCode(s.sim, qr)) {
       // Still forming: start the new code's run over.
       s.sim.codes = [
@@ -562,7 +583,14 @@ function Canvas(props: {
   }, [props.connected]);
 
   return (
-    <figure className="qr" data-part="qr" data-key={labelKey} data-lightcard="">
+    <figure
+      className="qr"
+      data-part="qr"
+      data-key={labelKey}
+      data-lightcard=""
+      tabIndex={-1}
+      aria-label={plain(c, labelKey)}
+    >
       <canvas ref={cv} role="img" aria-label={plain(c, labelKey)} />
     </figure>
   );
