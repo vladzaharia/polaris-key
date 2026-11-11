@@ -33,6 +33,7 @@ import {
   MAX_LIVE_LOCAL_ADVERTS,
   MAX_LOCAL_LINKS,
   NameplateMemory,
+  RenewFloor,
   cleanLabel,
   dialsLeft,
 } from "@polaris-key/client-core/peer";
@@ -42,6 +43,7 @@ import {
   cancelled,
   checkOptions,
   full,
+  cooldown,
   off,
   reachableFull,
   type LocalCode,
@@ -98,6 +100,8 @@ const budgetOf = (slug: string): DialBudget => {
  * process, like the dial budgets: a window that closes and the next one that opens, even through a
  * new client, never share a nameplate within 300 s.
  */
+const defaultMono = (): number => performance.now() / 1000;
+
 const NAMEPLATES = new Map<string, NameplateMemory>();
 const memoryOf = (slug: string): NameplateMemory => {
   let m = NAMEPLATES.get(slug);
@@ -105,10 +109,22 @@ const memoryOf = (slug: string): NameplateMemory => {
   return m;
 };
 
-/** Forget every dial budget and every remembered nameplate. For tests. @internal */
+/**
+ * The renewal floors, one per product for the whole process, like the dial budgets: a host that
+ * renews from `onEnd` meets the same floor through a new client.
+ */
+const FLOORS = new Map<string, RenewFloor>();
+const floorOf = (slug: string): RenewFloor => {
+  let f = FLOORS.get(slug);
+  if (f === undefined) FLOORS.set(slug, (f = new RenewFloor()));
+  return f;
+};
+
+/** Forget every dial budget, remembered nameplate and renewal floor. For tests. @internal */
 export const resetLocalBudgets = (): void => {
   BUDGETS.clear();
   NAMEPLATES.clear();
+  FLOORS.clear();
 };
 
 /**
@@ -117,7 +133,7 @@ export const resetLocalBudgets = (): void => {
  */
 class PairHandle implements LocalPairHandle {
   #cur: Shower;
-  #renewing: Promise<LocalCode> | null = null;
+  #renewing: { run: Promise<LocalCode>; stop: boolean } | null = null;
 
   constructor(
     first: Shower,
@@ -135,16 +151,32 @@ class PairHandle implements LocalPairHandle {
     return this.#cur.code();
   }
 
-  stop(): Promise<void> {
-    return this.#cur.stop();
+  /**
+   * Close the window. A renewal in flight is told to stop: the window it opens is closed before
+   * anyone sees a code, and the renewal rejects `closed`.
+   */
+  async stop(): Promise<void> {
+    const job = this.#renewing;
+    if (job !== null) {
+      job.stop = true;
+      await job.run.catch(() => undefined);
+    }
+    await this.#cur.stop();
   }
 
   /** Two calls at once share one new window. */
   renew(): Promise<LocalCode> {
-    this.#renewing ??= (async () => {
+    if (this.#renewing !== null) return this.#renewing.run;
+    const job = { stop: false } as { run: Promise<LocalCode>; stop: boolean };
+    job.run = (async () => {
       try {
         const next = await this.again(this.#cur);
         this.#cur = next;
+        if (job.stop) {
+          await next.stop();
+          throw new LanError("closed", "The window closed.");
+        }
+        next.reveal();
         const c = next.code();
         if (c === null) throw new LanError("closed", "The window closed.");
         return c;
@@ -152,7 +184,8 @@ class PairHandle implements LocalPairHandle {
         this.#renewing = null;
       }
     })();
-    return this.#renewing;
+    this.#renewing = job;
+    return job.run;
   }
 }
 
@@ -160,6 +193,7 @@ export class LocalLinks {
   readonly #src: LocalSource;
   readonly #budget: DialBudget;
   readonly #memory: NameplateMemory;
+  readonly #floor: RenewFloor;
   #lan: LanService | null = null;
   #unsub: (() => void)[] = [];
   readonly #sessions = new Set<ConnectSession>();
@@ -191,6 +225,7 @@ export class LocalLinks {
     this.#src = src;
     this.#budget = budgetOf(src.slug);
     this.#memory = memoryOf(src.slug);
+    this.#floor = floorOf(src.slug);
     // The gate moved or a link was forgotten: sessions that no longer have a footing end.
     this.#src.onChange(() => void this.#reconcile().catch(() => undefined));
     printAs(this, () => ({ links: "LocalLinks" }));
@@ -250,6 +285,7 @@ export class LocalLinks {
     )
       throw new LanError("bad_input", "seconds must be above 0.");
     const first = await this.#window(o, null);
+    first.reveal();
     return new PairHandle(first, (cur) => this.#window(o, cur));
   }
 
@@ -271,9 +307,14 @@ export class LocalLinks {
     const start = (async (): Promise<Shower> => {
       if ((await this.#src.store.count()) >= MAX_LOCAL_LINKS) throw full();
       await replacing?.close(null).catch(() => undefined);
+      // The SDK's floor under new windows (after a hard end, 30 s), checked once the window a
+      // renewal replaces has ended and been counted.
+      const floor = this.#floor.check((o.mono ?? defaultMono)());
+      if (!floor.allowed) throw cooldown(floor.retryIn);
       let mine: Shower | undefined;
-      mine = await Shower.start(this.#src, o, this.#memory, () => {
+      mine = await Shower.start(this.#src, o, this.#memory, (end, t) => {
         if (this.#shower === mine) this.#shower = null;
+        if (end !== null) this.#floor.ended(end, t);
       });
       this.#shower = mine;
       // The gate was cleared while the window was opening: it closes before anyone sees a code.

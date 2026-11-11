@@ -2022,7 +2022,7 @@ LOCAL_WINDOW_END_VALUES: Tuple[str, ...] = (
 
 
 class LocalPairFailure:
-    """Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled)."""
+    """Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled), `cooldown` (a new window or renewal inside the 30 s the SDK waits after a too-many-tries end or a second wrong-code window, WIRE-CONTRACT-V5 §15.12)."""
 
     DECLINED: Final = "declined"
     TIMEOUT: Final = "timeout"
@@ -2030,6 +2030,7 @@ class LocalPairFailure:
     TOO_MANY_TRIES: Final = "too-many-tries"
     CLOSED: Final = "closed"
     CANCELLED: Final = "cancelled"
+    COOLDOWN: Final = "cooldown"
 
 
 #: Every ``LocalPairFailure`` value, in source order.
@@ -2040,6 +2041,7 @@ LOCAL_PAIR_FAILURE_VALUES: Tuple[str, ...] = (
     "too-many-tries",
     "closed",
     "cancelled",
+    "cooldown",
 )
 
 

@@ -182,9 +182,12 @@ export interface LocalPairHandle {
   code(): LocalCode | null;
   /**
    * Close the window and open a new one with the same options: a new nameplate (never one a window
-   * of this app closed with in the last 300 s), a new code and QR, 300 s and no failures. The old
+   * of this app closed with in the last 300 s while another is free), a new code and QR, 300 s and no failures. The old
    * window ends with no `onEnd`. Works on a closed handle; refuses what `pair` refuses (the gate,
-   * the cap, another window). Resolves with the first code of the new window.
+   * the cap, another window) and, for 30 s after a window ended `too-many-tries` or after the
+   * second window within 10 minutes that ended after a failed guess, `peer-closed` with reason
+   * `cooldown` (so does `pair`). `stop()` while a renewal is opening closes the new window and the
+   * renewal rejects `closed`. Resolves with the first code of the new window.
    */
   renew(): Promise<LocalCode>;
 }
@@ -242,6 +245,14 @@ export const full = (): LocalPairingError =>
     ErrorCode.localLinksFull,
     "This device holds the most local links it can for this app.",
     { cap: "stored" },
+  );
+
+/** A new window inside the SDK's 30 s renewal floor (`RenewFloor`): `peer-closed`, reason `cooldown`. */
+export const cooldown = (retryIn: number): LocalPairingError =>
+  new LocalPairingError(
+    ErrorCode.peerClosed,
+    `Too many failed tries. Wait ${retryIn} s before opening another window.`,
+    { reason: "cooldown" },
   );
 
 /** Eight links are reachable already: turn one off before another is advertised (§15.12). */

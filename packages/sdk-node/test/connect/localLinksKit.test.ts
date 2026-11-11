@@ -38,6 +38,50 @@ import {
 } from "../lanFixtures.js";
 import { tmpDir } from "../lanFixtures.js";
 
+// Wraps the CPace calls the joiner makes so a test can see their secrets and act when one returns.
+const spy = vi.hoisted(() => ({
+  made: {} as Record<string, Uint8Array[]>,
+  after: {} as Record<string, (() => void) | undefined>,
+  isk: new Set<Uint8Array>(),
+}));
+vi.mock("@polaris-key/client-core/peer", async (orig) => {
+  const m = await orig<typeof import("@polaris-key/client-core/peer")>();
+  const note = (name: string, v: Uint8Array | null): void => {
+    if (v === null) return;
+    (spy.made[name] ??= []).push(v);
+  };
+  return {
+    ...m,
+    cpaceScalar: (...a: Parameters<typeof m.cpaceScalar>) => {
+      const v = m.cpaceScalar(...a);
+      note("cpaceScalar", v);
+      return v;
+    },
+    cpaceGenerator: async (...a: Parameters<typeof m.cpaceGenerator>) => {
+      const v = await m.cpaceGenerator(...a);
+      note("cpaceGenerator", v);
+      spy.after.cpaceGenerator?.();
+      return v;
+    },
+    cpaceIsk: async (...a: Parameters<typeof m.cpaceIsk>) => {
+      const v = await m.cpaceIsk(...a);
+      if (a[0].role === "initiator" && v !== null) {
+        spy.isk.add(v);
+        note("cpaceIsk", v);
+      }
+      return v;
+    },
+    cpacePsk: async (...a: Parameters<typeof m.cpacePsk>) => {
+      const v = await m.cpacePsk(...a);
+      if (spy.isk.has(a[0])) {
+        note("cpacePsk", v);
+        spy.after.cpacePsk?.();
+      }
+      return v;
+    },
+  };
+});
+
 const LOOP = { host: "127.0.0.1", allowLoopback: true } as const;
 
 let dirs: string[] = [];
@@ -48,6 +92,9 @@ let sockets: Socket[] = [];
 
 beforeEach(() => {
   resetLocalBudgets();
+  spy.made = {};
+  spy.after = {};
+  spy.isk.clear();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(T0 * 1000);
 });
@@ -410,7 +457,10 @@ describe("the shower: the code, the window and renew()", () => {
     let now = 1000;
     const s = await show(w.a, w.net, { mono: () => now });
     const port = advertOf(w.net).port;
-    for (let i = 0; i < 3; i++) await junk(port);
+    for (let i = 0; i < 3; i++) {
+      await junk(port);
+      now += 1;
+    }
     await until(() => s.interrupted.length >= 3);
     expect(s.interrupted.slice(0, 3)).toEqual([1, 2, 3]);
     expect(s.codes).toHaveLength(1);
@@ -464,8 +514,8 @@ describe("the shower: the code, the window and renew()", () => {
     await person.handle.stop();
     expect(person.ends).toEqual(["person"]);
 
-    // too-many-tries: the fifth counted guess
-    const tries = await show(w.a, w.net);
+    // too-many-tries: the fifth counted guess (the clock is injected: the renewal floor follows it)
+    const tries = await show(w.a, w.net, { mono: () => 1000 });
     for (let i = 0; i < 5; i++) {
       await until(() => tries.codes.length === i + 1 || !tries.handle.open);
       if (!tries.handle.open) break;
@@ -476,7 +526,7 @@ describe("the shower: the code, the window and renew()", () => {
     expect(tries.failed).toEqual(["too-many-tries"]);
 
     // stored: a link was made
-    const stored = await show(w.a, w.net);
+    const stored = await show(w.a, w.net, { mono: () => 2000 });
     await pairUp(w, stored, { code: stored.codes[0]!.code });
     await until(() => stored.ends.length === 1);
     expect(stored.ends).toEqual(["stored"]);
@@ -484,6 +534,7 @@ describe("the shower: the code, the window and renew()", () => {
     // off: the product turned pairing off
     const w2 = await world();
     const off = await show(w2.a, w2.net, {
+      mono: () => 2000,
       onEnd: (e: { reason: string }) => {
         advertsAtEnd = qrAdverts(w2.net).length;
         off.ends.push(e.reason);
@@ -494,6 +545,174 @@ describe("the shower: the code, the window and renew()", () => {
     await until(() => off.ends.length === 1);
     expect(off.ends).toEqual(["off"]);
     expect(advertsAtEnd).toBe(0);
+  });
+});
+
+describe("the shower: stop() against a renewal, the floor, the draw and the interruptions", () => {
+  /** An mdns whose advertise waits while `gate.hold` is set, so a window can be caught opening. */
+  function slowMdns(net: MemoryMdnsNetwork) {
+    const base = net.adapter();
+    const gate = {
+      hold: null as Promise<void> | null,
+      reached: 0,
+      release: (): void => undefined,
+    };
+    return {
+      gate,
+      mdns: {
+        browse: base.browse,
+        advertise: async (a: Parameters<typeof base.advertise>[0]) => {
+          if (gate.hold !== null) {
+            gate.reached++;
+            await gate.hold;
+          }
+          return base.advertise(a);
+        },
+      },
+      holdNext(): void {
+        gate.reached = 0;
+        gate.hold = new Promise<void>((r) => {
+          gate.release = () => {
+            gate.hold = null;
+            r();
+          };
+        });
+      },
+    };
+  }
+
+  /** Five counted wrong guesses: the window ends `too-many-tries`. */
+  async function exhaust(w: World, s: Shown): Promise<void> {
+    for (let i = 1; i <= 5 && s.handle.open; i++) {
+      await until(() => s.codes.length === i || !s.handle.open);
+      if (s.handle.open) await wrongGuess(w, i);
+    }
+    await until(() => s.ends.length === 1);
+  }
+
+  it("stop() while renew() is opening a window leaves no window, no advert and no code", async () => {
+    const w = await world();
+    const slow = slowMdns(w.net);
+    const s = await show(w.a, w.net, { mdns: slow.mdns });
+    slow.holdNext();
+    const renewing = s.handle.renew();
+    renewing.catch(() => undefined);
+    await until(() => slow.gate.reached === 1);
+    const stopping = s.handle.stop();
+    slow.gate.release();
+    await stopping;
+    await expect(renewing).rejects.toThrow("The window closed.");
+    expect(s.handle.open).toBe(false);
+    expect(s.handle.code()).toBeNull();
+    expect(qrAdverts(w.net)).toEqual([]);
+    // The new window was never shown.
+    expect(s.codes).toHaveLength(1);
+    expect(s.ends).toEqual(["person"]);
+  });
+
+  it("no code is shown for a window that closes off while it opens", async () => {
+    const w = await world();
+    const slow = slowMdns(w.net);
+    const codes: LocalCode[] = [];
+    const ends: string[] = [];
+    slow.holdNext();
+    const pairing = w.a.cloudConnect.localLinks.pair({
+      categories: ["notes"],
+      mdns: slow.mdns,
+      ...LOOP,
+      onCode: (c) => void codes.push(c),
+      onConfirm: () => undefined,
+      onEnd: (e) => void ends.push(e.reason),
+    });
+    pairing.catch(() => undefined);
+    await until(() => slow.gate.reached === 1);
+    w.worker.localPairing = false;
+    await w.a.discover();
+    slow.gate.release();
+    await expect(pairing).rejects.toMatchObject({ code: "local-pairing-off" });
+    expect(codes).toEqual([]);
+    expect(ends).toEqual(["off"]);
+    expect(qrAdverts(w.net)).toEqual([]);
+  });
+
+  it("after too-many-tries pair() and renew() are refused for 30 s with cooldown", async () => {
+    const w = await world();
+    let now = 1000;
+    const s = await show(w.a, w.net, { mono: () => now });
+    await exhaust(w, s);
+    expect(s.ends).toEqual(["too-many-tries"]);
+
+    now += 10;
+    const refused = { code: "peer-closed", reason: "cooldown" };
+    await expect(s.handle.renew()).rejects.toMatchObject(refused);
+    await expect(show(w.a, w.net, { mono: () => now })).rejects.toMatchObject(
+      refused,
+    );
+    expect(qrAdverts(w.net)).toEqual([]);
+    now += 19;
+    await expect(s.handle.renew()).rejects.toMatchObject(refused);
+    now += 1;
+    expect((await s.handle.renew()).reason).toBe("opened");
+  });
+
+  it("the second window that ends after a wrong guess within 10 minutes starts the cooldown; one does not", async () => {
+    const w = await world();
+    let now = 1000;
+    const s = await show(w.a, w.net, { mono: () => now });
+    await wrongGuess(w);
+    await until(() => s.codes.length === 2);
+    // The first such window: the renewal opens.
+    now += 100;
+    expect((await s.handle.renew()).failures).toBe(0);
+    await wrongGuess(w, 8);
+    await until(() => s.codes.length === 4);
+    now += 100;
+    // The second ends: the renewal is refused and the window is gone.
+    await expect(s.handle.renew()).rejects.toMatchObject({
+      code: "peer-closed",
+      reason: "cooldown",
+    });
+    expect(s.handle.open).toBe(false);
+    now += 30;
+    expect((await s.handle.renew()).reason).toBe("opened");
+  });
+
+  it("a window with no failed guess never starts the cooldown", async () => {
+    const w = await world();
+    let now = 1000;
+    const s = await show(w.a, w.net, { mono: () => now });
+    for (let i = 0; i < 4; i++) {
+      now += 1;
+      await s.handle.renew();
+    }
+    expect(s.handle.open).toBe(true);
+  });
+
+  it("the nameplate draw ignores adverts other windows show", async () => {
+    const w = await world();
+    const tag = await productTag(PRODUCT, advertEpoch(T0));
+    await w.net.adapter().advertise({
+      instance: "p1-0123456789abcdef",
+      port: 9,
+      txt: ["v=1", "m=q", `h=${tag}`, "n=48"],
+    });
+    const s = await show(w.a, w.net, { random: scripted([48]) });
+    expect(s.codes[0]!.nameplate).toBe("48");
+  });
+
+  it("onInterrupted is told at most once a second while the count goes on", async () => {
+    const clock = { now: 1000 };
+    const w = await world();
+    const s = await show(w.a, w.net, { mono: () => clock.now });
+    const port = advertOf(w.net).port;
+    for (let i = 0; i < 4; i++) await junk(port);
+    await until(() => s.interrupted.length >= 1);
+    // A flood inside one second: the first is told and the rest are counted.
+    expect(s.interrupted).toEqual([1]);
+    clock.now += 1;
+    await junk(port);
+    await until(() => s.interrupted.length === 2);
+    expect(s.interrupted).toEqual([1, 5]);
   });
 });
 
@@ -881,5 +1100,39 @@ describe("the list: onChange, the gate, the platform, the cap", () => {
       ).rejects.toMatchObject({ code: "local-pairing-off" });
       expect(w.net.adverts.size).toBe(0);
     }
+  });
+});
+
+describe("the joiner wipes what it makes after a cancel", () => {
+  const zero = (v: Uint8Array): boolean => v.every((b) => b === 0);
+
+  async function cancelAt(point: "cpaceGenerator" | "cpacePsk") {
+    const w = await world();
+    const s = await show(w.a, w.net);
+    // Only what the joiner makes from here on.
+    spy.made = {};
+    spy.isk.clear();
+    const ac = new AbortController();
+    spy.after[point] = () => {
+      spy.after[point] = undefined;
+      ac.abort();
+    };
+    await expect(
+      dial(w.b, w.net, { code: s.codes[0]!.code }, [], { signal: ac.signal }),
+    ).rejects.toMatchObject({ code: "peer-closed", reason: "cancelled" });
+  }
+
+  it("a cancel during the generator", async () => {
+    await cancelAt("cpaceGenerator");
+    expect(spy.made.cpaceGenerator).toHaveLength(1);
+    for (const k of ["cpaceGenerator", "cpaceScalar"])
+      for (const v of spy.made[k]!) expect(zero(v), k).toBe(true);
+  });
+
+  it("a cancel during the pre-shared key", async () => {
+    await cancelAt("cpacePsk");
+    expect(spy.made.cpacePsk).toHaveLength(1);
+    for (const k of ["cpacePsk", "cpaceIsk"])
+      for (const v of spy.made[k]!) expect(zero(v), k).toBe(true);
   });
 });
