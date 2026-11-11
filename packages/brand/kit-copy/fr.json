@@ -1976,6 +1976,7 @@
     "pairedDevices.notFoundTitle": "Impossible de trouver {device}",
     "pairedDevices.notFoundBody": "Vérifiez qu’il est allumé et sur le même réseau.",
     "pairedDevices.busyTitle": "{device} est occupé",
-    "pairedDevices.offBody": "L’association par code est désactivée pour cette app. Les appareils associés ne peuvent pas se connecter."
+    "pairedDevices.offBody": "L’association par code est désactivée pour cette app. Les appareils associés ne peuvent pas se connecter.",
+    "pairedDevices.pair": "Associer avec un code"
   }
 }

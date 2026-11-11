@@ -285,4 +285,7 @@ export const COMPONENTS_NOT_BUILT: readonly string[] = [
   "UnlockSync",
   "RecoveryCode",
   "RingChange",
+  // Pair with a Code (CC-29K): the React kit draws them; their pages come with the docs (CC-29D).
+  "LocalPairing",
+  "PairedDevices",
 ];

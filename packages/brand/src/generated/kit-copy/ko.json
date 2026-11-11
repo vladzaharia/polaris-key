@@ -1132,6 +1132,7 @@
   "pairedDevices.notFoundBody": "켜져 있고 같은 네트워크에 있는지 확인하세요.",
   "pairedDevices.busyTitle": "{device}은(는) 사용 중입니다",
   "pairedDevices.offBody": "이 앱에서는 코드로 페어링하는 기능이 꺼져 있습니다. 페어링된 기기는 연결할 수 없습니다.",
+  "pairedDevices.pair": "코드로 페어링",
   "core.fallback.title": "문제가 발생했어요",
   "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
   "core.codes.unauthorized.title": "로그인되지 않음",

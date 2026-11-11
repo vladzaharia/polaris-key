@@ -7124,11 +7124,12 @@ function localFamily(a: A): Draft[] {
   const PD = "PairedDevices";
   const NO_CONNECT = off("connect");
   const CATS = ["crates", "cues"];
-  const inv = (invariant: string, m: Omit<MustNot, "invariant">) => ({
-    mustNot: { invariant, ...m },
+  /** A negative case: what must never show here, and why. */
+  const inv = (invariant: string, no: Omit<MustNot, "invariant">) => ({
+    mustNot: { ...no, invariant },
   });
-  const pair = (step: string, extra: Obj = {}): Obj => ({
-    localPairing: { step, ...extra },
+  const pair = (step: string, more: Obj = {}): Obj => ({
+    localPairing: { ...more, step },
   });
   const SHOW = [
     "localPairing.title",
@@ -7140,7 +7141,11 @@ function localFamily(a: A): Draft[] {
     "localPairing.toEnter",
     "common.cancel",
   ];
-  const WINDOW = { code: "4812 3456", secondsLeft: 291 };
+  const WINDOW = {
+    code: "4812 3456",
+    qr: "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+    secondsLeft: 291,
+  };
   const ENTER = [
     "localPairing.title",
     "localPairing.enterBody",
@@ -7200,7 +7205,7 @@ function localFamily(a: A): Draft[] {
     "a11y.deviceOptions",
     "devices.rename",
     "pairedDevices.forget",
-    "localPairing.title",
+    "pairedDevices.pair",
     "common.done",
   ];
   const SW = ["pairedDevices.canConnect", "a11y.letConnect"];
@@ -7627,7 +7632,7 @@ function localFamily(a: A): Draft[] {
         "localPairing.nameHint",
         "localPairing.cantConnectTitle",
         "localPairing.cantConnectBody",
-        "pairedDevices.title",
+        "localPairing.pairedDevices",
         "common.done",
       ],
     ),
@@ -7736,7 +7741,7 @@ function localFamily(a: A): Draft[] {
         "core.codes.local-links-full.title",
         "pairedDevices.fullBody",
       ],
-      { disabled: ["localPairing.title"] },
+      { disabled: ["pairedDevices.pair"] },
     ),
     row(
       `${PD}/list: never seen, so no Last seen`,
@@ -7848,7 +7853,7 @@ function localFamily(a: A): Draft[] {
     row(`${PD}/empty: nothing paired yet`, list("list", {}, []), PD, "empty", [
       "pairedDevices.title",
       "pairedDevices.empty",
-      "localPairing.title",
+      "pairedDevices.pair",
       "common.done",
     ]),
     row(
@@ -7863,7 +7868,7 @@ function localFamily(a: A): Draft[] {
         "common.done",
       ],
       inv("An unreadable record offers no list and no Pair with a Code.", {
-        copy: ["localPairing.title"],
+        copy: ["pairedDevices.pair"],
         states: ["list", "empty"],
       }),
     ),
@@ -7885,7 +7890,7 @@ function localFamily(a: A): Draft[] {
       inv(
         "With pairing off no switch and no Pair with a Code is drawn; deleting what is held still works.",
         {
-          copy: [...SW, "localPairing.title"],
+          copy: [...SW, "pairedDevices.pair"],
         },
       ),
     ),
@@ -7972,64 +7977,10 @@ function localLayoutRows(): LayoutRow[] {
   ];
 }
 
-/** The local family's structure: components, states, the keys each lists, and every key shown. */
+/** The local family's structure, and the window rule rows beside it. */
 function checkLocal(doc: UiMatrix, S: UiMatrixSources): string[] {
-  const errors: string[] = [];
-  const rows = doc.local;
-  if (!Array.isArray(rows) || rows.length === 0)
-    return ["local: the family is empty"];
-  const names = new Set<string>();
-  const shown = new Map<string, Set<string>>();
-  for (const r of rows) {
-    const where = `local "${r.name}"`;
-    if (names.has(r.name)) errors.push(`${where}: duplicate name`);
-    names.add(r.name);
-    const { component, state, copy } = r.expect;
-    if (!(LOCAL_FAMILY_COMPONENTS as readonly string[]).includes(component)) {
-      errors.push(`${where}: ${component} is not a local component`);
-      continue;
-    }
-    if (state === "hidden") {
-      const services = r.input.services as string[] | undefined;
-      if (!services || services.includes("connect"))
-        errors.push(`${where}: hidden needs Connect off`);
-      if (copy.length > 0) errors.push(`${where}: hidden shows no copy`);
-      shown.set(`${component}.hidden`, new Set());
-      continue;
-    }
-    const listed = stateList(S, component, state, where, errors);
-    if (!listed) continue;
-    for (const k of copy)
-      if (!listed.includes(k))
-        errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
-    for (const k of r.expect.disabled ?? [])
-      if (!listed.includes(k))
-        errors.push(`${where}: disabled ${k} is not in the state's list`);
-    for (const k of r.mustNot?.copy ?? [])
-      if (copy.includes(k)) errors.push(`${where}: expects ${k} it forbids`);
-    if (r.mustNot?.states?.includes(state))
-      errors.push(`${where}: mustNot names its own state`);
-    const set = shown.get(`${component}.${state}`) ?? new Set<string>();
-    for (const k of copy) set.add(k);
-    shown.set(`${component}.${state}`, set);
-  }
-  for (const c of LOCAL_FAMILY_COMPONENTS) {
-    if (!shown.has(`${c}.hidden`)) errors.push(`local: no hidden row for ${c}`);
-    for (const [st, { copy: list }] of Object.entries(
-      S.components[c]?.states ?? {},
-    )) {
-      const union = shown.get(`${c}.${st}`);
-      if (!union) {
-        errors.push(`local: no row for ${c}.${st}`);
-        continue;
-      }
-      for (const k of list)
-        if (!union.has(k))
-          errors.push(`local: no row shows ${k} in ${c}.${st}`);
-    }
-  }
-  const lay = doc.localLayout;
-  if (!Array.isArray(lay) || lay.length === 0)
+  const errors = checkScreens(doc.local, "local", LOCAL_FAMILY_COMPONENTS, S);
+  if (!Array.isArray(doc.localLayout) || doc.localLayout.length === 0)
     errors.push("localLayout: the family is empty");
   return errors;
 }
@@ -8207,21 +8158,28 @@ export const CONNECT_FAMILY_COMPONENTS = [
   "TransferOffer",
 ] as const;
 
-/** The connect family's structure: components, states, the keys each lists, and every key shown. */
-function checkConnect(doc: UiMatrix, S: UiMatrixSources): string[] {
+/**
+ * A family of one-state screens: components, states, the keys each lists (and the controls drawn
+ * disabled), a hidden row with Connect off for each, and every listed key shown by some row.
+ */
+function checkScreens(
+  rows: Row[] | undefined,
+  family: string,
+  components: readonly string[],
+  S: UiMatrixSources,
+): string[] {
   const errors: string[] = [];
-  const rows = doc.connect;
   if (!Array.isArray(rows) || rows.length === 0)
-    return ["connect: the family is empty"];
+    return [`${family}: the family is empty`];
   const names = new Set<string>();
   const shown = new Map<string, Set<string>>();
   for (const r of rows) {
-    const where = `connect "${r.name}"`;
+    const where = `${family} "${r.name}"`;
     if (names.has(r.name)) errors.push(`${where}: duplicate name`);
     names.add(r.name);
     const { component, state, copy } = r.expect;
-    if (!(CONNECT_FAMILY_COMPONENTS as readonly string[]).includes(component)) {
-      errors.push(`${where}: ${component} is not a connect component`);
+    if (!components.includes(component)) {
+      errors.push(`${where}: ${component} is not a ${family} component`);
       continue;
     }
     const services = r.input.services as string[] | undefined;
@@ -8237,6 +8195,9 @@ function checkConnect(doc: UiMatrix, S: UiMatrixSources): string[] {
     for (const k of copy)
       if (!listed.includes(k))
         errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
+    for (const k of r.expect.disabled ?? [])
+      if (!listed.includes(k))
+        errors.push(`${where}: disabled ${k} is not in the state's list`);
     for (const k of r.mustNot?.copy ?? [])
       if (copy.includes(k)) errors.push(`${where}: expects ${k} it forbids`);
     if (r.mustNot?.states?.includes(state))
@@ -8245,24 +8206,28 @@ function checkConnect(doc: UiMatrix, S: UiMatrixSources): string[] {
     for (const k of copy) set.add(k);
     shown.set(`${component}.${state}`, set);
   }
-  for (const c of CONNECT_FAMILY_COMPONENTS) {
+  for (const c of components) {
     if (!shown.has(`${c}.hidden`))
-      errors.push(`connect: no hidden row for ${c}`);
+      errors.push(`${family}: no hidden row for ${c}`);
     for (const [st, { copy: list }] of Object.entries(
       S.components[c]?.states ?? {},
     )) {
       const union = shown.get(`${c}.${st}`);
       if (!union) {
-        errors.push(`connect: no row for ${c}.${st}`);
+        errors.push(`${family}: no row for ${c}.${st}`);
         continue;
       }
       for (const k of list)
         if (!union.has(k))
-          errors.push(`connect: no row shows ${k} in ${c}.${st}`);
+          errors.push(`${family}: no row shows ${k} in ${c}.${st}`);
     }
   }
   return errors;
 }
+
+/** The connect family's structure. */
+const checkConnect = (doc: UiMatrix, S: UiMatrixSources): string[] =>
+  checkScreens(doc.connect, "connect", CONNECT_FAMILY_COMPONENTS, S);
 
 /** A row's copy keys against its state's list: a `core.*` key is in copy.en.json, any other is listed. */
 function copyErrors(

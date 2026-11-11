@@ -1976,6 +1976,7 @@
     "pairedDevices.notFoundTitle": "No se encuentra {device}",
     "pairedDevices.notFoundBody": "Comprueba que está encendido y en la misma red.",
     "pairedDevices.busyTitle": "{device} está ocupado",
-    "pairedDevices.offBody": "La vinculación con código está desactivada para esta app. Los dispositivos vinculados no pueden conectarse."
+    "pairedDevices.offBody": "La vinculación con código está desactivada para esta app. Los dispositivos vinculados no pueden conectarse.",
+    "pairedDevices.pair": "Vincular con un código"
   }
 }

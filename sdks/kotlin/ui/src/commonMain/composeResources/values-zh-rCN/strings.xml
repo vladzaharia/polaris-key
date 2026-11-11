@@ -2491,6 +2491,8 @@
     <string name="pairedDevices_busyTitle">%1$s 正忙</string>
     <!-- Pair with a Code: list: pairing is off for the app. -->
     <string name="pairedDevices_offBody">此应用已关闭验证码配对。已配对的设备无法连接。</string>
+    <!-- Pair with a Code: list: the one primary; opens Pair with a Code. -->
+    <string name="pairedDevices_pair">用验证码配对</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

@@ -1850,7 +1850,7 @@
             "localPairing.nameHint",
             "localPairing.cantConnectTitle",
             "localPairing.cantConnectBody",
-            "pairedDevices.title",
+            "localPairing.pairedDevices",
             "common.done"
           ]
         },
@@ -1906,7 +1906,7 @@
             "common.tryAgain",
             "core.codes.link-unknown.title",
             "core.codes.link-unknown.message",
-            "localPairing.title",
+            "pairedDevices.pair",
             "common.done"
           ]
         },
@@ -1920,7 +1920,7 @@
             "pairedDevices.forget",
             "pairedDevices.canConnect",
             "a11y.letConnect",
-            "localPairing.title",
+            "pairedDevices.pair",
             "common.done",
             "devices.renameLabel",
             "localPairing.nameHint",
@@ -1940,7 +1940,7 @@
             "pairedDevices.forget",
             "pairedDevices.canConnect",
             "a11y.letConnect",
-            "localPairing.title",
+            "pairedDevices.pair",
             "common.done",
             "pairedDevices.forgetConfirm",
             "pairedDevices.forgetBody",
@@ -1951,7 +1951,7 @@
           "copy": [
             "pairedDevices.title",
             "pairedDevices.empty",
-            "localPairing.title",
+            "pairedDevices.pair",
             "common.done"
           ]
         },

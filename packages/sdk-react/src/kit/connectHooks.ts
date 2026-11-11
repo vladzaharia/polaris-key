@@ -8,10 +8,16 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import {
   LinkPairingModel,
+  LocalPairingModel,
+  PairedDevicesModel,
   TransferOfferModel,
   type LinkPairingDriver,
   type LinkPairingOffer,
   type LinkPairingSnapshot,
+  type LocalLinksLike,
+  type LocalPairingSnapshot,
+  type PairedDevicesSnapshot,
+  type Store,
   type TransferOfferDriver,
   type TransferOfferSnapshot,
   type UiInput,
@@ -173,4 +179,86 @@ export function useTransferOffer(o: UseTransferOfferOptions): UseTransferOffer {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [snapshot, model, o.base],
   );
+}
+
+// ── Pair with a Code ───────────────────────────────────────────────────────────────────────────
+
+export type { LocalLinksLike } from "@polaris-key/ui-core";
+
+/** A store's snapshot, read again on every change. */
+function useSnapshot<S>(store: Store<S>): S {
+  return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+export interface UseLocalPairingOptions {
+  /** `client.cloudConnect.localLinks`, or any `LocalLinksLike` (the desktop host's, over its bridge). */
+  driver: LocalLinksLike;
+  /** The data categories this app asks both people to approve (ids, at most 8). */
+  categories: readonly string[];
+  /** This device's label, sent to the other device. */
+  label?: string;
+  /** The system has not asked about the local network yet. */
+  prePrompt?: boolean;
+  /** The platform can open its settings from the network-blocked answer. */
+  canOpenSettings?: boolean;
+  base?: UiInput;
+}
+
+export interface UseLocalPairing {
+  snapshot: LocalPairingSnapshot;
+  view: View<"LocalPairing">;
+  /** The input to draw the view with: the base and the step. */
+  input: UiInput;
+  model: LocalPairingModel;
+}
+
+/** Pair with a Code: the model reads the gate and the cap on mount and withdraws any code on unmount. */
+export function useLocalPairing(o: UseLocalPairingOptions): UseLocalPairing {
+  const held = useRef<LocalPairingModel>();
+  const model = (held.current ??= new LocalPairingModel({
+    ...o,
+    categories: o.categories,
+  }));
+  model.base = o.base ?? {};
+  const snapshot = useSnapshot(model.store);
+  useEffect(() => {
+    void model.start();
+    return () => void model.close();
+  }, [model]);
+  return useMemo(
+    () => ({ snapshot, view: model.view(), input: model.input(), model }),
+    // The base can change without a new snapshot; the view is read again with it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snapshot, model, o.base],
+  );
+}
+
+export interface UsePairedDevicesOptions {
+  driver: LocalLinksLike;
+  base?: UiInput;
+}
+
+export interface UsePairedDevices {
+  snapshot: PairedDevicesSnapshot;
+  view: View<"PairedDevices">;
+  input: UiInput;
+  model: PairedDevicesModel;
+}
+
+/** The paired devices: read on mount and again on every change the SDK reports. */
+export function usePairedDevices(o: UsePairedDevicesOptions): UsePairedDevices {
+  const held = useRef<PairedDevicesModel>();
+  const model = (held.current ??= new PairedDevicesModel(o));
+  model.base = o.base ?? {};
+  const snapshot = useSnapshot(model.store);
+  useEffect(() => {
+    void model.start();
+    return () => model.stop();
+  }, [model]);
+  const view = useMemo(
+    () => ({ snapshot, view: model.view(), input: model.input(), model }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snapshot, model, o.base],
+  );
+  return view;
 }

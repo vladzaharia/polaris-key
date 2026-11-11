@@ -6663,6 +6663,11 @@ msgstr "{device} está ocupado"
 msgid "pairedDevices.offBody"
 msgstr "O pareamento por código está desativado para este app. Os dispositivos pareados não podem se conectar."
 
+#. Pair with a Code
+#. Pair with a Code: list: the one primary; opens Pair with a Code.
+msgid "pairedDevices.pair"
+msgstr "Parear com um código"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

@@ -1976,6 +1976,7 @@
     "pairedDevices.notFoundTitle": "{device} wurde nicht gefunden",
     "pairedDevices.notFoundBody": "Prüfen Sie, ob es eingeschaltet und im selben Netzwerk ist.",
     "pairedDevices.busyTitle": "{device} ist beschäftigt",
-    "pairedDevices.offBody": "Das Koppeln mit Code ist für diese App ausgeschaltet. Gekoppelte Geräte können sich nicht verbinden."
+    "pairedDevices.offBody": "Das Koppeln mit Code ist für diese App ausgeschaltet. Gekoppelte Geräte können sich nicht verbinden.",
+    "pairedDevices.pair": "Mit Code koppeln"
   }
 }

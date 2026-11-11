@@ -1976,6 +1976,7 @@
     "pairedDevices.notFoundTitle": "Não foi possível encontrar {device}",
     "pairedDevices.notFoundBody": "Verifique se está ligado e na mesma rede.",
     "pairedDevices.busyTitle": "{device} está ocupado",
-    "pairedDevices.offBody": "O pareamento por código está desativado para este app. Os dispositivos pareados não podem se conectar."
+    "pairedDevices.offBody": "O pareamento por código está desativado para este app. Os dispositivos pareados não podem se conectar.",
+    "pairedDevices.pair": "Parear com um código"
   }
 }

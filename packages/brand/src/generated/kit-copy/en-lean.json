@@ -565,6 +565,7 @@
   "pairedDevices.notFoundBody": "Check it’s on and on the same network.",
   "pairedDevices.busyTitle": "{device} is busy",
   "pairedDevices.offBody": "Pairing with a code is off for this app. Paired devices can’t connect.",
+  "pairedDevices.pair": "Pair with a Code",
   "core.fallback.title": "Something went wrong",
   "core.fallback.message": "Something went wrong ({code}). Try again.",
   "core.gate.ok.title": "License active",

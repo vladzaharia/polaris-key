@@ -6653,6 +6653,11 @@ msgstr ""
 msgid "pairedDevices.offBody"
 msgstr ""
 
+#. Pair with a Code
+#. Pair with a Code: list: the one primary; opens Pair with a Code.
+msgid "pairedDevices.pair"
+msgstr ""
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

@@ -1976,6 +1976,7 @@
     "pairedDevices.notFoundTitle": "Impossibile trovare {device}",
     "pairedDevices.notFoundBody": "Controlla che sia acceso e sulla stessa rete.",
     "pairedDevices.busyTitle": "{device} è occupato",
-    "pairedDevices.offBody": "L’associazione con codice è disattivata per questa app. I dispositivi associati non possono connettersi."
+    "pairedDevices.offBody": "L’associazione con codice è disattivata per questa app. I dispositivi associati non possono connettersi.",
+    "pairedDevices.pair": "Associare con un codice"
   }
 }

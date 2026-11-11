@@ -496,7 +496,7 @@
     },
     "ui.kit": {
       "status": "implemented",
-      "note": "CC-19.9: <LinkPairing> and <TransferOffer> (lazy) with their hooks over ui-core's LinkPairingModel and TransferOfferModel; kitMatrix runs the ui-matrix connect family and kitConnect.test.tsx the driven behaviour (Chromium scenes in test/browser/connect.browser.test.tsx)."
+      "note": "CC-19.9: <LinkPairing> and <TransferOffer> (lazy) with their hooks over ui-core's LinkPairingModel and TransferOfferModel; kitMatrix runs the ui-matrix connect family and kitConnect.test.tsx the driven behaviour (Chromium scenes in test/browser/connect.browser.test.tsx). CC-29K.1: <LocalPairing> and <PairedDevices> (lazy) with useLocalPairing and usePairedDevices over ui-core's LocalPairingModel and PairedDevicesModel and a LocalLinksLike driver (client.cloudConnect.localLinks of the host's Node SDK); kitMatrix runs the ui-matrix local family, kitLocalPairing.test.tsx the driven behaviour and test/browser/localPairing.browser.test.tsx the Chromium scenes and the show screen's window rule."
     },
     "ui.kit.manage": {
       "status": "implemented",

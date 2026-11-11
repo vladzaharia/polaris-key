@@ -2505,6 +2505,8 @@
     <string name="pairedDevices_busyTitle">%1$s ist beschäftigt</string>
     <!-- Pair with a Code: list: pairing is off for the app. -->
     <string name="pairedDevices_offBody">Das Koppeln mit Code ist für diese App ausgeschaltet. Gekoppelte Geräte können sich nicht verbinden.</string>
+    <!-- Pair with a Code: list: the one primary; opens Pair with a Code. -->
+    <string name="pairedDevices_pair">Mit Code koppeln</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Ein Fehler ist aufgetreten</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

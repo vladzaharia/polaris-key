@@ -12,12 +12,14 @@ import {
 } from "react";
 
 type Name = "LinkPairing" | "TransferOffer";
+type LocalName = "LocalPairing" | "PairedDevices";
 type Loose = ComponentType<Record<string, unknown>>;
+type Loader = () => Promise<Record<string, unknown>>;
 
-/** A screen of `connect.tsx`, imported the first time it is drawn. */
-export function connectScreen<P>(name: Name): (props: P) => ReactNode {
+/** The screen `name` of a module, imported the first time it is drawn. */
+function lazyScreen<P>(name: string, load: Loader): (props: P) => ReactNode {
   const Loaded = lazy(async () => ({
-    default: (await import("./connect.js"))[name] as unknown as Loose,
+    default: (await load())[name] as unknown as Loose,
   }));
   const Screen = (props: P): ReactNode =>
     createElement(
@@ -28,3 +30,11 @@ export function connectScreen<P>(name: Name): (props: P) => ReactNode {
   Screen.displayName = name;
   return Screen;
 }
+
+/** A screen of `connect.tsx`, imported the first time it is drawn. */
+export const connectScreen = <P,>(name: Name): ((props: P) => ReactNode) =>
+  lazyScreen<P>(name, () => import("./connect.js"));
+
+/** A screen of `localPairing.tsx` (Pair with a Code), imported the first time it is drawn. */
+export const localScreen = <P,>(name: LocalName): ((props: P) => ReactNode) =>
+  lazyScreen<P>(name, () => import("./localPairing.js"));

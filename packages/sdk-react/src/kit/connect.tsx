@@ -19,8 +19,7 @@ import {
   connectEscape,
   formatBytes,
   shortName,
-  linkPairingView,
-  transferOfferView,
+  CONNECT_MODELS,
   type ComponentName,
   type ConnectScreenName,
   type LinkPairingDriver,
@@ -37,6 +36,7 @@ import {
   progressBar,
   successMark,
   text,
+  type Chrome,
   type KitCtx,
 } from "./parts.js";
 import { CONNECT_LAYOUTS } from "./syncAssets.js";
@@ -119,50 +119,8 @@ const CONNECT_PANES = `@media (max-height: 480px) {
 }
 ${panes(".pk-root.pk-tv")}`;
 
-const CONNECT_CSS = `@layer polaris-key {
-.pk-root .pair-code {
-  display: block;
-  padding: var(--pk-space-4);
-  border-radius: var(--pk-kit-radius-control);
-  background: var(--pk-surface-sunken);
-  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
-  font-family: var(--pk-kit-type-code-family);
-  font-weight: var(--pk-kit-type-code-weight);
-  font-size: 2rem;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
-  color: var(--pk-text-strong);
-  text-align: center;
-  overflow-wrap: anywhere;
-}
-.pk-root .pair-reported {
-  margin: 0;
-  color: var(--pk-text-strong);
-  overflow-wrap: anywhere;
-}
-.pk-root .pair-actions,
-.pk-root .pair-end {
-  display: contents;
-}
-.pk-root .pair-offer {
-  display: grid;
-  gap: var(--pk-space-1);
-}
-.pk-root .pair-meta {
-  margin: 0;
-  color: var(--pk-text-muted);
-  overflow-wrap: anywhere;
-}
-.pk-root .pair-file {
-  margin: 0;
-  color: var(--pk-text-strong);
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-}
+/** The rules every pairing screen shares: the categories (`.pair-shares`) and the waiting row. */
+export const PAIR_SHARED_CSS = `@layer polaris-key {
 .pk-root .pair-shares {
   display: grid;
   gap: var(--pk-space-2);
@@ -210,20 +168,69 @@ const CONNECT_CSS = `@layer polaris-key {
     opacity: 0.35;
   }
 }
+}
+`;
+
+const CONNECT_CSS = `@layer polaris-key {
+.pk-root .pair-code {
+  display: block;
+  padding: var(--pk-space-4);
+  border-radius: var(--pk-kit-radius-control);
+  background: var(--pk-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
+  font-family: var(--pk-kit-type-code-family);
+  font-weight: var(--pk-kit-type-code-weight);
+  font-size: 2rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  color: var(--pk-text-strong);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.pk-root .pair-reported {
+  margin: 0;
+  color: var(--pk-text-strong);
+  overflow-wrap: anywhere;
+}
+.pk-root .pair-actions,
+.pk-root .pair-end {
+  display: contents;
+}
+.pk-root .pair-offer {
+  display: grid;
+  gap: var(--pk-space-1);
+}
+.pk-root .pair-meta {
+  margin: 0;
+  color: var(--pk-text-muted);
+  overflow-wrap: anywhere;
+}
+.pk-root .pair-file {
+  margin: 0;
+  color: var(--pk-text-strong);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+${PAIR_SHARED_CSS}
 ${CONNECT_PANES}
 }
 `;
 
-const sheets = new WeakMap<Document, CSSStyleSheet>();
+const sheets = new WeakMap<Document, Set<string>>();
 
-/** Adopt the rules once per document, with the first screen drawn (never a `<style>` element). */
-function adoptConnectStyles(doc: Document): void {
-  if (sheets.has(doc) || typeof CSSStyleSheet !== "function") return;
+/** Adopt `css` once per document, with the first screen drawn (never a `<style>` element). */
+export function adoptStyles(doc: Document, css: string): void {
+  const seen = sheets.get(doc) ?? new Set<string>();
+  if (seen.has(css) || typeof CSSStyleSheet !== "function") return;
   try {
     const own = new CSSStyleSheet();
-    own.replaceSync(CONNECT_CSS);
+    own.replaceSync(css);
     doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, own];
-    sheets.set(doc, own);
+    sheets.set(doc, seen.add(css));
   } catch {
     // No constructable sheets, or a document of another realm: it links styles.css.
   }
@@ -236,9 +243,13 @@ interface ScreenProps extends KitProps {
   route?: (a: KitAction) => void;
 }
 
-function Screen(
+export function Screen(
   props: ScreenProps & {
     name: ConnectScreenName;
+    /** The sheet this screen adopts: the pairing screens' own rules by default. */
+    css?: string;
+    /** What the drop-in adds around the view's own controls (Back above the card). */
+    chrome?: Chrome;
     input: NonNullable<KitProps["input"]>;
     body?: (c: KitCtx) => ReactNode;
     /** The control Escape answers (decline a code, cancel a window). */
@@ -246,7 +257,7 @@ function Screen(
   },
 ): ReactNode {
   const { name, body, route, escape } = props;
-  const model = name === "LinkPairing" ? linkPairingView : transferOfferView;
+  const model = CONNECT_MODELS[name];
   const kit = useKit(
     name as unknown as ComponentName,
     (ctx) => model(ctx) as unknown as View,
@@ -260,15 +271,19 @@ function Screen(
     },
   );
   useInsertionEffect(() => {
-    if (typeof document !== "undefined") adoptConnectStyles(document);
+    if (typeof document !== "undefined")
+      adoptStyles(document, props.css ?? CONNECT_CSS);
   }, []);
   if (kit.view.state === "hidden") return null;
   const base = kit.ctxFor(kit.view);
   const layout: Layout = CONNECT_LAYOUTS[name];
-  const done = name === "TransferOffer" && kit.view.state === "done";
+  const done =
+    (name === "TransferOffer" && kit.view.state === "done") ||
+    (name === "LocalPairing" && kit.view.state === "paired");
   const ctx: KitCtx = {
     ...base,
     layout,
+    chrome: props.chrome,
     mark: done ? successMark() : null,
     content: null,
   };
@@ -310,9 +325,11 @@ export interface LinkPairingProps extends KitProps {
   onClose?: () => void;
 }
 
-function Categories(props: {
+/** What both people approve: the heading and one chip per category (`cats`, or the input's). */
+export function Categories(props: {
   c: KitCtx;
   labels?: Readonly<Record<string, string>>;
+  cats?: readonly string[];
 }): ReactNode {
   const { c, labels } = props;
   const keys = c.view.copy;
@@ -322,7 +339,7 @@ function Categories(props: {
       ? "linkPairing.sharesNone"
       : null;
   if (!head) return null;
-  const cats = c.input.linkPairing?.categories ?? [];
+  const cats = props.cats ?? c.input.linkPairing?.categories ?? [];
   return (
     <div className="pair-shares" data-part="shares">
       {head === "linkPairing.shares" ? (

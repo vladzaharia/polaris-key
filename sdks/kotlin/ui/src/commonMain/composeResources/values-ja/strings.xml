@@ -2491,6 +2491,8 @@
     <string name="pairedDevices_busyTitle">%1$s は使用中です</string>
     <!-- Pair with a Code: list: pairing is off for the app. -->
     <string name="pairedDevices_offBody">このアプリではコードによるペアリングがオフです。ペアリング済みのデバイスは接続できません。</string>
+    <!-- Pair with a Code: list: the one primary; opens Pair with a Code. -->
+    <string name="pairedDevices_pair">コードでペアリング</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

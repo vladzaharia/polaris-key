@@ -15302,7 +15302,7 @@
     },
     {
       "name": "LocalPairing/choose: the system has not asked yet",
-      "input": { "localPairing": { "step": "choose", "prePrompt": true } },
+      "input": { "localPairing": { "prePrompt": true, "step": "choose" } },
       "expect": {
         "component": "LocalPairing",
         "state": "choose",
@@ -15320,7 +15320,7 @@
     {
       "name": "LocalPairing/choose: no room, said before either button",
       "input": {
-        "localPairing": { "step": "choose", "full": true, "prePrompt": true }
+        "localPairing": { "full": true, "prePrompt": true, "step": "choose" }
       },
       "expect": {
         "component": "LocalPairing",
@@ -15347,9 +15347,10 @@
       "name": "LocalPairing/show: the code is the largest text, with its time",
       "input": {
         "localPairing": {
-          "step": "show",
           "code": "4812 3456",
-          "secondsLeft": 291
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "step": "show"
         }
       },
       "expect": {
@@ -15376,10 +15377,11 @@
       "name": "LocalPairing/show: a wrong code changed it",
       "input": {
         "localPairing": {
-          "step": "show",
           "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
           "secondsLeft": 291,
-          "notice": "rotated"
+          "notice": "rotated",
+          "step": "show"
         }
       },
       "expect": {
@@ -15410,11 +15412,12 @@
       "name": "LocalPairing/show: the other device said Not now",
       "input": {
         "localPairing": {
-          "step": "show",
           "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
           "secondsLeft": 291,
           "notice": "declined",
-          "device": "LAPTOP-7QH3RX"
+          "device": "LAPTOP-7QH3RX",
+          "step": "show"
         }
       },
       "expect": {
@@ -15446,10 +15449,11 @@
       "name": "LocalPairing/show: something keeps interrupting",
       "input": {
         "localPairing": {
-          "step": "show",
           "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
           "secondsLeft": 291,
-          "notice": "blocked"
+          "notice": "blocked",
+          "step": "show"
         }
       },
       "expect": {
@@ -15474,10 +15478,11 @@
       "name": "LocalPairing/show: someone nearby may be guessing, the code still open",
       "input": {
         "localPairing": {
-          "step": "show",
           "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
           "secondsLeft": 291,
-          "notice": "guessing"
+          "notice": "guessing",
+          "step": "show"
         }
       },
       "expect": {
@@ -15508,9 +15513,9 @@
       "name": "LocalPairing/closed: Too many tries, 24 seconds to wait",
       "input": {
         "localPairing": {
-          "step": "closed",
           "closedBy": "too-many-tries",
-          "cooldownLeft": 24
+          "cooldownLeft": 24,
+          "step": "closed"
         }
       },
       "expect": {
@@ -15533,10 +15538,10 @@
       "name": "LocalPairing/closed: the second Too many tries in a row",
       "input": {
         "localPairing": {
-          "step": "closed",
           "closedBy": "too-many-tries",
           "cooldownLeft": 30,
-          "warn": true
+          "warn": true,
+          "step": "closed"
         }
       },
       "expect": {
@@ -15557,9 +15562,9 @@
       "name": "LocalPairing/closed: the wait is over",
       "input": {
         "localPairing": {
-          "step": "closed",
           "closedBy": "too-many-tries",
-          "cooldownLeft": 0
+          "cooldownLeft": 0,
+          "step": "closed"
         }
       },
       "expect": {
@@ -15575,7 +15580,7 @@
     },
     {
       "name": "LocalPairing/closed: time ran out, no wait",
-      "input": { "localPairing": { "step": "closed", "closedBy": "expired" } },
+      "input": { "localPairing": { "closedBy": "expired", "step": "closed" } },
       "expect": {
         "component": "LocalPairing",
         "state": "closed",
@@ -15595,11 +15600,11 @@
       "name": "LocalPairing/enter: an empty field, Pair unavailable",
       "input": {
         "localPairing": {
-          "step": "enter",
           "entry": "",
           "categories": ["crates", "cues"],
           "pairDisabled": true,
-          "triesLeft": null
+          "triesLeft": null,
+          "step": "enter"
         }
       },
       "expect": {
@@ -15626,10 +15631,10 @@
       "name": "LocalPairing/enter: eight digits, Pair ready",
       "input": {
         "localPairing": {
-          "step": "enter",
           "entry": "4812 3456",
           "categories": ["crates", "cues"],
-          "triesLeft": 2
+          "triesLeft": 2,
+          "step": "enter"
         }
       },
       "expect": {
@@ -15654,10 +15659,10 @@
       "name": "LocalPairing/enter: one try left for these two digits",
       "input": {
         "localPairing": {
-          "step": "enter",
           "entry": "4812 3456",
           "categories": ["crates", "cues"],
-          "triesLeft": 1
+          "triesLeft": 1,
+          "step": "enter"
         }
       },
       "expect": {
@@ -15679,12 +15684,12 @@
       "name": "LocalPairing/enter: a wrong code keeps the first two digits",
       "input": {
         "localPairing": {
-          "step": "enter",
           "entry": "48",
           "categories": ["crates", "cues"],
           "error": "wrong",
           "triesLeft": 1,
-          "pairDisabled": true
+          "pairDisabled": true,
+          "step": "enter"
         }
       },
       "expect": {
@@ -15712,11 +15717,11 @@
       "name": "LocalPairing/enter: these two digits are spent",
       "input": {
         "localPairing": {
-          "step": "enter",
           "entry": "4873",
           "categories": ["crates", "cues"],
           "triesLeft": 0,
-          "pairDisabled": true
+          "pairDisabled": true,
+          "step": "enter"
         }
       },
       "expect": {
@@ -15739,12 +15744,12 @@
       "name": "LocalPairing/enter: too many tries, an empty field that stays editable",
       "input": {
         "localPairing": {
-          "step": "enter",
           "entry": "",
           "categories": ["crates", "cues"],
           "error": "too-many",
           "pairDisabled": true,
-          "triesLeft": null
+          "triesLeft": null,
+          "step": "enter"
         }
       },
       "expect": {
@@ -15773,11 +15778,11 @@
       "name": "LocalPairing/enter: nothing found on the network",
       "input": {
         "localPairing": {
-          "step": "enter",
           "entry": "4812 3456",
           "categories": ["crates", "cues"],
           "error": "not-found",
-          "triesLeft": 2
+          "triesLeft": 2,
+          "step": "enter"
         }
       },
       "expect": {
@@ -15800,12 +15805,12 @@
       "name": "LocalPairing/enter: not a code",
       "input": {
         "localPairing": {
-          "step": "enter",
           "entry": "4812",
           "categories": ["crates", "cues"],
           "error": "not-a-code",
           "pairDisabled": true,
-          "triesLeft": 2
+          "triesLeft": 2,
+          "step": "enter"
         }
       },
       "expect": {
@@ -15828,11 +15833,11 @@
       "name": "LocalPairing/enter: the app asks for no categories",
       "input": {
         "localPairing": {
-          "step": "enter",
           "entry": "",
           "categories": [],
           "pairDisabled": true,
-          "triesLeft": null
+          "triesLeft": null,
+          "step": "enter"
         }
       },
       "expect": {
@@ -15855,9 +15860,9 @@
       "name": "LocalPairing/joining: Pair keeps its label while it looks, Cancel stops it",
       "input": {
         "localPairing": {
-          "step": "joining",
           "entry": "4812 3456",
-          "categories": ["crates", "cues"]
+          "categories": ["crates", "cues"],
+          "step": "joining"
         }
       },
       "expect": {
@@ -15884,9 +15889,9 @@
       "name": "LocalPairing/joining: nothing is shared",
       "input": {
         "localPairing": {
-          "step": "joining",
           "entry": "4812 3456",
-          "categories": []
+          "categories": [],
+          "step": "joining"
         }
       },
       "expect": {
@@ -15909,9 +15914,9 @@
       "name": "LocalPairing/confirm: the device that entered the code, named",
       "input": {
         "localPairing": {
-          "step": "confirm",
           "device": "LAPTOP-7QH3RX",
-          "categories": ["crates", "cues"]
+          "categories": ["crates", "cues"],
+          "step": "confirm"
         }
       },
       "expect": {
@@ -15934,7 +15939,7 @@
     {
       "name": "LocalPairing/confirm: the device sent no name",
       "input": {
-        "localPairing": { "step": "confirm", "categories": ["crates", "cues"] }
+        "localPairing": { "categories": ["crates", "cues"], "step": "confirm" }
       },
       "expect": {
         "component": "LocalPairing",
@@ -15952,9 +15957,9 @@
       "name": "LocalPairing/confirm: nothing is shared",
       "input": {
         "localPairing": {
-          "step": "confirm",
           "device": "Studio PC",
-          "categories": []
+          "categories": [],
+          "step": "confirm"
         }
       },
       "expect": {
@@ -15971,7 +15976,7 @@
     },
     {
       "name": "LocalPairing/waiting: for the other person, named",
-      "input": { "localPairing": { "step": "waiting", "device": "Studio PC" } },
+      "input": { "localPairing": { "device": "Studio PC", "step": "waiting" } },
       "expect": {
         "component": "LocalPairing",
         "state": "waiting",
@@ -15996,7 +16001,7 @@
     {
       "name": "LocalPairing/paired: the name starts as the one the device sent",
       "input": {
-        "localPairing": { "step": "paired", "device": "LAPTOP-7QH3RX" }
+        "localPairing": { "device": "LAPTOP-7QH3RX", "step": "paired" }
       },
       "expect": {
         "component": "LocalPairing",
@@ -16019,10 +16024,10 @@
       "name": "LocalPairing/paired: kept, but it cannot connect while 8 can",
       "input": {
         "localPairing": {
-          "step": "paired",
           "device": "LAPTOP-7QH3RX",
           "cantConnect": true,
-          "max": 8
+          "max": 8,
+          "step": "paired"
         }
       },
       "expect": {
@@ -16035,14 +16040,14 @@
           "localPairing.nameHint",
           "localPairing.nameLabel",
           "localPairing.pairedBody",
-          "localPairing.pairedTitle",
-          "pairedDevices.title"
+          "localPairing.pairedDevices",
+          "localPairing.pairedTitle"
         ]
       }
     },
     {
       "name": "LocalPairing/failed: someone said Not now",
-      "input": { "localPairing": { "step": "failed", "reason": "declined" } },
+      "input": { "localPairing": { "reason": "declined", "step": "failed" } },
       "expect": {
         "component": "LocalPairing",
         "state": "failed",
@@ -16062,7 +16067,7 @@
     },
     {
       "name": "LocalPairing/failed: time ran out before both confirmed",
-      "input": { "localPairing": { "step": "failed", "reason": "timeout" } },
+      "input": { "localPairing": { "reason": "timeout", "step": "failed" } },
       "expect": {
         "component": "LocalPairing",
         "state": "failed",
@@ -16082,7 +16087,7 @@
     },
     {
       "name": "LocalPairing/failed: one device has no room",
-      "input": { "localPairing": { "step": "failed", "reason": "full" } },
+      "input": { "localPairing": { "reason": "full", "step": "failed" } },
       "expect": {
         "component": "LocalPairing",
         "state": "failed",
@@ -16102,7 +16107,7 @@
     },
     {
       "name": "LocalPairing/failed: the connection closed",
-      "input": { "localPairing": { "step": "failed", "reason": "closed" } },
+      "input": { "localPairing": { "reason": "closed", "step": "failed" } },
       "expect": {
         "component": "LocalPairing",
         "state": "failed",
@@ -16123,7 +16128,7 @@
     {
       "name": "LocalPairing/network-blocked: Open Settings where the platform can",
       "input": {
-        "localPairing": { "step": "network-blocked", "canOpenSettings": true }
+        "localPairing": { "canOpenSettings": true, "step": "network-blocked" }
       },
       "expect": {
         "component": "LocalPairing",
@@ -16234,10 +16239,10 @@
           "a11y.deviceOptions",
           "common.done",
           "devices.rename",
-          "localPairing.title",
           "pairedDevices.forget",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.title"
         ]
       },
@@ -16293,11 +16298,11 @@
           "a11y.letConnect",
           "common.done",
           "devices.rename",
-          "localPairing.title",
           "pairedDevices.canConnect",
           "pairedDevices.forget",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.title"
         ]
       }
@@ -16379,11 +16384,11 @@
           "a11y.letConnect",
           "common.done",
           "devices.rename",
-          "localPairing.title",
           "pairedDevices.canConnect",
           "pairedDevices.forget",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.reachableFullBody",
           "pairedDevices.reachableFullTitle",
           "pairedDevices.title"
@@ -16600,17 +16605,17 @@
           "common.done",
           "core.codes.local-links-full.title",
           "devices.rename",
-          "localPairing.title",
           "pairedDevices.canConnect",
           "pairedDevices.forget",
           "pairedDevices.fullBody",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.reachableFullBody",
           "pairedDevices.reachableFullTitle",
           "pairedDevices.title"
         ],
-        "disabled": ["localPairing.title"]
+        "disabled": ["pairedDevices.pair"]
       }
     },
     {
@@ -16641,9 +16646,9 @@
           "a11y.deviceOptions",
           "common.done",
           "devices.rename",
-          "localPairing.title",
           "pairedDevices.forget",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.title"
         ]
       }
@@ -16683,12 +16688,12 @@
           "a11y.deviceOptions",
           "common.done",
           "devices.rename",
-          "localPairing.title",
           "pairedDevices.forget",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
           "pairedDevices.notFoundBody",
           "pairedDevices.notFoundTitle",
+          "pairedDevices.pair",
           "pairedDevices.title"
         ]
       }
@@ -16729,11 +16734,11 @@
           "common.done",
           "common.tryAgain",
           "devices.rename",
-          "localPairing.title",
           "pairedDevices.busyTitle",
           "pairedDevices.forget",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.title"
         ],
         "actions": ["retry"]
@@ -16776,10 +16781,10 @@
           "core.codes.link-unknown.message",
           "core.codes.link-unknown.title",
           "devices.rename",
-          "localPairing.title",
           "pairedDevices.forget",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.title"
         ]
       }
@@ -16830,11 +16835,11 @@
           "devices.rename",
           "devices.renameLabel",
           "localPairing.nameHint",
-          "localPairing.title",
           "pairedDevices.canConnect",
           "pairedDevices.forget",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.title"
         ],
         "actions": ["cancel"]
@@ -16891,11 +16896,11 @@
           "devices.rename",
           "devices.renameLabel",
           "localPairing.nameHint",
-          "localPairing.title",
           "pairedDevices.canConnect",
           "pairedDevices.forget",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.renameLong",
           "pairedDevices.title"
         ],
@@ -16949,11 +16954,11 @@
           "devices.rename",
           "devices.renameLabel",
           "localPairing.nameHint",
-          "localPairing.title",
           "pairedDevices.canConnect",
           "pairedDevices.forget",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.renameEmpty",
           "pairedDevices.title"
         ],
@@ -17003,13 +17008,13 @@
           "common.cancel",
           "common.done",
           "devices.rename",
-          "localPairing.title",
           "pairedDevices.canConnect",
           "pairedDevices.forget",
           "pairedDevices.forgetBody",
           "pairedDevices.forgetConfirm",
           "pairedDevices.lastSeen",
           "pairedDevices.lede",
+          "pairedDevices.pair",
           "pairedDevices.title"
         ],
         "actions": ["cancel"]
@@ -17027,8 +17032,8 @@
         "state": "empty",
         "copy": [
           "common.done",
-          "localPairing.title",
           "pairedDevices.empty",
+          "pairedDevices.pair",
           "pairedDevices.title"
         ]
       }
@@ -17050,7 +17055,7 @@
       "mustNot": {
         "invariant": "An unreadable record offers no list and no Pair with a Code.",
         "states": ["empty", "list"],
-        "copy": ["localPairing.title"]
+        "copy": ["pairedDevices.pair"]
       }
     },
     {
@@ -17098,8 +17103,8 @@
         "invariant": "With pairing off no switch and no Pair with a Code is drawn; deleting what is held still works.",
         "copy": [
           "a11y.letConnect",
-          "localPairing.title",
-          "pairedDevices.canConnect"
+          "pairedDevices.canConnect",
+          "pairedDevices.pair"
         ]
       }
     },

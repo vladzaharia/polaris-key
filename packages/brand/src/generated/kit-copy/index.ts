@@ -1146,6 +1146,7 @@ export type KitCopyKey =
   | "pairedDevices.notFoundBody"
   | "pairedDevices.busyTitle"
   | "pairedDevices.offBody"
+  | "pairedDevices.pair"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"
