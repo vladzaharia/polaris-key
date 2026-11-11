@@ -44,7 +44,7 @@ static func _none() -> Dictionary:
 
 static func _res(result: String, extra := {}) -> Dictionary:
 	var out := {"result": result, "rotate": false}
-	out.merge(extra)
+	out.merge(extra, true)
 	return out
 
 

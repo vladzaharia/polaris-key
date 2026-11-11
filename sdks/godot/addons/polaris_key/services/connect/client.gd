@@ -589,7 +589,7 @@ func _accept(answer: Dictionary, mine: Dictionary, held_rec: PKeyConnectState.Re
 	var keys: Array[String] = answer["disc_keys"]
 	var gone: Array = []
 	if prior != null and int(ring["epoch"]) > int(prior["epoch"]):
-		keys = keys_after_ring(keys, prior, ring)
+		keys = _keys_after_ring(keys, prior, ring)
 		gone = _gone_keys(prior, ring)
 	var same_epoch_prev := held_rec != null and prior != null and int(prior["epoch"]) == int(ring["epoch"]) \
 			and held_rec.disc_keys.size() == 2 and keys.size() == 2 and held_rec.disc_keys[1] == keys[1]
@@ -685,7 +685,7 @@ func adopt_ring(jws: String) -> Dictionary:
 	var removed := false
 	var gone: Array = []
 	if prior != null:
-		keys = keys_after_ring(rec.disc_keys, prior, ring)
+		keys = _keys_after_ring(rec.disc_keys, prior, ring)
 		removed = not _intact(prior, ring)
 		gone = _gone_keys(prior, ring)
 	var next := rec.duplicate_record()
@@ -750,7 +750,7 @@ func _judge_ring(core: PKeyCore, rec: PKeyConnectState.Record, jws: String) -> D
 
 ## Drops the previous K_disc when the new roster lost a device or changed a device's keys
 ## (section 15.4). `keys` is the held list, newest first.
-static func keys_after_ring(keys: Array[String], prior: Dictionary, next: Dictionary) -> Array[String]:
+static func _keys_after_ring(keys: Array[String], prior: Dictionary, next: Dictionary) -> Array[String]:
 	if keys.size() != 2 or _intact(prior, next):
 		return keys
 	return [keys[0]] as Array[String]

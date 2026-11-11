@@ -18,6 +18,8 @@ extends RefCounted
 ##                       PKeyConnectSession (`session.path` says which), or a typed failure. A coroutine
 ##   links               the inter-account links (`cloud_connect.links`, services/connect/links.gd): `pair`, `list`,
 ##                       `remove`, `set_reachable`, `open` and the signal `link(session)`
+##   local_links         local links with no account (`cloud_connect.local_links`, services/connect/local_links.gd): `pair`,
+##                       `join`, `dials_left`, `cancel_join`, `list`, `rename`, `remove`, `set_reachable` and `on_change`
 ##   status()            {running, lan, lan_reason, lan_error, relay, relay_error, relay_reason}
 ##   transfer            Direct Transfer (PKeyCloudTransfer): `send`, `on_offer`, `result`, `cancel`. On
 ##                       unless `start` is given `transfer = false` (then `xfer/1` is not listed); `transfer`
@@ -54,6 +56,10 @@ const LAN_ATTEMPT_SECONDS := 4.0
 ## Inter-account links (`cloud_connect.links`): pair, list, remove, open and the `link` signal. Gated by
 ## discovery's `interAccount`; the adverts and rooms run only while Cloud Connect does.
 var links: PKeyCloudLinks = null
+
+## Local links, with no account (`cloud_connect.local_links`): pair, join, list, rename, remove and set_reachable. Gated
+## by discovery's `localPairing`; pairing needs no `start`.
+var local_links: PKeyCloudLocalLinks = null
 
 ## Nearby approval (`cloud_connect.nearby`): gated by Identity's discovery, it works with Connect stopped.
 var nearby: PKeyCloudNearby = null
@@ -120,6 +126,10 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 	# `links.open_link`, and drops what a removed link left unfinished.
 	links.adopt = Callable(transfer, "attach")
 	links.removed = Callable(self, "_forget_left")
+	local_links = PKeyCloudLocalLinks.new(core, client, {
+		"tree": _tree, "lane": Callable(self, "_links_lane"), "pump": Callable(self, "_links_pump"), "web": Callable(self, "_on_web"),
+	})
+	local_links.removed = Callable(self, "_forget_left")
 
 
 func _to_string() -> String:

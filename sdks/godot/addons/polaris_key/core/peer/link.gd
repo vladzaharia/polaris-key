@@ -37,6 +37,11 @@ signal sas(code: int, display: String)
 ## Mode p with the exchange: the peer's CONTACT, once both people confirmed. `info` is the session's `contact`
 ## event ({secret, agree_key, label?, cats, pending}); the secret is key material: store it, zero it, never log it.
 signal contact(info: Dictionary)
+## Mode q, the shower: the one tag trial of the attempt ended; `opens` is whether the code was right.
+signal guess(opens: bool)
+## Mode q: both people agreed and the link exists. `info` is the session's `local_link` event ({secret, own_key,
+## peer_key, label?, cats}); the secret is key material: store it, zero it, never log it.
+signal local_link(info: Dictionary)
 ## Mode a: a roster that replaced the held one at `epoch`; the host stores it.
 signal ring(jws: String, epoch: int)
 ## Mode a: a `TRUST` document the peer sent. Not verified here.
@@ -231,6 +236,10 @@ func _on_event(e: Dictionary) -> void:
 			record.emit(e["record_type"], e["body"])
 		&"contact":
 			contact.emit(e)
+		&"guess":
+			guess.emit(e["opens"])
+		&"local_link":
+			local_link.emit(e)
 		&"ring":
 			ring.emit(e["jws"], e["epoch"])
 		&"trust_unverified":
