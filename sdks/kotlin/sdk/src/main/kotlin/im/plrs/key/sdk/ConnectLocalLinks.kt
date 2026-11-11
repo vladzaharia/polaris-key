@@ -23,7 +23,9 @@
 // - one window per device and product, its slot taken before the first suspension, so two calls that race open one window;
 //   a device that holds `MAX_LOCAL_LINKS` answers `local-links-full` before anything is advertised or dialled;
 // - the joiner's dials are counted per typed nameplate across joins and clients, in memory, per product for the whole process
-//   (an app that makes a new client per screen meets the same budget);
+//   (an app that makes a new client per screen meets the same budget), and so are the nameplates the shower's windows closed
+//   with in the last 300 s (a renewed window skips them) and the renewal floor (30 s after a hard end);
+// - a cancelled `join` (the caller's coroutine) closes its dial and wipes its secrets, and refunds no dial;
 // - `open` is one dial per link at a time (callers share it); a dial that reached the network and failed is not repeated for
 //   3 to 5 s, and the wait doubles with each failure in a row, to 60 s;
 // - links are kept in the state directory; with no state directory, or with memory-only device keys, they are memory-only and
@@ -51,6 +53,8 @@ import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.peer.DialBudget
 import im.plrs.key.core.peer.MAX_LIVE_LOCAL_ADVERTS
 import im.plrs.key.core.peer.MAX_LOCAL_LINKS
+import im.plrs.key.core.peer.NameplateMemory
+import im.plrs.key.core.peer.RenewFloor
 import im.plrs.key.core.peer.cleanLocalLabel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -64,6 +68,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import im.plrs.key.core.peer.dialsLeft as dialsLeftOf
 
 /** A dial to one link is not repeated sooner than this (seconds): a base, with jitter, doubled after each failure up to the cap. */
 private const val DIAL_COOLDOWN_S = 3.0
@@ -80,8 +85,100 @@ private val BUDGETS = ConcurrentHashMap<String, DialBudget>()
 
 private fun budgetOf(slug: String): DialBudget = BUDGETS.getOrPut(slug) { DialBudget() }
 
-/** Forget every dial budget. For tests. */
-internal fun resetLocalBudgets() = BUDGETS.clear()
+/**
+ * The nameplates the shower's windows of a product closed with, one memory per product for the whole process, like the dial
+ * budgets: a window that closes and the next one that opens, even through a new client, never share a nameplate within 300 s.
+ */
+private val NAMEPLATES = ConcurrentHashMap<String, NameplateMemory>()
+
+private fun memoryOf(slug: String): NameplateMemory = NAMEPLATES.getOrPut(slug) { NameplateMemory() }
+
+/** The renewal floors, one per product for the whole process: a host that renews from `onEnd` meets the same floor through a new client. */
+private val FLOORS = ConcurrentHashMap<String, RenewFloor>()
+
+private fun floorOf(slug: String): RenewFloor = FLOORS.getOrPut(slug) { RenewFloor() }
+
+/** Forget every dial budget, remembered nameplate and renewal floor. For tests. */
+internal fun resetLocalBudgets() {
+    BUDGETS.clear()
+    NAMEPLATES.clear()
+    FLOORS.clear()
+}
+
+/**
+ * What `pair` returns: it follows the window that is current, so `renew()` can replace it. It holds no secret of its own. The
+ * renewal runs in the facade's scope, so a caller that is cancelled does not leave it half done.
+ */
+private class PairHandle(first: LocalShower, private val scope: CoroutineScope, private val again: suspend (LocalShower) -> LocalShower) :
+    LocalPairHandle {
+    private class RenewJob(val run: CompletableDeferred<LocalCode>) {
+        @Volatile var stop = false
+    }
+
+    private val lock = Any()
+
+    @Volatile
+    private var cur: LocalShower = first
+    private var renewing: RenewJob? = null
+
+    override val open: Boolean get() = cur.open
+
+    override fun code(): LocalCode? = cur.code()
+
+    override fun toString(): String = "PairHandle(open=$open)"
+
+    /**
+     * Close the window. A renewal in flight is told to stop: the window it opens is closed before anyone sees a code, and
+     * the renewal throws [LanException] `closed`.
+     */
+    override suspend fun stop() {
+        val job = synchronized(lock) { renewing?.also { it.stop = true } }
+        if (job != null) {
+            try {
+                job.run.await()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // the renewal's own failure is its caller's
+            }
+        }
+        cur.stop()
+    }
+
+    /** Two calls at once share one new window. */
+    override suspend fun renew(): LocalCode {
+        val (job, mine) = synchronized(lock) {
+            val live = renewing
+            if (live != null) {
+                live to false
+            } else {
+                RenewJob(CompletableDeferred()).also { renewing = it } to true
+            }
+        }
+        if (mine) scope.launch { run(job) }
+        return job.run.await()
+    }
+
+    private suspend fun run(job: RenewJob) {
+        try {
+            val next = again(cur)
+            cur = next
+            if (job.stop) {
+                next.stop()
+                throw LanException(LanErrorReason.closed, "The window closed.")
+            }
+            next.reveal()
+            job.run.complete(next.code() ?: throw LanException(LanErrorReason.closed, "The window closed."))
+        } catch (e: CancellationException) {
+            job.run.completeExceptionally(e)
+            throw e
+        } catch (e: Exception) {
+            job.run.completeExceptionally(e)
+        } finally {
+            synchronized(lock) { if (renewing === job) renewing = null }
+        }
+    }
+}
 
 /** What a missing discovery adapter is: the typed N/A of this runtime. */
 private fun noAdapter(platformMissing: Boolean): PolarisException {
@@ -112,6 +209,8 @@ public class CloudLocalLinks internal constructor(private val src: LocalSource, 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Any()
     private val budget: DialBudget = budgetOf(src.slug)
+    private val memory: NameplateMemory = memoryOf(src.slug)
+    private val floor: RenewFloor = floorOf(src.slug)
 
     @Volatile
     private var lan: LanService? = null
@@ -155,38 +254,71 @@ public class CloudLocalLinks internal constructor(private val src: LocalSource, 
         if (!src.allowed()) throw LocalPairingOffException(what)
     }
 
+    /**
+     * Called after the links or the gate changed: a pairing was stored, a link was renamed, forgotten, re-marked or seen, or
+     * the `localPairing` answer flipped. It carries no data: read [list] and [localPairing] again. Returns the unsubscribe.
+     * Never gated.
+     */
+    public fun onChange(fn: () -> Unit): () -> Unit = src.onView(fn)
+
+    /**
+     * How many dials a [join] of the code typed so far may still make: 2, 1 or 0, from the first two digits alone; null until
+     * the text (spaces and hyphens ignored) starts with two ASCII digits. It reads those two digits, keeps nothing and spends
+     * nothing.
+     */
+    public fun dialsLeft(text: String): Int? = dialsLeftOf(budget, text, src.mono())
+
     /** The local links this device holds. Listing is not gated. */
     public suspend fun list(): List<LocalLinkInfo> = infoOfLocal(src.store.rows())
 
     /**
      * Show a code and a QR and wait for the other device (the responder). Throws [LocalPairingOffException] while the gate is
-     * off, `local-links-full` at the cap, and [LanException] `bad_type` for options that break a rule or when this product
-     * already has a window open. The handle closes the window ([LocalPairHandle.stop]); it also closes by itself after
-     * [LocalPairOptions.seconds] (at most 300), after the fifth failed guess and once a link is made.
+     * off, `local-links-full` (cap `stored`) at the cap, [LanException] `bad_type` for options that break a rule or when this
+     * product already has a window open, and `peer-closed` with reason `cooldown` inside the renewal floor. The handle closes
+     * the window ([LocalPairHandle.stop]) and makes the next one ([LocalPairHandle.renew]); the window also closes by itself
+     * after [LocalPairOptions.seconds] (at most 300), after the fifth failed guess, once a link is made and when the gate goes
+     * off, and `onEnd` says which.
      */
     public suspend fun pair(options: LocalPairOptions): LocalPairHandle {
         requireOn("pair")
         checkLocalOptions(options)
         if (!(options.seconds > 0)) throw localBad("seconds must be above 0.")
+        val first = window(options, null)
+        first.reveal()
+        return PairHandle(first, scope) { cur -> window(options, cur) }
+    }
+
+    /**
+     * Open a window; [replacing] is the one a renewal closes first (it makes no `onEnd`). The slot is taken before the first
+     * suspension and kept across the replacement.
+     */
+    private suspend fun window(options: LocalPairOptions, replacing: LocalShower?): LocalShower {
+        requireOn("pair")
         // The slot is taken before the first suspension: two calls that race open one window.
         val slot = CompletableDeferred<Unit>()
         val mine = synchronized(lock) {
-            if (shower?.open == true || starting != null) throw localBad("A pairing window is already open.")
+            if (starting != null || (shower?.open == true && shower !== replacing)) throw localBad("A pairing window is already open.")
             starting = slot
             epoch
         }
         try {
             if (src.store.count() >= MAX_LOCAL_LINKS) throw localFull()
+            quiet { replacing?.close(null) }
+            // The SDK's floor under new windows (after a hard end, 30 s), checked once the window a renewal replaces has ended
+            // and been counted.
+            val verdict = floor.check(options.mono())
+            if (!verdict.allowed) throw cooldown(verdict.retryIn)
             val adapter = platformMdnsFor(options.mdns, ConnectPlatforms.android, ConnectPlatforms.installed, ::noAdapter)
             val holder = java.util.concurrent.atomic.AtomicReference<LocalShower?>()
-            val made = LocalShower.start(src, if (adapter === options.mdns) options else options.withMdns(adapter)) {
+            val made = LocalShower.start(src, if (adapter === options.mdns) options else options.withMdns(adapter), memory) { end, t ->
                 synchronized(lock) { if (shower === holder.get()) shower = null }
+                if (end != null) floor.ended(end, t)
             }
             holder.set(made)
             synchronized(lock) { shower = if (made.open) made else null }
             // The gate was cleared while the window was opening: it closes before anyone sees a code.
             if (mine != epoch || !src.allowed()) {
-                quiet { made.stop() }
+                quiet { made.close(LocalWindowEnd.Off) }
                 throw LocalPairingOffException("pair")
             }
             return made
@@ -198,10 +330,14 @@ public class CloudLocalLinks internal constructor(private val src: LocalSource, 
 
     /**
      * Type or scan the other device's code (the initiator). Returns the link when both people confirmed and both devices stored
-     * it. Throws `pairing-code-failed` (the code did not parse, the QR was not this app's, the dial budget for this code is
-     * spent, or an attempt failed after the other device answered), `pairing-not-found` (no matching advert in 15 s, or every
-     * attempt ended before an answer) and `peer-closed` (the session ended first); [LocalPairingOffException] and
-     * `local-links-full` are thrown before anything is browsed.
+     * it. Throws [LocalPairingException]:
+     *  - `pairing-code-failed`, reason `invalid` (the code did not parse), `other-app` (the QR was not this app's), `spent` (the
+     *    dials for this code are spent) or `wrong` (an attempt failed after the other device answered);
+     *  - `pairing-not-found` (no matching advert in 15 s, or every attempt ended before an answer);
+     *  - `peer-closed`, reason `declined` (the other device said no), `timeout` or `closed`.
+     * [LocalPairingOffException] and `local-links-full` (cap `stored`) are thrown before anything is browsed. Cancelling the
+     * coroutine stops the browse, closes the dial, wipes the join's keys and throws [CancellationException] (not counted as a
+     * failure); no dial is refunded.
      */
     public suspend fun join(options: LocalJoinOptions): LocalPaired {
         requireOn("join")
@@ -251,7 +387,7 @@ public class CloudLocalLinks internal constructor(private val src: LocalSource, 
                 r.copy(reachable = reachable)
             }
         }
-        if (refused) throw localFull("Eight local links are already reachable on this network; turn one off first.")
+        if (refused) throw reachableFull()
         return found
     }
 
@@ -457,7 +593,7 @@ public class CloudLocalLinks internal constructor(private val src: LocalSource, 
             Triple(shower, joins.toList(), starting)
         }
         for (j in js) j.cancel()
-        quiet { w?.stop() }
+        quiet { w?.close(LocalWindowEnd.Off) }
         // A window still opening is stopped by its own start, which sees the new epoch.
         pending?.await()
         val open = synchronized(lock) { sessions.toList() }

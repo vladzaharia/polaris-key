@@ -15,6 +15,8 @@ package im.plrs.key.sdk
 
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
+import im.plrs.key.core.LocalLinksCap
+import im.plrs.key.core.Platform
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.Unsupported
 import im.plrs.key.core.UnsupportedReason
@@ -26,6 +28,9 @@ import im.plrs.key.core.peer.SessionEvent
 import im.plrs.key.core.peer.lan.MdnsAdapter
 import java.net.ServerSocket
 import java.security.SecureRandom
+import im.plrs.key.core.LocalCodeReason as WireCodeReason
+import im.plrs.key.core.LocalPairFailure as WireFailure
+import im.plrs.key.core.LocalWindowEnd as WireWindowEnd
 
 private const val LABEL_MAX = 64
 private const val BACKLOG = 16
@@ -36,6 +41,42 @@ internal val systemRandom: (Int) -> ByteArray = { n -> ByteArray(n).also { rng.n
 
 internal val systemMono: () -> Double = { System.nanoTime() / 1e9 }
 
+/** Why a code is on show (`LocalCode.reason`). Display only: no decision depends on it. */
+public enum class LocalCodeReason(public val wire: String) {
+    /** The first code of a window, a renewed one included. */
+    Opened(WireCodeReason.opened),
+
+    /** A counted failed guess. */
+    WrongCode(WireCodeReason.wrongCode),
+
+    /** This device's person declined a pairing. */
+    Declined(WireCodeReason.declined),
+
+    /** A deadline ran out. */
+    Timeout(WireCodeReason.timeout),
+
+    /** Any other end without a link. */
+    Closed(WireCodeReason.closed),
+}
+
+/** Why a pairing window ended (`onEnd`). Display only. */
+public enum class LocalWindowEnd(public val wire: String) {
+    /** The 300 s ran out. */
+    Expired(WireWindowEnd.expired),
+
+    /** The fifth failed guess. */
+    TooManyTries(WireWindowEnd.tooManyTries),
+
+    /** A link was made. */
+    Stored(WireWindowEnd.stored),
+
+    /** The host closed it ([LocalPairHandle.stop]). */
+    Person(WireWindowEnd.person),
+
+    /** The local-pairing gate went off. */
+    Off(WireWindowEnd.off),
+}
+
 /** The code a shower shows now. It changes after every failed guess. */
 public class LocalCode internal constructor(
     /** The 8 digits as two groups of four, like `4812 3456`. */
@@ -44,6 +85,12 @@ public class LocalCode internal constructor(
     public val qr: String,
     /** The public two digits of the code, the advert's `n`. */
     public val nameplate: String,
+    /** Why this code is on show. */
+    public val reason: LocalCodeReason,
+    /** When the window closes, in Unix seconds (rounded down). Every code of one window has the same one. */
+    public val expiresAt: Long,
+    /** The guesses counted in this window so far (0 to 4). Never show it as "tries left". */
+    public val failures: Int,
 ) {
     override fun toString(): String = "LocalCode"
 }
@@ -79,7 +126,17 @@ public class LocalPaired(
 }
 
 /** Why a session that reached the consent ended without a link, or the window ended. */
-public enum class LocalPairFailureReason { Declined, Timeout, Full, TooManyTries, Closed }
+public enum class LocalPairFailureReason(public val wire: String) {
+    Declined(WireFailure.declined),
+    Timeout(WireFailure.timeout),
+    Full(WireFailure.full),
+    TooManyTries(WireFailure.tooManyTries),
+    Closed(WireFailure.closed),
+    Cancelled(WireFailure.cancelled),
+
+    /** A new window inside the 30 s the SDK waits after a hard end (the renewal floor). */
+    Cooldown(WireFailure.cooldown),
+}
 
 public class LocalPairFailure(public val reason: LocalPairFailureReason, public val close: SessionClosed?) {
     override fun toString(): String = "LocalPairFailure(${reason.name})"
@@ -95,6 +152,17 @@ public interface LocalPairHandle {
 
     /** The code on show now; null once the window has closed. */
     public fun code(): LocalCode?
+
+    /**
+     * Close the window and open a new one with the same options: a new nameplate (never one a window of this app closed
+     * with in the last 300 s while another is free), a new code and QR, 300 s and no failures. The old window ends with no
+     * `onEnd`. Works on a closed handle; refuses what `pair` refuses (the gate, the cap, another window) and, for 30 s after
+     * a window ended [LocalWindowEnd.TooManyTries] or after the second window within 10 minutes that ended after a failed
+     * guess, `peer-closed` with reason `cooldown` (so does `pair`). [stop] while a renewal is opening closes the new window
+     * and the renewal throws [LanException] `closed`. Returns the first code of the new window. Cancelling the caller does
+     * not undo a renewal that has begun: call [stop].
+     */
+    public suspend fun renew(): LocalCode
 }
 
 /** The common options of `pair` and `join`. Callbacks run on a service thread: keep them short, never block in one. */
@@ -139,13 +207,27 @@ public class LocalPairOptions @JvmOverloads constructor(
     host: String? = null,
     allowLoopback: Boolean = false,
     handshakeSeconds: Double = 30.0,
+    /**
+     * Called with how many connections were closed without counting a guess (a first message that was busy, limited or
+     * invalid, a refusal at admission, an attempt that ended before its guess). It starts again at 0 with each new code and
+     * when a device reaches the consent, and is called at most once a second. A high count means something on the network
+     * keeps interrupting.
+     */
+    public val onInterrupted: ((Int) -> Unit)? = null,
+    /**
+     * Called once when the window ends, after its advert and listener are gone. A window replaced by [LocalPairHandle.renew]
+     * ends with no call.
+     */
+    public val onEnd: ((LocalWindowEnd) -> Unit)? = null,
 ) : LocalOptions(categories, onConfirm, label, mdns, host, allowLoopback, handshakeSeconds) {
     /** These options with another discovery adapter (the platform's, on Android). */
-    internal fun withMdns(adapter: MdnsAdapter?): LocalPairOptions =
-        LocalPairOptions(categories, onCode, onConfirm, label, onLinked, onFailed, seconds, adapter, host, allowLoopback, handshakeSeconds).also {
-            it.random = random
-            it.mono = mono
-        }
+    internal fun withMdns(adapter: MdnsAdapter?): LocalPairOptions = LocalPairOptions(
+        categories, onCode, onConfirm, label, onLinked, onFailed, seconds, adapter, host, allowLoopback, handshakeSeconds,
+        onInterrupted, onEnd,
+    ).also {
+        it.random = random
+        it.mono = mono
+    }
 
     override fun toString(): String = "LocalPairOptions"
 }
@@ -185,9 +267,47 @@ public class LocalPairingOffException(what: String) :
     override fun toString(): String = "LocalPairingOffException($code)"
 }
 
-/** This device holds the most local links it can for this app, or eight are reachable already. */
-internal fun localFull(detail: String = "This device holds the most local links it can for this app."): PolarisException =
-    PolarisException(ErrorCode.localLinksFull, detail)
+/**
+ * A pairing that is refused or ended, with the detail the code alone does not give. The codes are unchanged:
+ * `pairing-code-failed` carries a [reason] (`invalid`, `other-app`, `spent`, `wrong`), `peer-closed` one of `declined`,
+ * `timeout`, `closed` or `cooldown`, and `local-links-full` a [cap] (`stored` or `reachable`), each a value of the generated
+ * constants. The details are for display; nothing here holds a digit.
+ */
+public class LocalPairingException internal constructor(
+    code: String,
+    message: String,
+    /** Why, for `pairing-code-failed` and `peer-closed`; null otherwise. */
+    public val reason: String? = null,
+    /** Which limit, for `local-links-full`; null otherwise. */
+    public val cap: String? = null,
+) : PolarisException(code, message) {
+    override fun toString(): String = "LocalPairingException($code)"
+}
+
+/** This device holds the most local links it can for this app. */
+internal fun localFull(): LocalPairingException =
+    LocalPairingException(ErrorCode.localLinksFull, "This device holds the most local links it can for this app.", cap = LocalLinksCap.stored)
+
+/** Eight local links are reachable already: turn one off before another is advertised. */
+internal fun reachableFull(): LocalPairingException = LocalPairingException(
+    ErrorCode.localLinksFull,
+    "Eight local links are already reachable on this network; turn one off first.",
+    cap = LocalLinksCap.reachable,
+)
+
+/** A new window inside the SDK's 30 s renewal floor: `peer-closed`, reason `cooldown`. */
+internal fun cooldown(retryIn: Int): LocalPairingException = LocalPairingException(
+    ErrorCode.peerClosed,
+    "Too many failed tries. Wait $retryIn s before opening another window.",
+    reason = LocalPairFailureReason.Cooldown.wire,
+)
+
+/** The platform a pairing's `HELLO` reports: the canonical spelling (`macos`, `windows`, `linux`, `android`). */
+internal fun pairingPlatform(): String = when (val raw = hostPlatform()) {
+    "darwin" -> Platform.macos
+    "win32" -> Platform.windows
+    else -> raw
+}
 
 internal fun localBad(message: String): LanException = LanException(LanErrorReason.bad_type, message)
 
@@ -218,6 +338,9 @@ internal class LocalAttempt {
     @Volatile var declined = false
 
     @Volatile var local = false
+
+    /** The shower's permit for this attempt's guess was given: a close without a verdict is a failed guess. */
+    @Volatile var permitted = false
 
     @Volatile var failure: LocalPairFailureReason? = null
 
@@ -267,7 +390,7 @@ internal fun offerOf(a: LocalAttempt, cats: List<String>, hello: PeerHello): Loc
 internal suspend fun storeLocalLink(src: LocalSource, a: LocalAttempt, e: SessionEvent.LocalLinked): LocalPaired? {
     try {
         // The gate is read again inside the store call: a window that closed while the store waited leaves no link.
-        val id = src.store.add(NewLocalLink(a.linkKey, e.ownKey, e.peerKey, e.secret, e.label, e.cats), src.now(), src.allowed)
+        val id = src.store.add(NewLocalLink(a.linkKey, e.ownKey, e.peerKey, e.secret, e.label, e.cats, a.hello?.platform), src.now(), src.allowed)
         if (id == null) {
             a.failure = if (src.allowed()) LocalPairFailureReason.Full else LocalPairFailureReason.Closed
             return null

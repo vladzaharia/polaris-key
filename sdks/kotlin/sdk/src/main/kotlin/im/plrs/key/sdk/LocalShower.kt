@@ -6,7 +6,10 @@
 //  - `rotated` is told only after the new password, the new QR secret and both generators exist (the Elligator map is made
 //    here, off the network path, never inside the reply to a C1);
 //  - the password, the QR secret, the generators, the scalars and the ISK are wiped when the attempt or the window ends. (A
-//    password is a short string and is dropped, not overwritten.)
+//    password is a short string and is dropped, not overwritten);
+//  - the nameplate of a window that closes goes into the product's [NameplateMemory], and the next window's draw skips it for
+//    300 s (a renewed window is new in every respect); the draw looks at nothing on the network;
+//  - `onEnd` is told once per window, after the advert is withdrawn; a window a `renew()` replaces ends silently (`close(null)`).
 
 @file:Suppress(
     "CyclomaticComplexMethod",
@@ -25,6 +28,7 @@ import im.plrs.key.core.peer.HelloInfo
 import im.plrs.key.core.peer.LOCAL_ATTEMPT_SECONDS
 import im.plrs.key.core.peer.LOCAL_PAIR_SECONDS
 import im.plrs.key.core.peer.LinkHandlers
+import im.plrs.key.core.peer.NameplateMemory
 import im.plrs.key.core.peer.NoiseRole
 import im.plrs.key.core.peer.PairingOptions
 import im.plrs.key.core.peer.PairingWindow
@@ -33,8 +37,8 @@ import im.plrs.key.core.peer.PeerCloseCode
 import im.plrs.key.core.peer.PeerLink
 import im.plrs.key.core.peer.PeerMode
 import im.plrs.key.core.peer.RawNoiseStatic
+import im.plrs.key.core.peer.RenewEnd
 import im.plrs.key.core.peer.SessionEvent
-import im.plrs.key.core.peer.TxtResult
 import im.plrs.key.core.peer.WindowOutcome
 import im.plrs.key.core.peer.WindowResult
 import im.plrs.key.core.peer.advertEpoch
@@ -46,23 +50,19 @@ import im.plrs.key.core.peer.cpacePsk
 import im.plrs.key.core.peer.cpaceScalar
 import im.plrs.key.core.peer.cpaceShare
 import im.plrs.key.core.peer.displayCode
-import im.plrs.key.core.peer.drawNameplate
 import im.plrs.key.core.peer.drawPassword
 import im.plrs.key.core.peer.encodeC2
 import im.plrs.key.core.peer.encodeFrame
-import im.plrs.key.core.peer.isInstanceName
 import im.plrs.key.core.peer.lan.AcceptGate
 import im.plrs.key.core.peer.lan.GateSlot
 import im.plrs.key.core.peer.lan.JvmMdns
 import im.plrs.key.core.peer.lan.MdnsAdapter
 import im.plrs.key.core.peer.lan.MdnsAdvert
-import im.plrs.key.core.peer.lan.MdnsFound
 import im.plrs.key.core.peer.lan.MdnsHandle
 import im.plrs.key.core.peer.lan.TcpPipe
 import im.plrs.key.core.peer.makeQr
 import im.plrs.key.core.peer.pairingInstance
 import im.plrs.key.core.peer.parseC1
-import im.plrs.key.core.peer.parseTxt
 import im.plrs.key.core.peer.peerPrologue
 import im.plrs.key.core.peer.productTag
 import kotlinx.coroutines.CancellationException
@@ -84,7 +84,7 @@ private const val SID_BYTES = 10
 private const val QR_SECRET_BYTES = 16
 private const val KEY_BYTES = 32
 private const val END_MILLIS = 2_000L
-private const val MAX_IN_USE = 64
+private const val INTERRUPT_GAP_SECONDS = 1.0
 
 private class Gens(val code: ByteArray, val qr: ByteArray) {
     fun wipe() {
@@ -93,13 +93,16 @@ private class Gens(val code: ByteArray, val qr: ByteArray) {
     }
 }
 
-internal class LocalShower private constructor(private val src: LocalSource, private val o: LocalPairOptions, private val onEnd: () -> Unit) :
-    LocalPairHandle {
+internal class LocalShower private constructor(
+    private val src: LocalSource,
+    private val o: LocalPairOptions,
+    private val memory: NameplateMemory,
+    private val onEnd: (RenewEnd?, Double) -> Unit,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Any()
     private val window = PairingWindow()
     private val attempts = HashSet<LocalAttempt>()
-    private val inUse = LinkedHashMap<String, String>()
     private val cats: List<String> = o.categories.toList()
     private val mdns: MdnsAdapter = o.mdns ?: JvmMdns(scope, allowLoopback = o.allowLoopback)
     private val draw = DrawSource { n -> o.random(n) }
@@ -111,29 +114,34 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
     private var qrSecret: ByteArray? = null
     private var gens: Gens? = null
     private var shown: LocalCode? = null
+    private var expiresAt = 0L
+
+    /** Connections closed without counting a guess since the code last changed ([LocalPairOptions.onInterrupted]). */
+    private var interrupted = 0
+
+    /** When `onInterrupted` was last called (monotonic seconds): at most one call a second. */
+    private var interruptedAt = Double.NEGATIVE_INFINITY
     private var server: ServerSocket? = null
     private var gate: AcceptGate? = null
     private var adv: MdnsHandle? = null
-    private var browse: MdnsHandle? = null
     private var expiry: Job? = null
 
     @Volatile
     private var stopped = false
 
-    override val open: Boolean get() = !stopped
+    val open: Boolean get() = !stopped
 
-    override fun code(): LocalCode? = synchronized(lock) { if (stopped) null else shown }
+    fun code(): LocalCode? = synchronized(lock) { if (stopped) null else shown }
 
     override fun toString(): String = "LocalShower(open=$open)"
 
     private suspend fun begin() {
         window.open(o.mono())
-        // The nameplates other windows of this product are using on the link: best effort, from what the browse has seen.
-        val tags = tags()
-        browse = mdns.browse({ f -> scope.launch { quiet { seen(f, tags) } } }, { synchronized(lock) { inUse.remove(it) } }, { isInstanceName(it) })
-        val np = drawNameplate(draw, synchronized(lock) { inUse.values.toList() }) ?: throw localBad("No random source.")
+        // Two tiers, from this device's own memory only: the adverts of other windows are not authenticated, so they do not
+        // steer the draw.
+        val np = memory.draw(draw, o.mono()) ?: throw localBad("No random source.")
         nameplate = np
-        renew()
+        newSecrets()
         gate = AcceptGate(o.allowLoopback, WAITING * 2, 1, 2, o.handshakeSeconds, ::schedule)
         val s = bindServer(o.host)
         server = s
@@ -151,9 +159,14 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
         val seconds = minOf(o.seconds, LOCAL_PAIR_SECONDS.toDouble())
         expiry = scope.launch {
             delay((seconds * MILLIS).toLong())
-            shutdown(true)
+            shutdown(true, LocalWindowEnd.Expired)
         }
-        show()
+        expiresAt = src.now() + seconds.toLong()
+    }
+
+    /** Show the first code (reason `opened`): the caller does so once the gate has been checked. */
+    fun reveal() {
+        show(LocalCodeReason.Opened)
     }
 
     private fun schedule(seconds: Double, fn: () -> Unit): () -> Unit {
@@ -169,15 +182,8 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
         return listOf(epoch, epoch - 1).map { productTag(src.slug, it) }
     }
 
-    private fun seen(f: MdnsFound, tags: List<String>) {
-        if (stopped || f.instance == instance) return
-        val txt = parseTxt(f.txt)
-        if (txt !is TxtResult.Ok || txt.mode != PeerMode.q || txt.h !in tags) return
-        synchronized(lock) { if (inUse.size < MAX_IN_USE) inUse[f.instance] = txt.n.orEmpty() }
-    }
-
     /** A new password and QR secret, and both generators made from them. */
-    private fun renew() {
+    private fun newSecrets() {
         val pw = drawPassword(draw) ?: throw localBad("No random source.")
         val secret = o.random(QR_SECRET_BYTES)
         val made = Gens(cpaceGenerator(cpacePrsCode(pw), ci, sid), cpaceGenerator(cpacePrsQr(secret), ci, sid))
@@ -196,12 +202,15 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
         }
     }
 
-    private fun show() {
+    private fun show(reason: LocalCodeReason) {
         val c = synchronized(lock) {
             val pw = password
             val qs = qrSecret
             if (stopped || pw == null || qs == null) return
-            LocalCode(displayCode(nameplate, pw), makeQr(src.slug, instance, qs), nameplate).also { shown = it }
+            interrupted = 0
+            interruptedAt = Double.NEGATIVE_INFINITY
+            LocalCode(displayCode(nameplate, pw), makeQr(src.slug, instance, qs), nameplate, reason, expiresAt, window.state.failures)
+                .also { shown = it }
         }
         try {
             o.onCode(c)
@@ -214,9 +223,9 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
      * Make the next code, then tell the window. `rotated` comes only after the new password, the new QR secret and both
      * generators exist; until then a C1 meets a busy window.
      */
-    private suspend fun rotate() {
+    private suspend fun rotate(why: LocalCodeReason) {
         try {
-            renew()
+            newSecrets()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -224,33 +233,64 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
             return
         }
         if (stopped) return
-        show()
+        show(why)
         window.rotated(o.mono())
     }
 
-    private fun applyOutcome(out: WindowOutcome) {
-        if (out.rotate) scope.launch { rotate() }
+    /** [why] is the reason the next code carries when the outcome rotates it. */
+    private fun applyOutcome(out: WindowOutcome, why: LocalCodeReason) {
+        if (out.rotate) scope.launch { rotate(why) }
         if (out.result == WindowResult.TooManyTries) {
             try {
                 o.onFailed?.invoke(LocalPairFailure(LocalPairFailureReason.TooManyTries, null))
             } catch (e: Exception) {
                 // a host callback never ends the window
             }
-            scope.launch { shutdown(false) }
+            scope.launch { shutdown(false, LocalWindowEnd.TooManyTries) }
         }
     }
 
-    override suspend fun stop() = shutdown(false)
+    /** A connection closed without counting a guess. */
+    private fun interrupt() {
+        val n = synchronized(lock) {
+            if (stopped) return
+            interrupted++
+            val t = o.mono()
+            // Counted every time, told at most once a second: a flood does not flood the host.
+            if (t - interruptedAt < INTERRUPT_GAP_SECONDS) return
+            interruptedAt = t
+            interrupted
+        }
+        try {
+            o.onInterrupted?.invoke(n)
+        } catch (e: Exception) {
+            // a host callback never ends the window
+        }
+    }
+
+    suspend fun stop() = shutdown(false, LocalWindowEnd.Person)
+
+    /**
+     * Close the window, telling `onEnd` why (null: tell no one, for a window a renewal replaces). The nameplate, the secrets
+     * and the advert go either way.
+     */
+    suspend fun close(end: LocalWindowEnd?) = shutdown(false, end)
 
     /** Close the window: the advert, the listener and the connections ([keepSessions] spares those past the transport). */
-    private suspend fun shutdown(keepSessions: Boolean) {
+    private suspend fun shutdown(keepSessions: Boolean, end: LocalWindowEnd?) {
         synchronized(lock) {
             if (stopped) return
             stopped = true
         }
-        expiry?.cancel()
+        // The expiry job is the caller of an `Expired` end: it does not cancel itself.
+        if (end != LocalWindowEnd.Expired) expiry?.cancel()
         expiry = null
-        window.close(o.mono())
+        val t = o.mono()
+        // For the SDK's renewal floor: how this window ended, and whether it had counted a failed guess.
+        val failures = window.state.failures
+        window.close(t)
+        // The next window of this product does not draw this nameplate for 300 s.
+        if (nameplate != "") memory.shown(nameplate, t)
         try {
             server?.close()
         } catch (e: IOException) {
@@ -258,16 +298,9 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
         }
         gate?.destroyPending(keepSessions)
         val a = adv
-        val b = browse
         adv = null
-        browse = null
         quiet { a?.stop() }
-        quiet { b?.stop() }
         val ending = synchronized(lock) { attempts.filter { !keepSessions || it.phase != "session" } }
-        for (x in ending) {
-            quiet { end(x) }
-            x.linkKey.fill(0)
-        }
         // The code, the QR secret and the generators are of no use to anyone now.
         synchronized(lock) {
             qrSecret?.fill(0)
@@ -276,9 +309,27 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
             gens = null
             password = null
             shown = null
-            inUse.clear()
         }
-        onEnd()
+        onEnd(
+            when {
+                end == LocalWindowEnd.TooManyTries -> RenewEnd.TooManyTries
+                end != LocalWindowEnd.Stored && failures > 0 -> RenewEnd.WrongCode
+                else -> null
+            },
+            t,
+        )
+        // The host hears the end once the advert is withdrawn and the listener has stopped.
+        if (end != null) {
+            try {
+                o.onEnd?.invoke(end)
+            } catch (e: Exception) {
+                // a host callback never ends the window
+            }
+        }
+        for (x in ending) {
+            quiet { endAttempt(x) }
+            x.linkKey.fill(0)
+        }
         if (!keepSessions || synchronized(lock) { attempts.isEmpty() }) scope.cancel()
     }
 
@@ -295,7 +346,12 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
     // -- connections ---------------------------------------------------------------------------------
 
     private suspend fun accept(sock: Socket) {
-        val slot = gate?.admit(sock, stopped || !src.allowed()) ?: return
+        val slot = gate?.admit(sock, stopped || !src.allowed())
+        if (slot == null) {
+            // Refused at admission (the gate's own limits closed it): nothing is counted, but the host may want to know.
+            interrupt()
+            return
+        }
         val at = o.mono()
         val a = LocalAttempt()
         synchronized(lock) { attempts += a }
@@ -336,7 +392,10 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
         val v = parseC1(frame)
         val out = window.c1(o.mono(), v is FrameVerdict.Ok)
         // Closed, busy, limited and refused: closed silently; none of them counts a failure.
-        if (out.result != WindowResult.Attempt || v !is FrameVerdict.Ok || v.kind == null) return false
+        if (out.result != WindowResult.Attempt || v !is FrameVerdict.Ok || v.kind == null) {
+            interrupt()
+            return false
+        }
         val id = out.id!!
         a.id = id
         val isCode = v.kind == im.plrs.key.core.peer.CpaceKind.Code
@@ -392,10 +451,12 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
         val remaining = maxOf(1.0, LOCAL_ATTEMPT_SECONDS - elapsed)
         val link = PeerLink(k.pipe, scope, handlers, remaining) { send, onEvent ->
             PeerChannel(
-                NoiseRole.responder, src.slug, RawNoiseStatic(key), null, HelloInfo(hostPlatform(), src.slug, o.label), send, onEvent,
+                NoiseRole.responder, src.slug, RawNoiseStatic(key), null, HelloInfo(pairingPlatform(), src.slug, o.label), send, onEvent,
                 caps = emptyList(), mode = PeerMode.q,
                 // The required permit: it counts the guess before the tag is tried.
-                pair = PairingOptions(k.psk, k.isk, held, cats, o.label, elapsed) { window.beginGuess(id, o.mono()) },
+                pair = PairingOptions(k.psk, k.isk, held, cats, o.label, elapsed) {
+                    window.beginGuess(id, o.mono()).also { ok -> if (ok) a.permitted = true }
+                },
             )
         }
         a.link = link
@@ -416,13 +477,17 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
             window.guessFailed(id, t)
         }
         a.phase = if (e.opens) "session" else "done"
-        if (out != null) applyOutcome(out)
+        if (out != null) applyOutcome(out, LocalCodeReason.WrongCode)
     }
 
     private fun offer(a: LocalAttempt) {
         val hello = a.hello
         if (a.shown || stopped || hello == null) return
         a.shown = true
+        synchronized(lock) {
+            interrupted = 0
+            interruptedAt = Double.NEGATIVE_INFINITY
+        }
         val offer = offerOf(a, cats, hello)
         try {
             o.onConfirm(offer)
@@ -456,23 +521,31 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
         val t = o.mono()
         var out = WindowOutcome()
         val id = a.id
+        // What the next code says when this end rotates it ([LocalCode.reason]).
+        var why = LocalCodeReason.WrongCode
+        val reason = a.failure ?: if (c.code == PeerCloseCode.peer_timeout.name) LocalPairFailureReason.Timeout else LocalPairFailureReason.Closed
         if (a.phase == "session") {
             out = window.sessionEnd(t, a.linked)
+            why = when (reason) {
+                LocalPairFailureReason.Declined -> LocalCodeReason.Declined
+                LocalPairFailureReason.Timeout -> LocalCodeReason.Timeout
+                else -> LocalCodeReason.Closed
+            }
         } else if (id != null && a.phase != "done") {
             // A permitted guess that has no verdict is a failed guess; one that never reached its guess counts nothing.
             out = window.abandon(id, t)
+            if (!a.permitted) interrupt()
         }
         over(a, false)
         a.closers.fire(c)
         if (a.shown && !a.linked && !stopped) {
-            val reason = a.failure ?: if (c.code == PeerCloseCode.peer_timeout.name) LocalPairFailureReason.Timeout else LocalPairFailureReason.Closed
             try {
                 o.onFailed?.invoke(LocalPairFailure(reason, c))
             } catch (x: Exception) {
                 // a host callback never ends the window
             }
         }
-        if (a.linked) shutdown(false) else applyOutcome(out)
+        if (a.linked) shutdown(false, LocalWindowEnd.Stored) else applyOutcome(out, why)
     }
 
     /** The attempt is over: its key and its place go; [pre] is a socket that closed before its session began. */
@@ -483,26 +556,29 @@ internal class LocalShower private constructor(private val src: LocalSource, pri
         }
         a.linkKey.fill(0)
         val id = a.id
-        if (pre && id != null && a.phase == "c1") applyOutcome(window.abandon(id, o.mono()))
+        if (pre && id != null && a.phase == "c1") {
+            applyOutcome(window.abandon(id, o.mono()), LocalCodeReason.WrongCode)
+            interrupt()
+        }
         if (last) scope.cancel()
     }
 
-    private suspend fun end(a: LocalAttempt) {
+    private suspend fun endAttempt(a: LocalAttempt) {
         a.local = true
         val l = a.link
         if (l != null) withTimeoutOrNull(END_MILLIS) { l.close(PeerCloseCode.peer_bye) }
     }
 
     companion object {
-        /** Validate, listen, advertise and browse. Throws [LanException] `bad_type` for options that break a rule. */
-        suspend fun start(src: LocalSource, o: LocalPairOptions, onEnd: () -> Unit): LocalShower {
+        /** Validate, listen and advertise. Throws [LanException] `bad_type` for options that break a rule. */
+        suspend fun start(src: LocalSource, o: LocalPairOptions, memory: NameplateMemory, onEnd: (RenewEnd?, Double) -> Unit): LocalShower {
             checkLocalOptions(o)
             if (!(o.seconds > 0)) throw localBad("seconds must be above 0.")
-            val s = LocalShower(src, o, onEnd)
+            val s = LocalShower(src, o, memory, onEnd)
             try {
                 s.begin()
             } catch (e: Throwable) {
-                s.quiet { s.stop() }
+                s.quiet { s.close(null) }
                 throw e
             }
             return s

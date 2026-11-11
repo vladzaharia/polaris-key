@@ -50,6 +50,7 @@ class ConnectLocalLinksTest : ConnectLanBase() {
 
         @Volatile var gate = true
         val subs = CopyOnWriteArrayList<() -> Unit>()
+        val views = CopyOnWriteArrayList<() -> Unit>()
         val touched = CopyOnWriteArrayList<String>()
         val src = LocalSource(
             slug = "djdl",
@@ -57,10 +58,17 @@ class ConnectLocalLinksTest : ConnectLanBase() {
             mono = { System.nanoTime() / 1e9 },
             allowed = { gate },
             store = store,
-            notify = { for (f in subs) f() },
+            notify = {
+                for (f in views) f()
+                for (f in subs) f()
+            },
             onChange = { fn ->
                 subs += fn
                 ({ subs -= fn })
+            },
+            onView = { fn ->
+                views += fn
+                ({ views -= fn })
             },
             live = { if (gate) store.rows().map(::liveOfLocal) else emptyList() },
             touch = { touched += it.id },
@@ -266,7 +274,9 @@ class ConnectLocalLinksTest : ConnectLanBase() {
         val a = Dev(net)
         for (i in 0 until MAX_LOCAL_LINKS) a.store.add(NewLocalLink(rnd(), rnd(), rnd(), rnd(), "L$i", emptyList()), 1L)
         assertEquals(MAX_LOCAL_LINKS, a.store.count())
-        assertEquals(ErrorCode.localLinksFull, assertThrows(PolarisException::class.java) { runBlocking { a.links.pair(a.pairOptions()) } }.code)
+        val paired = assertThrows(LocalPairingException::class.java) { runBlocking { a.links.pair(a.pairOptions()) } }
+        assertEquals(ErrorCode.localLinksFull, paired.code)
+        assertEquals("stored", paired.cap)
         val joined = assertThrows(PolarisException::class.java) { runBlocking { a.links.join(a.joinOptions(code = "48123456")) } }
         assertEquals(ErrorCode.localLinksFull, joined.code)
         assertTrue(net.names().isEmpty())

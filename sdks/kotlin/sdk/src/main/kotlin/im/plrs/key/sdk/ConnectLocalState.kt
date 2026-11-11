@@ -27,6 +27,7 @@ import im.plrs.key.core.DeviceKeyStorage
 import im.plrs.key.core.DeviceKeysUnreadableException
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.PLATFORM_VALUES
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.StoreException
 import im.plrs.key.core.arrayValue
@@ -70,6 +71,11 @@ public data class LocalLinkInfo(
     val lastSeen: Long?,
     /** Advertised on the LAN (at most 8 at once). A new link is reachable already while fewer than 8 are. */
     val reachable: Boolean,
+    /**
+     * The other device's platform as it reported it when you paired, one of the `Platform` values (`macos`, `windows`,
+     * `linux`, `android`, ...), or null when it reported none of them. Display only: it was not authenticated.
+     */
+    val platform: String? = null,
 )
 
 /** The link a mode-`l` session was made over. No key, no secret. */
@@ -86,6 +92,9 @@ public class LocalRef(
     override fun toString(): String = "LocalRef($id)"
 }
 
+/** A platform as the store keeps it: only an `X-PKey-Platform` spelling, else null. */
+private val String?.knownPlatform: String? get() = this?.takeIf { it in PLATFORM_VALUES }
+
 /** One link as it rests in the record. Keys and the secret are canonical base64url of 32 bytes. Never printed. */
 internal class LocalLinkRow(
     val id: String,
@@ -99,11 +108,13 @@ internal class LocalLinkRow(
     val createdAt: Long,
     val lastSeen: Long?,
     val reachable: Boolean,
+    /** The peer's `HELLO` platform at pairing: only a `Platform` value, else null. */
+    val platform: String? = null,
 ) {
     override fun toString(): String = "LocalLinkRow(redacted)"
 
     fun copy(label: String? = this.label, lastSeen: Long? = this.lastSeen, reachable: Boolean = this.reachable): LocalLinkRow =
-        LocalLinkRow(id, ownKey, ownPublic, peerKey, secret, label, cats, createdAt, lastSeen, reachable)
+        LocalLinkRow(id, ownKey, ownPublic, peerKey, secret, label, cats, createdAt, lastSeen, reachable, platform)
 
     fun valid(): Boolean = ID_RE.matches(id) && listOf(ownKey, ownPublic, peerKey, secret).all(::isKey) && catsOk(cats)
 }
@@ -160,7 +171,7 @@ internal fun wipeLocals(list: List<LiveLocal>) {
 }
 
 internal fun infoOfLocal(rows: List<LocalLinkRow>): List<LocalLinkInfo> =
-    rows.map { LocalLinkInfo(it.id, it.label, it.cats, it.createdAt, it.lastSeen, it.reachable) }
+    rows.map { LocalLinkInfo(it.id, it.label, it.cats, it.createdAt, it.lastSeen, it.reachable, it.platform) }
 
 private fun rowJson(r: LocalLinkRow): JsonObject = JsonObject(
     buildMap {
@@ -174,6 +185,7 @@ private fun rowJson(r: LocalLinkRow): JsonObject = JsonObject(
         put("createdAt", jsonInt(r.createdAt))
         r.lastSeen?.let { put("lastSeen", jsonInt(it)) }
         put("reachable", JsonPrimitive(r.reachable))
+        r.platform?.let { put("platform", JsonPrimitive(it)) }
     },
 )
 
@@ -210,6 +222,8 @@ internal fun parseLocalState(raw: ByteArray, product: String): List<LocalLinkRow
             createdAt = o["createdAt"].longValue ?: return null,
             lastSeen = seenEl.longValue,
             reachable = o["reachable"].boolValue ?: return null,
+            // Unknown members are ignored; a platform that is not a `Platform` value reads as none.
+            platform = o["platform"].stringValue.knownPlatform,
         )
         // A record with two rows of one id is unusable: it was not written by this code.
         if (!row.valid() || !seen.add(row.id)) return null
@@ -226,6 +240,8 @@ internal class NewLocalLink(
     val secret: ByteArray,
     val label: String?,
     val cats: List<String>,
+    /** The peer's `HELLO` platform; kept only when it is a `Platform` value. */
+    val platform: String? = null,
 ) {
     override fun toString(): String = "NewLocalLink"
 }
@@ -304,7 +320,7 @@ internal class LocalLinkStore(private val product: String, private val open: sus
             val reachable = others.count { it.reachable } < MAX_LIVE_LOCAL_ADVERTS
             others + LocalLinkRow(
                 id, Base64Url.encode(link.ownKey), Base64Url.encode(link.ownPublic), Base64Url.encode(link.peerKey),
-                Base64Url.encode(link.secret), link.label, link.cats, now, null, reachable,
+                Base64Url.encode(link.secret), link.label, link.cats, now, null, reachable, link.platform.knownPlatform,
             )
         }
         return if (refused) null else id
