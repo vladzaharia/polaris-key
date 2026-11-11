@@ -282,18 +282,23 @@ internal class LocalLinkStore(private val product: String, private val open: sus
 
     /**
      * Change the rows under the store's lock: [fn] returns the new rows, or null for no change. Resolves with the rows as
-     * they are after. The read, the judgement and the write run inside the storage's own lock.
+     * they are after. When none are left the record itself is cleared (the file deleted, a sealed store's key destroyed).
+     * The read, the judgement and the write run inside the storage's own lock.
      */
     suspend fun update(fn: (List<LocalLinkRow>) -> List<LocalLinkRow>?): List<LocalLinkRow> = lock.withLock {
         var result: List<LocalLinkRow> = emptyList()
+        var forgetAll = false
         try {
             storage().update { current ->
                 var base: List<LocalLinkRow> = emptyList()
                 if (current != null) base = parseLocalState(current, product) ?: throw unreadable()
                 val next = fn(base)
                 result = next ?: base
-                next?.let { encodeLocalState(product, it) }
+                // No rows left: the record is deleted below (and a sealed store's key with it), not rewritten empty.
+                forgetAll = next != null && next.isEmpty()
+                next?.takeIf { it.isNotEmpty() }?.let { encodeLocalState(product, it) }
             }
+            if (forgetAll) storage().clear()
         } catch (e: StoreException) {
             throw error(e)
         } catch (e: DeviceKeysUnreadableException) {

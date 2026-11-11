@@ -15,7 +15,9 @@ package im.plrs.key.android
 import android.content.Context
 import android.os.Build
 import im.plrs.key.core.DeviceKeyStorage
+import im.plrs.key.core.DeviceKeysUnreadableException
 import im.plrs.key.core.FileDeviceKeyStorage
+import im.plrs.key.core.StoreException
 import im.plrs.key.core.peer.lan.MdnsAdapter
 import im.plrs.key.platform.AndroidKeyStoreProvider
 import im.plrs.key.platform.KeyProvider
@@ -27,7 +29,10 @@ import im.plrs.key.sdk.ConnectOptions
 import im.plrs.key.sdk.ConnectPlatform
 import im.plrs.key.sdk.ConnectPlatforms
 import im.plrs.key.sdk.LocalNetworkVerdict
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
+import java.security.GeneralSecurityException
 
 /** The record, and a `deleteRecord()` that also destroys the wrapping key: it has no other user. */
 private class ConnectStateStorage(private val inner: FileDeviceKeyStorage) : DeviceKeyStorage by inner {
@@ -53,8 +58,73 @@ public fun androidConnectStateStorage(
 )
 
 /**
- * These connect options with the Android defaults: the device keys, and the state in [androidConnectStateStorage]
- * (without them `connect.identity()` is invalid-options on Android). A storage the host chose is kept.
+ * The local-link record, and a `deleteRecord()` that also destroys the wrapping key: the local links have no other user of
+ * it. A record whose wrapping key is gone (lost, or permanently invalidated, which [KeystoreSealer] destroys) can never be
+ * opened again: it is deleted and the store starts empty, as after a reinstall. A record that fails under a live key (a bad
+ * tag, a foreign file) is kept and refused, never replaced.
+ */
+private class LocalStateStorage(private val inner: FileDeviceKeyStorage, private val keys: KeyProvider, private val alias: String) :
+    DeviceKeyStorage by inner {
+    private val lock = Mutex()
+
+    override suspend fun deleteRecord() = inner.clear()
+
+    override suspend fun get(): ByteArray? = lock.withLock {
+        try {
+            inner.get()
+        } catch (e: DeviceKeysUnreadableException) {
+            if (keyPresent()) throw e
+            inner.clear()
+            null
+        }
+    }
+
+    override suspend fun update(transform: (ByteArray?) -> ByteArray?): Boolean = lock.withLock {
+        try {
+            inner.update(transform)
+        } catch (e: DeviceKeysUnreadableException) {
+            if (keyPresent()) throw e
+            inner.clear()
+            inner.update(transform)
+        }
+    }
+
+    /** True unless the alias is confirmed absent; a Keystore fault surfaces as a store error, never as "gone". */
+    private fun keyPresent(): Boolean = try {
+        keys.exists(alias)
+    } catch (e: GeneralSecurityException) {
+        throw StoreException("local links: the Keystore failed (${e.message})", e)
+    }
+}
+
+/**
+ * Where the local links live on Android (`pkey.connect.local.v1`, CC-29b): the link private keys, the link secrets and
+ * the rest of the record, in a Keystore-wrapped file `noBackupFilesDir/pkey/<product>/local-links.bin`, never backed up,
+ * under its own alias ([KeystoreSealer.localAliasFor]). `PolarisKeyAndroid.client` uses it unless the host chose a storage.
+ * [DeviceKeyStorage.clear] deletes the file and destroys the alias, and no other.
+ */
+public fun androidLocalStorage(
+    context: Context,
+    productSlug: String,
+    keys: KeyProvider = AndroidKeyStoreProvider(context),
+    file: File? = null,
+): DeviceKeyStorage {
+    val alias = KeystoreSealer.localAliasFor(productSlug)
+    return LocalStateStorage(
+        FileDeviceKeyStorage(
+            fileOrNoBackup(context, productSlug, file, "local-links.bin"),
+            AndroidDeviceKeySealer(KeystoreSealer(keys, alias)),
+            "pkey-connect-local-state/1/$productSlug".toByteArray(Charsets.UTF_8),
+        ),
+        keys,
+        alias,
+    )
+}
+
+/**
+ * These connect options with the Android defaults: the device keys, the state in [androidConnectStateStorage] and the local
+ * links in [androidLocalStorage] (without them `connect.identity()` and the local links are invalid-options on Android). A
+ * storage the host chose is kept.
  */
 internal fun ConnectOptions.withAndroidDefaults(
     context: Context,
@@ -63,6 +133,7 @@ internal fun ConnectOptions.withAndroidDefaults(
 ): ConnectOptions = copy(
     deviceKeys = deviceKeys ?: androidDeviceKeyStore(context, productSlug, keys),
     state = state ?: androidConnectStateStorage(context, productSlug, keys),
+    localState = localState ?: androidLocalStorage(context, productSlug, keys),
 )
 
 /** Installs [AndroidConnectPlatform] process-wide, unless the host installed a platform of its own. */
