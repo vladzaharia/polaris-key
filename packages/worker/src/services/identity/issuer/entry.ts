@@ -40,7 +40,7 @@ import { rateLimitOk } from "../../../core/rateLimit.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import { randomId } from "../../../platform/crypto.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
-import { redirect, issuerOf } from "../passthrough/authorize.js";
+import { redirect, issuerFor } from "../passthrough/authorize.js";
 import { issueAuthorizationCode } from "../passthrough/code.js";
 import {
   readSignInRequest,
@@ -99,7 +99,7 @@ export async function silentSignInEntry(
     now,
     authz,
     slug,
-    issuer: issuerOf(req, { slug }),
+    issuer: issuerFor(req, authz, { slug }),
   };
 
   const cookie = await portalSessionFromRequest(env, req, now);
