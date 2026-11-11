@@ -242,6 +242,13 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.join.methodsLink": { macos: "Sign-In Methods" },
   "linkPairing.confirm": { macos: "Codes Match" },
   "linkPairing.decline": { macos: "Not a Match" },
+  "localPairing.show": { macos: "Show a Code" },
+  "localPairing.enter": { macos: "Enter a Code" },
+  "localPairing.pairedDevices": { macos: "Paired Devices" },
+  "localPairing.toEnter": { macos: "Enter a Code Instead" },
+  "localPairing.showNew": { macos: "Show a New Code" },
+  "localPairing.showNewIn": { macos: "Show a New Code in {time}" },
+  "localPairing.toShow": { macos: "Show a Code Instead" },
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */

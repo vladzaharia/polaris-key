@@ -113,6 +113,9 @@ export const KEY_NAMESPACES = [
   "saveConflict",
   "linkPairing",
   "transferOffer",
+  // Pair with a Code (CC-29K): two devices on one network pair by a code, with no account.
+  "localPairing",
+  "pairedDevices",
   "about",
   "channel",
   "toast",
@@ -196,6 +199,9 @@ export const COMPONENTS = [
   // Inter-account links and direct-transfer offers (CC-19.9): ui-core CONNECT_SCREENS.
   "LinkPairing",
   "TransferOffer",
+  // Pair with a Code (CC-29K): ui-core CONNECT_SCREENS.
+  "LocalPairing",
+  "PairedDevices",
   "About",
   "ChannelPicker",
   "Toast",
@@ -318,6 +324,8 @@ const TITLE_CASE_KEYS: ReadonlySet<string> = new Set([
   "account.updates",
   "linkPairing.title",
   "linkPairing.linkedTitle",
+  "localPairing.title",
+  "localPairing.pairedTitle",
 ]);
 const BANNED_EN = /\b(licences?|grants?|retry|machines?|plans?)\b/i;
 

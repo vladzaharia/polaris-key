@@ -68,6 +68,11 @@ export interface View<C extends ScreenName = ComponentName, S = string> {
    */
   keyArgs?: Record<string, Record<string, string | number>>;
   /**
+   * The copy keys of controls drawn but not available now (`aria-disabled`, never `disabled`, so
+   * focus and the reason stay reachable). Absent when every control is available.
+   */
+  disabled?: string[];
+  /**
    * The arguments that carry a product's, a developer's or a person's own text (names, device
    * labels, tiers): a renderer draws each in an isolated run (`<bdi>` or `dir="auto"`), because
    * presentation text keeps its bidi controls (plans/HA-12.md Q5).
@@ -94,6 +99,7 @@ const FIELDS = new Set([
   "unlockSync.field",
   "devices.renameLabel",
   "offlineActivation.paste",
+  "localPairing.codeLabel",
 ]);
 
 /** Controls that open a browser: never the first focus on a TV or a pad-only screen (DL9). */
@@ -124,6 +130,8 @@ export interface ViewSpec<S> {
   extraActions?: readonly Action[];
   /** Actions of a control drawn disabled: its label is copy, but the view does not offer it. */
   disabledActions?: readonly Action[];
+  /** Copy keys of the controls drawn disabled (`View.disabled`). */
+  disabled?: readonly (string | false | null | undefined)[];
   args?: Record<string, string | number | undefined>;
   /** The arguments a key takes instead of `args` (`View.keyArgs`). */
   keyArgs?: Record<string, Record<string, string | number | undefined>>;
@@ -149,6 +157,11 @@ export function makeView<C extends ScreenName, S extends string>(
   for (const [k, v] of Object.entries(spec.args ?? {}))
     if (v !== undefined) args[k] = v;
   const primary = spec.primary ?? null;
+  const disabled = [
+    ...new Set(
+      (spec.disabled ?? []).filter((k): k is string => typeof k === "string"),
+    ),
+  ].sort();
   let keyArgs: Record<string, Record<string, string | number>> | undefined;
   for (const [key, own] of Object.entries(spec.keyArgs ?? {})) {
     const entry: Record<string, string | number> = {};
@@ -164,6 +177,7 @@ export function makeView<C extends ScreenName, S extends string>(
     ),
     args,
     ...(keyArgs ? { keyArgs } : {}),
+    ...(disabled.length > 0 ? { disabled } : {}),
     isolate: [
       ...new Set([
         ...Object.keys(args),

@@ -57,7 +57,11 @@ export type SyncScreenName =
  * `COMPONENTS` yet, so no kit's per-component table has to grow before its own package does;
  * `viewOf` answers them.
  */
-export type ConnectScreenName = "LinkPairing" | "TransferOffer";
+export type ConnectScreenName =
+  | "LinkPairing"
+  | "TransferOffer"
+  | "LocalPairing"
+  | "PairedDevices";
 
 /**
  * The two screens activation without an account adds (ui-matrix.json `holders` family, UK-42): the

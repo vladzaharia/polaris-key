@@ -24,6 +24,7 @@ export interface Row {
     state: string;
     copy: string[];
     actions?: string[];
+    disabled?: string[];
   };
   mustNot?: {
     invariant: string;

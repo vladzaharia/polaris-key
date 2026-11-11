@@ -15,8 +15,10 @@ import { loadKitCopy, KIT_COPY_LOCALES } from "@polaris-key/brand/kit-copy";
 import {
   Copy,
   UI_MATRIX_VERSION,
+  localPairingLayout,
   type CopyTable,
   type View,
+  type WindowSize,
 } from "../src/index.js";
 import { resolveTheme, themeSummary } from "../src/theme/index.js";
 import {
@@ -63,6 +65,8 @@ describe(`${MATRIX_FILE}: the version`, () => {
       "saveConflict",
       "holders",
       "connect",
+      "local",
+      "localLayout",
       "nearby",
       "theme",
       "i18n",
@@ -83,6 +87,8 @@ for (const [family, feature] of Object.entries({
   holders: "ui.signin",
   // CC-19.9: the inter-account screens, also only ui-core's until the native kits take them.
   connect: "ui.settings",
+  // CC-29K: Pair with a Code and the paired devices; ui-core and the React kit run it.
+  local: "ui.settings",
   // UXR-47b: the nearby sign-in screens the desktop kit added; ui-core only.
   nearby: "ui.settings",
 })) {
@@ -95,10 +101,12 @@ for (const [family, feature] of Object.entries({
         state: view.state,
         copy: [...view.copy].sort(),
         actions: [...view.actions].sort(),
+        disabled: [...(view.disabled ?? [])].sort(),
       }).toEqual({
         state: row.expect.state,
         copy: [...row.expect.copy].sort(),
         actions: [...(row.expect.actions ?? [])].sort(),
+        disabled: [...(row.expect.disabled ?? [])].sort(),
       });
       if (row.mustNot) {
         for (const s of row.mustNot.states ?? [])
@@ -111,6 +119,17 @@ for (const [family, feature] of Object.entries({
     });
   });
 }
+
+describe(`${MATRIX_FILE} localLayout (ui.settings)`, () => {
+  const rows = matrix.localLayout as {
+    name: string;
+    window: WindowSize;
+    expect: ReturnType<typeof localPairingLayout>;
+  }[];
+  it.each(rows.map((r) => [r.name, r] as const))("%s", (_name, row) => {
+    expect(localPairingLayout(row.window)).toEqual(row.expect);
+  });
+});
 
 describe(`${MATRIX_FILE} theme (ui.theme)`, () => {
   const rows = matrix.theme as { name: string; input: Obj; expect: Obj }[];
@@ -186,6 +205,10 @@ const RENDERER_ARGS: Readonly<Record<string, readonly string[]>> = {
   "signin.replace.meta": ["platform", "when"],
   "devices.meta": ["platform", "when"],
   "a11y.renameDevice": ["device"],
+  // Pair with a Code: a row of the list fills in its own name, switch label and time.
+  "pairedDevices.lastSeen": ["when"],
+  "a11y.deviceOptions": ["device"],
+  "a11y.letConnect": ["device"],
   "a11y.removeDevice": ["device"],
   "signin.choice.devices": ["used", "limit"],
   "signin.consent.licenseLine": [
@@ -331,9 +354,12 @@ function unfilled(view: View): Record<string, string[]> {
 }
 
 describe(`${MATRIX_FILE} no raw placeholder`, () => {
-  const rows = [...Object.keys(FAMILIES), "cloudSync", "connect"].flatMap(
-    (family) => matrix[family] as Row[],
-  );
+  const rows = [
+    ...Object.keys(FAMILIES),
+    "cloudSync",
+    "connect",
+    "local",
+  ].flatMap((family) => matrix[family] as Row[]);
   const seen: Record<string, Record<string, string[]>> = {};
 
   it.each(rows.map((r) => [r.name, r] as const))("%s", (_name, row) => {
