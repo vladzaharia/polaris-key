@@ -209,6 +209,8 @@ func apiSurface() async {
     _ = LocalLinks.open  // cloudConnect.localLinks.open
     _ = LocalLinks.onLink  // cloudConnect.localLinks.onLink
     _ = LocalLinks.localPairing  // cloudConnect.localLinks.localPairing
+    _ = LocalLinks.dialsLeft  // cloudConnect.localLinks.dialsLeft
+    _ = LocalLinks.onChange  // cloudConnect.localLinks.onChange
     _ = CloudTransfer.send(_:source:options:)  // cloudConnect.transfer.send
     _ = CloudTransfer.onOffer(_:)  // cloudConnect.transfer.onOffer
     _ = CloudTransfer.onResult(_:)  // cloudConnect.transfer.onResult

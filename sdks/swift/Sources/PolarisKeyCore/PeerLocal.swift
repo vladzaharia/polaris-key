@@ -443,6 +443,8 @@ public enum PeerLocal {
 public enum LocalJoinInput: Sendable, Equatable {
     case code(nameplate: String)
     case qr(instance: String)
+    /// A QR that parsed but names another app.
+    case otherApp
     case invalid
 }
 
@@ -451,6 +453,8 @@ public enum LocalDialOutcome: String, Sendable, Equatable {
     case transport
     case beforeC2 = "before-c2"
     case afterC2 = "after-c2"
+    /// The dial budget stopped a dial in the middle of a join.
+    case budget
 }
 
 public enum LocalJoinResult: String, Sendable, Equatable {
@@ -469,11 +473,16 @@ public struct LocalJoinPlan: Sendable {
     private var dials = 0
     private var transport = false
     private var afterC2 = false
+    private var budgetStopped = false
+    private var spentAtStart = false
 
     public init(_ input: LocalJoinInput) { self.input = input }
 
     /// Whether anything is browsed at all.
-    public var browses: Bool { input != .invalid }
+    public var browses: Bool { input != .invalid && input != .otherApp && !spentAtStart }
+
+    /// The nameplate's dials were spent before the join began: nothing is browsed or dialled.
+    public mutating func startSpent() { spentAtStart = true }
 
     /// One `m=q` advert seen. `tagMatches` is whether its `h` is this product's tag of the current or
     /// previous epoch; `n` its nameplate. Returns whether it was kept.
@@ -483,7 +492,7 @@ public struct LocalJoinPlan: Sendable {
         switch input {
         case .code(let nameplate): match = n == nameplate
         case .qr(let i): match = instance == i
-        case .invalid: match = false
+        case .invalid, .otherApp: match = false
         }
         if !match || kept.contains(instance) || kept.count >= localJoinKept { return false }
         kept.append(instance)
@@ -499,14 +508,29 @@ public struct LocalJoinPlan: Sendable {
     /// The dial of `next()` ended this way.
     public mutating func ended(_ outcome: LocalDialOutcome) {
         dials += 1
-        if outcome == .transport { transport = true } else if outcome == .afterC2 { afterC2 = true }
+        switch outcome {
+        case .transport: transport = true
+        case .afterC2: afterC2 = true
+        case .budget: budgetStopped = true
+        case .beforeC2: break
+        }
     }
 
     /// The answer once no dial is left (or the browse ran out).
     public func result() -> LocalJoinResult {
-        if input == .invalid { return .pairingCodeFailed }
+        if !browses { return .pairingCodeFailed }
         if transport { return .transport }
-        return afterC2 ? .pairingCodeFailed : .pairingNotFound
+        return afterC2 || budgetStopped ? .pairingCodeFailed : .pairingNotFound
+    }
+
+    /// Of a `pairing-code-failed` result, why (a `PairingCodeFailedReason` value); nil for any other result. The
+    /// first that applies wins: invalid, other-app, spent at the start, wrong, spent in the middle.
+    public func reason() -> String? {
+        guard result() == .pairingCodeFailed else { return nil }
+        if input == .invalid { return PairingCodeFailedReason.invalid }
+        if input == .otherApp { return PairingCodeFailedReason.otherApp }
+        if spentAtStart { return PairingCodeFailedReason.spent }
+        return afterC2 ? PairingCodeFailedReason.wrong : PairingCodeFailedReason.spent
     }
 }
 
@@ -548,8 +572,101 @@ public struct LocalDialBudget: Sendable {
         return true
     }
 
+    /// The dials a join of this nameplate may still make now: 2 less the dials spent.
+    public mutating func left(_ nameplate: String, _ t: Double) -> Int { localDialBudget - check(nameplate, t).used }
+
     /// The nameplates that hold a record (tests).
     public var keyCount: Int { dialled.count }
+}
+
+/// The dials left for the nameplate a person has typed so far (`localLinks.dialsLeft`): nil unless the text, with
+/// ASCII spaces and hyphens removed, starts with two ASCII digits. It reads those two digits only, keeps nothing and
+/// spends nothing.
+public func localDialsLeft(_ budget: inout LocalDialBudget, _ text: String, _ t: Double) -> Int? {
+    var digits = ""
+    for u in text.unicodeScalars {
+        if u == " " || u == "-" { continue }
+        guard u.value >= 0x30 && u.value <= 0x39 else { break }
+        digits.unicodeScalars.append(u)
+        if digits.unicodeScalars.count == 2 { return budget.left(digits, t) }
+    }
+    return nil
+}
+
+// ── The nameplate memory and the renewal floor (§15.12, "The code") ──────────────────
+
+/// The nameplates this device showed for one product in windows that closed less than `localDialBudgetSeconds` ago,
+/// in memory. The shower's draw skips them, so a renewed window never reuses the nameplate of the window just closed,
+/// whose dials a joiner may have spent. One per product for the life of the process, like `LocalDialBudget`.
+public struct LocalNameplateMemory: Sendable {
+    private var closed: [String: Double] = [:]
+
+    public init() {}
+
+    /// The window that showed `nameplate` closed at the monotonic time `t` (seconds).
+    public mutating func shown(_ nameplate: String, _ t: Double) {
+        closed[nameplate] = max(t, closed[nameplate] ?? t)
+    }
+
+    /// The nameplates of windows that closed less than 300 s before `t`.
+    public mutating func recent(_ t: Double) -> [String] {
+        closed = closed.filter { t - $0.value < Double(localDialBudgetSeconds) }
+        return Array(closed.keys)
+    }
+
+    /// The shower's draw, in two tiers. First among the nameplates this memory does not hold: the adverts of other
+    /// windows are not authenticated, so they never steer it. Only when it holds all 100, the one that closed longest
+    /// ago (the lowest on a tie), with no byte read. Nil when the source runs out.
+    public mutating func draw(_ source: PeerLocal.DrawSource, _ t: Double) -> String? {
+        let held = recent(t)
+        if held.count < 100 { return PeerLocal.drawNameplate(source, inUse: held) }
+        var best = ""
+        var at = Double.infinity
+        for (n, c) in closed.sorted(by: { $0.key < $1.key }) where c < at {
+            best = n
+            at = c
+        }
+        return best
+    }
+}
+
+/// Refuse a new window for this long after a hard end.
+public let localRenewCooldownSeconds = 30
+/// Two windows that ended after a wrong guess within this many seconds start the cooldown.
+public let localRenewWrongSeconds = 600
+/// How many such windows start the cooldown.
+public let localRenewWrongLimit = 2
+
+/// How a window ended, for `LocalRenewFloor`: `tooManyTries` (the fifth failed guess) or `wrongCode` (any other end
+/// of a window that had counted a failed guess, a `renew()` replacement included).
+public enum LocalRenewEnd: String, Sendable, Equatable {
+    case tooManyTries = "too-many-tries"
+    case wrongCode = "wrong-code"
+}
+
+/// The SDK's renewal floor, one per product for the life of the process, beside `LocalDialBudget`. After a
+/// `too-many-tries` end, or the second `wrong-code` end within 600 s, no window opens for 30 s, so a host that renews
+/// from `onEnd` with no person cannot give a guesser windows at machine speed. Times are monotonic seconds. In memory.
+public struct LocalRenewFloor: Sendable {
+    private var until = -Double.infinity
+    private var wrong: [Double] = []
+
+    public init() {}
+
+    /// A window ended at `t`.
+    public mutating func ended(_ end: LocalRenewEnd, _ t: Double) {
+        if end == .wrongCode {
+            wrong = wrong.filter { t - $0 < Double(localRenewWrongSeconds) }
+            wrong.append(t)
+            if wrong.count < localRenewWrongLimit { return }
+        }
+        until = max(until, t + Double(localRenewCooldownSeconds))
+    }
+
+    /// Whether a window may open at `t`, and else the whole seconds until it may.
+    public func check(_ t: Double) -> (allowed: Bool, retryIn: Int) {
+        t >= until ? (true, 0) : (false, Int((until - t).rounded(.up)))
+    }
 }
 
 // ── The pairing window (§15.12, "The pairing window") ────────────────────────────────
