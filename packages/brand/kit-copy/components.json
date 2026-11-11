@@ -1746,15 +1746,20 @@
             "localPairing.title",
             "localPairing.chooseBody",
             "localPairing.otherApp",
+            "localPairing.scanNotFound",
+            "localPairing.scanStale",
+            "localPairing.scannerNotReady",
+            "localPairing.scannerPreparing",
             "localPairing.scan",
             "localPairing.show",
-            "localPairing.enterInstead",
             "localPairing.enter",
             "localPairing.prePrompt",
             "localPairing.pairedDevices",
             "core.codes.local-links-full.title",
             "core.codes.local-links-full.message",
-            "common.cancel"
+            "common.cancel",
+            "linkPairing.shares",
+            "linkPairing.sharesNone"
           ]
         },
         "opening": {
@@ -1763,7 +1768,6 @@
             "localPairing.showBody",
             "a11y.busy",
             "localPairing.toEnter",
-            "localPairing.toScan",
             "common.cancel"
           ]
         },
@@ -1776,7 +1780,6 @@
             "localPairing.expires",
             "localPairing.waitingDevice",
             "localPairing.toEnter",
-            "localPairing.toScan",
             "localPairing.rotatedTitle",
             "localPairing.rotatedBody",
             "localPairing.notPairedWith",
@@ -1910,10 +1913,13 @@
             "localPairing.scanBody",
             "a11y.cameraView",
             "localPairing.otherApp",
+            "localPairing.cameraBusy",
+            "localPairing.scanStale",
+            "localPairing.scanNotFound",
             "linkPairing.shares",
             "linkPairing.sharesNone",
             "localPairing.enterInstead",
-            "common.cancel"
+            "common.back"
           ]
         },
         "camera-off": {
@@ -1925,7 +1931,7 @@
             "linkPairing.shares",
             "linkPairing.sharesNone",
             "localPairing.enterInstead",
-            "common.cancel"
+            "common.back"
           ]
         }
       }

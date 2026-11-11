@@ -6434,10 +6434,10 @@ msgstr "Scansiona un codice"
 msgid "localPairing.cameraPromptTitle"
 msgstr "Scansiona il codice"
 
-#. Next, allow {app} to use the camera, so you can scan the code.
+#. Next, allow {app} to use the camera.
 #. Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name.
 msgid "localPairing.cameraPrePrompt"
-msgstr "Ora consenti a {app} di usare la fotocamera, così puoi scansionare il codice."
+msgstr "Ora consenti a {app} di usare la fotocamera."
 
 #. Point at the code on the other device.
 #. Pair with a Code: scan: the lede over the camera view.
@@ -6474,6 +6474,31 @@ msgstr "L’accesso alla fotocamera è disattivato"
 msgid "localPairing.cameraOffBody"
 msgstr "Consentilo in Impostazioni."
 
+#. Can’t find the other device. Check that you’re both on the same network.
+#. Pair with a Code: scan: a scanned code did not reach the other device; scanning goes on (the same words on Android's choose).
+msgid "localPairing.scanNotFound"
+msgstr "Impossibile trovare l’altro dispositivo. Controlla che siate sulla stessa rete."
+
+#. That code has changed. Scan the new one.
+#. Pair with a Code: scan: a scanned code is out of date; scanning goes on.
+msgid "localPairing.scanStale"
+msgstr "Quel codice è cambiato. Scansiona quello nuovo."
+
+#. Can’t open the scanner yet. Try again in a moment.
+#. Pair with a Code: choose (Android): Google's scanner module is not ready yet; the scan entry stays.
+msgid "localPairing.scannerNotReady"
+msgstr "Non è ancora possibile aprire lo scanner. Riprova tra un momento."
+
+#. Getting the scanner ready…
+#. Pair with a Code: choose (Android): shown while Google's scanner module downloads.
+msgid "localPairing.scannerPreparing"
+msgstr "Preparazione dello scanner…"
+
+#. The camera isn’t available right now.
+#. Pair with a Code: scan: the camera is in use elsewhere or interrupted (Split View); typing stays one link away.
+msgid "localPairing.cameraBusy"
+msgstr "La fotocamera non è disponibile al momento."
+
 #. Scan the code instead
 #. Pair with a Code: enter: the link to scanning.
 msgid "localPairing.scanInstead"
@@ -6483,16 +6508,6 @@ msgstr "Scansiona invece il codice"
 msgctxt "macos"
 msgid "localPairing.scanInstead"
 msgstr "Scansiona invece il codice"
-
-#. Scan a code instead
-#. Pair with a Code: show: the link to scanning.
-msgid "localPairing.toScan"
-msgstr "Scansiona invece un codice"
-
-#. macos: Scan a Code Instead
-msgctxt "macos"
-msgid "localPairing.toScan"
-msgstr "Scansiona invece un codice"
 
 #. Enter the code from the other device.
 #. Pair with a Code: enter: the lede.

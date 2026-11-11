@@ -2400,7 +2400,7 @@
     <!-- Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera. -->
     <string name="localPairing_cameraPromptTitle">扫描代码</string>
     <!-- Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name. Arguments: 1=app. -->
-    <string name="localPairing_cameraPrePrompt">接下来，请允许 %1$s 使用相机，以便扫描代码。</string>
+    <string name="localPairing_cameraPrePrompt">接下来，请允许 %1$s 使用相机。</string>
     <!-- Pair with a Code: scan: the lede over the camera view. -->
     <string name="localPairing_scanBody">将相机对准另一台设备上的代码。</string>
     <!-- Pair with a Code: scan: the camera view's accessible name. -->
@@ -2414,12 +2414,19 @@
     <string name="localPairing_cameraOffTitle">相机访问已关闭</string>
     <!-- Pair with a Code: camera off: where to allow it; Open Settings follows. -->
     <string name="localPairing_cameraOffBody">请在“设置”中允许。</string>
+    <!-- Pair with a Code: scan: a scanned code did not reach the other device; scanning goes on (the same words on Android's choose). -->
+    <string name="localPairing_scanNotFound">找不到另一台设备。请确认两台设备在同一网络。</string>
+    <!-- Pair with a Code: scan: a scanned code is out of date; scanning goes on. -->
+    <string name="localPairing_scanStale">该代码已更改。请扫描新的代码。</string>
+    <!-- Pair with a Code: choose (Android): Google's scanner module is not ready yet; the scan entry stays. -->
+    <string name="localPairing_scannerNotReady">暂时无法打开扫描器。请稍后再试。</string>
+    <!-- Pair with a Code: choose (Android): shown while Google's scanner module downloads. -->
+    <string name="localPairing_scannerPreparing">正在准备扫描器…</string>
+    <!-- Pair with a Code: scan: the camera is in use elsewhere or interrupted (Split View); typing stays one link away. -->
+    <string name="localPairing_cameraBusy">相机目前不可用。</string>
     <!-- Pair with a Code: enter: the link to scanning. -->
     <string name="localPairing_scanInstead">改为扫描代码</string>
     <string name="localPairing_scanInstead__macos">改为扫描代码</string>
-    <!-- Pair with a Code: show: the link to scanning. -->
-    <string name="localPairing_toScan">改为扫描代码</string>
-    <string name="localPairing_toScan__macos">改为扫描代码</string>
     <!-- Pair with a Code: enter: the lede. -->
     <string name="localPairing_enterBody">请输入另一台设备上的验证码。</string>
     <!-- Pair with a Code: enter: the field's label. -->

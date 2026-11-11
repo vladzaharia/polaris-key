@@ -2426,7 +2426,7 @@
     <!-- Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera. -->
     <string name="localPairing_cameraPromptTitle">Scansiona il codice</string>
     <!-- Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name. Arguments: 1=app. -->
-    <string name="localPairing_cameraPrePrompt">Ora consenti a %1$s di usare la fotocamera, così puoi scansionare il codice.</string>
+    <string name="localPairing_cameraPrePrompt">Ora consenti a %1$s di usare la fotocamera.</string>
     <!-- Pair with a Code: scan: the lede over the camera view. -->
     <string name="localPairing_scanBody">Inquadra il codice sull’altro dispositivo.</string>
     <!-- Pair with a Code: scan: the camera view's accessible name. -->
@@ -2440,12 +2440,19 @@
     <string name="localPairing_cameraOffTitle">L’accesso alla fotocamera è disattivato</string>
     <!-- Pair with a Code: camera off: where to allow it; Open Settings follows. -->
     <string name="localPairing_cameraOffBody">Consentilo in Impostazioni.</string>
+    <!-- Pair with a Code: scan: a scanned code did not reach the other device; scanning goes on (the same words on Android's choose). -->
+    <string name="localPairing_scanNotFound">Impossibile trovare l’altro dispositivo. Controlla che siate sulla stessa rete.</string>
+    <!-- Pair with a Code: scan: a scanned code is out of date; scanning goes on. -->
+    <string name="localPairing_scanStale">Quel codice è cambiato. Scansiona quello nuovo.</string>
+    <!-- Pair with a Code: choose (Android): Google's scanner module is not ready yet; the scan entry stays. -->
+    <string name="localPairing_scannerNotReady">Non è ancora possibile aprire lo scanner. Riprova tra un momento.</string>
+    <!-- Pair with a Code: choose (Android): shown while Google's scanner module downloads. -->
+    <string name="localPairing_scannerPreparing">Preparazione dello scanner…</string>
+    <!-- Pair with a Code: scan: the camera is in use elsewhere or interrupted (Split View); typing stays one link away. -->
+    <string name="localPairing_cameraBusy">La fotocamera non è disponibile al momento.</string>
     <!-- Pair with a Code: enter: the link to scanning. -->
     <string name="localPairing_scanInstead">Scansiona invece il codice</string>
     <string name="localPairing_scanInstead__macos">Scansiona invece il codice</string>
-    <!-- Pair with a Code: show: the link to scanning. -->
-    <string name="localPairing_toScan">Scansiona invece un codice</string>
-    <string name="localPairing_toScan__macos">Scansiona invece un codice</string>
     <!-- Pair with a Code: enter: the lede. -->
     <string name="localPairing_enterBody">Inserisci il codice dell’altro dispositivo.</string>
     <!-- Pair with a Code: enter: the field's label. -->

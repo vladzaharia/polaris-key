@@ -9577,7 +9577,7 @@
       "note": "Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera."
     },
     "localPairing.cameraPrePrompt": {
-      "value": "Next, allow {app} to use the camera, so you can scan the code.",
+      "value": "Next, allow {app} to use the camera.",
       "role": "body",
       "note": "Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name."
     },
@@ -9611,15 +9611,35 @@
       "role": "body",
       "note": "Pair with a Code: camera off: where to allow it; Open Settings follows."
     },
+    "localPairing.scanNotFound": {
+      "value": "Can’t find the other device. Check that you’re both on the same network.",
+      "role": "body",
+      "note": "Pair with a Code: scan: a scanned code did not reach the other device; scanning goes on (the same words on Android's choose)."
+    },
+    "localPairing.scanStale": {
+      "value": "That code has changed. Scan the new one.",
+      "role": "body",
+      "note": "Pair with a Code: scan: a scanned code is out of date; scanning goes on."
+    },
+    "localPairing.scannerNotReady": {
+      "value": "Can’t open the scanner yet. Try again in a moment.",
+      "role": "body",
+      "note": "Pair with a Code: choose (Android): Google's scanner module is not ready yet; the scan entry stays."
+    },
+    "localPairing.scannerPreparing": {
+      "value": "Getting the scanner ready…",
+      "role": "body",
+      "note": "Pair with a Code: choose (Android): shown while Google's scanner module downloads."
+    },
+    "localPairing.cameraBusy": {
+      "value": "The camera isn’t available right now.",
+      "role": "body",
+      "note": "Pair with a Code: scan: the camera is in use elsewhere or interrupted (Split View); typing stays one link away."
+    },
     "localPairing.scanInstead": {
       "value": "Scan the code instead",
       "role": "button",
       "note": "Pair with a Code: enter: the link to scanning."
-    },
-    "localPairing.toScan": {
-      "value": "Scan a code instead",
-      "role": "button",
-      "note": "Pair with a Code: show: the link to scanning."
     },
     "localPairing.enterBody": {
       "value": "Enter the code from the other device.",

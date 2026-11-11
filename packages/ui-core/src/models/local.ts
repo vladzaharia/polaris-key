@@ -60,6 +60,17 @@ function sharesKey(categories: readonly string[] | undefined): string {
     : "linkPairing.shares";
 }
 
+const SCAN_NOTICE = {
+  "other-app": "localPairing.otherApp",
+  "not-found": "localPairing.scanNotFound",
+  stale: "localPairing.scanStale",
+  "not-ready": "localPairing.scannerNotReady",
+  preparing: "localPairing.scannerPreparing",
+} as const;
+
+/** A scan notice that is a refusal of what was read (the others are passing news). */
+const SCAN_REFUSAL = new Set(["other-app", "not-found", "stale"]);
+
 /** The pairing screens, by state. */
 export function localPairingView(
   ctx: Context,
@@ -76,11 +87,11 @@ export function localPairingView(
         copy: [
           "localPairing.title",
           "localPairing.chooseBody",
-          p.otherApp && "localPairing.otherApp",
+          p.scanNotice && p.sheetScan && SCAN_NOTICE[p.scanNotice],
           p.canScan && "localPairing.scan",
           "localPairing.show",
-          !p.canScan && "localPairing.enter",
-          p.canScan && p.sheetScan && "localPairing.enterInstead",
+          (!p.canScan || p.sheetScan) && "localPairing.enter",
+          p.canScan && p.sheetScan && p.scanShares && sharesKey(p.categories),
           p.prePrompt && !p.full && "localPairing.prePrompt",
           p.full && "core.codes.local-links-full.title",
           p.full && "core.codes.local-links-full.message",
@@ -94,7 +105,11 @@ export function localPairingView(
               "localPairing.show",
             ]
           : [],
-        tone: p.full ? "neutral" : null,
+        tone: p.full
+          ? "neutral"
+          : p.sheetScan && p.scanNotice && SCAN_REFUSAL.has(p.scanNotice)
+            ? "danger"
+            : null,
         // Neither way is the primary: either device can show the code.
         focus: "heading",
       });
@@ -107,7 +122,7 @@ export function localPairingView(
           "localPairing.title",
           "localPairing.showBody",
           "a11y.busy",
-          p.canScan ? "localPairing.toScan" : "localPairing.toEnter",
+          "localPairing.toEnter",
           "common.cancel",
         ],
         focus: "heading",
@@ -124,7 +139,7 @@ export function localPairingView(
           "a11y.qrPairing",
           "localPairing.expires",
           "localPairing.waitingDevice",
-          p.canScan ? "localPairing.toScan" : "localPairing.toEnter",
+          "localPairing.toEnter",
           "common.cancel",
           (n === "rotated" || n === "guessing") && "localPairing.rotatedTitle",
           n === "rotated" && "localPairing.rotatedBody",
@@ -193,12 +208,13 @@ export function localPairingView(
           "localPairing.title",
           "localPairing.scanBody",
           "a11y.cameraView",
-          p.otherApp && "localPairing.otherApp",
+          p.cameraBusy && "localPairing.cameraBusy",
+          p.scanNotice && SCAN_NOTICE[p.scanNotice],
           sharesKey(p.categories),
           "localPairing.enterInstead",
-          "common.cancel",
+          "common.back",
         ],
-        tone: p.otherApp ? "danger" : null,
+        tone: p.scanNotice && SCAN_REFUSAL.has(p.scanNotice) ? "danger" : null,
         focus: "heading",
       });
     case "camera-off":
@@ -211,7 +227,7 @@ export function localPairingView(
           p.canOpenSettings !== false && "localPairing.openSettings",
           sharesKey(p.categories),
           "localPairing.enterInstead",
-          "common.cancel",
+          "common.back",
         ],
         tone: "neutral",
         focus: "heading",
