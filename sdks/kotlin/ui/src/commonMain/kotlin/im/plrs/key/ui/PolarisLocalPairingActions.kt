@@ -23,6 +23,18 @@ public interface PolarisPairFlowActions {
     public fun retry() {}
 }
 
+/** Scan a code: the entry, the camera pre-prompt and the way back to typing. */
+public interface PolarisPairScanActions {
+    /** Scan a code: opens the host's scanner, or the camera screens. */
+    public fun scan() {}
+
+    /** Enter the code instead, from a scan screen. */
+    public fun enterInstead() {}
+
+    /** Continue on the camera pre-prompt. */
+    public fun continueToCamera() {}
+}
+
 /** The forms and the consent of Pair with a Code, and the host's own entries. */
 public interface PolarisPairFormActions {
     public fun pair() {}
@@ -43,7 +55,8 @@ public interface PolarisPairFormActions {
 /** Everything the pairing screen's controls do. */
 public interface PolarisLocalPairingActions :
     PolarisPairFlowActions,
-    PolarisPairFormActions {
+    PolarisPairFormActions,
+    PolarisPairScanActions {
     /** The controls that do nothing: a still. */
     public object None : PolarisLocalPairingActions
 }

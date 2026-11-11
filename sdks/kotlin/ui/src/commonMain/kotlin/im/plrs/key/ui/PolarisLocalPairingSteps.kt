@@ -6,6 +6,8 @@
 
 package im.plrs.key.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
@@ -21,11 +23,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 
 private const val DIMMED = 0.5f
 
@@ -46,12 +50,24 @@ internal fun ColumnScope.PairChoose(c: PairCtx) {
         )
     }
     Spacer(Modifier.height(PolarisSpace.medium))
-    // Either device can show the code: neither way is the filled one.
-    Column(Modifier.fillMaxWidth().alpha(if ("localPairing.show" in c.disabled) DIMMED else 1f)) {
-        PolarisSecondaryButton(c.button("localPairing.show"), c.actions::show)
-        Spacer(Modifier.height(PolarisSpace.controls))
-        PolarisSecondaryButton(c.button("localPairing.enter"), c.actions::enter)
+    c.lines.text("localPairing.otherApp")?.let {
+        PairNotice(it, null)
+        Spacer(Modifier.height(PolarisSpace.medium))
     }
+    // Either device can show the code: neither way is the filled one. Scan a code leads where the device can scan; typing is then a
+    // link under the buttons, because Google's scanner has no screen of ours to carry it.
+    Column(Modifier.fillMaxWidth().alpha(if ("localPairing.show" in c.disabled) DIMMED else 1f)) {
+        if (c.lines.text("localPairing.scan") != null) {
+            PolarisSecondaryButton(c.button("localPairing.scan"), c.actions::scan)
+            Spacer(Modifier.height(PolarisSpace.controls))
+        }
+        PolarisSecondaryButton(c.button("localPairing.show"), c.actions::show)
+        if (c.lines.text("localPairing.enter") != null) {
+            Spacer(Modifier.height(PolarisSpace.controls))
+            PolarisSecondaryButton(c.button("localPairing.enter"), c.actions::enter)
+        }
+    }
+    c.lines.text("localPairing.enterInstead")?.let { PairLink(c.button("localPairing.enterInstead"), c.actions::enter) }
     c.lines.text("localPairing.prePrompt")?.let {
         Spacer(Modifier.height(PolarisSpace.controls))
         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -116,7 +132,12 @@ internal fun ColumnScope.PairEnter(c: PairCtx) {
     if (joining) {
         PairActionRow(c.button("common.cancel"), c.actions::cancel, initialFocus = false)
     } else {
-        PairActionRow(c.button("common.back"), c.actions::back, c.button("localPairing.toShow") to c.actions::show, initialFocus = false)
+        PairActionRow(
+            c.button("common.back"),
+            c.actions::back,
+            linkFor(c, "localPairing.scanInstead", c.actions::scan) ?: (c.button("localPairing.toShow") to c.actions::show),
+            initialFocus = false,
+        )
     }
 }
 

@@ -88,6 +88,7 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
     val notice = p.string("notice")
     val busy = p.string("busy")
     val entry = p.string("entry").orEmpty()
+    val canScan = p.boolean("canScan") == true
     return when (step) {
         "choose" -> {
             val full = p.boolean("full") == true
@@ -96,19 +97,31 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                 listOf(
                     "localPairing.title",
                     "localPairing.chooseBody",
+                    if (p.boolean("otherApp") == true) "localPairing.otherApp" else null,
+                    if (canScan) "localPairing.scan" else null,
                     "localPairing.show",
-                    "localPairing.enter",
+                    if (canScan) null else "localPairing.enter",
+                    if (canScan && p.boolean("sheetScan") == true) "localPairing.enterInstead" else null,
                     if (p.boolean("prePrompt") == true && !full) "localPairing.prePrompt" else null,
                     if (full) "core.codes.local-links-full.title" else null,
                     if (full) "core.codes.local-links-full.message" else null,
                     if (full) "localPairing.pairedDevices" else null,
                     "common.cancel",
                 ),
-                if (full) listOf("localPairing.show", "localPairing.enter") else emptyList(),
+                if (full) listOf(if (canScan) "localPairing.scan" else "localPairing.enter", "localPairing.show") else emptyList(),
             )
         }
 
-        "opening" -> view("opening", listOf("localPairing.title", "localPairing.showBody", "a11y.busy", "localPairing.toEnter", "common.cancel"))
+        "opening" -> view(
+            "opening",
+            listOf(
+                "localPairing.title",
+                "localPairing.showBody",
+                "a11y.busy",
+                if (canScan) "localPairing.toScan" else "localPairing.toEnter",
+                "common.cancel",
+            ),
+        )
 
         "show" -> {
             val renewing = busy == "new-code"
@@ -121,7 +134,7 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                     "a11y.qrPairing",
                     "localPairing.expires",
                     "localPairing.waitingDevice",
-                    "localPairing.toEnter",
+                    if (canScan) "localPairing.toScan" else "localPairing.toEnter",
                     "common.cancel",
                     if (notice == "rotated" || notice == "guessing") "localPairing.rotatedTitle" else null,
                     if (notice == "rotated" || notice == "declined") "localPairing.rotatedBody" else null,
@@ -155,6 +168,37 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
             )
         }
 
+        "scan-prompt" -> view(
+            "scan-prompt",
+            listOf("localPairing.cameraPromptTitle", "localPairing.cameraPrePrompt", "common.continue", "localPairing.enterInstead"),
+        )
+
+        "scan" -> view(
+            "scan",
+            listOf(
+                "localPairing.title",
+                "localPairing.scanBody",
+                "a11y.cameraView",
+                if (p.boolean("otherApp") == true) "localPairing.otherApp" else null,
+                shares(categories),
+                "localPairing.enterInstead",
+                "common.cancel",
+            ),
+        )
+
+        "camera-off" -> view(
+            "camera-off",
+            listOf(
+                "localPairing.title",
+                "localPairing.cameraOffTitle",
+                "localPairing.cameraOffBody",
+                if (p.boolean("canOpenSettings") != false) "localPairing.openSettings" else null,
+                shares(categories),
+                "localPairing.enterInstead",
+                "common.cancel",
+            ),
+        )
+
         "enter", "joining" -> {
             val joining = step == "joining"
             val e = p.string("error")
@@ -169,7 +213,13 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                     if (!joining && entry.isEmpty()) "localPairing.codePlaceholder" else null,
                     shares(categories),
                     "localPairing.pair",
-                    if (joining) "a11y.busy" else "localPairing.toShow",
+                    if (joining) {
+                        "a11y.busy"
+                    } else if (canScan) {
+                        "localPairing.scanInstead"
+                    } else {
+                        "localPairing.toShow"
+                    },
                     if (joining) "common.cancel" else "common.back",
                     if (!joining && e == "wrong") "localPairing.wrongCode" else null,
                     if (!joining && triesLeft == 1 && e in setOf("wrong", null)) "localPairing.triesLeft" else null,

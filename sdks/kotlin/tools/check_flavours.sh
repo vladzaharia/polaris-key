@@ -22,7 +22,8 @@
 #           (I-45.4) no androidx/credentials or googleid class in the platform AAR or the dex; play
 #           carries GoogleSignIn and Credential Manager; (I-49.1b) no
 #           com/google/android/gms/auth/blockstore class or reference in the platform AAR or the dex;
-#           play carries BlockStoreBackup and Block Store
+#           play carries BlockStoreBackup and Block Store; (CC-29K.3) no com/google/mlkit class or
+#           code scanner reference in the dex; play carries :android's GmsCodeScanner and GmsBarcodeScanning
 #   both    no native libraries in the platform, Godot or :android AAR (pure Kotlin, notes/E4
 #           §2.1); the PlatformIntegrity surface is present (P6-09); the APK's only native library
 #           is zstd-jni's (which the opt-in polaris-key-zstd links, SP-50; :boundary adds it so its
@@ -159,7 +160,13 @@ for flavor in play direct; do
     [ "$n" = 1 ] && ok "Block Store backup present" || fail "Block Store backup missing ($n)"
     n="$(count "Class descriptor *: 'Lcom/google/android/gms/auth/blockstore/Blockstore;'" "$dex")"
     [ "$n" = 1 ] && ok "Block Store present" || fail "Block Store missing ($n)"
+    n="$(count "Class descriptor *: 'Lim/plrs/key/android/GmsCodeScanner;'" "$dex")"
+    [ "$n" = 1 ] && ok "Google's code scanner adapter present" || fail "Google's code scanner adapter missing ($n)"
+    n="$(count "Class descriptor *: 'Lcom/google/mlkit/vision/codescanner/GmsBarcodeScanning;'" "$dex")"
+    [ "$n" = 1 ] && ok "GmsBarcodeScanning present" || fail "GmsBarcodeScanning missing ($n)"
   else
+    n="$(count 'Lcom/google/mlkit/|Lcom/google/android/gms/common/GoogleApiAvailability;|Lim/plrs/key/android/GmsCodeScanner' "$dex")"
+    [ "$n" = 0 ] && ok "no code scanner, ML Kit or GoogleApiAvailability reference" || fail "$n code scanner references"
     n="$(count 'Landroidx/credentials/|Lcom/google/android/libraries/identity/googleid/' "$dex")"
     [ "$n" = 0 ] && ok "no androidx/credentials or googleid class or reference" || fail "$n Credential Manager or googleid references"
     n="$(count 'Lcom/google/android/gms/auth/blockstore/' "$dex")"
