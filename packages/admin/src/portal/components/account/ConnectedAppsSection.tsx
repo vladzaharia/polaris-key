@@ -310,7 +310,11 @@ function AppRow({
         level={4}
         headingRef={headingRef}
         copy={{
-          title: t("locker.apps.disconnectAsk", { app: app.name }),
+          // The last two words stay together, so the question never wraps to a lone word.
+          title: t("locker.apps.disconnectAsk", { app: app.name }).replace(
+            / (\S+)$/,
+            "\u00a0$1",
+          ),
           failed:
             disconnect.error instanceof HttpError &&
             disconnect.error.status === 429

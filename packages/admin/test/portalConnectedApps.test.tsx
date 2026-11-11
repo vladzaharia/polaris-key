@@ -184,7 +184,7 @@ describe("Account → Connected apps", () => {
       );
       const heading = await within(card).findByRole("heading", {
         level: 4,
-        name: "Disconnect Hexside Maps?",
+        name: /^Disconnect Hexside\sMaps\?$/, // the last two words are joined by a no-break space
       });
       await waitFor(() => expect(document.activeElement).toBe(heading));
       expect(
