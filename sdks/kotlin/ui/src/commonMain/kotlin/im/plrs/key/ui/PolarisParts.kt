@@ -639,8 +639,8 @@ public fun PolarisCloudSyncStatus(
                                 LiveRegionMode.Polite
                         },
                     )
-                    // Its label lines up with the status text on a wrapped line (less the button's own padding).
-                    PolarisTextButton(action.first, action.second, Modifier.offset(x = -StripButtonInset).heightIn(min = 48.dp))
+                    // A small tonal button, as the other kits draw it: shaped, never bare text.
+                    PolarisSecondaryButton(action.first, action.second, Modifier.heightIn(min = 48.dp))
                 }
             } else {
                 Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
@@ -651,9 +651,6 @@ public fun PolarisCloudSyncStatus(
         }
     }
 }
-
-/** A text button's own horizontal padding: its label starts this far in. */
-private val StripButtonInset = 12.dp
 
 /**
  * The locked and changed-ring statuses bound to the kit's own unlock flow: Unlock sync and Review both
