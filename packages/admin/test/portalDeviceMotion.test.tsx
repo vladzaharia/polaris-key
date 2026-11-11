@@ -1,5 +1,13 @@
 import * as React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockInstance,
+} from "vitest";
 import {
   act,
   cleanup,
@@ -20,6 +28,7 @@ import { DevicesCard } from "../src/portal/components/product/DevicesCard.js";
 import { SeatMeter } from "../src/portal/components/SeatMeter.js";
 import { createPortalQueryClient } from "../src/portal/data.js";
 import { lastAnnouncement } from "../src/ui/LiveRegion.js";
+import { toast } from "../src/ui/toast.js";
 import {
   ACCOUNT,
   DAY,
@@ -53,7 +62,13 @@ import {
 const html = document.documentElement;
 type Doc = { startViewTransition?: unknown };
 
+// A removal says its words once, through the toast (its region is the announcement).
+let toasted: MockInstance<typeof toast.success>;
+const lastToast = (): string | undefined =>
+  toasted.mock.calls.at(-1)?.[0] as string | undefined;
+
 beforeEach(() => {
+  toasted = vi.spyOn(toast, "success");
   window.history.replaceState(null, "", "/");
   window.localStorage.clear();
 });
@@ -344,7 +359,7 @@ describe("the Devices card: a change to the devices using a seat is one list tra
       screen.getByRole("button", { name: "Remove Mara's MacBook Pro" }),
     );
     await waitFor(() =>
-      expect(lastAnnouncement()).toBe(
+      expect(lastToast()).toBe(
         "Mara's MacBook Pro was removed. 0 of 3 devices in use.",
       ),
     );
@@ -440,7 +455,7 @@ describe("the Devices card: Remove opens in place, then frees the seat", () => {
         ),
       );
       await waitFor(() =>
-        expect(lastAnnouncement()).toBe(
+        expect(lastToast()).toBe(
           "Studio PC was removed. 1 of 3 devices in use.",
         ),
       );
@@ -524,14 +539,12 @@ describe("the Devices card: overlapping removals", () => {
     await removeBoth(open);
     await act(async () => open.d2!());
     await waitFor(() =>
-      expect(lastAnnouncement()).toBe(
-        "Studio PC was removed. 1 of 3 devices in use.",
-      ),
+      expect(lastToast()).toBe("Studio PC was removed. 1 of 3 devices in use."),
     );
     // Both were confirmed with two seats in use; the second to land leaves none.
     await act(async () => open.d1!());
     await waitFor(() =>
-      expect(lastAnnouncement()).toBe(
+      expect(lastToast()).toBe(
         "Mara's MacBook Pro was removed. 0 of 3 devices in use.",
       ),
     );
@@ -543,15 +556,13 @@ describe("the Devices card: overlapping removals", () => {
     await removeBoth(open);
     await act(async () => open.d2!());
     await waitFor(() =>
-      expect(lastAnnouncement()).toBe(
-        "Studio PC was removed. 1 of 3 devices in use.",
-      ),
+      expect(lastToast()).toBe("Studio PC was removed. 1 of 3 devices in use."),
     );
     // The refetch after the first removal lands before the second does.
     refetch(ONE);
     await act(async () => open.d1!());
     await waitFor(() =>
-      expect(lastAnnouncement()).toBe(
+      expect(lastToast()).toBe(
         "Mara's MacBook Pro was removed. 0 of 3 devices in use.",
       ),
     );

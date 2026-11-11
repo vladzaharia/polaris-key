@@ -55,7 +55,7 @@ export function ClientRow({
       ) : (
         <Glyph aria-hidden className="size-5 shrink-0 text-fg-muted" />
       )}
-      <span className="min-w-[9ch] flex-[1_1_9ch] [overflow-wrap:anywhere]">
+      <span className="min-w-[9ch] flex-[1_1_9ch] [overflow-wrap:break-word]">
         {line.text}
         {value ? (
           <span className="block text-sm/5 text-fg-muted">{value}</span>
@@ -71,7 +71,7 @@ export function ClientRow({
         />
       ) : (
         <span className="inline-flex min-w-0 items-center gap-1 text-sm/5 text-fg-muted">
-          <Lock aria-hidden className="size-4" />
+          <Lock aria-hidden className="size-4 shrink-0" />
           {lock}
         </span>
       )}

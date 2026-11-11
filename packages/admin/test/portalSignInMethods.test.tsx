@@ -1054,6 +1054,8 @@ describe("Where You're Signed In (PX-13 on I-07)", () => {
     expect(
       await screen.findByText("Chrome on Android was signed out"),
     ).toBeTruthy();
+    // One announcement: the toast's own region, not a second one through the shared announcer.
+    expect(document.getElementById("pk-announcer")?.textContent ?? "").toBe("");
     const heading = within(region).getByRole("heading", {
       name: "Where You're Signed In",
     });

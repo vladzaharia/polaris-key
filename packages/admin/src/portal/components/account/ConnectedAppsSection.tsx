@@ -188,7 +188,7 @@ function AppRow({
               off ? "text-fg-muted" : "text-fg-strong",
             )}
           >
-            <bdi className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+            <bdi className="min-w-0 max-w-full [overflow-wrap:break-word]">
               {app.name}
             </bdi>
             {app.partner && app.developer ? (
@@ -211,7 +211,7 @@ function AppRow({
                 {i > 0 ? "\u00a0· " : null}
                 <span
                   className={
-                    m.wrap ? "[overflow-wrap:anywhere]" : "whitespace-nowrap"
+                    m.wrap ? "[overflow-wrap:break-word]" : "whitespace-nowrap"
                   }
                 >
                   {m.text}
@@ -223,13 +223,13 @@ function AppRow({
         {off ? (
           <p
             data-app-off=""
-            className="col-span-full row-start-3 flex items-start gap-1.5 text-xs text-fg-muted @[34rem]:col-span-2 @[34rem]:col-start-2 @[34rem]:row-start-2"
+            className="col-span-full row-start-2 flex items-start gap-1.5 text-xs text-fg-muted @[34rem]:col-span-2 @[34rem]:col-start-2 @[34rem]:row-start-2"
           >
             <PowerOff aria-hidden className="mt-px size-3.5 shrink-0" />
             {t("locker.apps.off", { product: group.name })}
           </p>
         ) : changing ? null : (
-          <div className="col-span-full row-start-3 space-y-1.5 @[34rem]:col-span-2 @[34rem]:col-start-2 @[34rem]:row-start-2">
+          <div className="col-span-full row-start-2 space-y-1.5 @[34rem]:col-span-2 @[34rem]:col-start-2 @[34rem]:row-start-2">
             {decided.length > 0 ? (
               <ul
                 aria-label={t("locker.apps.gets", { app: app.name })}
@@ -261,7 +261,7 @@ function AppRow({
         <div
           style={busy ? { visibility: "hidden" } : undefined}
           className={cn(
-            "col-start-2 row-start-2 flex flex-wrap gap-2 @[34rem]:col-start-3 @[34rem]:row-start-1 @[34rem]:justify-end",
+            "col-span-full row-start-3 flex flex-wrap gap-2 @[22rem]:col-span-1 @[22rem]:col-start-2 @[34rem]:col-start-3 @[34rem]:row-start-1 @[34rem]:justify-end",
             busy && "@max-[34rem]:hidden",
           )}
         >
@@ -394,7 +394,19 @@ function ChangePanel({
   const reload = (): void => {
     setDraft({});
     change.reset();
-    void apps.refetch().then(() => {
+    void apps.refetch().then((r) => {
+      const now = r.data
+        ?.find((g) => g.product === group.product)
+        ?.clients.find((c) => c.clientId === app.clientId);
+      if (!now) return focusSectionHeading("apps");
+      // Turned off underneath: the panel closes, so focus goes to the row's Disconnect.
+      if (!now.available) {
+        const btn = document.querySelector<HTMLElement>(
+          `button[aria-controls="disconnect-${group.product}-${app.clientId}"]`,
+        );
+        if (btn) return btn.focus({ preventScroll: true });
+        return focusSectionHeading("apps");
+      }
       if (headingRef.current) headingRef.current.focus({ preventScroll: true });
       else focusSectionHeading("apps");
     });
