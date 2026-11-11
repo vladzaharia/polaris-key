@@ -6,6 +6,7 @@
 //
 //   node tools/live-peer/run.mjs --pair node:python     one ordered pair (A shows, B joins)
 //   node tools/live-peer/run.mjs --matrix linux         every ordered pair of two different Linux drivers
+//   node tools/live-peer/run.mjs --matrix macos         Swift against Node and Python, both ways
 //   node tools/live-peer/run.mjs --list                 the drivers, and which can run here
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -24,9 +25,18 @@ const pythonExe = () =>
     ? repo("sdks/python/.venv/bin/python")
     : "python3");
 
+const kotlinBin = here("drivers/kotlin/build/install/live-peer/bin/live-peer");
+// `swift build -c release --package-path tools/live-peer/drivers/swift` puts the binary here.
+const swiftBin = () =>
+  process.env.PKEY_LIVE_SWIFT ??
+  here("drivers/swift/.build/release/live-peer-swift");
+
+// A matrix whose pairs all include one driver: the other SDKs are already paired in `linux`.
+const MATRIX_ANCHORS = { macos: "swift" };
+
 export const DRIVERS = {
   node: {
-    matrices: ["linux"],
+    matrices: ["linux", "macos"],
     available: () => existsSync(repo("packages/sdk-node/dist/index.js")),
     command: () => ({
       exe: process.execPath,
@@ -35,7 +45,7 @@ export const DRIVERS = {
     }),
   },
   python: {
-    matrices: ["linux"],
+    matrices: ["linux", "macos"],
     available: () =>
       existsSync(repo("sdks/python/src/polaris_key/__init__.py")),
     command: () => ({
@@ -43,6 +53,19 @@ export const DRIVERS = {
       args: [here("drivers/python.py")],
       env: { PYTHONPATH: repo("sdks/python/src") },
     }),
+  },
+  // The Kotlin JVM driver: `./gradlew :live-peer:installDist` (sdks/kotlin) builds it once; it needs a
+  // JDK 17 on PATH or in JAVA_HOME.
+  kotlin: {
+    matrices: ["linux"],
+    available: () => existsSync(kotlinBin),
+    command: () => ({ exe: kotlinBin, args: [], env: {} }),
+  },
+  // The Swift driver: a SwiftPM executable over sdks/swift (macOS only: the SDK's local links use Network.framework).
+  swift: {
+    matrices: ["macos"],
+    available: () => process.platform === "darwin" && existsSync(swiftBin()),
+    command: () => ({ exe: swiftBin(), args: [], env: {} }),
   },
 };
 
@@ -176,6 +199,17 @@ async function waitEvent(who, match, what) {
   throw new Failure(`${what}: no such event (saw ${JSON.stringify(seen)})`);
 }
 
+/** `who`'s links once there are `n` of them (a hang guard bounds the wait); the last list otherwise. */
+async function listWhen(who, n) {
+  let links = [];
+  for (let i = 0; i < STEP_MS / 50; i++) {
+    links = (await who.ok("list")).links;
+    if (links.length === n) break;
+    await sleep(50);
+  }
+  return links;
+}
+
 const scenarios = (a, b) => {
   const s = { codeLinks: {}, qrLinks: {} };
   return [
@@ -206,8 +240,9 @@ const scenarios = (a, b) => {
           `dials left did not drop: ${bad.dialsLeft} then ${good.dialsLeft}`,
         );
         s.codeLinks.b = good.link;
-        const la = (await a.ok("list")).links;
-        const lb = (await b.ok("list")).links;
+        // The shower stores its side when the joiner's consent reaches it, a moment after the joiner returns.
+        const la = await listWhen(a, 1);
+        const lb = await listWhen(b, 1);
         check(
           la.length === 1 && lb.length === 1,
           `links: ${la.length} on A, ${lb.length} on B`,
@@ -232,16 +267,11 @@ const scenarios = (a, b) => {
           joined.link !== s.codeLinks.b,
           "the QR pairing reused the first link",
         );
-        for (const d of [a, b]) {
-          for (let i = 0; i < STEP_MS / 50; i++) {
-            if ((await d.ok("list")).links.length === 2) break;
-            await sleep(50);
-          }
+        for (const d of [a, b])
           check(
-            (await d.ok("list")).links.length === 2,
+            (await listWhen(d, 2)).length === 2,
             `${d.name} does not hold two links`,
           );
-        }
         return "two links each";
       },
     ],
@@ -381,12 +411,18 @@ function pairsOf(argv) {
     );
     if (names.length === 0)
       throw new Error(`no driver can run in matrix "${m}"`);
-    // Distinct SDKs only; a same-SDK pair is `--pair node:node`.
+    // Distinct SDKs only; a same-SDK pair is `--pair node:node`. A matrix with an anchor keeps the pairs
+    // that include it (macos: Swift against the others, both ways).
+    const anchor = MATRIX_ANCHORS[m];
     return names.flatMap((x) =>
-      names.filter((y) => y !== x).map((y) => [x, y]),
+      names
+        .filter((y) => y !== x && (!anchor || x === anchor || y === anchor))
+        .map((y) => [x, y]),
     );
   }
-  throw new Error("usage: run.mjs --pair <a>:<b> | --matrix linux | --list");
+  throw new Error(
+    "usage: run.mjs --pair <a>:<b> | --matrix linux|macos | --list",
+  );
 }
 
 async function main(argv) {

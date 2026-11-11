@@ -73,6 +73,9 @@ include(":conformance")
 // The runnable JVM CLI sample (SP-K14); not published.
 include(":sample-cli")
 project(":sample-cli").projectDir = file("samples/cli")
+// The live pairing driver (CC-29X.2): a JVM main() over :sdk for tools/live-peer. Not published.
+include(":live-peer")
+project(":live-peer").projectDir = file("../../tools/live-peer/drivers/kotlin")
 // The docs snippet lane (SP-45b): compiles the code blocks of the covered docs pages. Not published.
 include(":docs-snippets")
 
