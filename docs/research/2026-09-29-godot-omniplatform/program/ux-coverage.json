@@ -15250,7 +15250,7 @@
       "source": "mockups/screens/identity/identity.connected-apps.json",
       "area": "identity",
       "surface": "portal",
-      "owners": ["I-34", "I-11", "PX-31a", "PX-31b"],
+      "owners": ["I-21", "I-21", "I-34", "I-11", "PX-31a", "PX-31b"],
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "searched admin/src/portal for Connected apps / Change what: nothing; AccountPage uses account/SignInMethods.tsx and SessionsCard.tsx only; worker identity/passthrough/routes.ts serves the consent read API but no portal UI"
@@ -15405,7 +15405,7 @@
       "area": "identity",
       "surface": "portal",
       "overlays": ["ST-48"],
-      "owners": ["I-34", "I-11"],
+      "owners": ["I-21", "I-21", "I-34", "I-11"],
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "portal account/MethodRow.tsx Disconnect is for sign-in methods only; no app disconnect dialog"

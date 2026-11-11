@@ -12,6 +12,8 @@
 | Human input | none                                                                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                  |
 
+> **Dropped (2026-11-10).** Packages shipped as PX-31a and F-33; the client rows of Connected apps ship as I-21.15 (`plans/I-34-I-21.15.md`, D9); own-app rows are [I-34](I-34-granular-consent-connected-apps.md).
+
 ## Goal
 
 The Account page gains the Packages section and Connected apps with disconnect. The rest of the original PX-31 ([PX-31a](PX-31a-account-v3-shell.md)).
