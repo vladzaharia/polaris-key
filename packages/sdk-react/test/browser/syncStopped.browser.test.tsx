@@ -98,6 +98,13 @@ describe("Sync stopped: the drop-in", () => {
       // The glyph is left of the label, on its first line.
       expect(rect(glyph).right).toBeLessThanOrEqual(rect(label).left + 1);
       expect(rect(glyph).top).toBeLessThan(rect(label).bottom);
+      // Centred on the label's first line, also when the label wraps to two.
+      const range = document.createRange();
+      range.selectNodeContents(label!);
+      const first = range.getClientRects()[0]!;
+      const mid = (r: { top: number; bottom: number }) =>
+        (r.top + r.bottom) / 2;
+      expect(Math.abs(mid(rect(glyph)) - mid(first))).toBeLessThanOrEqual(2);
       // The action is on the label's line, or under its start.
       const [b, l] = [rect(button), rect(label)];
       if (b.top < l.bottom) expect(b.left).toBeGreaterThanOrEqual(l.right - 1);
@@ -106,6 +113,18 @@ describe("Sync stopped: the drop-in", () => {
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(w);
     });
   }
+
+  it("an empty status region is mounted before the row and holds the text after", async () => {
+    const el = await draw(
+      blocked(<Kit.CloudSyncStatus theme={THEME} />),
+      390,
+      1,
+    );
+    const live = el.querySelector<HTMLElement>("[data-pk-live]");
+    expect(live?.getAttribute("role")).toBe("status");
+    expect(live?.textContent).toBe("Sync stopped.");
+    expect(live!.getBoundingClientRect().height).toBe(0);
+  });
 
   it("the strip keeps its height when the row appears", async () => {
     const height = async (cloudSync: object) => {

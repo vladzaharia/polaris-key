@@ -47,6 +47,16 @@ export interface CloudSyncStatusProps extends KitProps {
   describe?: SaveConflictProps["describe"];
 }
 
+// Zero height, off the layout: the region is heard, never seen.
+const LIVE = {
+  position: "absolute",
+  inlineSize: 1,
+  blockSize: 0,
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+} as const;
+
 export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
   const { onRetry, describe, ...props } = allProps;
   const [open, setOpen] = useState<
@@ -58,8 +68,9 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
   const close = () => setOpen(null);
   const { theme, className } = props;
   // While a save moves, its transfer states draw over the host's input (K.2T).
+  const stoppedInput = useSyncStoppedInput(props.input);
   const { input, clearFailure, muted } = useTransferInput(
-    useSyncStoppedInput(props.input),
+    stoppedInput.input,
     onRetry !== undefined || props.onAction !== undefined,
   );
   // The screen opens in the kit's modal dialog over the strip. The control that opened it leaves
@@ -67,6 +78,24 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
   // strip: its Review control when it is asked again, else the strip itself, never the page.
   const strip = useRef<HTMLSpanElement | null>(null);
   const wasOpen = useRef(false);
+  // A status region inserted already filled is often not announced. While the SDK reports Cloud
+  // Sync, an empty live region stays mounted, and "Sync stopped." is written into it when the row
+  // draws. It takes no room.
+  const watching = stoppedInput.watching;
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    const root = strip.current;
+    if (!watching || !root) return;
+    const read = (): void =>
+      setSaid(
+        root.querySelector('[data-key="cloudSync.syncStopped"]')?.textContent ??
+          "",
+      );
+    read();
+    const seen = new MutationObserver(read);
+    seen.observe(root, { childList: true, subtree: true, characterData: true });
+    return () => seen.disconnect();
+  }, [watching]);
   useEffect(() => {
     if (open !== null) {
       wasOpen.current = true;
@@ -119,6 +148,11 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
           }}
         />
       </span>
+      {watching ? (
+        <span role="status" data-pk-live="" style={LIVE}>
+          {said}
+        </span>
+      ) : null}
       {open === "unlock" ? (
         <UnlockSync
           theme={theme}

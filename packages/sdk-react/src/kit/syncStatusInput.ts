@@ -19,10 +19,12 @@ function stopped(status: { state: string; reason?: string }): boolean {
   );
 }
 
-/** The host's input, or with none for the Cloud Sync row, the SDK's signed-out state. */
-export function useSyncStoppedInput(
-  input: UiInput | undefined,
-): UiInput | undefined {
+/** The host's input, or with none for the Cloud Sync row, the SDK's signed-out state. `watching`
+ *  is whether the SDK reports a Cloud Sync status at all (the row can appear). */
+export function useSyncStoppedInput(input: UiInput | undefined): {
+  input: UiInput | undefined;
+  watching: boolean;
+} {
   const found = useContext(PolarisContext)?.adapter.cloudSync;
   // An adapter without the machine's status (a transport with no Cloud Sync) has no row to draw.
   const client = typeof found?.status === "function" ? found : undefined;
@@ -44,8 +46,12 @@ export function useSyncStoppedInput(
       offEvents();
     };
   }, [client]);
-  if (!client || client.unsupported || input?.cloudSync) return input;
-  return stopped(client.status())
-    ? { ...input, cloudSync: { state: "error", signedIn: false } }
-    : input;
+  const watching = !!client && !client.unsupported;
+  if (!watching || input?.cloudSync) return { input, watching };
+  return {
+    input: stopped(client.status())
+      ? { ...input, cloudSync: { state: "error", signedIn: false } }
+      : input,
+    watching,
+  };
 }

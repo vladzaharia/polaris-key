@@ -1434,10 +1434,13 @@ bdi {
   gap: 0 var(--pk-space-3);
   min-inline-size: 0;
 }
+/* The label's first line is centred in the 44 px line; a wrapped second line hangs below, so the
+   glyph (centred on that first line) stays with it. */
 .inline-status[data-grouped] > .inline-body > :first-child {
-  display: inline-flex;
-  align-items: center;
+  display: block;
+  box-sizing: border-box;
   min-block-size: 2.75rem;
+  padding-block: calc((2.75rem - 1lh) / 2);
 }
 /* The bar takes its own row under the label: a flex item with no inline size is 0 px wide. */
 .inline-status .progress {

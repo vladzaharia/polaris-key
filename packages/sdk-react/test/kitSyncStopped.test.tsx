@@ -84,6 +84,23 @@ describe("CloudSyncStatus drop-in: sync stopped", () => {
     expect(button?.getAttribute("data-variant")).toBe("secondary");
   });
 
+  it("keeps an empty status region mounted before the 403, and the text lands in it", async () => {
+    const f = fakeClient({ state: "idle" });
+    const { container } = inProvider(f.client, <CloudSyncStatus />);
+    const live = container.querySelector<HTMLElement>("[data-pk-live]");
+    expect(live?.getAttribute("role")).toBe("status");
+    expect(live?.textContent).toBe("");
+    act(() => f.set({ state: "blocked", reason: "account_required" }));
+    await waitFor(() => expect(live?.textContent).toBe("Sync stopped."));
+    // The same node, not a new one inserted already filled.
+    expect(container.querySelector("[data-pk-live]")).toBe(live);
+  });
+
+  it("has no region where the SDK reports no Cloud Sync", () => {
+    const { container } = render(<CloudSyncStatus />);
+    expect(container.querySelector("[data-pk-live]")).toBeNull();
+  });
+
   it("shows the row after a relaunch (the machine restored its block)", () => {
     const f = fakeClient({ state: "blocked", reason: "account_required" });
     const { container } = inProvider(f.client, <CloudSyncStatus />);
