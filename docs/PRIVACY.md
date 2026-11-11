@@ -26,6 +26,22 @@ call site is named.
    after 180 days, stops counting devices unseen for 90 days, and removes the other expired
    records listed under "The nightly maintenance job".
 
+## Who answers for which data
+
+Two parties hold a person's data, each for its own part.
+
+- **The Polaris Locker account** is Polaris Key's: its email addresses, sign-in methods, name,
+  picture, sessions and library. Polaris Key decides what happens to it (the controller).
+- **A product's data** is its developer's: the product's licenses and devices, the person's
+  account overrides and Cloud Sync data for it, and their pairwise subject. The developer decides
+  what happens to it (the controller), and Polaris Key holds it on the developer's behalf (the
+  processor).
+- **A request made through the account reaches the product data too.** An export or a deletion
+  in Polaris Locker covers what Polaris Key holds for the person in each product, and the
+  developer hears of a deletion as `subject.deleted`. A license is the developer's commercial
+  record: account deletion detaches it, and the buyer name and email the developer set stay for
+  the developer to keep or delete.
+
 ## What is collected
 
 ### Hardware fingerprint — native SDKs only (Node/Electron, Python, Swift, Godot, Kotlin)

@@ -2,7 +2,7 @@
 title: "Activation"
 description: "How a key becomes a device token: the request, the checks in order, token rotation and self-deauthorize."
 type: "concept"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-11"
 sidebar:
   order: 4
 ---
@@ -68,11 +68,11 @@ While Identity is on, the Worker counts how many times a license key was typed o
 
 - **What counts.** A new device counting toward the limit through `/license/activate`, a browser key session, and a Locker claim. Rotation, document fetches and a device that is already enrolled don't count.
 - **The member.** Every success carries `"keyEntries": { "used": 3, "limit": 10 }`. Show `max(0, limit − used)` entries left.
-- **The limit.** The product setting `identity.keyEntry.limit`, from 1 to 100, capped by the platform setting of the same name.
-- **The refusal.** With the platform switch `identity.keyEntryRefusals` on, a new device whose key belongs to a usable license in no account, at or past its limit, gets `403 key_entry_limit` with Locker's activate link as `manageUrl`. The switch is off until the SDKs that show the refusal ship. Counting runs either way.
+- **The limit.** The product setting `identity.keyEntry.limit`: 10 by default, from 1 to 100, capped by the platform setting of the same name. Entries count over the license's lifetime.
+- **The refusal.** With the platform switch `identity.keyEntryRefusals` on, a new device whose key belongs to a usable license in no account, at or past its limit, gets `403 key_entry_limit` with Locker's activate link as `manageUrl`. The switch is off by default, and an operator turns it on under **Platform → Settings**. Counting runs either way.
 - **Owned licenses.** With the same switch on, a usable license that is in an account refuses a device not enrolled on it: `403 license_owned` with `signInUrl`. The device reaches the license by signing in to that account.
 
-With Identity off nothing is counted or refused.
+With Identity off nothing is counted or refused: a key is the app's only way in. See [Accounts and recovery](/docs/features/sign-in/accounts/).
 
 ## Rotate a token
 
