@@ -105,6 +105,13 @@ public data class ConnectOptions @JvmOverloads constructor(
      * shared with the device keys is safe).
      */
     val state: DeviceKeyStorage? = null,
+    /**
+     * Where the local links live (`pkey.connect.local.v1`: each link's private key and the link secret). Default: the
+     * 0600 file `pkey.connect.local.v1.json` in the state directory, or memory. Android has no default in this module:
+     * a plain file there would hold the secrets unsealed, so local links are refused (invalid-options) until a sealed
+     * storage is passed; `PolarisKeyAndroid.client` passes a Keystore-sealed one.
+     */
+    val localState: DeviceKeyStorage? = null,
 )
 
 /** What the host sees of the held identity. No K_disc, no private key. */

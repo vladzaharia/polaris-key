@@ -118,5 +118,8 @@ public class KeystoreSealer(private val keys: KeyProvider, public val alias: Str
 
         /** The alias for [product]'s Cloud Connect state (K_disc, the roster): its own Keystore key, apart from the device keys and the Sync root. */
         public fun connectAliasFor(product: String): String = "pkey:${SecureStore.checkProductName(product)}:connect"
+
+        /** The alias for [product]'s local links (their link private keys and secrets): its own Keystore key, apart from every other record. */
+        public fun localAliasFor(product: String): String = "pkey:${SecureStore.checkProductName(product)}:locallinks"
     }
 }

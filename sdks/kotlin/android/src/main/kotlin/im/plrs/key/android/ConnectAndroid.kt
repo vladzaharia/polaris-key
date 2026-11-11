@@ -52,9 +52,34 @@ public fun androidConnectStateStorage(
     ),
 )
 
+/** The record, and a `deleteRecord()` that also destroys the wrapping key: the local links have no other user of it. */
+private class LocalStateStorage(private val inner: FileDeviceKeyStorage) : DeviceKeyStorage by inner {
+    override suspend fun deleteRecord() = inner.clear()
+}
+
 /**
- * These connect options with the Android defaults: the device keys, and the state in [androidConnectStateStorage]
- * (without them `connect.identity()` is invalid-options on Android). A storage the host chose is kept.
+ * Where the local links live on Android (`pkey.connect.local.v1`, CC-29b): the link private keys, the link secrets and
+ * the rest of the record, in a Keystore-wrapped file `noBackupFilesDir/pkey/<product>/local-links.bin`, never backed up,
+ * under its own alias ([KeystoreSealer.localAliasFor]). `PolarisKeyAndroid.client` uses it unless the host chose a storage.
+ * [DeviceKeyStorage.clear] deletes the file and destroys the alias, and no other.
+ */
+public fun androidLocalStorage(
+    context: Context,
+    productSlug: String,
+    keys: KeyProvider = AndroidKeyStoreProvider(context),
+    file: File? = null,
+): DeviceKeyStorage = LocalStateStorage(
+    FileDeviceKeyStorage(
+        fileOrNoBackup(context, productSlug, file, "local-links.bin"),
+        AndroidDeviceKeySealer(KeystoreSealer(keys, KeystoreSealer.localAliasFor(productSlug))),
+        "pkey-connect-local-state/1/$productSlug".toByteArray(Charsets.UTF_8),
+    ),
+)
+
+/**
+ * These connect options with the Android defaults: the device keys, the state in [androidConnectStateStorage] and the local
+ * links in [androidLocalStorage] (without them `connect.identity()` and the local links are invalid-options on Android). A
+ * storage the host chose is kept.
  */
 internal fun ConnectOptions.withAndroidDefaults(
     context: Context,
@@ -63,6 +88,7 @@ internal fun ConnectOptions.withAndroidDefaults(
 ): ConnectOptions = copy(
     deviceKeys = deviceKeys ?: androidDeviceKeyStore(context, productSlug, keys),
     state = state ?: androidConnectStateStorage(context, productSlug, keys),
+    localState = localState ?: androidLocalStorage(context, productSlug, keys),
 )
 
 /** Installs [AndroidConnectPlatform] process-wide, unless the host installed a platform of its own. */
