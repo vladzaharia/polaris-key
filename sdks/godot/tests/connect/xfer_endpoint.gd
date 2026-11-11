@@ -46,18 +46,43 @@ class Rig extends RefCounted:
 			"send": Callable(self, "_send"), "close": Callable(self, "_close"), "read": Callable(self, "_read"),
 			"apply": Callable(self, "_apply"), "now": Callable(self, "_now"), "timer": Callable(self, "_timer"),
 			"budget_usec": 0,
+			# Methods, not lambdas: a lambda holds the rig, and the rig holds the endpoint.
 			"events": {
-				"ask": func(a: Dictionary) -> void: _note("ask", a),
-				"withdraw": func(id: String) -> void: _note("withdraw", id),
-				"result": func(r: Dictionary) -> void: _note("result", r),
-				"refused": func(id: String, why: String) -> void: _note("refused", [id, why]),
-				"error": func(_why: String) -> void: errors += 1,
-				"finished": func() -> void: finished += 1,
+				"ask": Callable(self, "_on_ask"),
+				"withdraw": Callable(self, "_on_withdraw"),
+				"result": Callable(self, "_on_result"),
+				"refused": Callable(self, "_on_refused"),
+				"error": Callable(self, "_on_error"),
+				"finished": Callable(self, "_on_finished"),
 			},
 		}
 		if offload.is_valid():
 			o["offload"] = offload
 		return PKeyPeerXferEndpoint.new(o)
+
+
+	func _on_ask(a: Dictionary) -> void:
+		_note("ask", a)
+
+
+	func _on_withdraw(id: String) -> void:
+		_note("withdraw", id)
+
+
+	func _on_result(r: Dictionary) -> void:
+		_note("result", r)
+
+
+	func _on_refused(id: String, why: String) -> void:
+		_note("refused", [id, why])
+
+
+	func _on_error(_why: String) -> void:
+		errors += 1
+
+
+	func _on_finished() -> void:
+		finished += 1
 
 
 	func reset() -> void:
@@ -357,6 +382,8 @@ func _queues(t: PKeyTestContext) -> void:
 	chained.receive(PKeyPeerXfer.OFFER, _offer_body(ID_B, 10, 4))
 	t.check("queue: an answer given inside the ask handler is taken after it", m2.live() == 1 and m2.partials().size() == 1 and not chained.is_dead())
 	t.check("queue: and the queue is empty after", chained.queued() == 0)
+	# The ask handler holds the endpoint through `holder`: let go of it, or the pair outlives the suite.
+	holder[0] = null
 	await Engine.get_main_loop().process_frame
 
 

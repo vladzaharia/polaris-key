@@ -108,10 +108,15 @@ func _on_ask(ask: PKeyNearbyAsk) -> void:
 	view.device = ask.device
 	view.codes = ask.codes
 	view.step = "ask"
-	ask.closed.connect(func(_code: StringName, _by_peer: bool) -> void:
-		# The device left before the person answered: say so, naming it (the screen keeps its name), with Done.
-		if _ask == ask and view.step == "ask" and not _closed:
-			_ended("expired"))
+	ask.closed.connect(_on_ask_closed.bind(weakref(ask)))
+
+
+## The device left before the person answered: say so, naming it (the screen keeps its name), with Done. A method
+## bound to a weak ask, not a lambda: the ask holds this connection and this flow holds the ask, so anything that
+## held either strongly would make a cycle.
+func _on_ask_closed(_code: StringName, _by_peer: bool, ask_ref: WeakRef) -> void:
+	if _ask != null and _ask == ask_ref.get_ref() and view.step == "ask" and not _closed:
+		_ended("expired")
 
 
 ## The person tapped this code: the SDK approves only a code that matched.

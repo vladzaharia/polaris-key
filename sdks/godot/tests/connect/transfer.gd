@@ -40,7 +40,12 @@ class Half extends RefCounted:
 		if pump != null:
 			o["offload"] = Callable(pump, "offload")
 		hub = PKeyCloudTransfer.new(o)
-		hub.result.connect(func(r: Dictionary) -> void: results.append(r))
+		# A method, not a lambda: a lambda would hold this object, which holds the hub that holds the connection.
+		hub.result.connect(_on_result)
+
+
+	func _on_result(r: Dictionary) -> void:
+		results.append(r)
 
 
 	func listen() -> void:
@@ -367,6 +372,7 @@ func _cancel(t: PKeyTestContext) -> void:
 	b.hub.cancel("nothing")
 	t.check("cancel: and cancel of an unknown id does nothing", not rig.sb.is_closed())
 	rig.sa.close()
+	t.check("cancel: closing one side closes the other", await _until(func() -> bool: return rig.sb.is_closed()))
 	await _frames(5)
 
 

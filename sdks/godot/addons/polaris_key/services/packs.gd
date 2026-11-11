@@ -189,7 +189,8 @@ func start() -> PKeyResult:
 	var e := PKeyPackEngine.new(PKeyPackStorage.new(root))
 	e.product = core.product
 	e.release_keys = core.options.pinned_release_keys
-	e.product_trust = func() -> Dictionary: return core.trust.effective()
+	# Methods, not lambdas: the engine is held by this object and by the core, and a lambda holds what it names.
+	e.product_trust = Callable(self, "_product_trust")
 	e.stamp = content
 	# plans/P4-19.md §2.4: a hold's release is a release-key surface, never delegated.
 	var stamp_bytes := PKeyPackStorage.read_bytes(stamp_path) if content is Dictionary else {"ok": false}
@@ -207,7 +208,7 @@ func start() -> PKeyResult:
 	cdn.object_timeout = object_timeout
 	e.transport = transport if transport != null else cdn
 	e.transports = [e.transport.id()] if e.transport.id() != "" else ["pkey-cdn"]
-	e.entitlements = func() -> Variant: return _granted(core)
+	e.entitlements = Callable(self, "_entitlements")
 	e.feed_deltas = feed_menu
 	for h in _pending_handlers:
 		e.register_handler(h)
@@ -276,6 +277,16 @@ static func stamp_named_packs(bytes: PackedByteArray, content: Dictionary) -> Di
 			if h is Dictionary and h.get("pack") is String:
 				out[h["pack"]] = true
 	return out
+
+
+func _product_trust() -> Dictionary:
+	var core := _core()
+	return core.trust.effective() if core != null else {}
+
+
+func _entitlements() -> Variant:
+	var core := _core()
+	return _granted(core) if core != null else null
 
 
 ## The licence's granted boolean flags, or null when the product runs no License service.

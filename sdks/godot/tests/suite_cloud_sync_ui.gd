@@ -1521,6 +1521,8 @@ func _saves_binding(t: PKeyTestContext) -> void:
 	await host.retry()
 	t.check("saves binding: Try again after a reopen sends nothing", third_sent[0] == 1 and host.step == "choose" and host.keep == "", str(third_sent))
 	host.cancel()
+	# The lambda captures the request that holds it: let go of it, or the pair outlives the suite.
+	third._backend = Callable()
 	saves.write("slot4", PackedByteArray([1]), {}, {"base_version": 5})
 	# A request a later exact write superseded is gone.
 	_open_request(saves, "slot3", true)

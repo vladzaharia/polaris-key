@@ -17,6 +17,18 @@ class Stage extends RefCounted:
 	var sign_ins := 0
 
 
+	func _on_exited() -> void:
+		exits += 1
+
+
+	func _on_devices() -> void:
+		devices += 1
+
+
+	func _on_sign_in() -> void:
+		sign_ins += 1
+
+
 func _stage() -> Stage:
 	var s := Stage.new()
 	s.rig = A.Rig.new()
@@ -25,9 +37,10 @@ func _stage() -> Stage:
 	s.view.auto_sdk = false
 	(Engine.get_main_loop() as SceneTree).root.add_child(s.view)
 	s.flow = PKeyNearbyApprovalFlow.new(s.view, s.rig.sdk)
-	s.flow.exited.connect(func() -> void: s.exits += 1)
-	s.flow.devices_requested.connect(func() -> void: s.devices += 1)
-	s.flow.sign_in_requested.connect(func() -> void: s.sign_ins += 1)
+	# Methods, not lambdas: a lambda would hold the stage, which holds the flow that holds the connection.
+	s.flow.exited.connect(s._on_exited)
+	s.flow.devices_requested.connect(s._on_devices)
+	s.flow.sign_in_requested.connect(s._on_sign_in)
 	return s
 
 

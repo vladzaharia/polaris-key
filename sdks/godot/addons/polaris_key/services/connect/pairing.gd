@@ -148,12 +148,13 @@ class Offer extends RefCounted:
 	## The categories this app asked for: list them before the person confirms.
 	var categories: Array = []
 
-	var _owner: PKeyConnectPairing
+	## Weak: a host that keeps its offers (and listens to the window) would otherwise keep the window alive.
+	var _owner: WeakRef
 	var _live: Live
 
 
 	func _init(owner: PKeyConnectPairing, live: Live, p_label: String, p_platform: String, p_code: String, p_cats: Array) -> void:
-		_owner = owner
+		_owner = weakref(owner)
 		_live = live
 		label = p_label
 		platform = p_platform
@@ -177,12 +178,16 @@ class Offer extends RefCounted:
 	## The person confirmed the code on this device. The link is made when the other person does too; the other
 	## devices that reached the code are closed (one link a window).
 	func confirm() -> void:
-		_owner._confirm(_live)
+		var owner := _owner.get_ref() as PKeyConnectPairing
+		if owner != null:
+			owner._confirm(_live)
 
 
 	## The person declined: the session closes and nothing is stored.
 	func decline() -> void:
-		_owner._decline(_live)
+		var owner := _owner.get_ref() as PKeyConnectPairing
+		if owner != null:
+			owner._decline(_live)
 
 
 static func _static_init() -> void:

@@ -35,7 +35,13 @@ const PRODUCT := "diceroll"
 const MIB := 1048576
 
 
+## Every rig the tests made. A test hands a rig's saves and fakes lambdas that read the rig, so each rig holds
+## itself; the suite lets go of those callbacks at its end.
+var _rigs: Array = []
+
+
 ## The Worker's file routes for any number of records, behind the transport port the engine calls.
+
 class FakeFiles:
 	extends RefCounted
 	var records := {}  # wire id -> {version, revs: [{version, size, sha256, format, data}], value, file}
@@ -297,6 +303,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _through_the_sdk(t)
 	await _off_thread(t)
 	await PKeyTestFixtures.frames(10)
+	_drop_rigs()
 	return true
 
 
@@ -333,7 +340,20 @@ func _rig(e2e_mode: bool, over := {}) -> Dictionary:
 	}
 	deps.merge(over, true)
 	var saves := PKeySaves.new(deps)
-	return {"files": files, "records": records, "ring": ring, "journal": journal, "engine": engine, "events": events, "saves": saves, "deps": deps}
+	var rig := {"files": files, "records": records, "ring": ring, "journal": journal, "engine": engine, "events": events, "saves": saves, "deps": deps}
+	_rigs.append(rig)
+	return rig
+
+
+func _drop_rigs() -> void:
+	for rig: Dictionary in _rigs:
+		(rig["saves"] as PKeySaves)._d = {}
+		(rig["deps"] as Dictionary).clear()
+		for hook in ["before_get", "before_put", "finalize_answer"]:
+			(rig["files"] as Object).set(hook, Callable())
+		for hook in ["before_set", "on_pull"]:
+			(rig["records"] as Object).set(hook, Callable())
+	_rigs.clear()
 
 
 ## The app's metadata, without the SDK's own savedAt / deviceLabel stamps.
@@ -788,6 +808,11 @@ func _record_rig() -> Dictionary:
 	return rig
 
 
+## Lets go of the registry's callbacks, which name the rig and the machine that hold the registry.
+func _drop_rig(rig: Dictionary) -> void:
+	(rig["reg"] as PKeyMergeRegistry)._d = {}
+
+
 ## Put on a stale base and answer the push with a conflict: one open request.
 func _record_conflict(rig: Dictionary) -> void:
 	var m: Variant = rig["m"]
@@ -883,6 +908,8 @@ func _record_requests(t: PKeyTestContext) -> void:
 			value_run["r"] is PKeyResult and not value_run["r"].ok and value_run["r"].detail["reopened"] == true and req2.state == "open" and req2.remote["version"] == 10,
 			str(value_run["r"])
 	)
+	for dropped: Dictionary in [rig, inline, late]:
+		_drop_rig(dropped)
 
 
 ## S2, the exact write that supersedes (S3) and S5 (memory only).

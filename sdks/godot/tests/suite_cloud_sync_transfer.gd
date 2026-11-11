@@ -987,6 +987,8 @@ func _native_lane(t: PKeyTestContext) -> void:
 	var cut_src := Transfer.Support.BytesSource.new(_noise(3 * MIB))
 	var cut: Dictionary = await _engine(FakeServer.new())._cut({"source": cut_src, "codec": Codec.Server.new()})
 	t.check("native lane: the chunk cut still answers", cut["ok"] and cut["plain_size"] == 3 * MIB)
+	# The callback captures the lane that holds it: let go of it, or the pair outlives the suite.
+	lane.on_seal = Callable()
 	PKeySyncAead.use_lane_for_tests(null)
 
 

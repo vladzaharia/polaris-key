@@ -58,6 +58,11 @@ func free_all() -> void:
 		sdk.queue_free()
 		sdk = null
 	server.queue_free()
+	# A test's answer is often a lambda that reads this bed: let go of them, or the bed holds itself.
+	for answers: Array in [starts, polls, tokens, pushes, nonces, signouts, links, restores]:
+		answers.clear()
+	choice_answers.clear()
+	on_push = Callable()
 
 
 static func json(status: int, body: Variant) -> Dictionary:
