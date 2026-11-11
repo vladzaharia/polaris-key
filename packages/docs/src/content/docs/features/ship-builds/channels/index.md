@@ -55,6 +55,18 @@ Each channel in scope has one of four states:
 
 The read model is `GET /manage/api/products/<slug>/distribution/channels`, the same data the product summary carries as `platforms` and `channels`. A credential appears in it only as a yes or no, never as a key or an id.
 
+## What a customer is offered
+
+The public download page and the Polaris Locker product page offer the same actions, from one model built on the channel catalogue. Each channel is one of three kinds to the customer:
+
+| Kind   | Means                                                                 | Examples                                       |
+| ------ | --------------------------------------------------------------------- | ---------------------------------------------- |
+| File   | A build served here, downloaded.                                      | Polaris Locker                                 |
+| Store  | A listing someone else hosts, opened.                                 | App Store, Google Play, Steam, Flathub, winget |
+| Source | Served from the product's own feeds or tap: add it, or run its steps. | AltStore, F-Droid, Obtainium, Homebrew, Scoop  |
+
+A platform lists its offers in the catalogue's order for it, and a store carries every platform the product ships and the channel takes there. A Mac app with a CLI shows the download, the Mac App Store link and the Homebrew steps together; an `x86_64`-only Mac build gets no Mac App Store link.
+
 ## The chain: release ← distribution ← update
 
 The release, distribution and update services split everything a product delivers — its app and and its content packs —

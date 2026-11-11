@@ -238,7 +238,8 @@ describe("not_hosted reads where to get it (§0.6 P3, §11.2)", () => {
       ]);
     const WIN = { os: "windows", phone: false } as const;
     expect(shape(getItFromDownloads(d, WIN))).toEqual([
-      ["windows", ["w"], ["scoop", "winget"]],
+      // The catalogue's order for Windows (winget before Scoop), the same as the download page.
+      ["windows", ["w"], ["winget", "scoop"]],
       ["macos", ["m"], ["homebrew"]],
       // A platform with sources and no files gets a group of its own.
       ["ios", [], ["altstore"]],
@@ -262,6 +263,35 @@ describe("not_hosted reads where to get it (§0.6 P3, §11.2)", () => {
     expect(pack(getItFromDownloads({ ...d, stores: [] }, MAC))).toBe(
       "Get it from the developer",
     );
+  });
+
+  it("a Mac app with a CLI offers the download, the Mac App Store and Homebrew together; an arm64 build offers no x64 file (A-26)", () => {
+    const appStore = storeLink({
+      kind: "app-store",
+      label: "App Store",
+      platforms: ["ios", "macos"],
+    });
+    const brew = installSource({
+      kind: "homebrew",
+      label: "Homebrew",
+      command: "brew install --cask x",
+      platforms: ["macos"],
+    });
+    const d = {
+      ...downloadsView(
+        "x",
+        [dlFile({ artifactId: "m", platform: "macos", arch: "arm64" })],
+        { stores: [appStore] },
+      ),
+      installSources: [brew],
+    };
+    const m = getItFromDownloads(d, MAC)!;
+    const mac = m.groups.find((g) => g.platform === "macos")!;
+    expect(
+      mac.rows.map((r) => [r.artifact.artifactId, r.artifact.arch]),
+    ).toEqual([["m", "arm64"]]);
+    expect(mac.sources.map((s) => s.kind)).toEqual(["homebrew"]);
+    expect(m.stores.map((s) => s.platforms)).toEqual([["ios", "macos"]]);
   });
 
   it("on a phone, leads with what installs on it; otherwise there is nothing to lead with (P0-48)", () => {

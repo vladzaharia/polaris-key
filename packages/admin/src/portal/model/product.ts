@@ -31,6 +31,7 @@ import {
   type Presentation,
   type QuickAction,
 } from "./library.js";
+import { offerRank } from "@polaris-key/manifest";
 import { t } from "../../lib/copy.js";
 import { platformConsumerName } from "../../lib/vocab/platforms.js";
 
@@ -418,7 +419,8 @@ function groupRows(rows: FileRowModel[]): PlatformGroup[] {
  * Each install source under its platform, after that platform's files (P0-48, §2.5 "all
  * applicable ones per platform"): a platform with sources and no files gets a group of its own,
  * so a Mac user reads Homebrew under macOS and never an iPhone source without its OS. The
- * device's own OS comes first; Extras stays last.
+ * device's own OS comes first; Extras stays last. Within a platform, sources follow the
+ * catalogue's `offerOrder`, the same order the public download page uses (A-26).
  */
 function placeSources(
   groups: PlatformGroup[],
@@ -442,6 +444,13 @@ function placeSources(
       }
       if (!g.sources.some((x) => x.id === s.id)) g.sources.push(s);
     }
+  // A platform's sources in the catalogue's order for it: the download page's order (A-26).
+  for (const g of out)
+    if (g.platform)
+      g.sources.sort(
+        (a, b) =>
+          offerRank(a.kind, g.platform!) - offerRank(b.kind, g.platform!),
+      );
   const rank = (g: PlatformGroup) =>
     g.platform === null
       ? GROUP_ORDER.length + 1
