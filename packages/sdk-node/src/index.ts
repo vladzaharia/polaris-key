@@ -148,6 +148,7 @@ export {
   type ConnectOptions,
   type DiscoveryKeys,
   LocalLinks,
+  LocalPairingError,
   type LocalCode,
   type LocalJoinOptions,
   type LocalLinkInfo,

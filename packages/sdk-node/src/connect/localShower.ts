@@ -8,6 +8,10 @@
 //  - `rotated` is told only after the new password, the new QR secret and both generators exist;
 //  - the password, the QR secret, the generators, the scalars and the ISK are wiped when the
 //    attempt or the window ends. (A password is a short string and is dropped, not overwritten.)
+//  - the nameplate of a window that closes goes into the product's `NameplateMemory`, and the next
+//    window's draw skips it for 300 s (a renewed window is new in every respect);
+//  - `onEnd` is told once per window, after the advert is withdrawn; a window a `renew()` replaces
+//    ends silently (`close(null)`).
 
 import type { Server, Socket } from "node:net";
 import {
@@ -35,6 +39,9 @@ import {
   peerPrologue,
   productTag,
   type DrawSource,
+  type LocalCodeReason,
+  type LocalWindowEnd,
+  type NameplateMemory,
   type SessionEvent,
   type WindowOutcome,
 } from "@polaris-key/client-core/peer";
@@ -47,7 +54,6 @@ import {
   storeLink,
   type Env,
   type LocalCode,
-  type LocalPairHandle,
   type LocalPairOptions,
   type LocalSource,
 } from "./localCommon.js";
@@ -56,7 +62,7 @@ import {
   LanError,
   SocketLink,
   guarded,
-  nearbyHello,
+  pairingHello,
   type SessionClosed,
 } from "./session.js";
 
@@ -67,7 +73,7 @@ interface Gens {
   qr: Uint8Array;
 }
 
-export class Shower implements LocalPairHandle {
+export class Shower {
   readonly #src: LocalSource;
   readonly #o: LocalPairOptions;
   readonly #cats: string[];
@@ -79,6 +85,10 @@ export class Shower implements LocalPairHandle {
   readonly #sid: Uint8Array;
   readonly #instance: string;
   readonly #ci: Uint8Array;
+  readonly #memory: NameplateMemory;
+  #expiresAt = 0;
+  /** Connections closed without counting a guess since the code last changed (`onInterrupted`). */
+  #interrupted = 0;
   #nameplate = "";
   #password: string | null = null;
   #qrSecret: Uint8Array | null = null;
@@ -92,9 +102,14 @@ export class Shower implements LocalPairHandle {
   #stopped = false;
   #onEnd: (() => void) | null = null;
 
-  private constructor(src: LocalSource, o: LocalPairOptions) {
+  private constructor(
+    src: LocalSource,
+    o: LocalPairOptions,
+    memory: NameplateMemory,
+  ) {
     this.#src = src;
     this.#o = o;
+    this.#memory = memory;
     this.#cats = [...o.categories];
     this.#env = envOf(o);
     this.#draw = (n) => this.#env.random(n);
@@ -107,14 +122,15 @@ export class Shower implements LocalPairHandle {
   static async start(
     src: LocalSource,
     o: LocalPairOptions,
+    memory: NameplateMemory,
     onEnd: () => void,
   ): Promise<Shower> {
-    const s = new Shower(src, o);
+    const s = new Shower(src, o, memory);
     s.#onEnd = onEnd;
     try {
       await s.#open();
     } catch (e) {
-      await s.stop().catch(() => undefined);
+      await s.close(null).catch(() => undefined);
       throw e;
     }
     return s;
@@ -139,7 +155,11 @@ export class Shower implements LocalPairHandle {
       (f) => this.#seen(f, tags),
       (instance) => void this.#inUse.delete(instance),
     );
-    const np = drawNameplate(this.#draw, [...this.#inUse.values()]);
+    // Skipped too: the nameplates this device's windows of the product closed with in the last 300 s.
+    const np = drawNameplate(this.#draw, [
+      ...this.#inUse.values(),
+      ...this.#memory.recent(this.#env.mono()),
+    ]);
     if (np === null) throw new LanError("bad_input", "No random source.");
     this.#nameplate = np;
     await this.#renew();
@@ -163,7 +183,8 @@ export class Shower implements LocalPairHandle {
       LOCAL_PAIR_SECONDS,
     );
     this.#cancel = this.#env.timer(() => void this.#expire(), seconds * 1000);
-    this.#show();
+    this.#expiresAt = Math.floor(this.#src.now() + seconds);
+    this.#show("opened");
   }
 
   async #tags(): Promise<string[]> {
@@ -204,15 +225,19 @@ export class Shower implements LocalPairHandle {
     this.#gens = gens;
   }
 
-  #show(): void {
+  #show(reason: LocalCodeReason): void {
     if (this.#stopped || this.#password === null || this.#qrSecret === null)
       return;
     const c: LocalCode = {
       code: displayCode(this.#nameplate, this.#password),
       qr: makeQr(this.#src.slug, this.#instance, this.#qrSecret),
       nameplate: this.#nameplate,
+      reason,
+      expiresAt: this.#expiresAt,
+      failures: this.#window.state.failures,
     };
     this.#shown = c;
+    this.#interrupted = 0;
     guarded(() => this.#o.onCode(c));
   }
 
@@ -220,47 +245,71 @@ export class Shower implements LocalPairHandle {
    * Make the next code, then tell the window. `rotated` comes only after the new password, the new
    * QR secret and both generators exist; until then a C1 meets a busy window.
    */
-  async #rotate(): Promise<void> {
+  async #rotate(why: LocalCodeReason): Promise<void> {
     try {
       await this.#renew();
     } catch {
-      await this.stop().catch(() => undefined);
+      await this.close("person").catch(() => undefined);
       return;
     }
     if (this.#stopped) return;
-    this.#show();
+    this.#show(why);
     this.#window.rotated(this.#env.mono());
   }
 
-  #apply(out: WindowOutcome): void {
-    if (out.rotate) void this.#rotate();
+  /** `why` is the reason the next code carries when the outcome rotates it. */
+  #apply(out: WindowOutcome, why: LocalCodeReason): void {
+    if (out.rotate) void this.#rotate(why);
     if (out.result === "too-many-tries") {
       guarded(() => this.#o.onFailed?.({ reason: "too-many-tries" }));
-      void this.#shutdown(false);
+      void this.#shutdown(false, "too-many-tries");
     }
+  }
+
+  /** A connection closed without counting a guess. */
+  #interrupt(): void {
+    if (this.#stopped) return;
+    this.#interrupted++;
+    guarded(() => this.#o.onInterrupted?.(this.#interrupted));
   }
 
   async #expire(): Promise<void> {
     // The window's 300 s: the advert and the listener go, a session past the transport runs on.
-    await this.#shutdown(true);
+    await this.#shutdown(true, "expired");
   }
 
   async stop(): Promise<void> {
-    await this.#shutdown(false);
+    await this.#shutdown(false, "person");
+  }
+
+  /**
+   * Close the window, telling `onEnd` why (`null`: tell no one, for a window a renewal replaces).
+   * The nameplate, the secrets and the advert go either way.
+   */
+  async close(end: LocalWindowEnd | null): Promise<void> {
+    await this.#shutdown(false, end);
   }
 
   /** Close the window: the advert, the listener and the connections (`keepSessions` spares those past the transport). */
-  async #shutdown(keepSessions: boolean): Promise<void> {
+  async #shutdown(
+    keepSessions: boolean,
+    end: LocalWindowEnd | null,
+  ): Promise<void> {
     if (this.#stopped) return;
     this.#stopped = true;
     this.#cancel?.();
     this.#cancel = null;
-    this.#window.close(this.#env.mono());
+    const t = this.#env.mono();
+    this.#window.close(t);
+    // The next window of this product does not draw this nameplate for 300 s.
+    if (this.#nameplate !== "") this.#memory.shown(this.#nameplate, t);
     this.#server?.close();
     this.#gate?.destroyPending({ keepUp: keepSessions });
+    const gone: Promise<unknown>[] = [
+      this.#adv?.stop().catch(() => undefined) ?? Promise.resolve(),
+      this.#browse?.stop().catch(() => undefined) ?? Promise.resolve(),
+    ];
     const work: Promise<unknown>[] = [];
-    work.push(this.#adv?.stop().catch(() => undefined) ?? Promise.resolve());
-    work.push(this.#browse?.stop().catch(() => undefined) ?? Promise.resolve());
     this.#adv = null;
     this.#browse = null;
     for (const a of [...this.#attempts])
@@ -276,6 +325,9 @@ export class Shower implements LocalPairHandle {
     this.#shown = null;
     this.#inUse.clear();
     this.#onEnd?.();
+    // The host hears the end once the advert is withdrawn and the listener has stopped.
+    await Promise.all(gone);
+    if (end !== null) guarded(() => this.#o.onEnd?.({ reason: end }));
     await Promise.all(work);
   }
 
@@ -289,6 +341,7 @@ export class Shower implements LocalPairHandle {
         : gate.admit(socket, this.#stopped || !this.#src.allowed());
     if (slot === null) {
       socket.destroy();
+      this.#interrupt();
       return;
     }
     const at = this.#env.mono();
@@ -330,6 +383,7 @@ export class Shower implements LocalPairHandle {
     // Closed, busy, limited and refused: closed silently; none of them counts a failure.
     if (out.result !== "attempt" || !v.ok || v.kind === undefined) {
       socket.destroy();
+      this.#interrupt();
       return;
     }
     a.id = out.id!;
@@ -376,9 +430,13 @@ export class Shower implements LocalPairHandle {
           ...(this.#o.label !== undefined ? { label: this.#o.label } : {}),
           elapsed,
           // The required permit: it counts the guess before the tag is tried.
-          permit: () => this.#window.beginGuess(id, this.#env.mono()),
+          permit: () => {
+            const ok = this.#window.beginGuess(id, this.#env.mono());
+            if (ok) a.permitted = true;
+            return ok;
+          },
         },
-        hello: nearbyHello(this.#src.slug, this.#o.label),
+        hello: pairingHello(this.#src.slug, this.#o.label),
         timer: this.#env.timer,
       },
       onEvent: (e) => this.#event(a, e, slot),
@@ -400,7 +458,7 @@ export class Shower implements LocalPairHandle {
               ? this.#window.guessOpened(a.id, t)
               : this.#window.guessFailed(a.id, t);
         a.phase = e.opens ? "session" : "done";
-        if (out !== null) this.#apply(out);
+        if (out !== null) this.#apply(out, "wrong-code");
         break;
       }
       case "established":
@@ -419,6 +477,7 @@ export class Shower implements LocalPairHandle {
   #offer(a: Attempt): void {
     if (a.shown || this.#stopped || a.hello === null) return;
     a.shown = true;
+    this.#interrupted = 0;
     const offer = offerOf(a, this.#cats, a.hello);
     guarded(() => this.#o.onConfirm(offer));
   }
@@ -442,29 +501,34 @@ export class Shower implements LocalPairHandle {
     await a.storing?.catch(() => undefined);
     const t = this.#env.mono();
     let out: WindowOutcome = { rotate: false };
+    // What the next code says when this end rotates it (`LocalCode.reason`).
+    let why: LocalCodeReason = "wrong-code";
+    const reason =
+      a.failure ?? (c.code === "peer_timeout" ? "timeout" : "closed");
     if (a.phase === "session") {
       out = this.#window.sessionEnd(t, a.linked);
+      why = reason === "declined" || reason === "timeout" ? reason : "closed";
     } else if (a.id !== null && a.phase !== "done") {
       // A permitted guess that has no verdict is a failed guess; one that never reached its guess counts nothing.
       out = this.#window.abandon(a.id, t);
+      if (!a.permitted) this.#interrupt();
     }
     this.#over(a, false);
     for (const f of [...a.closers]) guarded(() => f(c));
-    if (a.shown && !a.linked && !this.#stopped) {
-      const reason =
-        a.failure ?? (c.code === "peer_timeout" ? "timeout" : "closed");
+    if (a.shown && !a.linked && !this.#stopped)
       guarded(() => this.#o.onFailed?.({ reason, close: c }));
-    }
-    if (a.linked) await this.#shutdown(false);
-    else this.#apply(out);
+    if (a.linked) await this.#shutdown(false, "stored");
+    else this.#apply(out, why);
   }
 
   /** The attempt is over: its key and its place go; `pre` is a socket that closed before its session began. */
   #over(a: Attempt, pre: boolean): void {
     this.#attempts.delete(a);
     a.linkKey.fill(0);
-    if (pre && a.id !== null && a.phase === "c1")
-      this.#apply(this.#window.abandon(a.id, this.#env.mono()));
+    if (pre && a.id !== null && a.phase === "c1") {
+      this.#apply(this.#window.abandon(a.id, this.#env.mono()), "wrong-code");
+      this.#interrupt();
+    }
   }
 
   async #end(a: Attempt, code: "peer_bye"): Promise<void> {

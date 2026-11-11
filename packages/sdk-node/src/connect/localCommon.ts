@@ -9,10 +9,15 @@ import type { Socket } from "node:net";
 import { PolarisError, UnsupportedError } from "@polaris-key/client-core";
 import {
   MAX_CONTACT_CATS,
+  type LocalCodeReason,
+  type LocalLinksCap,
+  type LocalPairFailureReason,
+  type LocalWindowEnd,
+  type PairingCodeFailedReason,
   type PeerHello,
   type SessionEvent,
 } from "@polaris-key/client-core/peer";
-import { ErrorCode, Feature } from "../constants.generated.js";
+import { ErrorCode, Feature, PLATFORM_VALUES } from "../constants.generated.js";
 import { defaultTimer } from "./channel.js";
 import type { LocalLinkStore } from "./localState.js";
 import { MulticastDnsAdapter, type MdnsAdapter } from "./mdns.js";
@@ -55,6 +60,11 @@ export interface LocalSource {
   notify(): void;
   /** Called by `notify()` and when the gate moves. Returns the unsubscribe. */
   onChange(fn: () => void): () => void;
+  /**
+   * The host-facing change feed (`localLinks.onChange`): a pairing was stored, a link was renamed,
+   * forgotten, re-marked or seen, or the gate flipped. Returns the unsubscribe.
+   */
+  onView(fn: () => void): () => void;
 }
 
 /** The code a shower shows now. It changes after every failed guess. */
@@ -65,6 +75,12 @@ export interface LocalCode {
   readonly qr: string;
   /** The public two digits of the code, the advert's `n`. */
   readonly nameplate: string;
+  /** Why this code is on show: the window opened, or a guess failed or a pairing ended without a link. Display only. */
+  readonly reason: LocalCodeReason;
+  /** When the window closes, in Unix seconds (rounded down). Every code of one window has the same one. */
+  readonly expiresAt: number;
+  /** The guesses counted in this window so far (0 to 4). Never show it as "tries left". */
+  readonly failures: number;
 }
 
 /** The common options of `pair` and `join`. */
@@ -98,6 +114,19 @@ export interface LocalPairOptions extends LocalOptions {
   onFailed?: (f: LocalPairFailure) => void;
   /** Seconds the window stays open (default and most 300). */
   seconds?: number;
+  /**
+   * Called with how many connections were closed without counting a guess (a first message that was
+   * busy, limited or invalid, a refusal at admission, an attempt that ended before its guess).
+   * It starts again at 0 with each new code and when a device reaches the consent. A high count
+   * means something on the network keeps interrupting.
+   */
+  onInterrupted?: (n: number) => void;
+  /**
+   * Called once when the window ends, after its advert and listener are gone: `expired`,
+   * `too-many-tries`, `stored` (a link was made), `person` (`stop()`) or `off` (the gate went off).
+   * A window replaced by `renew()` ends with no call.
+   */
+  onEnd?: (e: { reason: LocalWindowEnd }) => void;
 }
 
 export interface LocalJoinOptions extends LocalOptions {
@@ -107,6 +136,8 @@ export interface LocalJoinOptions extends LocalOptions {
   qr?: string;
   /** Seconds to browse for the other device (default and most 15). */
   browseSeconds?: number;
+  /** Abort to cancel the join: it rejects with `peer-closed`, reason `cancelled`. No dial is refunded. */
+  signal?: AbortSignal;
 }
 
 /** The other device, at the consent step. */
@@ -149,7 +180,51 @@ export interface LocalPairHandle {
   readonly open: boolean;
   /** The code on show now; null once the window has closed. */
   code(): LocalCode | null;
+  /**
+   * Close the window and open a new one with the same options: a new nameplate (never one a window
+   * of this app closed with in the last 300 s), a new code and QR, 300 s and no failures. The old
+   * window ends with no `onEnd`. Works on a closed handle; refuses what `pair` refuses (the gate,
+   * the cap, another window). Resolves with the first code of the new window.
+   */
+  renew(): Promise<LocalCode>;
 }
+
+/**
+ * A pairing that is refused or ended, with the detail the code alone does not give. The codes are
+ * unchanged: `pairing-code-failed` carries a `reason` (`invalid`, `other-app`, `spent`, `wrong`),
+ * `peer-closed` one of `declined`, `timeout`, `closed` or `cancelled`, and `local-links-full` a
+ * `cap` (`stored` or `reachable`). The details are for display; nothing here holds a digit.
+ */
+export class LocalPairingError extends PolarisError {
+  declare readonly reason?: PairingCodeFailedReason | LocalPairFailureReason;
+  declare readonly cap?: LocalLinksCap;
+
+  constructor(
+    code: string,
+    message: string,
+    detail: {
+      reason?: PairingCodeFailedReason | LocalPairFailureReason;
+      cap?: LocalLinksCap;
+    } = {},
+  ) {
+    super(code, message);
+    this.name = "LocalPairingError";
+    if (detail.reason !== undefined) this.reason = detail.reason;
+    if (detail.cap !== undefined) this.cap = detail.cap;
+  }
+}
+
+/** The join was cancelled by the host (`signal`). */
+export const cancelled = (): LocalPairingError =>
+  new LocalPairingError(ErrorCode.peerClosed, "The pairing was cancelled.", {
+    reason: "cancelled",
+  });
+
+/** The peer's platform as the store keeps it: only an `X-PKey-Platform` spelling, else null. */
+export const platformOf = (p: unknown): string | null =>
+  typeof p === "string" && (PLATFORM_VALUES as readonly string[]).includes(p)
+    ? p
+    : null;
 
 export const off = (detail: string): UnsupportedError =>
   new UnsupportedError(
@@ -162,17 +237,19 @@ export const off = (detail: string): UnsupportedError =>
     ErrorCode.localPairingOff,
   );
 
-export const full = (): PolarisError =>
-  new PolarisError(
+export const full = (): LocalPairingError =>
+  new LocalPairingError(
     ErrorCode.localLinksFull,
     "This device holds the most local links it can for this app.",
+    { cap: "stored" },
   );
 
 /** Eight links are reachable already: turn one off before another is advertised (§15.12). */
-export const reachableFull = (): PolarisError =>
-  new PolarisError(
+export const reachableFull = (): LocalPairingError =>
+  new LocalPairingError(
     ErrorCode.localLinksFull,
     "Eight local links are already reachable on this network; turn one off first.",
+    { cap: "reachable" },
   );
 
 const catsOk = (c: unknown): boolean =>
@@ -223,6 +300,8 @@ export class Attempt {
   declined = false;
   local = false;
   failure: LocalPairFailure["reason"] | null = null;
+  /** The shower's permit for this attempt's guess was given: a close without a verdict is a failed guess. */
+  permitted = false;
   closed: SessionClosed | null = null;
   storing: Promise<unknown> | null = null;
   /** This attempt's link private key: kept only when the attempt stores a link. */
@@ -274,6 +353,7 @@ export async function storeLink(
       peerKey: e.peerKey,
       secret: e.secret,
       ...(e.label !== undefined ? { label: e.label } : {}),
+      ...(a.hello !== null ? { platform: platformOf(a.hello.platform) } : {}),
       cats: e.cats,
       now: src.now(),
       // The gate is read again inside the store call: a pairing already storing when it clears writes nothing.

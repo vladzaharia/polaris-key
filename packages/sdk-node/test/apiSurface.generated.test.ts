@@ -261,6 +261,10 @@ it("cloudConnect.localLinks.onLink", () =>
   expect("onLink" in LocalLinks.prototype).toBe(true));
 it("cloudConnect.localLinks.localPairing", () =>
   expect("localPairing" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.dialsLeft", () =>
+  expect("dialsLeft" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.onChange", () =>
+  expect("onChange" in LocalLinks.prototype).toBe(true));
 it("cloudConnect.transfer.send", () =>
   expect("send" in CloudTransfer.prototype).toBe(true));
 it("cloudConnect.transfer.onOffer", () =>

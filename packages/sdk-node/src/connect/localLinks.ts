@@ -23,21 +23,28 @@
 //    `local-links-full` before anything is advertised or dialled;
 //  - `open`, the `m=l` adverts and the mode-`l` answer need the same cached answer; a read that
 //    clears it withdraws the adverts and ends the open sessions with `peer_bye`, and the links stay
-//    on disk, inert. Managing links (`list`, `rename`, `remove`, `setReachable`) is never gated;
-//  - the joiner's dials are counted per typed nameplate across joins, in memory.
+//    on disk, inert. Managing links (`list`, `rename`, `remove`, `setReachable`, `onChange`) is
+//    never gated, with the gate off and with no cached document;
+//  - the joiner's dials are counted per typed nameplate across joins, in memory, and so are the
+//    nameplates the shower's windows closed with in the last 300 s (a renewed window skips them).
 
 import {
   DialBudget,
   MAX_LIVE_LOCAL_ADVERTS,
   MAX_LOCAL_LINKS,
+  NameplateMemory,
   cleanLabel,
+  dialsLeft,
 } from "@polaris-key/client-core/peer";
 import { printAs } from "../core/redact.js";
 import {
+  LocalPairingError,
+  cancelled,
   checkOptions,
   full,
   off,
   reachableFull,
+  type LocalCode,
   type LocalJoinOptions,
   type LocalPairHandle,
   type LocalPairOptions,
@@ -61,6 +68,7 @@ const DIAL_COOLDOWN_JITTER_S = 2;
 const DIAL_BACKOFF_CAP_S = 60;
 import { base64UrlDecode } from "@polaris-key/jws";
 
+export { LocalPairingError } from "./localCommon.js";
 export type {
   LocalCode,
   LocalJoinOptions,
@@ -85,12 +93,73 @@ const budgetOf = (slug: string): DialBudget => {
   return b;
 };
 
-/** Forget every dial budget. For tests. @internal */
-export const resetLocalBudgets = (): void => BUDGETS.clear();
+/**
+ * The nameplates the shower's windows of a product closed with, one memory per product for the whole
+ * process, like the dial budgets: a window that closes and the next one that opens, even through a
+ * new client, never share a nameplate within 300 s.
+ */
+const NAMEPLATES = new Map<string, NameplateMemory>();
+const memoryOf = (slug: string): NameplateMemory => {
+  let m = NAMEPLATES.get(slug);
+  if (m === undefined) NAMEPLATES.set(slug, (m = new NameplateMemory()));
+  return m;
+};
+
+/** Forget every dial budget and every remembered nameplate. For tests. @internal */
+export const resetLocalBudgets = (): void => {
+  BUDGETS.clear();
+  NAMEPLATES.clear();
+};
+
+/**
+ * What `pair` returns: it follows the window that is current, so `renew()` can replace it. It
+ * holds no secret of its own.
+ */
+class PairHandle implements LocalPairHandle {
+  #cur: Shower;
+  #renewing: Promise<LocalCode> | null = null;
+
+  constructor(
+    first: Shower,
+    private readonly again: (cur: Shower) => Promise<Shower>,
+  ) {
+    this.#cur = first;
+    printAs(this, () => ({ service: "LocalPairing", open: this.open }));
+  }
+
+  get open(): boolean {
+    return this.#cur.open;
+  }
+
+  code(): LocalCode | null {
+    return this.#cur.code();
+  }
+
+  stop(): Promise<void> {
+    return this.#cur.stop();
+  }
+
+  /** Two calls at once share one new window. */
+  renew(): Promise<LocalCode> {
+    this.#renewing ??= (async () => {
+      try {
+        const next = await this.again(this.#cur);
+        this.#cur = next;
+        const c = next.code();
+        if (c === null) throw new LanError("closed", "The window closed.");
+        return c;
+      } finally {
+        this.#renewing = null;
+      }
+    })();
+    return this.#renewing;
+  }
+}
 
 export class LocalLinks {
   readonly #src: LocalSource;
   readonly #budget: DialBudget;
+  readonly #memory: NameplateMemory;
   #lan: LanService | null = null;
   #unsub: (() => void)[] = [];
   readonly #sessions = new Set<ConnectSession>();
@@ -100,7 +169,7 @@ export class LocalLinks {
   #starting: Promise<Shower> | null = null;
   /** Bumped by `closeAll`: a window that began opening before it must not outlive it. */
   #epoch = 0;
-  readonly #joins = new Set<{ cancel(): void }>();
+  readonly #joins = new Set<{ cancel(why?: "cancelled" | "closed"): void }>();
   /** One dial per link at a time: a second `open` for the same link joins it. */
   readonly #dials = new Map<string, Promise<ConnectSession>>();
   /** Per link: no dial before `until` (monotonic seconds), and the failures in a row. */
@@ -121,6 +190,7 @@ export class LocalLinks {
   ) {
     this.#src = src;
     this.#budget = budgetOf(src.slug);
+    this.#memory = memoryOf(src.slug);
     // The gate moved or a link was forgotten: sessions that no longer have a footing end.
     this.#src.onChange(() => void this.#reconcile().catch(() => undefined));
     printAs(this, () => ({ links: "LocalLinks" }));
@@ -136,6 +206,26 @@ export class LocalLinks {
       throw off(`Pairing with a code is off for this product (${what}).`);
   }
 
+  /**
+   * Called after the links or the gate changed: a pairing was stored, a link was renamed, forgotten,
+   * re-marked or seen, or the `localPairing` answer flipped. It carries no data: read `list()` and
+   * `localPairing()` again. Returns the unsubscribe. Never gated.
+   */
+  onChange(fn: () => void): () => void {
+    return this.#src.onView(fn);
+  }
+
+  /**
+   * How many dials a join of the code typed so far may still make: 2, 1 or 0, from the first two
+   * digits alone; null until the text (spaces and hyphens ignored) starts with two digits. It reads
+   * those two digits, keeps nothing and spends nothing.
+   */
+  dialsLeft(text: string): number | null {
+    if (typeof text !== "string") return null;
+    const mono = this.hooks.mono ?? ((): number => performance.now() / 1000);
+    return dialsLeft(this.#budget, text, mono());
+  }
+
   /** The local links this device holds. Listing is not gated. */
   async list(): Promise<LocalLinkInfo[]> {
     return infoOfLocal(await this.#src.store.rows());
@@ -143,10 +233,11 @@ export class LocalLinks {
 
   /**
    * Show a code and a QR and wait for the other device (the responder). Throws the typed N/A
-   * `local-pairing-off` while the gate is off, `local-links-full` at the cap, and `LanError`
-   * `bad_input` for options that break a rule or when this product already has a window open. The
-   * handle closes the window (`stop()`); it also closes by itself after `seconds` (at most 300),
-   * after the fifth failed guess and once a link is made.
+   * `local-pairing-off` while the gate is off, `local-links-full` (`cap: "stored"`) at the cap, and
+   * `LanError` `bad_input` for options that break a rule or when this product already has a window
+   * open. The handle closes the window (`stop()`) and makes the next one (`renew()`); the window
+   * also closes by itself after `seconds` (at most 300), after the fifth failed guess, once a link
+   * is made and when the gate goes off, and `onEnd` says which.
    */
   async pair(o: LocalPairOptions): Promise<LocalPairHandle> {
     this.#requireOn("pair");
@@ -158,19 +249,36 @@ export class LocalLinks {
       (typeof o.seconds !== "number" || !(o.seconds > 0))
     )
       throw new LanError("bad_input", "seconds must be above 0.");
-    if (this.#shower?.open === true || this.#starting !== null)
+    const first = await this.#window(o, null);
+    return new PairHandle(first, (cur) => this.#window(o, cur));
+  }
+
+  /**
+   * Open a window; `replacing` is the one a renewal closes first (it makes no `onEnd`). The slot is
+   * taken before the first await and kept across the replacement.
+   */
+  async #window(
+    o: LocalPairOptions,
+    replacing: Shower | null,
+  ): Promise<Shower> {
+    this.#requireOn("pair");
+    if (
+      this.#starting !== null ||
+      (this.#shower?.open === true && this.#shower !== replacing)
+    )
       throw new LanError("bad_input", "A pairing window is already open.");
     const epoch = this.#epoch;
     const start = (async (): Promise<Shower> => {
       if ((await this.#src.store.count()) >= MAX_LOCAL_LINKS) throw full();
+      await replacing?.close(null).catch(() => undefined);
       let mine: Shower | undefined;
-      mine = await Shower.start(this.#src, o, () => {
+      mine = await Shower.start(this.#src, o, this.#memory, () => {
         if (this.#shower === mine) this.#shower = null;
       });
       this.#shower = mine;
       // The gate was cleared while the window was opening: it closes before anyone sees a code.
       if (epoch !== this.#epoch || !this.#src.allowed()) {
-        await mine.stop().catch(() => undefined);
+        await mine.close("off").catch(() => undefined);
         throw off("Pairing with a code was turned off (pair).");
       }
       return mine;
@@ -185,11 +293,15 @@ export class LocalLinks {
 
   /**
    * Type or scan the other device's code (the initiator). Resolves with the link when both people
-   * confirmed and both devices stored it. Rejects with `pairing-code-failed` (the code did not
-   * parse, the QR was not this app's, the dial budget for this code is spent, or an attempt failed
-   * after the other device answered), `pairing-not-found` (no matching advert in 15 s, or every
-   * attempt ended before an answer) and `peer-closed` (the session ended first); the typed N/A
-   * `local-pairing-off` and `local-links-full` are thrown before anything is browsed.
+   * confirmed and both devices stored it. Rejects with a `LocalPairingError`:
+   *  - `pairing-code-failed`, reason `invalid` (the code did not parse), `other-app` (the QR was not
+   *    this app's), `spent` (the dials for this code are spent) or `wrong` (an attempt failed after
+   *    the other device answered);
+   *  - `pairing-not-found` (no matching advert in 15 s, or every attempt ended before an answer);
+   *  - `peer-closed`, reason `declined` (the other device said no), `timeout`, `closed` or
+   *    `cancelled` (the `signal` aborted).
+   * The typed N/A `local-pairing-off` and `local-links-full` (`cap: "stored"`) are thrown before
+   * anything is browsed. A cancel refunds no dial.
    */
   async join(o: LocalJoinOptions): Promise<LocalPaired> {
     this.#requireOn("join");
@@ -201,29 +313,37 @@ export class LocalLinks {
       (typeof o.browseSeconds !== "number" || !(o.browseSeconds > 0))
     )
       throw new LanError("bad_input", "browseSeconds must be above 0.");
-    // Registered before the first await, so a gate-clearing read can cancel it.
-    let cancelled = false;
+    if (o.signal !== undefined && !(o.signal instanceof globalThis.AbortSignal))
+      throw new LanError("bad_input", "signal must be an AbortSignal.");
+    if (o.signal?.aborted === true) throw cancelled();
+    // Registered before the first await, so a gate-clearing read or an abort can cancel it.
+    let stopped: "cancelled" | "closed" | null = null;
     let j: Joiner | null = null;
     const handle = {
-      cancel: () => {
-        cancelled = true;
-        j?.cancel();
+      cancel: (why: "cancelled" | "closed" = "closed") => {
+        stopped ??= why;
+        j?.cancel(why);
       },
     };
+    const onAbort = (): void => handle.cancel("cancelled");
     this.#joins.add(handle);
+    o.signal?.addEventListener("abort", onAbort, { once: true });
     try {
       if ((await this.#src.store.count()) >= MAX_LOCAL_LINKS) throw full();
-      if (cancelled || !this.#src.allowed())
+      if (stopped === "cancelled") throw cancelled();
+      if (stopped !== null || !this.#src.allowed())
         throw off("Pairing with a code was turned off (join).");
       j = new Joiner(this.#src, this.#budget, o);
       return await j.run();
     } finally {
+      o.signal?.removeEventListener("abort", onAbort);
       this.#joins.delete(handle);
     }
   }
 
   /**
    * Change a link's label on this device only; it is never sent. False when `id` names no link.
+   * Never gated.
    * Throws `LanError` `bad_input` for a label that is empty once cleaned or longer than 64.
    */
   async rename(id: string, label: string): Promise<boolean> {
@@ -235,8 +355,9 @@ export class LocalLinks {
 
   /**
    * Advertise a link's `m=l` name on the LAN (at most 8 at once), or stop. False when `id` names no
-   * link. A new link is reachable already; turning a ninth on throws `local-links-full`. The
-   * adverts run while `cloudConnect.start()` does and the gate is on.
+   * link. A new link is reachable already; turning a ninth on throws `local-links-full` with
+   * `cap: "reachable"`. The adverts run while `cloudConnect.start()` does and the gate is on;
+   * the choice itself is kept either way (never gated).
    */
   async setReachable(id: string, reachable: boolean): Promise<boolean> {
     if (typeof reachable !== "boolean")
@@ -275,7 +396,8 @@ export class LocalLinks {
   /**
    * Forget a link: its keys and secret leave the record before this resolves, an open session under
    * it is closed `peer_revoked`, a handshake in progress under it is closed before the host sees
-   * it, and the partial files kept for its peer are deleted. False when `id` names no link.
+   * it, and the partial files kept for its peer are deleted. False when `id` names no link. Never
+   * gated: with the gate off a host can still forget a link.
    */
   async remove(id: string): Promise<boolean> {
     const gone: Uint8Array[] = [];
@@ -462,7 +584,7 @@ export class LocalLinks {
   async closeAll(): Promise<void> {
     this.#epoch++;
     for (const j of [...this.#joins]) j.cancel();
-    await this.#shower?.stop().catch(() => undefined);
+    await this.#shower?.close("off").catch(() => undefined);
     // A window still opening is stopped by its own start, which sees the new epoch.
     await this.#starting?.catch(() => undefined);
     await Promise.all(

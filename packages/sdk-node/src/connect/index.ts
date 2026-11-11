@@ -84,6 +84,7 @@ export {
 export { PartialStore } from "./transferStore.js";
 export {
   LocalLinks,
+  LocalPairingError,
   type LocalCode,
   type LocalJoinOptions,
   type LocalOffer,

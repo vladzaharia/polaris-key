@@ -30,6 +30,7 @@ import {
   type NodeDeviceKeyStorage,
 } from "../devices/deviceKeys.js";
 import { serialQueue } from "./channel.js";
+import { platformOf } from "./localCommon.js";
 import { isRecord, key32 } from "./state.js";
 
 export const LOCAL_STATE_SCHEMA = "pkey.connect.local.v1";
@@ -46,6 +47,8 @@ export interface LocalLinkRow {
   /** The peer's label, cleaned; a rename replaces it on this device only. */
   label?: string;
   cats: string[];
+  /** The peer's `HELLO` platform at pairing, an `X-PKey-Platform` spelling. Display only. */
+  platform?: string;
   createdAt: number;
   lastSeen?: number;
   /** The host's local "advertise this link on the LAN" choice. */
@@ -63,6 +66,12 @@ export interface LocalLinkInfo {
   createdAt: number;
   lastSeen: number | null;
   reachable: boolean;
+  /**
+   * The other device's platform as it reported it when you paired, one of the `Platform` values, or
+   * null (an older link, or a spelling that is not one). Reported by the device and unauthenticated:
+   * show it as a glyph, never decide on it.
+   */
+  platform: string | null;
 }
 
 interface LocalStateRecord {
@@ -118,6 +127,8 @@ function parseRows(v: unknown): LocalLinkRow[] | null {
       return null;
     if (typeof r.reachable !== "boolean") return null;
     seen.add(r.id);
+    // Display data: a member that is not a known spelling is dropped, never an error.
+    const platform = platformOf(r.platform);
     out.push({
       id: r.id,
       ownKey: r.ownKey,
@@ -126,6 +137,7 @@ function parseRows(v: unknown): LocalLinkRow[] | null {
       secret: r.secret,
       ...(r.label !== undefined ? { label: r.label } : {}),
       cats: [...r.cats],
+      ...(platform !== null ? { platform } : {}),
       createdAt: r.createdAt as number,
       ...(r.lastSeen !== undefined ? { lastSeen: r.lastSeen as number } : {}),
       reachable: r.reachable,
@@ -233,6 +245,7 @@ export const infoOfLocal = (rows: readonly LocalLinkRow[]): LocalLinkInfo[] =>
     createdAt: r.createdAt,
     lastSeen: r.lastSeen ?? null,
     reachable: r.reachable,
+    platform: r.platform ?? null,
   }));
 
 /** The links this device holds for one product. */
@@ -343,6 +356,8 @@ export class LocalLinkStore {
     peerKey: Uint8Array;
     secret: Uint8Array;
     label?: string;
+    /** The peer's `HELLO` platform; stored only when it is an `X-PKey-Platform` spelling. */
+    platform?: string | null;
     cats: readonly string[];
     now: number;
     /** Judged inside the store call, under the lock: false stores nothing (the gate went off). */
@@ -375,6 +390,9 @@ export class LocalLinkStore {
           secret: base64UrlEncodeBytes(link.secret),
           ...(link.label !== undefined ? { label: link.label } : {}),
           cats: [...link.cats],
+          ...(platformOf(link.platform) !== null
+            ? { platform: platformOf(link.platform)! }
+            : {}),
           createdAt: link.now,
           reachable,
         },
