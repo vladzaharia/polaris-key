@@ -167,7 +167,7 @@ private class PairHandle(first: LocalShower, private val scope: CoroutineScope, 
                 next.stop()
                 throw LanException(LanErrorReason.closed, "The window closed.")
             }
-            next.reveal()
+            next.reveal { job.stop }
             job.run.complete(next.code() ?: throw LanException(LanErrorReason.closed, "The window closed."))
         } catch (e: CancellationException) {
             job.run.completeExceptionally(e)

@@ -11,8 +11,11 @@ package im.plrs.key.sdk
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.core.PLATFORM_VALUES
+import im.plrs.key.core.peer.DialBudget
 import im.plrs.key.core.peer.MAX_LIVE_LOCAL_ADVERTS
 import im.plrs.key.core.peer.MAX_LOCAL_LINKS
+import im.plrs.key.core.peer.NameplateMemory
+import im.plrs.key.core.peer.RenewEnd
 import im.plrs.key.core.peer.encodeFrame
 import im.plrs.key.core.peer.lan.MdnsAdapter
 import im.plrs.key.core.peer.lan.MdnsAdvert
@@ -116,13 +119,14 @@ class ConnectLocalLinksKitTest : ConnectLanBase() {
             mdns: MdnsAdapter = net,
             random: ((Int) -> ByteArray)? = null,
             onEnd: (LocalWindowEnd) -> Unit = { ends += it },
+            onFailed: (LocalPairFailure) -> Unit = { failed += it },
         ) = LocalPairOptions(
             categories = listOf("docs"),
             onCode = { codes += it },
             onConfirm = ::onConfirm,
             label = "Anna",
             onLinked = { linked += it },
-            onFailed = { failed += it },
+            onFailed = onFailed,
             seconds = seconds,
             mdns = mdns,
             host = "127.0.0.1",
@@ -379,11 +383,149 @@ class ConnectLocalLinksKitTest : ConnectLanBase() {
     }
 
     @Test
+    fun aRenewalFromOnFailedMeetsTheFloorAtOnce() = runBlocking {
+        val net = Network()
+        val a = Dev(net)
+        val b = Dev(net)
+        val handle = CompletableDeferred<LocalPairHandle>()
+        val renewed = CompletableDeferred<Throwable?>()
+        // The host renews as soon as it hears the fifth failed guess closed the window.
+        val h = a.links.pair(
+            a.pairOptions(onFailed = { f ->
+                if (f.reason == LocalPairFailureReason.TooManyTries) {
+                    scope.launch { renewed.complete(runCatching { handle.await().renew() }.exceptionOrNull()) }
+                }
+            }),
+        )
+        handle.complete(h)
+        for (i in 1..5) {
+            a.t += 20
+            joinError(b, b.joinOptions(qr = tamperedQr(a.codes.last().qr)))
+            if (i < 5) until { a.codes.size == i + 1 }
+        }
+        val e = withTimeout(8000) { renewed.await() }
+        assertEquals("cooldown", (e as LocalPairingException).reason)
+        assertFalse(h.open)
+        until { LocalWindowEnd.TooManyTries in a.ends }
+    }
+
+    @Test
+    fun theRevealIsDecidedInsideTheWindowSoAStopJustBeforeItShowsNoCode() = runBlocking {
+        val net = Network()
+        val a = Dev(net)
+        val noop: (RenewEnd?, Double) -> Unit = { _, _ -> }
+        // The caller's condition is asked after the stopped check, inside the window: when it holds, nothing shows.
+        val one = LocalShower.start(a.src, a.pairOptions(), NameplateMemory(), noop)
+        one.reveal { true }
+        assertTrue(a.codes.isEmpty())
+        assertNull(one.code())
+        one.stop()
+        // A stop that landed first leaves a window that never shows.
+        val two = LocalShower.start(a.src, a.pairOptions(), NameplateMemory(), noop)
+        two.stop()
+        two.reveal { false }
+        assertTrue(a.codes.isEmpty())
+        // A window left alone shows its first code once.
+        val three = LocalShower.start(a.src, a.pairOptions(), NameplateMemory(), noop)
+        three.reveal { false }
+        assertEquals(1, a.codes.size)
+        three.stop()
+    }
+
+    @Test
     fun aWindowWithNoFailedGuessNeverStartsTheCooldown() = runBlocking {
         val a = Dev(Network())
         val h = a.links.pair(a.pairOptions())
         repeat(3) { assertEquals(0, h.renew().failures) }
         h.stop()
+    }
+
+    @Test
+    fun aJoinThatEndedBeforeItsDialBeganSpendsNoDial() = runBlocking {
+        val net = Network()
+        val a = Dev(net)
+        val b = Dev(net)
+        a.links.pair(a.pairOptions())
+        val code = a.codes.last().code
+        val budget = DialBudget()
+        val armed = AtomicBoolean(false)
+        val box = ArrayList<LocalJoiner>()
+        val viaNet = net
+        val adapter = object : MdnsAdapter {
+            override suspend fun advertise(advert: MdnsAdvert): MdnsHandle = viaNet.advertise(advert)
+
+            override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle {
+                armed.set(true)
+                return viaNet.browse(onUp, onDown, accept)
+            }
+        }
+        val o = b.joinOptions(code = code)
+        val joinOptions = LocalJoinOptions(
+            categories = o.categories,
+            onConfirm = o.onConfirm,
+            code = code,
+            label = "Bo",
+            browseSeconds = 5.0,
+            mdns = adapter,
+            allowLoopback = true,
+        )
+        // The dial is about to take its budget when the join ends (the gate went off): nothing is spent.
+        joinOptions.mono = {
+            if (armed.compareAndSet(true, false)) box[0].cancel()
+            1000.0
+        }
+        val j = LocalJoiner(b.src, budget, joinOptions)
+        box += j
+        assertThrows(LocalPairingException::class.java) { runBlocking { j.run() } }
+        assertEquals(2, budget.left(code.take(2), 1000.0))
+    }
+
+    @Test
+    fun aBrowseStillStartingWhenTheJoinEndsIsStopped() = runBlocking {
+        val net = Network()
+        val a = Dev(net)
+        val b = Dev(net)
+        a.links.pair(a.pairOptions())
+        val stopped = CompletableDeferred<Unit>()
+        val box = ArrayList<LocalJoiner>()
+        val adapter = object : MdnsAdapter {
+            override suspend fun advertise(advert: MdnsAdvert): MdnsHandle = net.advertise(advert)
+
+            override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle {
+                // The join ends while the browse is being started.
+                box[0].cancel()
+                return MdnsHandle { stopped.complete(Unit) }
+            }
+        }
+        val j = LocalJoiner(
+            b.src,
+            DialBudget(),
+            LocalJoinOptions(
+                categories = listOf("docs"),
+                onConfirm = {},
+                code = a.codes.last().code,
+                browseSeconds = 5.0,
+                mdns = adapter,
+                allowLoopback = true,
+            ),
+        )
+        box += j
+        assertThrows(LocalPairingException::class.java) { runBlocking { j.run() } }
+        withTimeout(8000) { stopped.await() }
+    }
+
+    @Test
+    fun aQrGeneratorMadeAfterTheJoinEndedIsWipedAtOnce() = runBlocking {
+        val net = Network()
+        val a = Dev(net)
+        val b = Dev(net)
+        a.links.pair(a.pairOptions())
+        val j = LocalJoiner(b.src, DialBudget(), b.joinOptions(qr = a.codes.last().qr))
+        j.cancel()
+        assertThrows(LocalPairingException::class.java) { runBlocking { j.run() } }
+        val f = LocalJoiner::class.java.getDeclaredField("qrGen").also { it.isAccessible = true }
+        val gen = f.get(j) as ByteArray
+        assertTrue(gen.isNotEmpty() && gen.all { it == 0.toByte() })
     }
 
     @Test
@@ -453,6 +595,9 @@ class ConnectLocalLinksKitTest : ConnectLanBase() {
         for (text in listOf("", "4", "ab12", "4 a", "٤٨")) assertNull(text, b.links.dialsLeft(text))
         repeat(5) { assertEquals(2, b.links.dialsLeft("48")) }
         assertEquals(2, b.links.dialsLeft(" 4-8 12-3"))
+        // Only the first two characters that are not spaces or hyphens are read.
+        assertEquals(2, b.links.dialsLeft("-4 - 8" + "x".repeat(100_000)))
+        assertNull(b.links.dialsLeft("4-" + " ".repeat(100_000) + "a"))
         assertEquals(2, b.links.dialsLeft("49"))
         assertEquals(2, b.links.dialsLeft("48"))
     }

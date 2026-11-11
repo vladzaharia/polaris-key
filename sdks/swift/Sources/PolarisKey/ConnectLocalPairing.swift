@@ -290,7 +290,9 @@ import PolarisKeyPlatform
                 await next.stop()
                 throw ConnectLanError(.closed, "The window closed.")
             }
-            await next.reveal()
+            // `unless` is asked inside the window's own isolation, after its stopped check: a stop that lands first shows
+            // no code.
+            await next.reveal(unless: { job.lock.withLock { job.stop } })
             guard let c = next.shownCode.current else { throw ConnectLanError(.closed, "The window closed.") }
             return c
         }
@@ -550,7 +552,7 @@ import PolarisKeyPlatform
         }
 
         /// Show the first code (`onCode`, reason `opened`): the caller does so once the gate has been checked.
-        func reveal() { show(.opened) }
+        func reveal(unless: @Sendable () -> Bool = { false }) { show(.opened, unless: unless) }
 
         /// A new password and QR secret, and both generators made from them. Nothing is kept when the window
         /// stopped while they were made.
@@ -573,8 +575,8 @@ import PolarisKeyPlatform
             gens = made
         }
 
-        private func show(_ reason: LocalCode.Reason) {
-            guard !stopped, let pw = password, let secret = qrSecret,
+        private func show(_ reason: LocalCode.Reason, unless: @Sendable () -> Bool = { false }) {
+            guard !stopped, !unless(), let pw = password, let secret = qrSecret,
                 let display = PeerLocal.displayCode(nameplate: nameplate, password: pw),
                 let qr = PeerLocal.makeQr(slug: src.slug, instance: instance, secret: secret)
             else { return }

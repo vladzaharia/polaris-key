@@ -998,6 +998,8 @@ class LocalJoiner:
             self._finish(e)
             return await fut
         if self._done:
+            # Ended while the browse was starting: finish had no handle to stop.
+            self._stop_browse()
             return await fut
         browse_s = min(float(self._o.get("browse_seconds") or LOCAL_JOIN_BROWSE_SECONDS), LOCAL_JOIN_BROWSE_SECONDS)
         self._cancel_timer = self._timer(self._browse_timeout, browse_s)
@@ -1102,6 +1104,9 @@ class LocalJoiner:
 
     async def _dial(self, instance: str, c: Tuple[List[str], int]) -> None:
         """One dial. It ends the plan's turn as ``before-c2``, ``after-c2`` or ``transport``."""
+        # A join that ended before its dial began spends nothing.
+        if self._done:
+            return
         self._dials += 1
         t = self._mono()
         if self._nameplate is not None:
