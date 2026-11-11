@@ -29583,6 +29583,7 @@ components:
           passkeys,
           sessions,
           connectedApps,
+          signedInWith,
           termsAcceptances,
           library,
           packageTokens,
@@ -29647,6 +29648,10 @@ components:
         connectedApps:
           type: array
           items: { $ref: "#/components/schemas/PortalExportConsent" }
+        signedInWith:
+          type: array
+          description: The registered clients the person signed in to (Sign in with a product), across products.
+          items: { $ref: "#/components/schemas/PortalExportSignedInWith" }
         termsAcceptances:
           type: array
           items: { $ref: "#/components/schemas/PortalExportTerms" }
@@ -29729,6 +29734,45 @@ components:
             properties:
               label: { type: string }
               lastSyncAt: { type: integer, description: Epoch seconds. }
+    PortalExportSignedInWith:
+      type: object
+      additionalProperties: false
+      description: >
+        A registered client the person signed in to with a product's account, and what it may
+        get. Never a scope hash, token, redirect URI or secret.
+      required:
+        [
+          product,
+          clientId,
+          clientName,
+          developer,
+          granted,
+          declined,
+          lines,
+          grantedAt,
+          changedAt,
+          lastUsedAt,
+        ]
+      properties:
+        product: { type: string }
+        clientId: { type: string }
+        clientName: { type: string }
+        developer: { type: [string, "null"] }
+        granted:
+          type: array
+          description: The optional claims the person allowed.
+          items: { type: string, enum: [name, picture, email] }
+        declined:
+          type: array
+          description: The optional claims the person declined.
+          items: { type: string, enum: [name, picture, email] }
+        lines:
+          type: array
+          description: What signing in gives that has no switch. Disconnect ends it.
+          items: { type: string, enum: [entitlements, offline] }
+        grantedAt: { type: integer }
+        changedAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
     PortalProductExport:
       type: object
       additionalProperties: false
@@ -29748,6 +29792,7 @@ components:
           events,
           stores,
           consent,
+          signedInWith,
           termsAcceptances,
           libraryEntry,
           removedLicenses,
@@ -29783,6 +29828,10 @@ components:
           oneOf:
             - type: "null"
             - { $ref: "#/components/schemas/PortalExportConsent" }
+        signedInWith:
+          type: array
+          description: The registered clients the person signed in to with this product.
+          items: { $ref: "#/components/schemas/PortalExportSignedInWith" }
         termsAcceptances:
           type: array
           items: { $ref: "#/components/schemas/PortalExportTerms" }

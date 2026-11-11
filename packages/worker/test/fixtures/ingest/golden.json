@@ -2396,7 +2396,7 @@
         "releases"
       ]
     },
-    "trips": 33
+    "trips": 34
   },
   "4-resync-changed": {
     "writes": {
@@ -3671,7 +3671,7 @@
         "releases"
       ]
     },
-    "trips": 36
+    "trips": 37
   },
   "5-resync-claims": {
     "writes": {
@@ -4710,7 +4710,7 @@
         }
       ]
     },
-    "trips": 34
+    "trips": 35
   },
   "6a-resync-drop-unused": {
     "writes": {
@@ -5628,7 +5628,7 @@
         "releases"
       ]
     },
-    "trips": 36
+    "trips": 37
   },
   "6b-resync-drop-in-use": {
     "writes": {},
@@ -5685,7 +5685,7 @@
       "ok": false,
       "error": "manifest would overwrite the sealed stored value of secret \"api.key\" in profile \"standard\"; a repo push may not replace a secret that is already sealed. Change it in the console, or remove the value from the manifest to keep the stored one"
     },
-    "trips": 25
+    "trips": 26
   },
   "7-refuse-publisher": {
     "writes": {},
@@ -6702,7 +6702,7 @@
         }
       ]
     },
-    "trips": 34
+    "trips": 35
   },
   "9-resync-off-license": {
     "writes": {
@@ -7638,7 +7638,7 @@
         "releases"
       ]
     },
-    "trips": 35
+    "trips": 36
   },
   "9-resync-off-config": {
     "writes": {
@@ -8574,7 +8574,7 @@
         "releases"
       ]
     },
-    "trips": 35
+    "trips": 36
   },
   "9-resync-off-identity": {
     "writes": {
@@ -8834,6 +8834,11 @@
           "table": "identity_refresh_tokens",
           "sql": "UPDATE identity_refresh_tokens SET revoked_at = ? WHERE product = ? AND revoked_at IS NULL AND client_id IN (SELECT client_id FROM identity_clients WHERE product = ? AND status = 'disabled')",
           "params": [1700000060, "acme", "acme"]
+        },
+        {
+          "table": "identity_refresh_tokens",
+          "sql": "UPDATE identity_refresh_tokens SET revoked_at = ? WHERE product = ? AND revoked_at IS NULL",
+          "params": [1700000060, "acme"]
         }
       ],
       "oidc_config": [
@@ -9510,7 +9515,7 @@
         "releases"
       ]
     },
-    "trips": 36
+    "trips": 38
   },
   "9-resync-off-distribution": {
     "writes": {
@@ -10244,7 +10249,7 @@
         "releases"
       ]
     },
-    "trips": 35
+    "trips": 36
   },
   "10a-link-existing": {
     "writes": {
@@ -10337,6 +10342,11 @@
           "table": "identity_refresh_tokens",
           "sql": "UPDATE identity_refresh_tokens SET revoked_at = ? WHERE product = ? AND revoked_at IS NULL AND client_id IN (SELECT client_id FROM identity_clients WHERE product = ? AND status = 'disabled')",
           "params": [1700000000, "acme", "acme"]
+        },
+        {
+          "table": "identity_refresh_tokens",
+          "sql": "UPDATE identity_refresh_tokens SET revoked_at = ? WHERE product = ? AND revoked_at IS NULL",
+          "params": [1700000000, "acme"]
         }
       ],
       "oidc_config": [
@@ -11041,7 +11051,7 @@
       ],
       "remainingSecrets": []
     },
-    "trips": 55
+    "trips": 57
   },
   "10b-link-existing-refused": {
     "writes": {

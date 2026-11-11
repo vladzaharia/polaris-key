@@ -87,6 +87,14 @@
  *   - I-15.2: `identity.nativeRedirect.loopback`, `.schemes` and `.claimedPaths` are row-backed settings
  *     after `identity.restore`, so the same key lists name three more keys. Only those lists
  *     changed (the fixture declares no `nativeRedirect`).
+ *   - I-21.15: an apply reads the product's declared registered clients once (the `identity.clients`
+ *     audit row compares them with the manifest's), so every apply scenario that runs Identity's
+ *     ingest gained one round trip (3-6a, 7-refuse-seal, 8, 9-license, -config, -identity and
+ *     -distribution, 10a: +1 each). Identity turned off also ends the product's refresh families
+ *     (the services-write listener), so 9-resync-off-identity gained that one UPDATE of
+ *     `identity_refresh_tokens` and one more trip, and so did 10a. Edited by hand, trips and the
+ *     two write lists only; no other table, end state or result moved (the fixture declares no
+ *     client, so no `identity.clients` audit row appears).
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
