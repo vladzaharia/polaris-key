@@ -6248,6 +6248,383 @@ msgstr "{name}을(를) 받지 못했습니다"
 msgid "transferOffer.failedBody"
 msgstr "저장된 것이 없습니다."
 
+#. Pair with a Code
+#. Pair with a Code: the feature's name; also the entry button.
+msgid "localPairing.title"
+msgstr "코드로 페어링"
+
+#. Both devices need to be on the same network.
+#. Pair with a Code: choose: where both devices must be.
+msgid "localPairing.chooseBody"
+msgstr "두 기기가 같은 네트워크에 있어야 합니다."
+
+#. Show a code
+#. Pair with a Code: choose: this device shows the code.
+msgid "localPairing.show"
+msgstr "코드 표시"
+
+#. macos: Show a Code
+msgctxt "macos"
+msgid "localPairing.show"
+msgstr "코드 표시"
+
+#. Enter a code
+#. Pair with a Code: choose: this device types the code.
+msgid "localPairing.enter"
+msgstr "코드 입력"
+
+#. macos: Enter a Code
+msgctxt "macos"
+msgid "localPairing.enter"
+msgstr "코드 입력"
+
+#. If asked, allow {app} to find devices on your network.
+#. Pair with a Code: choose: shown until the system has asked once. Arguments: {app} = the app's name.
+msgid "localPairing.prePrompt"
+msgstr "요청이 나타나면 {app}이(가) 네트워크의 기기를 찾도록 허용하세요."
+
+#. Paired devices
+#. Pair with a Code: the link to the paired devices list.
+msgid "localPairing.pairedDevices"
+msgstr "페어링된 기기"
+
+#. macos: Paired Devices
+msgctxt "macos"
+msgid "localPairing.pairedDevices"
+msgstr "페어링된 기기"
+
+#. Scan or enter this code on the other device.
+#. Pair with a Code: show: what to do with the code.
+msgid "localPairing.showBody"
+msgstr "다른 기기에서 이 코드를 스캔하거나 입력하세요."
+
+#. QR code with the pairing code
+#. Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code.
+msgid "a11y.qrPairing"
+msgstr "페어링 코드가 담긴 QR 코드"
+
+#. Expires in {time}
+#. Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left.
+msgid "localPairing.expires"
+msgstr "{time} 후 만료"
+
+#. Waiting for the other device…
+#. Pair with a Code: show: shown while the code is open.
+msgid "localPairing.waitingDevice"
+msgstr "다른 기기를 기다리는 중…"
+
+#. Enter a code instead
+#. Pair with a Code: show: withdraws this code and opens the field.
+msgid "localPairing.toEnter"
+msgstr "대신 코드 입력"
+
+#. macos: Enter a Code Instead
+msgctxt "macos"
+msgid "localPairing.toEnter"
+msgstr "대신 코드 입력"
+
+#. Wrong code entered
+#. Pair with a Code: show: after a wrong guess.
+msgid "localPairing.rotatedTitle"
+msgstr "잘못된 코드가 입력되었습니다"
+
+#. The code changed.
+#. Pair with a Code: show: the code is new now.
+msgid "localPairing.rotatedBody"
+msgstr "코드가 바뀌었습니다."
+
+#. New code {code}
+#. Pair with a Code: Screen reader line after the code changes; never shown. Arguments: {code} = the new code.
+msgid "a11y.newCode"
+msgstr "새 코드 {code}"
+
+#. Show a new code
+#. Pair with a Code: show: opens a new window with a new code.
+msgid "localPairing.showNew"
+msgstr "새 코드 표시"
+
+#. macos: Show a New Code
+msgctxt "macos"
+msgid "localPairing.showNew"
+msgstr "새 코드 표시"
+
+#. Show a new code in {time}
+#. Pair with a Code: show: the disabled button while the 30-second wait runs. Arguments: {time} = m:ss.
+msgid "localPairing.showNewIn"
+msgstr "{time} 후 새 코드 표시"
+
+#. macos: Show a New Code in {time}
+msgctxt "macos"
+msgid "localPairing.showNewIn"
+msgstr "{time} 후 새 코드 표시"
+
+#. Pairing is being blocked
+#. Pair with a Code: show: something keeps interrupting.
+msgid "localPairing.blockedTitle"
+msgstr "페어링이 차단되고 있습니다"
+
+#. Something on this network keeps interrupting. Try another network.
+#. Pair with a Code: show: what to try.
+msgid "localPairing.blockedBody"
+msgstr "이 네트워크의 무언가가 계속 방해하고 있습니다. 다른 네트워크를 사용해 보세요."
+
+#. Too many tries.
+#. Pair with a Code: closed: the fifth wrong code.
+msgid "localPairing.failedTooMany"
+msgstr "시도 횟수가 너무 많습니다."
+
+#. The code expired.
+#. Pair with a Code: closed: the time ran out.
+msgid "localPairing.failedExpired"
+msgstr "코드가 만료되었습니다."
+
+#. Too many tries again
+#. Pair with a Code: closed or show: the second time in a row, or five wrong codes over several windows.
+msgid "localPairing.tooManyAgainTitle"
+msgstr "다시 시도 횟수가 너무 많습니다"
+
+#. Someone nearby may be guessing codes.
+#. Pair with a Code: closed or show: the warning's reason.
+msgid "localPairing.tooManyAgainBody"
+msgstr "근처의 누군가가 코드를 추측하고 있을 수 있습니다."
+
+#. Open Settings
+#. Pair with a Code: network blocked: where the system can deep-link.
+msgid "localPairing.openSettings"
+msgstr "설정 열기"
+
+#. Enter the code from the other device.
+#. Pair with a Code: enter: the lede.
+msgid "localPairing.enterBody"
+msgstr "다른 기기의 코드를 입력하세요."
+
+#. Code
+#. Pair with a Code: enter: the field's label.
+msgid "localPairing.codeLabel"
+msgstr "코드"
+
+#. •••• ••••
+#. Pair with a Code: enter: an empty field's placeholder; shows the length and grouping.
+msgid "localPairing.codePlaceholder"
+msgstr "•••• ••••"
+
+#. Pair
+#. Pair with a Code: enter and confirm: this person's yes.
+msgid "localPairing.pair"
+msgstr "페어링"
+
+#. Show a code instead
+#. Pair with a Code: enter: opens the show screen.
+msgid "localPairing.toShow"
+msgstr "대신 코드 표시"
+
+#. macos: Show a Code Instead
+msgctxt "macos"
+msgid "localPairing.toShow"
+msgstr "대신 코드 표시"
+
+#. That code didn’t work. Enter the code the other device shows now.
+#. Pair with a Code: enter: a wrong code.
+msgid "localPairing.wrongCode"
+msgstr "이 코드는 사용할 수 없습니다. 다른 기기에 지금 표시된 코드를 입력하세요."
+
+#. {left, plural, one {# try left} other {# tries left}}
+#. Pair with a Code: enter: tries left for these first two digits. Arguments: {left} = tries.
+#. Plural on {left}.
+msgid "localPairing.triesLeft"
+msgid_plural "localPairing.triesLeft"
+msgstr[0] "{left} 번 남음"
+
+#. Too many tries
+#. Pair with a Code: enter: no try is left for these first two digits.
+msgid "localPairing.cooldownTitle"
+msgstr "시도 횟수가 너무 많습니다"
+
+#. Ask for a new code on the other device.
+#. Pair with a Code: enter: what to do.
+msgid "localPairing.cooldownBody"
+msgstr "다른 기기에서 새 코드를 요청하세요."
+
+#. Ask for a new code. This one can’t be tried again yet.
+#. Pair with a Code: enter: under the field when the first two digits are spent.
+msgid "localPairing.spentCode"
+msgstr "새 코드를 요청하세요. 이 코드는 아직 다시 시도할 수 없습니다."
+
+#. Can’t find the other device
+#. Pair with a Code: enter: nothing answered.
+msgid "localPairing.notFoundTitle"
+msgstr "다른 기기를 찾을 수 없습니다"
+
+#. Check the code, and that you’re both on the same network.
+#. Pair with a Code: enter: the most common causes.
+msgid "localPairing.notFoundBody"
+msgstr "코드를 확인하고, 두 기기가 같은 네트워크에 있는지 확인하세요."
+
+#. A code is 8 digits.
+#. Pair with a Code: enter: fewer than 8 digits.
+msgid "localPairing.notACode"
+msgstr "코드는 8자리입니다."
+
+#. Pair with {device}?
+#. Pair with a Code: confirm: after the other device proved the code. Arguments: {device} = the label it sent.
+msgid "localPairing.confirmTitle"
+msgstr "{device}와(과) 페어링할까요?"
+
+#. Pair with this device?
+#. Pair with a Code: confirm: the other device sent no label.
+msgid "localPairing.confirmUnnamed"
+msgstr "이 기기와 페어링할까요?"
+
+#. It entered your code.
+#. Pair with a Code: confirm: why the prompt is there.
+msgid "localPairing.confirmBody"
+msgstr "상대 기기가 내 코드를 입력했습니다."
+
+#. Pairing with {device}.
+#. Pair with a Code: waiting: Arguments: {device} = the label the shower sent.
+msgid "localPairing.waitingWith"
+msgstr "{device}와(과) 페어링하는 중입니다."
+
+#. Paired
+#. Pair with a Code: paired: the done state's name.
+msgid "localPairing.pairedTitle"
+msgstr "페어링됨"
+
+#. You can now connect on the same network without a code.
+#. Pair with a Code: paired: what changed.
+msgid "localPairing.pairedBody"
+msgstr "이제 같은 네트워크에서 코드 없이 연결할 수 있습니다."
+
+#. Name
+#. Pair with a Code: paired: this device's name for the other one.
+msgid "localPairing.nameLabel"
+msgstr "이름"
+
+#. Shown on this device only.
+#. Pair with a Code: paired and rename: the name is never sent.
+msgid "localPairing.nameHint"
+msgstr "이 기기에만 표시됩니다."
+
+#. {device} can’t connect
+#. Pair with a Code: paired: kept with Can connect off. Arguments: {device}.
+msgid "localPairing.cantConnectTitle"
+msgstr "{device}은(는) 연결할 수 없습니다"
+
+#. Only {max} paired devices can connect at once. Turn one off in Paired devices.
+#. Pair with a Code: paired: why. Arguments: {max} = 8.
+msgid "localPairing.cantConnectBody"
+msgstr "페어링된 기기는 한 번에 {max}대까지 연결할 수 있습니다. ‘페어링된 기기’에서 하나를 끄세요."
+
+#. Not paired with {device}
+#. Pair with a Code: show: back on the code after Not now. Arguments: {device}.
+msgid "localPairing.notPairedWith"
+msgstr "{device}와(과) 페어링되지 않았습니다"
+
+#. One of you has no room for another pairing. Forget one, then try again.
+#. Pair with a Code: failed: one device holds the most.
+msgid "localPairing.failedFull"
+msgstr "한 사람이 더 이상 페어링을 추가할 수 없습니다. 하나를 삭제한 뒤 다시 시도하세요."
+
+#. Paired devices
+#. Pair with a Code: PairedDevices: the list's title.
+msgid "pairedDevices.title"
+msgstr "페어링된 기기"
+
+#. They connect only on the same network.
+#. Pair with a Code: list: said once.
+msgid "pairedDevices.lede"
+msgstr "같은 네트워크에서만 연결됩니다."
+
+#. Last seen {when}
+#. Pair with a Code: row: Arguments: {when} = today, yesterday, 3 days ago.
+msgid "pairedDevices.lastSeen"
+msgstr "마지막 확인: {when}"
+
+#. Options for {device}
+#. Pair with a Code: Screen reader label; never shown. The ⋯ menu of a row.
+msgid "a11y.deviceOptions"
+msgstr "{device} 옵션"
+
+#. Can connect
+#. Pair with a Code: list: column label over the switches.
+msgid "pairedDevices.canConnect"
+msgstr "연결 허용"
+
+#. Let {device} connect to this device
+#. Pair with a Code: Screen reader label; never shown. Each switch.
+msgid "a11y.letConnect"
+msgstr "{device}이(가) 이 기기에 연결하도록 허용"
+
+#. Use {max} characters or fewer.
+#. Pair with a Code: rename: refused. Arguments: {max} = 64.
+msgid "pairedDevices.renameLong"
+msgstr "{max}자 이하로 입력하세요."
+
+#. Enter a name.
+#. Pair with a Code: rename: refused; nothing left once cleaned.
+msgid "pairedDevices.renameEmpty"
+msgstr "이름을 입력하세요."
+
+#. Forget
+#. Pair with a Code: row: menu item and the confirm button; local only.
+msgid "pairedDevices.forget"
+msgstr "삭제"
+
+#. Forget {device}?
+#. Pair with a Code: row: the question. Arguments: {device}.
+msgid "pairedDevices.forgetConfirm"
+msgstr "{device}을(를) 삭제할까요?"
+
+#. To connect again, pair with a new code.
+#. Pair with a Code: row: the one consequence.
+msgid "pairedDevices.forgetBody"
+msgstr "다시 연결하려면 새 코드로 페어링하세요."
+
+#. Up to {max} can connect
+#. Pair with a Code: list: eight switches are on. Arguments: {max} = 8.
+msgid "pairedDevices.reachableFullTitle"
+msgstr "최대 {max}대까지 연결할 수 있습니다"
+
+#. Turn one off to let another connect.
+#. Pair with a Code: list: what to do.
+msgid "pairedDevices.reachableFullBody"
+msgstr "다른 기기를 연결하려면 하나를 끄세요."
+
+#. Forget a paired device to pair another.
+#. Pair with a Code: list: 32 are paired.
+msgid "pairedDevices.fullBody"
+msgstr "다른 기기를 페어링하려면 페어링된 기기를 삭제하세요."
+
+#. No paired devices yet.
+#. Pair with a Code: list: nothing paired.
+msgid "pairedDevices.empty"
+msgstr "아직 페어링된 기기가 없습니다."
+
+#. Couldn’t load your paired devices.
+#. Pair with a Code: list: the record can't be read.
+msgid "pairedDevices.loadFailed"
+msgstr "페어링된 기기를 불러오지 못했습니다."
+
+#. Can’t find {device}
+#. Pair with a Code: where the app connects: not seen on this network. Arguments: {device}.
+msgid "pairedDevices.notFoundTitle"
+msgstr "{device}을(를) 찾을 수 없습니다"
+
+#. Check it’s on and on the same network.
+#. Pair with a Code: where the app connects: what to check.
+msgid "pairedDevices.notFoundBody"
+msgstr "켜져 있고 같은 네트워크에 있는지 확인하세요."
+
+#. {device} is busy
+#. Pair with a Code: where the app connects: a busy answer. Arguments: {device}.
+msgid "pairedDevices.busyTitle"
+msgstr "{device}은(는) 사용 중입니다"
+
+#. Pairing with a code is off for this app. Paired devices can’t connect.
+#. Pair with a Code: list: pairing is off for the app.
+msgid "pairedDevices.offBody"
+msgstr "이 앱에서는 코드로 페어링하는 기능이 꺼져 있습니다. 페어링된 기기는 연결할 수 없습니다."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

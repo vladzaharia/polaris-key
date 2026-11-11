@@ -9450,6 +9450,346 @@
       "value": "Nothing was saved.",
       "role": "body",
       "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title."
+    },
+    "localPairing.title": {
+      "value": "Pair with a Code",
+      "role": "title",
+      "note": "Pair with a Code: the feature's name; also the entry button."
+    },
+    "localPairing.chooseBody": {
+      "value": "Both devices need to be on the same network.",
+      "role": "body",
+      "note": "Pair with a Code: choose: where both devices must be."
+    },
+    "localPairing.show": {
+      "value": "Show a code",
+      "role": "button",
+      "note": "Pair with a Code: choose: this device shows the code."
+    },
+    "localPairing.enter": {
+      "value": "Enter a code",
+      "role": "button",
+      "note": "Pair with a Code: choose: this device types the code."
+    },
+    "localPairing.prePrompt": {
+      "value": "If asked, allow {app} to find devices on your network.",
+      "role": "hint",
+      "note": "Pair with a Code: choose: shown until the system has asked once. Arguments: {app} = the app's name."
+    },
+    "localPairing.pairedDevices": {
+      "value": "Paired devices",
+      "role": "button",
+      "note": "Pair with a Code: the link to the paired devices list."
+    },
+    "localPairing.showBody": {
+      "value": "Scan or enter this code on the other device.",
+      "role": "body",
+      "note": "Pair with a Code: show: what to do with the code."
+    },
+    "a11y.qrPairing": {
+      "value": "QR code with the pairing code",
+      "role": "a11y",
+      "note": "Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code."
+    },
+    "localPairing.expires": {
+      "value": "Expires in {time}",
+      "role": "label",
+      "note": "Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left."
+    },
+    "localPairing.waitingDevice": {
+      "value": "Waiting for the other device…",
+      "role": "label",
+      "note": "Pair with a Code: show: shown while the code is open."
+    },
+    "localPairing.toEnter": {
+      "value": "Enter a code instead",
+      "role": "button",
+      "note": "Pair with a Code: show: withdraws this code and opens the field."
+    },
+    "localPairing.rotatedTitle": {
+      "value": "Wrong code entered",
+      "role": "label",
+      "note": "Pair with a Code: show: after a wrong guess."
+    },
+    "localPairing.rotatedBody": {
+      "value": "The code changed.",
+      "role": "body",
+      "note": "Pair with a Code: show: the code is new now."
+    },
+    "a11y.newCode": {
+      "value": "New code {code}",
+      "role": "a11y",
+      "note": "Pair with a Code: Screen reader line after the code changes; never shown. Arguments: {code} = the new code."
+    },
+    "localPairing.showNew": {
+      "value": "Show a new code",
+      "role": "button",
+      "note": "Pair with a Code: show: opens a new window with a new code."
+    },
+    "localPairing.showNewIn": {
+      "value": "Show a new code in {time}",
+      "role": "button",
+      "note": "Pair with a Code: show: the disabled button while the 30-second wait runs. Arguments: {time} = m:ss."
+    },
+    "localPairing.blockedTitle": {
+      "value": "Pairing is being blocked",
+      "role": "label",
+      "note": "Pair with a Code: show: something keeps interrupting."
+    },
+    "localPairing.blockedBody": {
+      "value": "Something on this network keeps interrupting. Try another network.",
+      "role": "body",
+      "note": "Pair with a Code: show: what to try."
+    },
+    "localPairing.failedTooMany": {
+      "value": "Too many tries.",
+      "role": "body",
+      "note": "Pair with a Code: closed: the fifth wrong code."
+    },
+    "localPairing.failedExpired": {
+      "value": "The code expired.",
+      "role": "body",
+      "note": "Pair with a Code: closed: the time ran out."
+    },
+    "localPairing.tooManyAgainTitle": {
+      "value": "Too many tries again",
+      "role": "label",
+      "note": "Pair with a Code: closed or show: the second time in a row, or five wrong codes over several windows."
+    },
+    "localPairing.tooManyAgainBody": {
+      "value": "Someone nearby may be guessing codes.",
+      "role": "body",
+      "note": "Pair with a Code: closed or show: the warning's reason."
+    },
+    "localPairing.openSettings": {
+      "value": "Open Settings",
+      "role": "button",
+      "note": "Pair with a Code: network blocked: where the system can deep-link."
+    },
+    "localPairing.enterBody": {
+      "value": "Enter the code from the other device.",
+      "role": "body",
+      "note": "Pair with a Code: enter: the lede."
+    },
+    "localPairing.codeLabel": {
+      "value": "Code",
+      "role": "label",
+      "note": "Pair with a Code: enter: the field's label."
+    },
+    "localPairing.codePlaceholder": {
+      "value": "•••• ••••",
+      "role": "hint",
+      "note": "Pair with a Code: enter: an empty field's placeholder; shows the length and grouping."
+    },
+    "localPairing.pair": {
+      "value": "Pair",
+      "role": "button",
+      "note": "Pair with a Code: enter and confirm: this person's yes."
+    },
+    "localPairing.toShow": {
+      "value": "Show a code instead",
+      "role": "button",
+      "note": "Pair with a Code: enter: opens the show screen."
+    },
+    "localPairing.wrongCode": {
+      "value": "That code didn’t work. Enter the code the other device shows now.",
+      "role": "body",
+      "note": "Pair with a Code: enter: a wrong code."
+    },
+    "localPairing.triesLeft": {
+      "value": "{left, plural, one {# try left} other {# tries left}}",
+      "role": "hint",
+      "note": "Pair with a Code: enter: tries left for these first two digits. Arguments: {left} = tries."
+    },
+    "localPairing.cooldownTitle": {
+      "value": "Too many tries",
+      "role": "label",
+      "note": "Pair with a Code: enter: no try is left for these first two digits."
+    },
+    "localPairing.cooldownBody": {
+      "value": "Ask for a new code on the other device.",
+      "role": "body",
+      "note": "Pair with a Code: enter: what to do."
+    },
+    "localPairing.spentCode": {
+      "value": "Ask for a new code. This one can’t be tried again yet.",
+      "role": "body",
+      "note": "Pair with a Code: enter: under the field when the first two digits are spent."
+    },
+    "localPairing.notFoundTitle": {
+      "value": "Can’t find the other device",
+      "role": "label",
+      "note": "Pair with a Code: enter: nothing answered."
+    },
+    "localPairing.notFoundBody": {
+      "value": "Check the code, and that you’re both on the same network.",
+      "role": "body",
+      "note": "Pair with a Code: enter: the most common causes."
+    },
+    "localPairing.notACode": {
+      "value": "A code is 8 digits.",
+      "role": "body",
+      "note": "Pair with a Code: enter: fewer than 8 digits."
+    },
+    "localPairing.confirmTitle": {
+      "value": "Pair with {device}?",
+      "role": "title",
+      "note": "Pair with a Code: confirm: after the other device proved the code. Arguments: {device} = the label it sent."
+    },
+    "localPairing.confirmUnnamed": {
+      "value": "Pair with this device?",
+      "role": "title",
+      "note": "Pair with a Code: confirm: the other device sent no label."
+    },
+    "localPairing.confirmBody": {
+      "value": "It entered your code.",
+      "role": "body",
+      "note": "Pair with a Code: confirm: why the prompt is there."
+    },
+    "localPairing.waitingWith": {
+      "value": "Pairing with {device}.",
+      "role": "body",
+      "note": "Pair with a Code: waiting: Arguments: {device} = the label the shower sent."
+    },
+    "localPairing.pairedTitle": {
+      "value": "Paired",
+      "role": "title",
+      "note": "Pair with a Code: paired: the done state's name."
+    },
+    "localPairing.pairedBody": {
+      "value": "You can now connect on the same network without a code.",
+      "role": "body",
+      "note": "Pair with a Code: paired: what changed."
+    },
+    "localPairing.nameLabel": {
+      "value": "Name",
+      "role": "label",
+      "note": "Pair with a Code: paired: this device's name for the other one."
+    },
+    "localPairing.nameHint": {
+      "value": "Shown on this device only.",
+      "role": "hint",
+      "note": "Pair with a Code: paired and rename: the name is never sent."
+    },
+    "localPairing.cantConnectTitle": {
+      "value": "{device} can’t connect",
+      "role": "label",
+      "note": "Pair with a Code: paired: kept with Can connect off. Arguments: {device}."
+    },
+    "localPairing.cantConnectBody": {
+      "value": "Only {max} paired devices can connect at once. Turn one off in Paired devices.",
+      "role": "body",
+      "note": "Pair with a Code: paired: why. Arguments: {max} = 8."
+    },
+    "localPairing.notPairedWith": {
+      "value": "Not paired with {device}",
+      "role": "label",
+      "note": "Pair with a Code: show: back on the code after Not now. Arguments: {device}."
+    },
+    "localPairing.failedFull": {
+      "value": "One of you has no room for another pairing. Forget one, then try again.",
+      "role": "body",
+      "note": "Pair with a Code: failed: one device holds the most."
+    },
+    "pairedDevices.title": {
+      "value": "Paired devices",
+      "role": "title",
+      "note": "Pair with a Code: PairedDevices: the list's title."
+    },
+    "pairedDevices.lede": {
+      "value": "They connect only on the same network.",
+      "role": "body",
+      "note": "Pair with a Code: list: said once."
+    },
+    "pairedDevices.lastSeen": {
+      "value": "Last seen {when}",
+      "role": "label",
+      "note": "Pair with a Code: row: Arguments: {when} = today, yesterday, 3 days ago."
+    },
+    "a11y.deviceOptions": {
+      "value": "Options for {device}",
+      "role": "a11y",
+      "note": "Pair with a Code: Screen reader label; never shown. The ⋯ menu of a row."
+    },
+    "pairedDevices.canConnect": {
+      "value": "Can connect",
+      "role": "label",
+      "note": "Pair with a Code: list: column label over the switches."
+    },
+    "a11y.letConnect": {
+      "value": "Let {device} connect to this device",
+      "role": "a11y",
+      "note": "Pair with a Code: Screen reader label; never shown. Each switch."
+    },
+    "pairedDevices.renameLong": {
+      "value": "Use {max} characters or fewer.",
+      "role": "hint",
+      "note": "Pair with a Code: rename: refused. Arguments: {max} = 64."
+    },
+    "pairedDevices.renameEmpty": {
+      "value": "Enter a name.",
+      "role": "hint",
+      "note": "Pair with a Code: rename: refused; nothing left once cleaned."
+    },
+    "pairedDevices.forget": {
+      "value": "Forget",
+      "role": "button",
+      "note": "Pair with a Code: row: menu item and the confirm button; local only."
+    },
+    "pairedDevices.forgetConfirm": {
+      "value": "Forget {device}?",
+      "role": "title",
+      "note": "Pair with a Code: row: the question. Arguments: {device}."
+    },
+    "pairedDevices.forgetBody": {
+      "value": "To connect again, pair with a new code.",
+      "role": "body",
+      "note": "Pair with a Code: row: the one consequence."
+    },
+    "pairedDevices.reachableFullTitle": {
+      "value": "Up to {max} can connect",
+      "role": "label",
+      "note": "Pair with a Code: list: eight switches are on. Arguments: {max} = 8."
+    },
+    "pairedDevices.reachableFullBody": {
+      "value": "Turn one off to let another connect.",
+      "role": "body",
+      "note": "Pair with a Code: list: what to do."
+    },
+    "pairedDevices.fullBody": {
+      "value": "Forget a paired device to pair another.",
+      "role": "body",
+      "note": "Pair with a Code: list: 32 are paired."
+    },
+    "pairedDevices.empty": {
+      "value": "No paired devices yet.",
+      "role": "body",
+      "note": "Pair with a Code: list: nothing paired."
+    },
+    "pairedDevices.loadFailed": {
+      "value": "Couldn’t load your paired devices.",
+      "role": "body",
+      "note": "Pair with a Code: list: the record can't be read."
+    },
+    "pairedDevices.notFoundTitle": {
+      "value": "Can’t find {device}",
+      "role": "label",
+      "note": "Pair with a Code: where the app connects: not seen on this network. Arguments: {device}."
+    },
+    "pairedDevices.notFoundBody": {
+      "value": "Check it’s on and on the same network.",
+      "role": "body",
+      "note": "Pair with a Code: where the app connects: what to check."
+    },
+    "pairedDevices.busyTitle": {
+      "value": "{device} is busy",
+      "role": "label",
+      "note": "Pair with a Code: where the app connects: a busy answer. Arguments: {device}."
+    },
+    "pairedDevices.offBody": {
+      "value": "Pairing with a code is off for this app. Paired devices can’t connect.",
+      "role": "body",
+      "note": "Pair with a Code: list: pairing is off for the app."
     }
   }
 }

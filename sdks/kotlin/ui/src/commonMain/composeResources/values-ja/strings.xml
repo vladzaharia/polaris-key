@@ -2342,6 +2342,151 @@
     <string name="transferOffer_failed">%1$sを受信できませんでした</string>
     <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title. -->
     <string name="transferOffer_failedBody">何も保存されていません。</string>
+    <!-- Pair with a Code: the feature's name; also the entry button. -->
+    <string name="localPairing_title">コードでペアリング</string>
+    <!-- Pair with a Code: choose: where both devices must be. -->
+    <string name="localPairing_chooseBody">両方のデバイスが同じネットワークに接続されている必要があります。</string>
+    <!-- Pair with a Code: choose: this device shows the code. -->
+    <string name="localPairing_show">コードを表示</string>
+    <string name="localPairing_show__macos">コードを表示</string>
+    <!-- Pair with a Code: choose: this device types the code. -->
+    <string name="localPairing_enter">コードを入力</string>
+    <string name="localPairing_enter__macos">コードを入力</string>
+    <!-- Pair with a Code: choose: shown until the system has asked once. Arguments: {app} = the app's name. Arguments: 1=app. -->
+    <string name="localPairing_prePrompt">確認が表示されたら、%1$s がネットワーク上のデバイスを見つけることを許可してください。</string>
+    <!-- Pair with a Code: the link to the paired devices list. -->
+    <string name="localPairing_pairedDevices">ペアリング済みのデバイス</string>
+    <string name="localPairing_pairedDevices__macos">ペアリング済みのデバイス</string>
+    <!-- Pair with a Code: show: what to do with the code. -->
+    <string name="localPairing_showBody">もう一方のデバイスでこのコードをスキャンするか入力してください。</string>
+    <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
+    <string name="a11y_qrPairing">ペアリングコードを含む QR コード</string>
+    <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
+    <string name="localPairing_expires">有効期限まで %1$s</string>
+    <!-- Pair with a Code: show: shown while the code is open. -->
+    <string name="localPairing_waitingDevice">もう一方のデバイスを待っています…</string>
+    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
+    <string name="localPairing_toEnter">代わりにコードを入力</string>
+    <string name="localPairing_toEnter__macos">代わりにコードを入力</string>
+    <!-- Pair with a Code: show: after a wrong guess. -->
+    <string name="localPairing_rotatedTitle">間違ったコードが入力されました</string>
+    <!-- Pair with a Code: show: the code is new now. -->
+    <string name="localPairing_rotatedBody">コードが変わりました。</string>
+    <!-- Pair with a Code: Screen reader line after the code changes; never shown. Arguments: {code} = the new code. Arguments: 1=code. -->
+    <string name="a11y_newCode">新しいコード %1$s</string>
+    <!-- Pair with a Code: show: opens a new window with a new code. -->
+    <string name="localPairing_showNew">新しいコードを表示</string>
+    <string name="localPairing_showNew__macos">新しいコードを表示</string>
+    <!-- Pair with a Code: show: the disabled button while the 30-second wait runs. Arguments: {time} = m:ss. Arguments: 1=time. -->
+    <string name="localPairing_showNewIn">%1$s 後に新しいコードを表示</string>
+    <string name="localPairing_showNewIn__macos">%1$s 後に新しいコードを表示</string>
+    <!-- Pair with a Code: show: something keeps interrupting. -->
+    <string name="localPairing_blockedTitle">ペアリングが妨げられています</string>
+    <!-- Pair with a Code: show: what to try. -->
+    <string name="localPairing_blockedBody">このネットワーク上の何かが接続を妨げ続けています。別のネットワークをお試しください。</string>
+    <!-- Pair with a Code: closed: the fifth wrong code. -->
+    <string name="localPairing_failedTooMany">試行回数が多すぎます。</string>
+    <!-- Pair with a Code: closed: the time ran out. -->
+    <string name="localPairing_failedExpired">コードの有効期限が切れました。</string>
+    <!-- Pair with a Code: closed or show: the second time in a row, or five wrong codes over several windows. -->
+    <string name="localPairing_tooManyAgainTitle">またも試行回数が多すぎます</string>
+    <!-- Pair with a Code: closed or show: the warning's reason. -->
+    <string name="localPairing_tooManyAgainBody">近くにいる誰かがコードを推測している可能性があります。</string>
+    <!-- Pair with a Code: network blocked: where the system can deep-link. -->
+    <string name="localPairing_openSettings">設定を開く</string>
+    <!-- Pair with a Code: enter: the lede. -->
+    <string name="localPairing_enterBody">もう一方のデバイスのコードを入力してください。</string>
+    <!-- Pair with a Code: enter: the field's label. -->
+    <string name="localPairing_codeLabel">コード</string>
+    <!-- Pair with a Code: enter: an empty field's placeholder; shows the length and grouping. -->
+    <string name="localPairing_codePlaceholder">•••• ••••</string>
+    <!-- Pair with a Code: enter and confirm: this person's yes. -->
+    <string name="localPairing_pair">ペアリング</string>
+    <!-- Pair with a Code: enter: opens the show screen. -->
+    <string name="localPairing_toShow">代わりにコードを表示</string>
+    <string name="localPairing_toShow__macos">代わりにコードを表示</string>
+    <!-- Pair with a Code: enter: a wrong code. -->
+    <string name="localPairing_wrongCode">このコードは使えませんでした。もう一方のデバイスに今表示されているコードを入力してください。</string>
+    <!-- Pair with a Code: enter: tries left for these first two digits. Arguments: {left} = tries. Arguments: 1=left. -->
+    <plurals name="localPairing_triesLeft">
+        <item quantity="other">残り %1$d 回</item>
+    </plurals>
+    <!-- Pair with a Code: enter: no try is left for these first two digits. -->
+    <string name="localPairing_cooldownTitle">試行回数が多すぎます</string>
+    <!-- Pair with a Code: enter: what to do. -->
+    <string name="localPairing_cooldownBody">もう一方のデバイスで新しいコードを表示してください。</string>
+    <!-- Pair with a Code: enter: under the field when the first two digits are spent. -->
+    <string name="localPairing_spentCode">新しいコードを表示してください。このコードはまだ再試行できません。</string>
+    <!-- Pair with a Code: enter: nothing answered. -->
+    <string name="localPairing_notFoundTitle">もう一方のデバイスが見つかりません</string>
+    <!-- Pair with a Code: enter: the most common causes. -->
+    <string name="localPairing_notFoundBody">コードと、両方が同じネットワークにあることを確認してください。</string>
+    <!-- Pair with a Code: enter: fewer than 8 digits. -->
+    <string name="localPairing_notACode">コードは 8 桁です。</string>
+    <!-- Pair with a Code: confirm: after the other device proved the code. Arguments: {device} = the label it sent. Arguments: 1=device. -->
+    <string name="localPairing_confirmTitle">%1$s とペアリングしますか？</string>
+    <!-- Pair with a Code: confirm: the other device sent no label. -->
+    <string name="localPairing_confirmUnnamed">このデバイスとペアリングしますか？</string>
+    <!-- Pair with a Code: confirm: why the prompt is there. -->
+    <string name="localPairing_confirmBody">相手があなたのコードを入力しました。</string>
+    <!-- Pair with a Code: waiting: Arguments: {device} = the label the shower sent. Arguments: 1=device. -->
+    <string name="localPairing_waitingWith">%1$s とペアリング中です。</string>
+    <!-- Pair with a Code: paired: the done state's name. -->
+    <string name="localPairing_pairedTitle">ペアリングしました</string>
+    <!-- Pair with a Code: paired: what changed. -->
+    <string name="localPairing_pairedBody">今後は同じネットワーク上でコードなしで接続できます。</string>
+    <!-- Pair with a Code: paired: this device's name for the other one. -->
+    <string name="localPairing_nameLabel">名前</string>
+    <!-- Pair with a Code: paired and rename: the name is never sent. -->
+    <string name="localPairing_nameHint">このデバイスにのみ表示されます。</string>
+    <!-- Pair with a Code: paired: kept with Can connect off. Arguments: {device}. Arguments: 1=device. -->
+    <string name="localPairing_cantConnectTitle">%1$s は接続できません</string>
+    <!-- Pair with a Code: paired: why. Arguments: {max} = 8. Arguments: 1=max. -->
+    <string name="localPairing_cantConnectBody">同時に接続できるペアリング済みデバイスは %1$s 台までです。「ペアリング済みのデバイス」でどれかをオフにしてください。</string>
+    <!-- Pair with a Code: show: back on the code after Not now. Arguments: {device}. Arguments: 1=device. -->
+    <string name="localPairing_notPairedWith">%1$s とはペアリングされませんでした</string>
+    <!-- Pair with a Code: failed: one device holds the most. -->
+    <string name="localPairing_failedFull">どちらかがこれ以上ペアリングを追加できません。1 台を削除してからもう一度お試しください。</string>
+    <!-- Pair with a Code: PairedDevices: the list's title. -->
+    <string name="pairedDevices_title">ペアリング済みのデバイス</string>
+    <!-- Pair with a Code: list: said once. -->
+    <string name="pairedDevices_lede">同じネットワーク上でのみ接続されます。</string>
+    <!-- Pair with a Code: row: Arguments: {when} = today, yesterday, 3 days ago. Arguments: 1=when. -->
+    <string name="pairedDevices_lastSeen">最終確認: %1$s</string>
+    <!-- Pair with a Code: Screen reader label; never shown. The ⋯ menu of a row. Arguments: 1=device. -->
+    <string name="a11y_deviceOptions">%1$s のオプション</string>
+    <!-- Pair with a Code: list: column label over the switches. -->
+    <string name="pairedDevices_canConnect">接続を許可</string>
+    <!-- Pair with a Code: Screen reader label; never shown. Each switch. Arguments: 1=device. -->
+    <string name="a11y_letConnect">%1$s がこのデバイスに接続することを許可</string>
+    <!-- Pair with a Code: rename: refused. Arguments: {max} = 64. Arguments: 1=max. -->
+    <string name="pairedDevices_renameLong">%1$s 文字以内で入力してください。</string>
+    <!-- Pair with a Code: rename: refused; nothing left once cleaned. -->
+    <string name="pairedDevices_renameEmpty">名前を入力してください。</string>
+    <!-- Pair with a Code: row: menu item and the confirm button; local only. -->
+    <string name="pairedDevices_forget">削除</string>
+    <!-- Pair with a Code: row: the question. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetConfirm">%1$s を削除しますか？</string>
+    <!-- Pair with a Code: row: the one consequence. -->
+    <string name="pairedDevices_forgetBody">再接続するには、新しいコードでペアリングしてください。</string>
+    <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
+    <string name="pairedDevices_reachableFullTitle">最大 %1$s 台まで接続できます</string>
+    <!-- Pair with a Code: list: what to do. -->
+    <string name="pairedDevices_reachableFullBody">別のデバイスを接続するには、どれかをオフにしてください。</string>
+    <!-- Pair with a Code: list: 32 are paired. -->
+    <string name="pairedDevices_fullBody">別のデバイスをペアリングするには、ペアリング済みのデバイスを削除してください。</string>
+    <!-- Pair with a Code: list: nothing paired. -->
+    <string name="pairedDevices_empty">ペアリング済みのデバイスはまだありません。</string>
+    <!-- Pair with a Code: list: the record can't be read. -->
+    <string name="pairedDevices_loadFailed">ペアリング済みのデバイスを読み込めませんでした。</string>
+    <!-- Pair with a Code: where the app connects: not seen on this network. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_notFoundTitle">%1$s が見つかりません</string>
+    <!-- Pair with a Code: where the app connects: what to check. -->
+    <string name="pairedDevices_notFoundBody">電源が入っていて、同じネットワークにあることを確認してください。</string>
+    <!-- Pair with a Code: where the app connects: a busy answer. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_busyTitle">%1$s は使用中です</string>
+    <!-- Pair with a Code: list: pairing is off for the app. -->
+    <string name="pairedDevices_offBody">このアプリではコードによるペアリングがオフです。ペアリング済みのデバイスは接続できません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

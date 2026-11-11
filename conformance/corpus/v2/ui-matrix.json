@@ -15258,6 +15258,1936 @@
       "expect": { "component": "TransferOffer", "state": "hidden", "copy": [] }
     }
   ],
+  "local": [
+    {
+      "name": "LocalPairing/choose: either device can show the code",
+      "input": { "localPairing": { "step": "choose" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "Neither way is the filled one: either device can show the code.",
+        "copy": ["localPairing.pair"]
+      }
+    },
+    {
+      "name": "LocalPairing/choose: the system has not asked yet",
+      "input": { "localPairing": { "step": "choose", "prePrompt": true } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.prePrompt",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "LocalPairing/choose: no room, said before either button",
+      "input": {
+        "localPairing": { "step": "choose", "full": true, "prePrompt": true }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "core.codes.local-links-full.message",
+          "core.codes.local-links-full.title",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.pairedDevices",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"],
+        "disabled": ["localPairing.enter", "localPairing.show"]
+      },
+      "mustNot": {
+        "invariant": "A device with no room nothing is advertised or dialled.",
+        "copy": ["localPairing.prePrompt"]
+      }
+    },
+    {
+      "name": "LocalPairing/show: the code is the largest text, with its time",
+      "input": {
+        "localPairing": {
+          "step": "show",
+          "code": "4812 3456",
+          "secondsLeft": 291
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show",
+        "copy": [
+          "a11y.linkCode",
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.showBody",
+          "localPairing.title",
+          "localPairing.toEnter",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "A shown code never has a Copy button and no countdown of tries.",
+        "copy": ["localPairing.showNewIn", "localPairing.triesLeft"]
+      }
+    },
+    {
+      "name": "LocalPairing/show: a wrong code changed it",
+      "input": {
+        "localPairing": {
+          "step": "show",
+          "code": "4812 3456",
+          "secondsLeft": 291,
+          "notice": "rotated"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show",
+        "copy": [
+          "a11y.linkCode",
+          "a11y.newCode",
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.rotatedBody",
+          "localPairing.rotatedTitle",
+          "localPairing.showBody",
+          "localPairing.showNew",
+          "localPairing.title",
+          "localPairing.toEnter",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "The shower never says how many tries are left; only the joiner's limit binds.",
+        "copy": ["localPairing.triesLeft"]
+      }
+    },
+    {
+      "name": "LocalPairing/show: the other device said Not now",
+      "input": {
+        "localPairing": {
+          "step": "show",
+          "code": "4812 3456",
+          "secondsLeft": 291,
+          "notice": "declined",
+          "device": "LAPTOP-7QH3RX"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show",
+        "copy": [
+          "a11y.linkCode",
+          "a11y.newCode",
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.notPairedWith",
+          "localPairing.rotatedBody",
+          "localPairing.showBody",
+          "localPairing.showNew",
+          "localPairing.title",
+          "localPairing.toEnter",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "A decline is not shown as a wrong code, and the screen stays on its code.",
+        "states": ["closed"],
+        "copy": ["linkPairing.failedTitle", "localPairing.rotatedTitle"]
+      }
+    },
+    {
+      "name": "LocalPairing/show: something keeps interrupting",
+      "input": {
+        "localPairing": {
+          "step": "show",
+          "code": "4812 3456",
+          "secondsLeft": 291,
+          "notice": "blocked"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show",
+        "copy": [
+          "a11y.linkCode",
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.blockedBody",
+          "localPairing.blockedTitle",
+          "localPairing.expires",
+          "localPairing.showBody",
+          "localPairing.title",
+          "localPairing.toEnter",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "LocalPairing/show: someone nearby may be guessing, the code still open",
+      "input": {
+        "localPairing": {
+          "step": "show",
+          "code": "4812 3456",
+          "secondsLeft": 291,
+          "notice": "guessing"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show",
+        "copy": [
+          "a11y.linkCode",
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.showBody",
+          "localPairing.showNew",
+          "localPairing.title",
+          "localPairing.toEnter",
+          "localPairing.tooManyAgainBody",
+          "localPairing.tooManyAgainTitle",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "Five wrong codes over renewed windows warn but do not start the 30-second wait.",
+        "states": ["closed"],
+        "copy": ["localPairing.showNewIn"]
+      }
+    },
+    {
+      "name": "LocalPairing/closed: Too many tries, 24 seconds to wait",
+      "input": {
+        "localPairing": {
+          "step": "closed",
+          "closedBy": "too-many-tries",
+          "cooldownLeft": 24
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "closed",
+        "copy": [
+          "common.close",
+          "linkPairing.failedTitle",
+          "localPairing.failedTooMany",
+          "localPairing.showNewIn"
+        ],
+        "disabled": ["localPairing.showNewIn"]
+      },
+      "mustNot": {
+        "invariant": "No code or QR remains after Too many tries, and a new code waits 30 seconds.",
+        "copy": ["a11y.linkCode", "a11y.qrPairing", "localPairing.showNew"]
+      }
+    },
+    {
+      "name": "LocalPairing/closed: the second Too many tries in a row",
+      "input": {
+        "localPairing": {
+          "step": "closed",
+          "closedBy": "too-many-tries",
+          "cooldownLeft": 30,
+          "warn": true
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "closed",
+        "copy": [
+          "common.close",
+          "linkPairing.failedTitle",
+          "localPairing.failedTooMany",
+          "localPairing.showNewIn",
+          "localPairing.tooManyAgainBody",
+          "localPairing.tooManyAgainTitle"
+        ],
+        "disabled": ["localPairing.showNewIn"]
+      }
+    },
+    {
+      "name": "LocalPairing/closed: the wait is over",
+      "input": {
+        "localPairing": {
+          "step": "closed",
+          "closedBy": "too-many-tries",
+          "cooldownLeft": 0
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "closed",
+        "copy": [
+          "common.close",
+          "linkPairing.failedTitle",
+          "localPairing.failedTooMany",
+          "localPairing.showNew"
+        ]
+      }
+    },
+    {
+      "name": "LocalPairing/closed: time ran out, no wait",
+      "input": { "localPairing": { "step": "closed", "closedBy": "expired" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "closed",
+        "copy": [
+          "common.close",
+          "linkPairing.failedTitle",
+          "localPairing.failedExpired",
+          "localPairing.showNew"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A code that ran out has no wait: nothing was guessed.",
+        "copy": ["localPairing.showNewIn"]
+      }
+    },
+    {
+      "name": "LocalPairing/enter: an empty field, Pair unavailable",
+      "input": {
+        "localPairing": {
+          "step": "enter",
+          "entry": "",
+          "categories": ["crates", "cues"],
+          "pairDisabled": true,
+          "triesLeft": null
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.codePlaceholder",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.title",
+          "localPairing.toShow"
+        ],
+        "disabled": ["localPairing.pair"]
+      },
+      "mustNot": {
+        "invariant": "The categories come before Pair, so pressing Pair is the consent.",
+        "copy": ["localPairing.confirmBody"]
+      }
+    },
+    {
+      "name": "LocalPairing/enter: eight digits, Pair ready",
+      "input": {
+        "localPairing": {
+          "step": "enter",
+          "entry": "4812 3456",
+          "categories": ["crates", "cues"],
+          "triesLeft": 2
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.title",
+          "localPairing.toShow"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A full code with a dial left leaves Pair available.",
+        "copy": ["localPairing.notACode", "localPairing.wrongCode"]
+      }
+    },
+    {
+      "name": "LocalPairing/enter: one try left for these two digits",
+      "input": {
+        "localPairing": {
+          "step": "enter",
+          "entry": "4812 3456",
+          "categories": ["crates", "cues"],
+          "triesLeft": 1
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.title",
+          "localPairing.toShow",
+          "localPairing.triesLeft"
+        ]
+      }
+    },
+    {
+      "name": "LocalPairing/enter: a wrong code keeps the first two digits",
+      "input": {
+        "localPairing": {
+          "step": "enter",
+          "entry": "48",
+          "categories": ["crates", "cues"],
+          "error": "wrong",
+          "triesLeft": 1,
+          "pairDisabled": true
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.title",
+          "localPairing.toShow",
+          "localPairing.triesLeft",
+          "localPairing.wrongCode"
+        ],
+        "disabled": ["localPairing.pair"]
+      },
+      "mustNot": {
+        "invariant": "A code that just failed is never offered to Pair again until it differs.",
+        "copy": ["localPairing.notFoundTitle"]
+      }
+    },
+    {
+      "name": "LocalPairing/enter: these two digits are spent",
+      "input": {
+        "localPairing": {
+          "step": "enter",
+          "entry": "4873",
+          "categories": ["crates", "cues"],
+          "triesLeft": 0,
+          "pairDisabled": true
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.spentCode",
+          "localPairing.title",
+          "localPairing.toShow"
+        ],
+        "disabled": ["localPairing.pair"]
+      }
+    },
+    {
+      "name": "LocalPairing/enter: too many tries, an empty field that stays editable",
+      "input": {
+        "localPairing": {
+          "step": "enter",
+          "entry": "",
+          "categories": ["crates", "cues"],
+          "error": "too-many",
+          "pairDisabled": true,
+          "triesLeft": null
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.codePlaceholder",
+          "localPairing.cooldownBody",
+          "localPairing.cooldownTitle",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.title",
+          "localPairing.toShow"
+        ],
+        "disabled": ["localPairing.pair"]
+      },
+      "mustNot": {
+        "invariant": "The joiner shows no countdown: the budget frees only after the other window closed.",
+        "copy": ["localPairing.showNewIn"]
+      }
+    },
+    {
+      "name": "LocalPairing/enter: nothing found on the network",
+      "input": {
+        "localPairing": {
+          "step": "enter",
+          "entry": "4812 3456",
+          "categories": ["crates", "cues"],
+          "error": "not-found",
+          "triesLeft": 2
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.enterBody",
+          "localPairing.notFoundBody",
+          "localPairing.notFoundTitle",
+          "localPairing.pair",
+          "localPairing.title",
+          "localPairing.toShow"
+        ]
+      }
+    },
+    {
+      "name": "LocalPairing/enter: not a code",
+      "input": {
+        "localPairing": {
+          "step": "enter",
+          "entry": "4812",
+          "categories": ["crates", "cues"],
+          "error": "not-a-code",
+          "pairDisabled": true,
+          "triesLeft": 2
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.enterBody",
+          "localPairing.notACode",
+          "localPairing.pair",
+          "localPairing.title",
+          "localPairing.toShow"
+        ],
+        "disabled": ["localPairing.pair"]
+      }
+    },
+    {
+      "name": "LocalPairing/enter: the app asks for no categories",
+      "input": {
+        "localPairing": {
+          "step": "enter",
+          "entry": "",
+          "categories": [],
+          "pairDisabled": true,
+          "triesLeft": null
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.sharesNone",
+          "localPairing.codeLabel",
+          "localPairing.codePlaceholder",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.title",
+          "localPairing.toShow"
+        ],
+        "disabled": ["localPairing.pair"]
+      }
+    },
+    {
+      "name": "LocalPairing/joining: Pair keeps its label while it looks, Cancel stops it",
+      "input": {
+        "localPairing": {
+          "step": "joining",
+          "entry": "4812 3456",
+          "categories": ["crates", "cues"]
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "joining",
+        "copy": [
+          "a11y.busy",
+          "common.cancel",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"],
+        "disabled": ["localPairing.pair"]
+      },
+      "mustNot": {
+        "invariant": "While looking, the screen never offers to show a code instead.",
+        "copy": ["common.back", "localPairing.toShow"]
+      }
+    },
+    {
+      "name": "LocalPairing/joining: nothing is shared",
+      "input": {
+        "localPairing": {
+          "step": "joining",
+          "entry": "4812 3456",
+          "categories": []
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "joining",
+        "copy": [
+          "a11y.busy",
+          "common.cancel",
+          "linkPairing.sharesNone",
+          "localPairing.codeLabel",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"],
+        "disabled": ["localPairing.pair"]
+      }
+    },
+    {
+      "name": "LocalPairing/confirm: the device that entered the code, named",
+      "input": {
+        "localPairing": {
+          "step": "confirm",
+          "device": "LAPTOP-7QH3RX",
+          "categories": ["crates", "cues"]
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "confirm",
+        "copy": [
+          "common.notNow",
+          "linkPairing.shares",
+          "localPairing.confirmBody",
+          "localPairing.confirmTitle",
+          "localPairing.pair"
+        ]
+      },
+      "mustNot": {
+        "invariant": "Not now leads, so Enter on arrival never pairs; the name is unauthenticated text.",
+        "states": ["paired"],
+        "copy": ["localPairing.confirmUnnamed"]
+      }
+    },
+    {
+      "name": "LocalPairing/confirm: the device sent no name",
+      "input": {
+        "localPairing": { "step": "confirm", "categories": ["crates", "cues"] }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "confirm",
+        "copy": [
+          "common.notNow",
+          "linkPairing.shares",
+          "localPairing.confirmBody",
+          "localPairing.confirmUnnamed",
+          "localPairing.pair"
+        ]
+      }
+    },
+    {
+      "name": "LocalPairing/confirm: nothing is shared",
+      "input": {
+        "localPairing": {
+          "step": "confirm",
+          "device": "Studio PC",
+          "categories": []
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "confirm",
+        "copy": [
+          "common.notNow",
+          "linkPairing.sharesNone",
+          "localPairing.confirmBody",
+          "localPairing.confirmTitle",
+          "localPairing.pair"
+        ]
+      }
+    },
+    {
+      "name": "LocalPairing/waiting: for the other person, named",
+      "input": { "localPairing": { "step": "waiting", "device": "Studio PC" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "waiting",
+        "copy": [
+          "common.cancel",
+          "linkPairing.waiting",
+          "localPairing.waitingWith"
+        ],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "LocalPairing/waiting: the shower sent no name",
+      "input": { "localPairing": { "step": "waiting" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "waiting",
+        "copy": ["common.cancel", "linkPairing.waiting"],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "LocalPairing/paired: the name starts as the one the device sent",
+      "input": {
+        "localPairing": { "step": "paired", "device": "LAPTOP-7QH3RX" }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "paired",
+        "copy": [
+          "common.done",
+          "localPairing.nameHint",
+          "localPairing.nameLabel",
+          "localPairing.pairedBody",
+          "localPairing.pairedTitle"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A pairing that was made never says it failed.",
+        "states": ["failed"],
+        "copy": ["linkPairing.failedTitle"]
+      }
+    },
+    {
+      "name": "LocalPairing/paired: kept, but it cannot connect while 8 can",
+      "input": {
+        "localPairing": {
+          "step": "paired",
+          "device": "LAPTOP-7QH3RX",
+          "cantConnect": true,
+          "max": 8
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "paired",
+        "copy": [
+          "common.done",
+          "localPairing.cantConnectBody",
+          "localPairing.cantConnectTitle",
+          "localPairing.nameHint",
+          "localPairing.nameLabel",
+          "localPairing.pairedBody",
+          "localPairing.pairedTitle",
+          "pairedDevices.title"
+        ]
+      }
+    },
+    {
+      "name": "LocalPairing/failed: someone said Not now",
+      "input": { "localPairing": { "step": "failed", "reason": "declined" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "failed",
+        "copy": [
+          "common.close",
+          "common.tryAgain",
+          "linkPairing.failedDeclined",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A pairing that ended never says it paired.",
+        "states": ["paired"],
+        "copy": ["localPairing.pairedBody", "localPairing.pairedTitle"]
+      }
+    },
+    {
+      "name": "LocalPairing/failed: time ran out before both confirmed",
+      "input": { "localPairing": { "step": "failed", "reason": "timeout" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "failed",
+        "copy": [
+          "common.close",
+          "common.tryAgain",
+          "linkPairing.failedTimeout",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A pairing that ended never says it paired.",
+        "states": ["paired"],
+        "copy": ["localPairing.pairedBody", "localPairing.pairedTitle"]
+      }
+    },
+    {
+      "name": "LocalPairing/failed: one device has no room",
+      "input": { "localPairing": { "step": "failed", "reason": "full" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "failed",
+        "copy": [
+          "common.close",
+          "common.tryAgain",
+          "linkPairing.failedTitle",
+          "localPairing.failedFull"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A pairing that ended never says it paired.",
+        "states": ["paired"],
+        "copy": ["localPairing.pairedBody", "localPairing.pairedTitle"]
+      }
+    },
+    {
+      "name": "LocalPairing/failed: the connection closed",
+      "input": { "localPairing": { "step": "failed", "reason": "closed" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "failed",
+        "copy": [
+          "common.close",
+          "common.tryAgain",
+          "linkPairing.failedClosed",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A pairing that ended never says it paired.",
+        "states": ["paired"],
+        "copy": ["localPairing.pairedBody", "localPairing.pairedTitle"]
+      }
+    },
+    {
+      "name": "LocalPairing/network-blocked: Open Settings where the platform can",
+      "input": {
+        "localPairing": { "step": "network-blocked", "canOpenSettings": true }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "network-blocked",
+        "copy": [
+          "common.close",
+          "core.codes.nearby-permission-denied.message",
+          "core.codes.nearby-permission-denied.title",
+          "localPairing.openSettings"
+        ]
+      }
+    },
+    {
+      "name": "LocalPairing/network-blocked: the words alone elsewhere",
+      "input": { "localPairing": { "step": "network-blocked" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "network-blocked",
+        "copy": [
+          "common.close",
+          "core.codes.nearby-permission-denied.message",
+          "core.codes.nearby-permission-denied.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A platform that cannot open its settings never offers a button that does nothing.",
+        "copy": ["localPairing.openSettings"]
+      }
+    },
+    {
+      "name": "LocalPairing/off: pairing is off for the app",
+      "input": { "localPairing": { "step": "off" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "off",
+        "copy": [
+          "common.close",
+          "core.codes.local-pairing-off.message",
+          "core.codes.local-pairing-off.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "An app with pairing off never offers to pair.",
+        "states": ["choose", "enter", "show"],
+        "copy": ["localPairing.enter", "localPairing.pair", "localPairing.show"]
+      }
+    },
+    {
+      "name": "LocalPairing/hidden: Connect off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "sync",
+          "commerce"
+        ],
+        "localPairing": { "step": "choose" }
+      },
+      "expect": { "component": "LocalPairing", "state": "hidden", "copy": [] }
+    },
+    {
+      "name": "PairedDevices/list: five paired devices, every one can connect",
+      "input": {
+        "pairedDevices": {
+          "step": "list",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": true
+            },
+            {
+              "id": "L5",
+              "label": "Device 5",
+              "lastSeen": 1699654400,
+              "reachable": true
+            }
+          ]
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "list",
+        "copy": [
+          "a11y.deviceOptions",
+          "common.done",
+          "devices.rename",
+          "localPairing.title",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "With every device on and 8 or fewer, the switch does nothing useful and is not drawn.",
+        "copy": ["a11y.letConnect", "pairedDevices.canConnect"]
+      }
+    },
+    {
+      "name": "PairedDevices/list: one is off, so the Can connect column shows",
+      "input": {
+        "pairedDevices": {
+          "step": "list",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": true
+            },
+            {
+              "id": "L5",
+              "label": "Device 5",
+              "lastSeen": 1699654400,
+              "reachable": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "list",
+        "copy": [
+          "a11y.deviceOptions",
+          "a11y.letConnect",
+          "common.done",
+          "devices.rename",
+          "localPairing.title",
+          "pairedDevices.canConnect",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.title"
+        ]
+      }
+    },
+    {
+      "name": "PairedDevices/list: 8 can connect and more are paired",
+      "input": {
+        "pairedDevices": {
+          "step": "list",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": true
+            },
+            {
+              "id": "L5",
+              "label": "Device 5",
+              "lastSeen": 1699654400,
+              "reachable": true
+            },
+            {
+              "id": "L6",
+              "label": "Device 6",
+              "lastSeen": 1699568000,
+              "reachable": true
+            },
+            {
+              "id": "L7",
+              "label": "Device 7",
+              "lastSeen": 1699481600,
+              "reachable": true
+            },
+            {
+              "id": "L8",
+              "label": "Device 8",
+              "lastSeen": 1699395200,
+              "reachable": true
+            },
+            {
+              "id": "L9",
+              "label": "Device 9",
+              "lastSeen": 1699308800,
+              "reachable": false
+            },
+            {
+              "id": "L10",
+              "label": "Device 10",
+              "lastSeen": 1699222400,
+              "reachable": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "list",
+        "copy": [
+          "a11y.deviceOptions",
+          "a11y.letConnect",
+          "common.done",
+          "devices.rename",
+          "localPairing.title",
+          "pairedDevices.canConnect",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.reachableFullBody",
+          "pairedDevices.reachableFullTitle",
+          "pairedDevices.title"
+        ]
+      }
+    },
+    {
+      "name": "PairedDevices/list: no room for another, Pair with a Code waits",
+      "input": {
+        "pairedDevices": {
+          "step": "list",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": true
+            },
+            {
+              "id": "L5",
+              "label": "Device 5",
+              "lastSeen": 1699654400,
+              "reachable": true
+            },
+            {
+              "id": "L6",
+              "label": "Device 6",
+              "lastSeen": 1699568000,
+              "reachable": true
+            },
+            {
+              "id": "L7",
+              "label": "Device 7",
+              "lastSeen": 1699481600,
+              "reachable": true
+            },
+            {
+              "id": "L8",
+              "label": "Device 8",
+              "lastSeen": 1699395200,
+              "reachable": true
+            },
+            {
+              "id": "L9",
+              "label": "Device 9",
+              "lastSeen": 1699308800,
+              "reachable": false
+            },
+            {
+              "id": "L10",
+              "label": "Device 10",
+              "lastSeen": 1699222400,
+              "reachable": false
+            },
+            {
+              "id": "L11",
+              "label": "Device 11",
+              "lastSeen": 1699136000,
+              "reachable": false
+            },
+            {
+              "id": "L12",
+              "label": "Device 12",
+              "lastSeen": 1699049600,
+              "reachable": false
+            },
+            {
+              "id": "L13",
+              "label": "Device 13",
+              "lastSeen": 1698963200,
+              "reachable": false
+            },
+            {
+              "id": "L14",
+              "label": "Device 14",
+              "lastSeen": 1698876800,
+              "reachable": false
+            },
+            {
+              "id": "L15",
+              "label": "Device 15",
+              "lastSeen": 1698790400,
+              "reachable": false
+            },
+            {
+              "id": "L16",
+              "label": "Device 16",
+              "lastSeen": 1698704000,
+              "reachable": false
+            },
+            {
+              "id": "L17",
+              "label": "Device 17",
+              "lastSeen": 1698617600,
+              "reachable": false
+            },
+            {
+              "id": "L18",
+              "label": "Device 18",
+              "lastSeen": 1698531200,
+              "reachable": false
+            },
+            {
+              "id": "L19",
+              "label": "Device 19",
+              "lastSeen": 1698444800,
+              "reachable": false
+            },
+            {
+              "id": "L20",
+              "label": "Device 20",
+              "lastSeen": 1698358400,
+              "reachable": false
+            },
+            {
+              "id": "L21",
+              "label": "Device 21",
+              "lastSeen": 1698272000,
+              "reachable": false
+            },
+            {
+              "id": "L22",
+              "label": "Device 22",
+              "lastSeen": 1698185600,
+              "reachable": false
+            },
+            {
+              "id": "L23",
+              "label": "Device 23",
+              "lastSeen": 1698099200,
+              "reachable": false
+            },
+            {
+              "id": "L24",
+              "label": "Device 24",
+              "lastSeen": 1698012800,
+              "reachable": false
+            },
+            {
+              "id": "L25",
+              "label": "Device 25",
+              "lastSeen": 1697926400,
+              "reachable": false
+            },
+            {
+              "id": "L26",
+              "label": "Device 26",
+              "lastSeen": 1697840000,
+              "reachable": false
+            },
+            {
+              "id": "L27",
+              "label": "Device 27",
+              "lastSeen": 1697753600,
+              "reachable": false
+            },
+            {
+              "id": "L28",
+              "label": "Device 28",
+              "lastSeen": 1697667200,
+              "reachable": false
+            },
+            {
+              "id": "L29",
+              "label": "Device 29",
+              "lastSeen": 1697580800,
+              "reachable": false
+            },
+            {
+              "id": "L30",
+              "label": "Device 30",
+              "lastSeen": 1697494400,
+              "reachable": false
+            },
+            {
+              "id": "L31",
+              "label": "Device 31",
+              "lastSeen": 1697408000,
+              "reachable": false
+            },
+            {
+              "id": "L32",
+              "label": "Device 32",
+              "lastSeen": 1697321600,
+              "reachable": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "list",
+        "copy": [
+          "a11y.deviceOptions",
+          "a11y.letConnect",
+          "common.done",
+          "core.codes.local-links-full.title",
+          "devices.rename",
+          "localPairing.title",
+          "pairedDevices.canConnect",
+          "pairedDevices.forget",
+          "pairedDevices.fullBody",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.reachableFullBody",
+          "pairedDevices.reachableFullTitle",
+          "pairedDevices.title"
+        ],
+        "disabled": ["localPairing.title"]
+      }
+    },
+    {
+      "name": "PairedDevices/list: never seen, so no Last seen",
+      "input": {
+        "pairedDevices": {
+          "step": "list",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": null,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": null,
+              "reachable": true
+            }
+          ]
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "list",
+        "copy": [
+          "a11y.deviceOptions",
+          "common.done",
+          "devices.rename",
+          "localPairing.title",
+          "pairedDevices.forget",
+          "pairedDevices.lede",
+          "pairedDevices.title"
+        ]
+      }
+    },
+    {
+      "name": "PairedDevices/list: the app could not find a device",
+      "input": {
+        "pairedDevices": {
+          "step": "list",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            }
+          ],
+          "notice": { "device": "Theo's laptop", "kind": "not-found" }
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "list",
+        "copy": [
+          "a11y.deviceOptions",
+          "common.done",
+          "devices.rename",
+          "localPairing.title",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.notFoundBody",
+          "pairedDevices.notFoundTitle",
+          "pairedDevices.title"
+        ]
+      }
+    },
+    {
+      "name": "PairedDevices/list: a device is busy",
+      "input": {
+        "pairedDevices": {
+          "step": "list",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            }
+          ],
+          "notice": { "device": "Theo's laptop", "kind": "busy" }
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "list",
+        "copy": [
+          "a11y.deviceOptions",
+          "common.done",
+          "common.tryAgain",
+          "devices.rename",
+          "localPairing.title",
+          "pairedDevices.busyTitle",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.title"
+        ],
+        "actions": ["retry"]
+      }
+    },
+    {
+      "name": "PairedDevices/list: a device is no longer paired",
+      "input": {
+        "pairedDevices": {
+          "step": "list",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            }
+          ],
+          "notice": { "device": "Theo's laptop", "kind": "unknown" }
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "list",
+        "copy": [
+          "a11y.deviceOptions",
+          "common.done",
+          "core.codes.link-unknown.message",
+          "core.codes.link-unknown.title",
+          "devices.rename",
+          "localPairing.title",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.title"
+        ]
+      }
+    },
+    {
+      "name": "PairedDevices/renaming: in the row",
+      "input": {
+        "pairedDevices": {
+          "step": "renaming",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": false
+            }
+          ],
+          "target": "L1"
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "renaming",
+        "copy": [
+          "a11y.deviceOptions",
+          "a11y.letConnect",
+          "common.cancel",
+          "common.done",
+          "common.save",
+          "devices.rename",
+          "devices.renameLabel",
+          "localPairing.nameHint",
+          "localPairing.title",
+          "pairedDevices.canConnect",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "A name is never sent to the other device.",
+        "copy": ["pairedDevices.renameEmpty", "pairedDevices.renameLong"]
+      }
+    },
+    {
+      "name": "PairedDevices/renaming: a name over 64 characters is refused",
+      "input": {
+        "pairedDevices": {
+          "step": "renaming",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": false
+            }
+          ],
+          "target": "L1",
+          "renameError": "long"
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "renaming",
+        "copy": [
+          "a11y.deviceOptions",
+          "a11y.letConnect",
+          "common.cancel",
+          "common.done",
+          "common.save",
+          "devices.rename",
+          "devices.renameLabel",
+          "localPairing.nameHint",
+          "localPairing.title",
+          "pairedDevices.canConnect",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.renameLong",
+          "pairedDevices.title"
+        ],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "PairedDevices/renaming: nothing left once cleaned",
+      "input": {
+        "pairedDevices": {
+          "step": "renaming",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": false
+            }
+          ],
+          "target": "L1",
+          "renameError": "empty"
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "renaming",
+        "copy": [
+          "a11y.deviceOptions",
+          "a11y.letConnect",
+          "common.cancel",
+          "common.done",
+          "common.save",
+          "devices.rename",
+          "devices.renameLabel",
+          "localPairing.nameHint",
+          "localPairing.title",
+          "pairedDevices.canConnect",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.renameEmpty",
+          "pairedDevices.title"
+        ],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "PairedDevices/forgetting: asks inside the row",
+      "input": {
+        "pairedDevices": {
+          "step": "forgetting",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": false
+            }
+          ],
+          "target": "L2"
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "forgetting",
+        "copy": [
+          "a11y.deviceOptions",
+          "a11y.letConnect",
+          "common.cancel",
+          "common.done",
+          "devices.rename",
+          "localPairing.title",
+          "pairedDevices.canConnect",
+          "pairedDevices.forget",
+          "pairedDevices.forgetBody",
+          "pairedDevices.forgetConfirm",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "Forget is local: it never reads as Remove, a server action.",
+        "copy": ["devices.manage"]
+      }
+    },
+    {
+      "name": "PairedDevices/empty: nothing paired yet",
+      "input": { "pairedDevices": { "step": "list", "devices": [] } },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "empty",
+        "copy": [
+          "common.done",
+          "localPairing.title",
+          "pairedDevices.empty",
+          "pairedDevices.title"
+        ]
+      }
+    },
+    {
+      "name": "PairedDevices/load-failed: the record cannot be read",
+      "input": { "pairedDevices": { "step": "load-failed", "devices": [] } },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "load-failed",
+        "copy": [
+          "common.done",
+          "common.tryAgain",
+          "pairedDevices.loadFailed",
+          "pairedDevices.title"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "An unreadable record offers no list and no Pair with a Code.",
+        "states": ["empty", "list"],
+        "copy": ["localPairing.title"]
+      }
+    },
+    {
+      "name": "PairedDevices/off: pairing is off, Rename and Forget remain",
+      "input": {
+        "pairedDevices": {
+          "step": "off",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            }
+          ]
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "off",
+        "copy": [
+          "a11y.deviceOptions",
+          "common.done",
+          "core.codes.local-pairing-off.title",
+          "devices.rename",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.offBody",
+          "pairedDevices.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "With pairing off no switch and no Pair with a Code is drawn; deleting what is held still works.",
+        "copy": [
+          "a11y.letConnect",
+          "localPairing.title",
+          "pairedDevices.canConnect"
+        ]
+      }
+    },
+    {
+      "name": "PairedDevices/hidden: Connect off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "sync",
+          "commerce"
+        ],
+        "pairedDevices": {
+          "step": "list",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            }
+          ]
+        }
+      },
+      "expect": { "component": "PairedDevices", "state": "hidden", "copy": [] }
+    }
+  ],
+  "localLayout": [
+    {
+      "name": "wide: two panes, the kit's logo",
+      "window": { "width": 1280, "height": 800 },
+      "expect": {
+        "panes": 2,
+        "logo": true,
+        "scrolls": false,
+        "noticeBeforeQr": false
+      }
+    },
+    {
+      "name": "600 wide is the first width with two panes",
+      "window": { "width": 600, "height": 700 },
+      "expect": {
+        "panes": 2,
+        "logo": true,
+        "scrolls": false,
+        "noticeBeforeQr": false
+      }
+    },
+    {
+      "name": "599 wide is one column",
+      "window": { "width": 599, "height": 700 },
+      "expect": {
+        "panes": 1,
+        "logo": true,
+        "scrolls": false,
+        "noticeBeforeQr": false
+      }
+    },
+    {
+      "name": "200 % text keeps one column in a window that is 1100 wide",
+      "window": { "width": 1100, "height": 800, "textScale": 2 },
+      "expect": {
+        "panes": 1,
+        "logo": true,
+        "scrolls": false,
+        "noticeBeforeQr": false
+      }
+    },
+    {
+      "name": "short and wide (720 by 420): two panes, no logo, no scroll",
+      "window": { "width": 720, "height": 420 },
+      "expect": {
+        "panes": 2,
+        "logo": false,
+        "scrolls": false,
+        "noticeBeforeQr": false
+      }
+    },
+    {
+      "name": "narrow and short (390 by 420): one column that scrolls, the notice before the QR",
+      "window": { "width": 390, "height": 420 },
+      "expect": {
+        "panes": 1,
+        "logo": false,
+        "scrolls": true,
+        "noticeBeforeQr": true
+      }
+    },
+    {
+      "name": "a TV is always two panes",
+      "window": { "width": 480, "height": 360, "tv": true },
+      "expect": {
+        "panes": 2,
+        "logo": true,
+        "scrolls": false,
+        "noticeBeforeQr": false
+      }
+    }
+  ],
   "nearby": [
     {
       "name": "SignIn/nearby-choose: several devices answered: choose which to ask",

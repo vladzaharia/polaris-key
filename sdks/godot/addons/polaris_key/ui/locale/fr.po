@@ -6274,6 +6274,385 @@ msgstr "Impossible de recevoir {name}"
 msgid "transferOffer.failedBody"
 msgstr "Rien n’a été enregistré."
 
+#. Pair with a Code
+#. Pair with a Code: the feature's name; also the entry button.
+msgid "localPairing.title"
+msgstr "Associer avec un code"
+
+#. Both devices need to be on the same network.
+#. Pair with a Code: choose: where both devices must be.
+msgid "localPairing.chooseBody"
+msgstr "Les deux appareils doivent être sur le même réseau."
+
+#. Show a code
+#. Pair with a Code: choose: this device shows the code.
+msgid "localPairing.show"
+msgstr "Afficher un code"
+
+#. macos: Show a Code
+msgctxt "macos"
+msgid "localPairing.show"
+msgstr "Afficher un code"
+
+#. Enter a code
+#. Pair with a Code: choose: this device types the code.
+msgid "localPairing.enter"
+msgstr "Saisir un code"
+
+#. macos: Enter a Code
+msgctxt "macos"
+msgid "localPairing.enter"
+msgstr "Saisir un code"
+
+#. If asked, allow {app} to find devices on your network.
+#. Pair with a Code: choose: shown until the system has asked once. Arguments: {app} = the app's name.
+msgid "localPairing.prePrompt"
+msgstr "Si le système le demande, autorisez {app} à trouver des appareils sur votre réseau."
+
+#. Paired devices
+#. Pair with a Code: the link to the paired devices list.
+msgid "localPairing.pairedDevices"
+msgstr "Appareils associés"
+
+#. macos: Paired Devices
+msgctxt "macos"
+msgid "localPairing.pairedDevices"
+msgstr "Appareils associés"
+
+#. Scan or enter this code on the other device.
+#. Pair with a Code: show: what to do with the code.
+msgid "localPairing.showBody"
+msgstr "Scannez ou saisissez ce code sur l’autre appareil."
+
+#. QR code with the pairing code
+#. Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code.
+msgid "a11y.qrPairing"
+msgstr "Code QR avec le code d’association"
+
+#. Expires in {time}
+#. Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left.
+msgid "localPairing.expires"
+msgstr "Expire dans {time}"
+
+#. Waiting for the other device…
+#. Pair with a Code: show: shown while the code is open.
+msgid "localPairing.waitingDevice"
+msgstr "En attente de l’autre appareil…"
+
+#. Enter a code instead
+#. Pair with a Code: show: withdraws this code and opens the field.
+msgid "localPairing.toEnter"
+msgstr "Saisir un code à la place"
+
+#. macos: Enter a Code Instead
+msgctxt "macos"
+msgid "localPairing.toEnter"
+msgstr "Saisir un code à la place"
+
+#. Wrong code entered
+#. Pair with a Code: show: after a wrong guess.
+msgid "localPairing.rotatedTitle"
+msgstr "Code saisi incorrect"
+
+#. The code changed.
+#. Pair with a Code: show: the code is new now.
+msgid "localPairing.rotatedBody"
+msgstr "Le code a changé."
+
+#. New code {code}
+#. Pair with a Code: Screen reader line after the code changes; never shown. Arguments: {code} = the new code.
+msgid "a11y.newCode"
+msgstr "Nouveau code {code}"
+
+#. Show a new code
+#. Pair with a Code: show: opens a new window with a new code.
+msgid "localPairing.showNew"
+msgstr "Afficher un nouveau code"
+
+#. macos: Show a New Code
+msgctxt "macos"
+msgid "localPairing.showNew"
+msgstr "Afficher un nouveau code"
+
+#. Show a new code in {time}
+#. Pair with a Code: show: the disabled button while the 30-second wait runs. Arguments: {time} = m:ss.
+msgid "localPairing.showNewIn"
+msgstr "Afficher un nouveau code dans {time}"
+
+#. macos: Show a New Code in {time}
+msgctxt "macos"
+msgid "localPairing.showNewIn"
+msgstr "Afficher un nouveau code dans {time}"
+
+#. Pairing is being blocked
+#. Pair with a Code: show: something keeps interrupting.
+msgid "localPairing.blockedTitle"
+msgstr "L’association est bloquée"
+
+#. Something on this network keeps interrupting. Try another network.
+#. Pair with a Code: show: what to try.
+msgid "localPairing.blockedBody"
+msgstr "Quelque chose sur ce réseau interrompt sans cesse. Essayez un autre réseau."
+
+#. Too many tries.
+#. Pair with a Code: closed: the fifth wrong code.
+msgid "localPairing.failedTooMany"
+msgstr "Trop de tentatives."
+
+#. The code expired.
+#. Pair with a Code: closed: the time ran out.
+msgid "localPairing.failedExpired"
+msgstr "Le code a expiré."
+
+#. Too many tries again
+#. Pair with a Code: closed or show: the second time in a row, or five wrong codes over several windows.
+msgid "localPairing.tooManyAgainTitle"
+msgstr "Encore trop de tentatives"
+
+#. Someone nearby may be guessing codes.
+#. Pair with a Code: closed or show: the warning's reason.
+msgid "localPairing.tooManyAgainBody"
+msgstr "Quelqu’un à proximité essaie peut-être de deviner des codes."
+
+#. Open Settings
+#. Pair with a Code: network blocked: where the system can deep-link.
+msgid "localPairing.openSettings"
+msgstr "Ouvrir les réglages"
+
+#. Enter the code from the other device.
+#. Pair with a Code: enter: the lede.
+msgid "localPairing.enterBody"
+msgstr "Saisissez le code affiché sur l’autre appareil."
+
+#. Code
+#. Pair with a Code: enter: the field's label.
+msgid "localPairing.codeLabel"
+msgstr "Code"
+
+#. •••• ••••
+#. Pair with a Code: enter: an empty field's placeholder; shows the length and grouping.
+msgid "localPairing.codePlaceholder"
+msgstr "•••• ••••"
+
+#. Pair
+#. Pair with a Code: enter and confirm: this person's yes.
+msgid "localPairing.pair"
+msgstr "Associer"
+
+#. Show a code instead
+#. Pair with a Code: enter: opens the show screen.
+msgid "localPairing.toShow"
+msgstr "Afficher un code à la place"
+
+#. macos: Show a Code Instead
+msgctxt "macos"
+msgid "localPairing.toShow"
+msgstr "Afficher un code à la place"
+
+#. That code didn’t work. Enter the code the other device shows now.
+#. Pair with a Code: enter: a wrong code.
+msgid "localPairing.wrongCode"
+msgstr "Ce code n’a pas fonctionné. Saisissez le code que l’autre appareil affiche maintenant."
+
+#. {left, plural, one {# try left} other {# tries left}}
+#. Pair with a Code: enter: tries left for these first two digits. Arguments: {left} = tries.
+#. Plural on {left}.
+msgid "localPairing.triesLeft"
+msgid_plural "localPairing.triesLeft"
+msgstr[0] "{left} essai restant"
+msgstr[1] "{left} d’essais restants"
+msgstr[2] "{left} essais restants"
+
+#. Too many tries
+#. Pair with a Code: enter: no try is left for these first two digits.
+msgid "localPairing.cooldownTitle"
+msgstr "Trop de tentatives"
+
+#. Ask for a new code on the other device.
+#. Pair with a Code: enter: what to do.
+msgid "localPairing.cooldownBody"
+msgstr "Demandez un nouveau code sur l’autre appareil."
+
+#. Ask for a new code. This one can’t be tried again yet.
+#. Pair with a Code: enter: under the field when the first two digits are spent.
+msgid "localPairing.spentCode"
+msgstr "Demandez un nouveau code. Celui-ci ne peut pas encore être réessayé."
+
+#. Can’t find the other device
+#. Pair with a Code: enter: nothing answered.
+msgid "localPairing.notFoundTitle"
+msgstr "Impossible de trouver l’autre appareil"
+
+#. Check the code, and that you’re both on the same network.
+#. Pair with a Code: enter: the most common causes.
+msgid "localPairing.notFoundBody"
+msgstr "Vérifiez le code et que vous êtes sur le même réseau."
+
+#. A code is 8 digits.
+#. Pair with a Code: enter: fewer than 8 digits.
+msgid "localPairing.notACode"
+msgstr "Un code comporte 8 chiffres."
+
+#. Pair with {device}?
+#. Pair with a Code: confirm: after the other device proved the code. Arguments: {device} = the label it sent.
+msgid "localPairing.confirmTitle"
+msgstr "Associer avec {device} ?"
+
+#. Pair with this device?
+#. Pair with a Code: confirm: the other device sent no label.
+msgid "localPairing.confirmUnnamed"
+msgstr "Associer avec cet appareil ?"
+
+#. It entered your code.
+#. Pair with a Code: confirm: why the prompt is there.
+msgid "localPairing.confirmBody"
+msgstr "Il a saisi votre code."
+
+#. Pairing with {device}.
+#. Pair with a Code: waiting: Arguments: {device} = the label the shower sent.
+msgid "localPairing.waitingWith"
+msgstr "Association avec {device}."
+
+#. Paired
+#. Pair with a Code: paired: the done state's name.
+msgid "localPairing.pairedTitle"
+msgstr "Associé"
+
+#. You can now connect on the same network without a code.
+#. Pair with a Code: paired: what changed.
+msgid "localPairing.pairedBody"
+msgstr "Vous pouvez désormais vous connecter sur le même réseau sans code."
+
+#. Name
+#. Pair with a Code: paired: this device's name for the other one.
+msgid "localPairing.nameLabel"
+msgstr "Nom"
+
+#. Shown on this device only.
+#. Pair with a Code: paired and rename: the name is never sent.
+msgid "localPairing.nameHint"
+msgstr "Visible uniquement sur cet appareil."
+
+#. {device} can’t connect
+#. Pair with a Code: paired: kept with Can connect off. Arguments: {device}.
+msgid "localPairing.cantConnectTitle"
+msgstr "{device} ne peut pas se connecter"
+
+#. Only {max} paired devices can connect at once. Turn one off in Paired devices.
+#. Pair with a Code: paired: why. Arguments: {max} = 8.
+msgid "localPairing.cantConnectBody"
+msgstr "Seuls {max} appareils associés peuvent se connecter à la fois. Désactivez-en un dans « Appareils associés »."
+
+#. Not paired with {device}
+#. Pair with a Code: show: back on the code after Not now. Arguments: {device}.
+msgid "localPairing.notPairedWith"
+msgstr "Pas associé avec {device}"
+
+#. One of you has no room for another pairing. Forget one, then try again.
+#. Pair with a Code: failed: one device holds the most.
+msgid "localPairing.failedFull"
+msgstr "L’un de vous ne peut plus ajouter d’association. Oubliez-en une, puis réessayez."
+
+#. Paired devices
+#. Pair with a Code: PairedDevices: the list's title.
+msgid "pairedDevices.title"
+msgstr "Appareils associés"
+
+#. They connect only on the same network.
+#. Pair with a Code: list: said once.
+msgid "pairedDevices.lede"
+msgstr "Ils se connectent uniquement sur le même réseau."
+
+#. Last seen {when}
+#. Pair with a Code: row: Arguments: {when} = today, yesterday, 3 days ago.
+msgid "pairedDevices.lastSeen"
+msgstr "Vu {when}"
+
+#. Options for {device}
+#. Pair with a Code: Screen reader label; never shown. The ⋯ menu of a row.
+msgid "a11y.deviceOptions"
+msgstr "Options pour {device}"
+
+#. Can connect
+#. Pair with a Code: list: column label over the switches.
+msgid "pairedDevices.canConnect"
+msgstr "Peut se connecter"
+
+#. Let {device} connect to this device
+#. Pair with a Code: Screen reader label; never shown. Each switch.
+msgid "a11y.letConnect"
+msgstr "Autoriser {device} à se connecter à cet appareil"
+
+#. Use {max} characters or fewer.
+#. Pair with a Code: rename: refused. Arguments: {max} = 64.
+msgid "pairedDevices.renameLong"
+msgstr "Utilisez {max} caractères ou moins."
+
+#. Enter a name.
+#. Pair with a Code: rename: refused; nothing left once cleaned.
+msgid "pairedDevices.renameEmpty"
+msgstr "Saisissez un nom."
+
+#. Forget
+#. Pair with a Code: row: menu item and the confirm button; local only.
+msgid "pairedDevices.forget"
+msgstr "Oublier"
+
+#. Forget {device}?
+#. Pair with a Code: row: the question. Arguments: {device}.
+msgid "pairedDevices.forgetConfirm"
+msgstr "Oublier {device} ?"
+
+#. To connect again, pair with a new code.
+#. Pair with a Code: row: the one consequence.
+msgid "pairedDevices.forgetBody"
+msgstr "Pour vous reconnecter, associez-vous avec un nouveau code."
+
+#. Up to {max} can connect
+#. Pair with a Code: list: eight switches are on. Arguments: {max} = 8.
+msgid "pairedDevices.reachableFullTitle"
+msgstr "Jusqu’à {max} peuvent se connecter"
+
+#. Turn one off to let another connect.
+#. Pair with a Code: list: what to do.
+msgid "pairedDevices.reachableFullBody"
+msgstr "Désactivez-en un pour en laisser un autre se connecter."
+
+#. Forget a paired device to pair another.
+#. Pair with a Code: list: 32 are paired.
+msgid "pairedDevices.fullBody"
+msgstr "Oubliez un appareil associé pour en associer un autre."
+
+#. No paired devices yet.
+#. Pair with a Code: list: nothing paired.
+msgid "pairedDevices.empty"
+msgstr "Aucun appareil associé pour le moment."
+
+#. Couldn’t load your paired devices.
+#. Pair with a Code: list: the record can't be read.
+msgid "pairedDevices.loadFailed"
+msgstr "Impossible de charger vos appareils associés."
+
+#. Can’t find {device}
+#. Pair with a Code: where the app connects: not seen on this network. Arguments: {device}.
+msgid "pairedDevices.notFoundTitle"
+msgstr "Impossible de trouver {device}"
+
+#. Check it’s on and on the same network.
+#. Pair with a Code: where the app connects: what to check.
+msgid "pairedDevices.notFoundBody"
+msgstr "Vérifiez qu’il est allumé et sur le même réseau."
+
+#. {device} is busy
+#. Pair with a Code: where the app connects: a busy answer. Arguments: {device}.
+msgid "pairedDevices.busyTitle"
+msgstr "{device} est occupé"
+
+#. Pairing with a code is off for this app. Paired devices can’t connect.
+#. Pair with a Code: list: pairing is off for the app.
+msgid "pairedDevices.offBody"
+msgstr "L’association par code est désactivée pour cette app. Les appareils associés ne peuvent pas se connecter."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

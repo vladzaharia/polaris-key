@@ -2342,6 +2342,151 @@
     <string name="transferOffer_failed">%1$s을(를) 받지 못했습니다</string>
     <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title. -->
     <string name="transferOffer_failedBody">저장된 것이 없습니다.</string>
+    <!-- Pair with a Code: the feature's name; also the entry button. -->
+    <string name="localPairing_title">코드로 페어링</string>
+    <!-- Pair with a Code: choose: where both devices must be. -->
+    <string name="localPairing_chooseBody">두 기기가 같은 네트워크에 있어야 합니다.</string>
+    <!-- Pair with a Code: choose: this device shows the code. -->
+    <string name="localPairing_show">코드 표시</string>
+    <string name="localPairing_show__macos">코드 표시</string>
+    <!-- Pair with a Code: choose: this device types the code. -->
+    <string name="localPairing_enter">코드 입력</string>
+    <string name="localPairing_enter__macos">코드 입력</string>
+    <!-- Pair with a Code: choose: shown until the system has asked once. Arguments: {app} = the app's name. Arguments: 1=app. -->
+    <string name="localPairing_prePrompt">요청이 나타나면 %1$s이(가) 네트워크의 기기를 찾도록 허용하세요.</string>
+    <!-- Pair with a Code: the link to the paired devices list. -->
+    <string name="localPairing_pairedDevices">페어링된 기기</string>
+    <string name="localPairing_pairedDevices__macos">페어링된 기기</string>
+    <!-- Pair with a Code: show: what to do with the code. -->
+    <string name="localPairing_showBody">다른 기기에서 이 코드를 스캔하거나 입력하세요.</string>
+    <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
+    <string name="a11y_qrPairing">페어링 코드가 담긴 QR 코드</string>
+    <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
+    <string name="localPairing_expires">%1$s 후 만료</string>
+    <!-- Pair with a Code: show: shown while the code is open. -->
+    <string name="localPairing_waitingDevice">다른 기기를 기다리는 중…</string>
+    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
+    <string name="localPairing_toEnter">대신 코드 입력</string>
+    <string name="localPairing_toEnter__macos">대신 코드 입력</string>
+    <!-- Pair with a Code: show: after a wrong guess. -->
+    <string name="localPairing_rotatedTitle">잘못된 코드가 입력되었습니다</string>
+    <!-- Pair with a Code: show: the code is new now. -->
+    <string name="localPairing_rotatedBody">코드가 바뀌었습니다.</string>
+    <!-- Pair with a Code: Screen reader line after the code changes; never shown. Arguments: {code} = the new code. Arguments: 1=code. -->
+    <string name="a11y_newCode">새 코드 %1$s</string>
+    <!-- Pair with a Code: show: opens a new window with a new code. -->
+    <string name="localPairing_showNew">새 코드 표시</string>
+    <string name="localPairing_showNew__macos">새 코드 표시</string>
+    <!-- Pair with a Code: show: the disabled button while the 30-second wait runs. Arguments: {time} = m:ss. Arguments: 1=time. -->
+    <string name="localPairing_showNewIn">%1$s 후 새 코드 표시</string>
+    <string name="localPairing_showNewIn__macos">%1$s 후 새 코드 표시</string>
+    <!-- Pair with a Code: show: something keeps interrupting. -->
+    <string name="localPairing_blockedTitle">페어링이 차단되고 있습니다</string>
+    <!-- Pair with a Code: show: what to try. -->
+    <string name="localPairing_blockedBody">이 네트워크의 무언가가 계속 방해하고 있습니다. 다른 네트워크를 사용해 보세요.</string>
+    <!-- Pair with a Code: closed: the fifth wrong code. -->
+    <string name="localPairing_failedTooMany">시도 횟수가 너무 많습니다.</string>
+    <!-- Pair with a Code: closed: the time ran out. -->
+    <string name="localPairing_failedExpired">코드가 만료되었습니다.</string>
+    <!-- Pair with a Code: closed or show: the second time in a row, or five wrong codes over several windows. -->
+    <string name="localPairing_tooManyAgainTitle">다시 시도 횟수가 너무 많습니다</string>
+    <!-- Pair with a Code: closed or show: the warning's reason. -->
+    <string name="localPairing_tooManyAgainBody">근처의 누군가가 코드를 추측하고 있을 수 있습니다.</string>
+    <!-- Pair with a Code: network blocked: where the system can deep-link. -->
+    <string name="localPairing_openSettings">설정 열기</string>
+    <!-- Pair with a Code: enter: the lede. -->
+    <string name="localPairing_enterBody">다른 기기의 코드를 입력하세요.</string>
+    <!-- Pair with a Code: enter: the field's label. -->
+    <string name="localPairing_codeLabel">코드</string>
+    <!-- Pair with a Code: enter: an empty field's placeholder; shows the length and grouping. -->
+    <string name="localPairing_codePlaceholder">•••• ••••</string>
+    <!-- Pair with a Code: enter and confirm: this person's yes. -->
+    <string name="localPairing_pair">페어링</string>
+    <!-- Pair with a Code: enter: opens the show screen. -->
+    <string name="localPairing_toShow">대신 코드 표시</string>
+    <string name="localPairing_toShow__macos">대신 코드 표시</string>
+    <!-- Pair with a Code: enter: a wrong code. -->
+    <string name="localPairing_wrongCode">이 코드는 사용할 수 없습니다. 다른 기기에 지금 표시된 코드를 입력하세요.</string>
+    <!-- Pair with a Code: enter: tries left for these first two digits. Arguments: {left} = tries. Arguments: 1=left. -->
+    <plurals name="localPairing_triesLeft">
+        <item quantity="other">%1$d 번 남음</item>
+    </plurals>
+    <!-- Pair with a Code: enter: no try is left for these first two digits. -->
+    <string name="localPairing_cooldownTitle">시도 횟수가 너무 많습니다</string>
+    <!-- Pair with a Code: enter: what to do. -->
+    <string name="localPairing_cooldownBody">다른 기기에서 새 코드를 요청하세요.</string>
+    <!-- Pair with a Code: enter: under the field when the first two digits are spent. -->
+    <string name="localPairing_spentCode">새 코드를 요청하세요. 이 코드는 아직 다시 시도할 수 없습니다.</string>
+    <!-- Pair with a Code: enter: nothing answered. -->
+    <string name="localPairing_notFoundTitle">다른 기기를 찾을 수 없습니다</string>
+    <!-- Pair with a Code: enter: the most common causes. -->
+    <string name="localPairing_notFoundBody">코드를 확인하고, 두 기기가 같은 네트워크에 있는지 확인하세요.</string>
+    <!-- Pair with a Code: enter: fewer than 8 digits. -->
+    <string name="localPairing_notACode">코드는 8자리입니다.</string>
+    <!-- Pair with a Code: confirm: after the other device proved the code. Arguments: {device} = the label it sent. Arguments: 1=device. -->
+    <string name="localPairing_confirmTitle">%1$s와(과) 페어링할까요?</string>
+    <!-- Pair with a Code: confirm: the other device sent no label. -->
+    <string name="localPairing_confirmUnnamed">이 기기와 페어링할까요?</string>
+    <!-- Pair with a Code: confirm: why the prompt is there. -->
+    <string name="localPairing_confirmBody">상대 기기가 내 코드를 입력했습니다.</string>
+    <!-- Pair with a Code: waiting: Arguments: {device} = the label the shower sent. Arguments: 1=device. -->
+    <string name="localPairing_waitingWith">%1$s와(과) 페어링하는 중입니다.</string>
+    <!-- Pair with a Code: paired: the done state's name. -->
+    <string name="localPairing_pairedTitle">페어링됨</string>
+    <!-- Pair with a Code: paired: what changed. -->
+    <string name="localPairing_pairedBody">이제 같은 네트워크에서 코드 없이 연결할 수 있습니다.</string>
+    <!-- Pair with a Code: paired: this device's name for the other one. -->
+    <string name="localPairing_nameLabel">이름</string>
+    <!-- Pair with a Code: paired and rename: the name is never sent. -->
+    <string name="localPairing_nameHint">이 기기에만 표시됩니다.</string>
+    <!-- Pair with a Code: paired: kept with Can connect off. Arguments: {device}. Arguments: 1=device. -->
+    <string name="localPairing_cantConnectTitle">%1$s은(는) 연결할 수 없습니다</string>
+    <!-- Pair with a Code: paired: why. Arguments: {max} = 8. Arguments: 1=max. -->
+    <string name="localPairing_cantConnectBody">페어링된 기기는 한 번에 %1$s대까지 연결할 수 있습니다. ‘페어링된 기기’에서 하나를 끄세요.</string>
+    <!-- Pair with a Code: show: back on the code after Not now. Arguments: {device}. Arguments: 1=device. -->
+    <string name="localPairing_notPairedWith">%1$s와(과) 페어링되지 않았습니다</string>
+    <!-- Pair with a Code: failed: one device holds the most. -->
+    <string name="localPairing_failedFull">한 사람이 더 이상 페어링을 추가할 수 없습니다. 하나를 삭제한 뒤 다시 시도하세요.</string>
+    <!-- Pair with a Code: PairedDevices: the list's title. -->
+    <string name="pairedDevices_title">페어링된 기기</string>
+    <!-- Pair with a Code: list: said once. -->
+    <string name="pairedDevices_lede">같은 네트워크에서만 연결됩니다.</string>
+    <!-- Pair with a Code: row: Arguments: {when} = today, yesterday, 3 days ago. Arguments: 1=when. -->
+    <string name="pairedDevices_lastSeen">마지막 확인: %1$s</string>
+    <!-- Pair with a Code: Screen reader label; never shown. The ⋯ menu of a row. Arguments: 1=device. -->
+    <string name="a11y_deviceOptions">%1$s 옵션</string>
+    <!-- Pair with a Code: list: column label over the switches. -->
+    <string name="pairedDevices_canConnect">연결 허용</string>
+    <!-- Pair with a Code: Screen reader label; never shown. Each switch. Arguments: 1=device. -->
+    <string name="a11y_letConnect">%1$s이(가) 이 기기에 연결하도록 허용</string>
+    <!-- Pair with a Code: rename: refused. Arguments: {max} = 64. Arguments: 1=max. -->
+    <string name="pairedDevices_renameLong">%1$s자 이하로 입력하세요.</string>
+    <!-- Pair with a Code: rename: refused; nothing left once cleaned. -->
+    <string name="pairedDevices_renameEmpty">이름을 입력하세요.</string>
+    <!-- Pair with a Code: row: menu item and the confirm button; local only. -->
+    <string name="pairedDevices_forget">삭제</string>
+    <!-- Pair with a Code: row: the question. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetConfirm">%1$s을(를) 삭제할까요?</string>
+    <!-- Pair with a Code: row: the one consequence. -->
+    <string name="pairedDevices_forgetBody">다시 연결하려면 새 코드로 페어링하세요.</string>
+    <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
+    <string name="pairedDevices_reachableFullTitle">최대 %1$s대까지 연결할 수 있습니다</string>
+    <!-- Pair with a Code: list: what to do. -->
+    <string name="pairedDevices_reachableFullBody">다른 기기를 연결하려면 하나를 끄세요.</string>
+    <!-- Pair with a Code: list: 32 are paired. -->
+    <string name="pairedDevices_fullBody">다른 기기를 페어링하려면 페어링된 기기를 삭제하세요.</string>
+    <!-- Pair with a Code: list: nothing paired. -->
+    <string name="pairedDevices_empty">아직 페어링된 기기가 없습니다.</string>
+    <!-- Pair with a Code: list: the record can't be read. -->
+    <string name="pairedDevices_loadFailed">페어링된 기기를 불러오지 못했습니다.</string>
+    <!-- Pair with a Code: where the app connects: not seen on this network. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_notFoundTitle">%1$s을(를) 찾을 수 없습니다</string>
+    <!-- Pair with a Code: where the app connects: what to check. -->
+    <string name="pairedDevices_notFoundBody">켜져 있고 같은 네트워크에 있는지 확인하세요.</string>
+    <!-- Pair with a Code: where the app connects: a busy answer. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_busyTitle">%1$s은(는) 사용 중입니다</string>
+    <!-- Pair with a Code: list: pairing is off for the app. -->
+    <string name="pairedDevices_offBody">이 앱에서는 코드로 페어링하는 기능이 꺼져 있습니다. 페어링된 기기는 연결할 수 없습니다.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

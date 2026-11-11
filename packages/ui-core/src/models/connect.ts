@@ -13,6 +13,7 @@
 import type { Context } from "../input.js";
 import type { ConnectScreenName, ScreenName } from "../vocabulary.js";
 import { hiddenView, makeView, type View } from "../view.js";
+import { LOCAL_MODELS } from "./local.js";
 
 // ── LinkPairing ────────────────────────────────────────────────────────────────────────────────
 
@@ -216,6 +217,7 @@ export const CONNECT_MODELS: Readonly<
 > = {
   LinkPairing: linkPairingView,
   TransferOffer: transferOfferView,
+  ...LOCAL_MODELS,
 };
 
 /**
@@ -226,6 +228,18 @@ export const CONNECT_MODELS: Readonly<
 export function connectEscape(view: View<ScreenName>): string | null {
   if (view.component === "TransferOffer" && view.state === "receiving")
     return null;
+  if (view.component === "LocalPairing" || view.component === "PairedDevices")
+    return (
+      // Not now on a prompt, Cancel on a window or a busy Pair (R8), Back on the field; while a
+      // row is edited Cancel is the editor's, and Escape closes nothing else.
+      [
+        "common.notNow",
+        "common.cancel",
+        "common.back",
+        "common.close",
+        "common.done",
+      ].find((k) => view.copy.includes(k)) ?? null
+    );
   return (
     [
       "linkPairing.decline",

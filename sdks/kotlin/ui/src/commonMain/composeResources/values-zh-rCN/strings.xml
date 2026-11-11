@@ -2342,6 +2342,151 @@
     <string name="transferOffer_failed">无法接收%1$s</string>
     <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title. -->
     <string name="transferOffer_failedBody">未保存任何内容。</string>
+    <!-- Pair with a Code: the feature's name; also the entry button. -->
+    <string name="localPairing_title">用验证码配对</string>
+    <!-- Pair with a Code: choose: where both devices must be. -->
+    <string name="localPairing_chooseBody">两台设备需要在同一网络中。</string>
+    <!-- Pair with a Code: choose: this device shows the code. -->
+    <string name="localPairing_show">显示验证码</string>
+    <string name="localPairing_show__macos">显示验证码</string>
+    <!-- Pair with a Code: choose: this device types the code. -->
+    <string name="localPairing_enter">输入验证码</string>
+    <string name="localPairing_enter__macos">输入验证码</string>
+    <!-- Pair with a Code: choose: shown until the system has asked once. Arguments: {app} = the app's name. Arguments: 1=app. -->
+    <string name="localPairing_prePrompt">如果系统询问，请允许 %1$s 查找你网络中的设备。</string>
+    <!-- Pair with a Code: the link to the paired devices list. -->
+    <string name="localPairing_pairedDevices">已配对的设备</string>
+    <string name="localPairing_pairedDevices__macos">已配对的设备</string>
+    <!-- Pair with a Code: show: what to do with the code. -->
+    <string name="localPairing_showBody">请在另一台设备上扫描或输入此验证码。</string>
+    <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
+    <string name="a11y_qrPairing">包含配对验证码的二维码</string>
+    <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
+    <string name="localPairing_expires">%1$s 后过期</string>
+    <!-- Pair with a Code: show: shown while the code is open. -->
+    <string name="localPairing_waitingDevice">正在等待另一台设备…</string>
+    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
+    <string name="localPairing_toEnter">改为输入验证码</string>
+    <string name="localPairing_toEnter__macos">改为输入验证码</string>
+    <!-- Pair with a Code: show: after a wrong guess. -->
+    <string name="localPairing_rotatedTitle">输入了错误的验证码</string>
+    <!-- Pair with a Code: show: the code is new now. -->
+    <string name="localPairing_rotatedBody">验证码已更换。</string>
+    <!-- Pair with a Code: Screen reader line after the code changes; never shown. Arguments: {code} = the new code. Arguments: 1=code. -->
+    <string name="a11y_newCode">新验证码 %1$s</string>
+    <!-- Pair with a Code: show: opens a new window with a new code. -->
+    <string name="localPairing_showNew">显示新验证码</string>
+    <string name="localPairing_showNew__macos">显示新验证码</string>
+    <!-- Pair with a Code: show: the disabled button while the 30-second wait runs. Arguments: {time} = m:ss. Arguments: 1=time. -->
+    <string name="localPairing_showNewIn">%1$s 后显示新验证码</string>
+    <string name="localPairing_showNewIn__macos">%1$s 后显示新验证码</string>
+    <!-- Pair with a Code: show: something keeps interrupting. -->
+    <string name="localPairing_blockedTitle">配对正被阻止</string>
+    <!-- Pair with a Code: show: what to try. -->
+    <string name="localPairing_blockedBody">此网络中有东西不断干扰。请换一个网络试试。</string>
+    <!-- Pair with a Code: closed: the fifth wrong code. -->
+    <string name="localPairing_failedTooMany">尝试次数过多。</string>
+    <!-- Pair with a Code: closed: the time ran out. -->
+    <string name="localPairing_failedExpired">验证码已过期。</string>
+    <!-- Pair with a Code: closed or show: the second time in a row, or five wrong codes over several windows. -->
+    <string name="localPairing_tooManyAgainTitle">再次尝试次数过多</string>
+    <!-- Pair with a Code: closed or show: the warning's reason. -->
+    <string name="localPairing_tooManyAgainBody">附近可能有人在猜测验证码。</string>
+    <!-- Pair with a Code: network blocked: where the system can deep-link. -->
+    <string name="localPairing_openSettings">打开设置</string>
+    <!-- Pair with a Code: enter: the lede. -->
+    <string name="localPairing_enterBody">请输入另一台设备上的验证码。</string>
+    <!-- Pair with a Code: enter: the field's label. -->
+    <string name="localPairing_codeLabel">验证码</string>
+    <!-- Pair with a Code: enter: an empty field's placeholder; shows the length and grouping. -->
+    <string name="localPairing_codePlaceholder">•••• ••••</string>
+    <!-- Pair with a Code: enter and confirm: this person's yes. -->
+    <string name="localPairing_pair">配对</string>
+    <!-- Pair with a Code: enter: opens the show screen. -->
+    <string name="localPairing_toShow">改为显示验证码</string>
+    <string name="localPairing_toShow__macos">改为显示验证码</string>
+    <!-- Pair with a Code: enter: a wrong code. -->
+    <string name="localPairing_wrongCode">该验证码无效。请输入另一台设备现在显示的验证码。</string>
+    <!-- Pair with a Code: enter: tries left for these first two digits. Arguments: {left} = tries. Arguments: 1=left. -->
+    <plurals name="localPairing_triesLeft">
+        <item quantity="other">还可尝试 %1$d 次</item>
+    </plurals>
+    <!-- Pair with a Code: enter: no try is left for these first two digits. -->
+    <string name="localPairing_cooldownTitle">尝试次数过多</string>
+    <!-- Pair with a Code: enter: what to do. -->
+    <string name="localPairing_cooldownBody">请在另一台设备上获取新验证码。</string>
+    <!-- Pair with a Code: enter: under the field when the first two digits are spent. -->
+    <string name="localPairing_spentCode">请获取新验证码。此验证码暂时无法再次尝试。</string>
+    <!-- Pair with a Code: enter: nothing answered. -->
+    <string name="localPairing_notFoundTitle">找不到另一台设备</string>
+    <!-- Pair with a Code: enter: the most common causes. -->
+    <string name="localPairing_notFoundBody">请检查验证码，并确认你们在同一网络中。</string>
+    <!-- Pair with a Code: enter: fewer than 8 digits. -->
+    <string name="localPairing_notACode">验证码为 8 位数字。</string>
+    <!-- Pair with a Code: confirm: after the other device proved the code. Arguments: {device} = the label it sent. Arguments: 1=device. -->
+    <string name="localPairing_confirmTitle">要与 %1$s 配对吗？</string>
+    <!-- Pair with a Code: confirm: the other device sent no label. -->
+    <string name="localPairing_confirmUnnamed">要与此设备配对吗？</string>
+    <!-- Pair with a Code: confirm: why the prompt is there. -->
+    <string name="localPairing_confirmBody">对方输入了你的验证码。</string>
+    <!-- Pair with a Code: waiting: Arguments: {device} = the label the shower sent. Arguments: 1=device. -->
+    <string name="localPairing_waitingWith">正在与 %1$s 配对。</string>
+    <!-- Pair with a Code: paired: the done state's name. -->
+    <string name="localPairing_pairedTitle">已配对</string>
+    <!-- Pair with a Code: paired: what changed. -->
+    <string name="localPairing_pairedBody">现在你们在同一网络中无需验证码即可连接。</string>
+    <!-- Pair with a Code: paired: this device's name for the other one. -->
+    <string name="localPairing_nameLabel">名称</string>
+    <!-- Pair with a Code: paired and rename: the name is never sent. -->
+    <string name="localPairing_nameHint">仅在此设备上显示。</string>
+    <!-- Pair with a Code: paired: kept with Can connect off. Arguments: {device}. Arguments: 1=device. -->
+    <string name="localPairing_cantConnectTitle">%1$s 无法连接</string>
+    <!-- Pair with a Code: paired: why. Arguments: {max} = 8. Arguments: 1=max. -->
+    <string name="localPairing_cantConnectBody">同时最多可连接 %1$s 台已配对的设备。请在“已配对的设备”中关闭一台。</string>
+    <!-- Pair with a Code: show: back on the code after Not now. Arguments: {device}. Arguments: 1=device. -->
+    <string name="localPairing_notPairedWith">未与 %1$s 配对</string>
+    <!-- Pair with a Code: failed: one device holds the most. -->
+    <string name="localPairing_failedFull">其中一方已无法再添加配对。请先移除一个，然后重试。</string>
+    <!-- Pair with a Code: PairedDevices: the list's title. -->
+    <string name="pairedDevices_title">已配对的设备</string>
+    <!-- Pair with a Code: list: said once. -->
+    <string name="pairedDevices_lede">仅在同一网络中连接。</string>
+    <!-- Pair with a Code: row: Arguments: {when} = today, yesterday, 3 days ago. Arguments: 1=when. -->
+    <string name="pairedDevices_lastSeen">上次出现：%1$s</string>
+    <!-- Pair with a Code: Screen reader label; never shown. The ⋯ menu of a row. Arguments: 1=device. -->
+    <string name="a11y_deviceOptions">%1$s 的选项</string>
+    <!-- Pair with a Code: list: column label over the switches. -->
+    <string name="pairedDevices_canConnect">允许连接</string>
+    <!-- Pair with a Code: Screen reader label; never shown. Each switch. Arguments: 1=device. -->
+    <string name="a11y_letConnect">允许 %1$s 连接到此设备</string>
+    <!-- Pair with a Code: rename: refused. Arguments: {max} = 64. Arguments: 1=max. -->
+    <string name="pairedDevices_renameLong">请使用不超过 %1$s 个字符。</string>
+    <!-- Pair with a Code: rename: refused; nothing left once cleaned. -->
+    <string name="pairedDevices_renameEmpty">请输入名称。</string>
+    <!-- Pair with a Code: row: menu item and the confirm button; local only. -->
+    <string name="pairedDevices_forget">移除</string>
+    <!-- Pair with a Code: row: the question. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetConfirm">要移除 %1$s 吗？</string>
+    <!-- Pair with a Code: row: the one consequence. -->
+    <string name="pairedDevices_forgetBody">要再次连接，请用新验证码配对。</string>
+    <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
+    <string name="pairedDevices_reachableFullTitle">最多 %1$s 台可连接</string>
+    <!-- Pair with a Code: list: what to do. -->
+    <string name="pairedDevices_reachableFullBody">关闭一台，才能让另一台连接。</string>
+    <!-- Pair with a Code: list: 32 are paired. -->
+    <string name="pairedDevices_fullBody">移除一台已配对的设备，才能配对另一台。</string>
+    <!-- Pair with a Code: list: nothing paired. -->
+    <string name="pairedDevices_empty">还没有已配对的设备。</string>
+    <!-- Pair with a Code: list: the record can't be read. -->
+    <string name="pairedDevices_loadFailed">无法加载你已配对的设备。</string>
+    <!-- Pair with a Code: where the app connects: not seen on this network. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_notFoundTitle">找不到 %1$s</string>
+    <!-- Pair with a Code: where the app connects: what to check. -->
+    <string name="pairedDevices_notFoundBody">请确认它已开机并在同一网络中。</string>
+    <!-- Pair with a Code: where the app connects: a busy answer. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_busyTitle">%1$s 正忙</string>
+    <!-- Pair with a Code: list: pairing is off for the app. -->
+    <string name="pairedDevices_offBody">此应用已关闭验证码配对。已配对的设备无法连接。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

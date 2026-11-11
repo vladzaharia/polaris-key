@@ -625,6 +625,8 @@ export const TAGS: Readonly<Record<ScreenName, string>> = {
   AddToAccount: "pk-add-to-account",
   LinkPairing: "pk-link-pairing",
   TransferOffer: "pk-transfer-offer",
+  LocalPairing: "pk-local-pairing",
+  PairedDevices: "pk-paired-devices",
 };
 
 // ── Dialog controls (UK-06.6) ────────────────────────────────────────────────────────────────
