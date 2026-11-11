@@ -518,11 +518,16 @@ func note_outcome(outcome: String) -> void:
 			_confirm_later(_confirm_gen)
 
 
+## A connection, not an await: a game quitting inside the window must not leave a suspended coroutine (the engine
+## counts one as a leaked object at exit, with the timer it waits on).
 func _confirm_later(gen: int) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null:
 		return
-	await tree.create_timer(boot_ok_seconds, true, false, true).timeout
+	tree.create_timer(boot_ok_seconds, true, false, true).timeout.connect(_confirm_after_ok.bind(gen), CONNECT_ONE_SHOT)
+
+
+func _confirm_after_ok(gen: int) -> void:
 	if gen == _confirm_gen and _outcome == "ready":
 		_confirm()
 

@@ -64,6 +64,8 @@ signal fetch_progress(done: int, total: int)
 signal boot_finished(result: PKeyBootResult)
 ## The player answered the consent card (internal).
 signal _consent_answered(yes: bool)
+## A stop was reached or the view is being freed (internal, not for games): wakes whoever awaits the boot.
+signal run_settled()
 
 const READY := "ready"
 const BLOCKED := "blocked"
@@ -122,6 +124,8 @@ var _wait_status := ""
 var _consent_bytes := 0
 var _consent_metered := false
 var _consent_open := false
+## Set once the view is being freed.
+var _freed := false
 var _art: TextureRect
 var _background_done := 0
 var _background_total := 0
@@ -345,8 +349,22 @@ func _outcome(on_stop: bool) -> PKeyBootResult:
 	while true:
 		if result != null and (on_stop or result.outcome == READY):
 			return result
-		await boot_finished
+		if _freed:
+			# The view went away before the boot stopped: whoever awaits it gets an error, not a hang.
+			return PKeyBootResult.of(ERROR, "boot-freed", stages)
+		await run_settled
 	return result
+
+
+## Freed mid-boot: end the waits that only this view could answer (`run()`'s callers, an open consent
+## card), so no coroutine stays suspended on a signal that can never fire.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_freed = true
+		run_settled.emit()
+		if _consent_open:
+			_consent_open = false
+			_consent_answered.emit(false)
 
 
 ## Feed one event to the machine; returns true when it was accepted. Stage work, Retry, the gate's
@@ -572,6 +590,7 @@ func _stopped() -> void:
 	r.can_play_offline = state.get("canPlayOffline") == true
 	result = r
 	boot_finished.emit(r)
+	run_settled.emit()
 	if outcome == READY:
 		await _background()
 	if outcome == READY and free_on_ready:
