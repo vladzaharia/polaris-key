@@ -209,6 +209,8 @@ public actor ConnectClient {
     nonisolated let localGate = LockedValue(LocalGateBox())
     /// Fires when the local links change or the gate moves.
     nonisolated let localChanges = ConnectSignal()
+    /// What `localLinks.onChange` hears: every change `localChanges` carries, and a `lastSeen` that was written.
+    nonisolated let localView = ConnectSignal()
     /// Told, once, what a read that took the gate from on to off or none makes the host do.
     nonisolated let localGateEffects = LockedValue<(@Sendable ([LocalGateEffect]) -> Void)?>(nil)
     /// Moves whenever the held identity is stored or removed, so the LAN and relay services drop their cached copy (N8).
@@ -916,7 +918,7 @@ extension ConnectClient {
             return (effects, b.gate.state != was)
         }
         if !effects.isEmpty { localGateEffects.current?(effects) }
-        if moved { localChanges.fire() }
+        if moved { notifyLocals() }
     }
 
     /// The local links in held order, decoded; empty while the gate is off or the record is unusable (it serves
@@ -929,9 +931,12 @@ extension ConnectClient {
     /// Write a link's `lastSeen`: at most hourly, coarsened to the hour.
     func touchLocal(id: String) async {
         guard let store = try? localLinkStore() else { return }
-        await store.touch(id: id, now: await core.now())
+        if await store.touch(id: id, now: await core.now()) { localView.fire() }
     }
 
     /// Tell the listeners the local links or the gate moved.
-    public nonisolated func notifyLocals() { localChanges.fire() }
+    public nonisolated func notifyLocals() {
+        localChanges.fire()
+        localView.fire()
+    }
 }

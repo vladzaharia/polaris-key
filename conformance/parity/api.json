@@ -8149,10 +8149,7 @@
           "planned": "CC-29.15",
           "reason": "the Python port lands in slice .15e"
         },
-        "swift": {
-          "planned": "CC-29.15",
-          "reason": "the Swift port lands in slice .15f"
-        }
+        "swift": {}
       },
       "layer": "client",
       "args": [
@@ -8172,10 +8169,7 @@
           "planned": "CC-29.15",
           "reason": "the Python port lands in slice .15e"
         },
-        "swift": {
-          "planned": "CC-29.15",
-          "reason": "the Swift port lands in slice .15f"
-        }
+        "swift": {}
       },
       "layer": "client",
       "args": [
