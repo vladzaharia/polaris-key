@@ -53,6 +53,7 @@ import {
   labelOn,
   offerPlatforms,
   offersForPlatform,
+  type NamedBuild,
   type ProductPlatformFact,
 } from "@polaris-key/manifest";
 import type { Db } from "../../../db/types.js";
@@ -579,13 +580,64 @@ export async function storeState(db: Db, product: string): Promise<StoreState> {
   return { live, held };
 }
 
+// ── Builds an outlet names as its own (A-26b) ────────────────────────────────────────────────
+
+/**
+ * `identity.artifact` on an `app-store` outlet is the Mac build (a `pkg`) that goes to the Mac App
+ * Store, the way an AltStore outlet names its `ipa`. It is the evidence for the store row and is
+ * kept out of the direct downloads; a `pkg` signed for direct download is not named, so it stays a
+ * download and earns no store row.
+ */
+interface OutletLike {
+  kind: string;
+  identity: Record<string, unknown>;
+}
+
+/** The build ids the store outlets name as their own: never offered as a direct download. */
+export function storeBoundBuildIds(
+  outlets: readonly OutletLike[],
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const o of outlets)
+    if (
+      (STORE_KINDS as readonly string[]).includes(o.kind) &&
+      typeof o.identity.artifact === "string"
+    )
+      ids.add(o.identity.artifact);
+  return ids;
+}
+
+/** The named builds of one outlet kind, found among the releases' builds. */
+export async function namedBuilds(
+  catalog: Pick<ReleaseCatalog, "builds">,
+  releases: readonly { releaseId: string; yanked: boolean }[],
+  outlets: readonly OutletLike[],
+  kind: string,
+): Promise<NamedBuild[]> {
+  const want = new Set(
+    outlets
+      .filter((o) => o.kind === kind && typeof o.identity.artifact === "string")
+      .map((o) => o.identity.artifact as string),
+  );
+  const out: NamedBuild[] = [];
+  if (want.size === 0) return out;
+  for (const r of releases) {
+    if (r.yanked) continue;
+    for (const b of await catalog.builds(r.releaseId))
+      if (want.has(b.buildId) && b.platform !== null)
+        out.push({ platform: b.platform, arch: b.arch, format: b.format });
+  }
+  return out;
+}
+
 /** A store outlet's link (and the platforms it serves), or `null` when its identity is unusable. */
 export function storeLink(
   kind: StoreKind,
   identity: Record<string, unknown>,
   product: readonly ProductPlatformFact[] = [],
+  named: readonly NamedBuild[] = [],
 ): StoreLink | null {
-  const link = storeLinkOf(kind, identity, product);
+  const link = storeLinkOf(kind, identity, product, named);
   return link && link.platforms.length > 0 ? link : null;
 }
 
@@ -618,6 +670,8 @@ function storeLinkOf(
   /** What the product ships (`productPlatforms`): with it a store carries every platform the
    *  catalogue says it serves and the product has (the Mac App Store beside the iPhone's). */
   product: readonly ProductPlatformFact[] = [],
+  /** The builds the outlet names as its own (`namedBuilds`): the store row's evidence. */
+  built: readonly NamedBuild[] = [],
 ): Pick<
   PageAction,
   "label" | "url" | "deepLink" | "command" | "platforms"
@@ -625,14 +679,11 @@ function storeLinkOf(
   // The platforms are the catalogue's: those the product has and the channel takes there. A
   // product whose platforms are known and fit none has no link (the unchecked platforms are
   // claimed only when nothing is known).
-  const serve = (): PagePlatform[] => {
-    const entry = channelOfKind(kind)!;
-    const named = (list: string[]) =>
-      list.filter((p): p is PagePlatform =>
+  const serve = (): PagePlatform[] =>
+    offerPlatforms(channelOfKind(kind)!, product, built).filter(
+      (p): p is PagePlatform =>
         (PAGE_PLATFORMS as readonly string[]).includes(p),
-      );
-    return named(offerPlatforms(entry, product));
-  };
+    );
   switch (kind) {
     case "app-store": {
       const id = idOf(identity.appleId, NUMERIC_ID_PATTERN, 20);
@@ -792,8 +843,11 @@ export async function buildDownloadModel(
     ? `${ctx.consoleOrigin}/${slug}/distribution`
     : null;
   const seenUrls = new Set<string>();
+  const storeBound = storeBoundBuildIds(outlets);
   const addBuilds = (entries: readonly RenderEntry[], outletId: string) => {
     for (const e of entries) {
+      // A build an outlet names as its own (the Mac App Store's `pkg`) is not a direct download.
+      if (storeBound.has(e.buildId)) continue;
       const b = pageBuild(e, outletId);
       if (b && !seenUrls.has(b.url)) {
         seenUrls.add(b.url);
@@ -1059,6 +1113,7 @@ export async function buildDownloadModel(
           outlet.kind as StoreKind,
           outlet.identity,
           facts,
+          await namedBuilds(catalog, history.releases, outlets, outlet.kind),
         );
         if (!link) break;
         state ??= await storeState(ctx.db, slug);

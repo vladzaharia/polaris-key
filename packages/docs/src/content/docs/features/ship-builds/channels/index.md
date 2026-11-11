@@ -67,7 +67,7 @@ The public download page and the Polaris Locker product page offer the same acti
 
 On a computer, a build this product hosts comes first and the stores follow; on a phone the platform's store leads. Install sources sit in the same order on the page and in the portal. In the portal, the owner's file comes first, then **Other ways to install**, then **Also yours on** with the device's own stores first.
 
-A store carries a platform only when the product ships a build the store takes there. The Mac App Store needs a `universal` or `arm64` `pkg`, so a Mac app shipped as a `dmg` has no Mac App Store link; with a `pkg` it shows as **Mac App Store**, beside the download and the Homebrew steps. When a product has both a Homebrew cask and a formula, they read **Homebrew (app)** and **Homebrew (command-line tool)**.
+A store carries a platform only when the product ships a build the store takes there, and the store's outlet names it. The Mac App Store takes a `universal` or `arm64` `pkg`: name it on the outlet with `artifact`, as an AltStore outlet names its `ipa`. That build is not offered as a direct download. A `pkg` you ship directly stays a download and earns no store row, and so does a `dmg`. The row reads **Mac App Store**, beside the download and the Homebrew steps. When a product has both a Homebrew cask and a formula, they read **Homebrew (app)** and **Homebrew (command-line tool)**.
 
 ## The chain: release ← distribution ← update
 

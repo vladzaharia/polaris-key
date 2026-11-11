@@ -800,6 +800,8 @@
   "locker.get.coverUpTo": "{max}まで",
   "locker.get.coverFrom": "{min}以降",
   "locker.get.coverAll": "すべてのバージョン",
+  "locker.offer.storeThe": "{store}で入手",
+  "locker.offer.getFromStoreThe": "{store}で入手",
   "locker.offer.getFromStore": "{store}で入手",
   "locker.download.title": "{product}をダウンロード",
   "locker.download.titleVersion": "{product} {version}をダウンロード",

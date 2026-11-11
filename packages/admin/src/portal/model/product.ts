@@ -23,6 +23,7 @@ import {
   isSignInLicense,
   normalisePlatform,
   shortOrigin,
+  takesArticle,
   type OriginFacts,
   tierLabel,
   type DeviceInHand,
@@ -224,6 +225,13 @@ export interface ElsewhereContext {
   website?: string | null;
 }
 
+/** A store's rank for a device: its catalogue order when its link serves the OS, else last. */
+function ownRank(s: PortalStoreLink, os: PlatformKey | null): number {
+  return os && s.platforms.some((p) => normalisePlatform(p) === os)
+    ? offerRank(s.kind, os)
+    : Number.MAX_SAFE_INTEGER;
+}
+
 function httpsOrNull(url: string | null | undefined): string | null {
   return typeof url === "string" && /^https:\/\//.test(url) ? url : null;
 }
@@ -245,7 +253,12 @@ export function elsewhereFor(
     ) ?? null;
   if (store)
     return {
-      label: t("locker.offer.getFromStore", { store: store.label }),
+      label: t(
+        takesArticle(store.label)
+          ? "locker.offer.getFromStoreThe"
+          : "locker.offer.getFromStore",
+        { store: store.label },
+      ),
       href: store.url,
     };
   const who = ctx.developer ?? t("license.developerFallback");
@@ -624,14 +637,11 @@ export function getItFromDownloads(
     installSourcesOf(d),
     device.os,
   );
-  // The device's own stores first, in the catalogue's order for its OS (A-26).
+  // The stores that serve the device's OS first (by the link's platforms), in the catalogue's
+  // order for it; the rest keep the Worker's order (A-26).
   const stores = d.stores
     .filter((s) => s.live && httpsOrNull(s.url))
-    .sort((a, b) =>
-      device.os
-        ? offerRank(a.kind, device.os) - offerRank(b.kind, device.os)
-        : 0,
-    );
+    .sort((a, b) => ownRank(a, device.os) - ownRank(b, device.os));
   const headline = rec ? recommended[0]?.release : undefined;
   return {
     release: headline ?? {

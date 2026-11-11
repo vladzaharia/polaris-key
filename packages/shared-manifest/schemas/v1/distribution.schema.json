@@ -379,7 +379,7 @@
       }
     },
     "outlet_app-store": {
-      "description": "The identity fields a app-store outlet reads: appleId, bundleId. Other keys are ignored.",
+      "description": "The identity fields a app-store outlet reads: appleId, bundleId, artifact. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -390,6 +390,9 @@
         },
         "bundleId": {
           "$ref": "#/$defs/bundleId"
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
         },
         "listing": {
           "$ref": "#/$defs/listing"

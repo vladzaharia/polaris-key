@@ -9221,6 +9221,16 @@
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
+    "locker.offer.storeThe": {
+      "value": "Get it on the {store}",
+      "role": "button",
+      "note": "A store whose name takes an article (the Mac App Store); the store's own label fills the slot."
+    },
+    "locker.offer.getFromStoreThe": {
+      "value": "Get it from the {store}",
+      "role": "button",
+      "note": "A store whose name takes an article (the Mac App Store); the store's own label fills the slot."
+    },
     "locker.offer.getFromStore": {
       "value": "Get it from {store}",
       "role": "button",

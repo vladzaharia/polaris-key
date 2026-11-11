@@ -434,7 +434,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "outlet_app-store": {
-      "description": "The identity fields a app-store outlet reads: appleId, bundleId. Other keys are ignored.",
+      "description": "The identity fields a app-store outlet reads: appleId, bundleId, artifact. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -445,6 +445,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         },
         "bundleId": {
           "$ref": "#/$defs/bundleId"
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -18239,7 +18242,7 @@ var OUTLET_IDENTITY_FIELDS = {
     "scoop",
     "scoopBucket"
   ],
-  "app-store": ["appleId", "bundleId"],
+  "app-store": ["appleId", "bundleId", "artifact"],
   testflight: ["appleId", "bundleId", "publicLink"],
   altstore: ["artifact", "bundleId"],
   "altstore-pal": ["artifact", "bundleId", "marketplaceId"],

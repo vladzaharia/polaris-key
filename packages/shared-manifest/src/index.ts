@@ -177,6 +177,7 @@ export {
   offerRank,
   offersForPlatform,
   type ChannelActionClass,
+  type NamedBuild,
   type OfferLike,
   type ProductPlatformFact,
 } from "./channelActions.js";

@@ -866,10 +866,19 @@ const PHONE_STORE: Partial<Record<PlatformKey, readonly string[]>> = {
   android: ["play"],
 };
 
+/** A store whose name is said with "the" in English (the App Store, the Mac App Store). */
+export function takesArticle(label: string): boolean {
+  return /(^|\s)App Store$/.test(label);
+}
+
 /** "Get it on the App Store" / "Get it on Google Play" / "Get it on Steam". */
 export function storeActionLabel(s: PortalStoreLink): string {
-  if (s.kind === "app-store") return t("locker.offer.storeAppStore");
+  if (s.kind === "app-store" && s.label === channelLabel("app-store"))
+    return t("locker.offer.storeAppStore");
   if (s.kind === "play") return t("locker.offer.storePlay");
+  // "Get it on the Mac App Store": the store's own name per platform, with its article.
+  if (takesArticle(s.label))
+    return t("locker.offer.storeThe", { store: s.label });
   return t("locker.offer.storeOther", { store: s.label });
 }
 

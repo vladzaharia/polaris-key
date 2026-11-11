@@ -104,8 +104,13 @@ export function offersForPlatform<T extends OfferLike>(
 export interface ProductPlatformFact {
   platform: string;
   arches: readonly string[];
-  /** The build formats the product ships there (`pkg`, `dmg`); empty when unknown. */
-  formats?: readonly string[];
+}
+
+/** A build the product's outlet for the channel names as its own (`identity.artifact`). */
+export interface NamedBuild {
+  platform: string;
+  arch: string;
+  format: string | null;
 }
 
 /** A channel's name on a platform ("Mac App Store" on macOS), else its label. */
@@ -116,29 +121,31 @@ export function labelOn(kind: string, platform: string): string {
 
 /**
  * The platforms a channel serves for a product, with evidence. With the product's platforms known,
- * a platform counts when the product has it; where the channel takes only some arches there (it is
- * a listing for a build of a particular kind: the Mac App Store takes a sandboxed `pkg`), the
- * product must also ship a build in a format the channel takes, in an arch it takes: a universal
- * `dmg` is not on the Mac App Store, an x64 `pkg` is not either. With nothing known, the platforms
- * with no arch limit, so a link never claims a platform whose builds were not checked.
+ * a platform counts when the product has it. Where the channel takes only some arches there (a
+ * listing for a build of a particular kind: the Mac App Store takes a sandboxed `pkg`), the
+ * product's outlet for the channel must NAME a build for it (`named`, the way an AltStore outlet
+ * names its `ipa`), and that one build must fit both the channel's format and its arch: a `pkg`
+ * shipped directly earns no store row, and neither does a universal `dmg` beside an x64 `pkg`.
+ * With nothing known, the platforms with no arch limit, so a link never claims a platform whose
+ * builds were not checked.
  */
 export function offerPlatforms(
   entry: Pick<ChannelEntry, "platforms" | "arches" | "formats">,
   product: readonly ProductPlatformFact[],
+  named: readonly NamedBuild[] = [],
 ): string[] {
   const fits = (platform: string): boolean => {
     const accepted = entry.arches?.[platform];
     if (product.length === 0) return accepted === undefined;
-    const mine = product.find((p) => p.platform === platform);
-    if (!mine) return false;
+    if (!product.some((p) => p.platform === platform)) return false;
     if (accepted === undefined) return true;
-    const arch =
-      mine.arches.length === 0 ||
-      mine.arches.some((a) => archFits(a, accepted));
-    const format = (mine.formats ?? []).some((f) =>
-      entry.formats.includes(f.toLowerCase()),
+    return named.some(
+      (b) =>
+        b.platform === platform &&
+        b.format !== null &&
+        entry.formats.includes(b.format.toLowerCase()) &&
+        archFits(b.arch, accepted),
     );
-    return arch && format;
   };
   return entry.platforms.filter(fits);
 }

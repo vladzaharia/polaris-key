@@ -65,6 +65,8 @@ import {
   STORE_KINDS,
   storeLink,
   storeState,
+  namedBuilds,
+  storeBoundBuildIds,
   storeVariants,
   type PageAction,
   type StoreKind,
@@ -215,6 +217,13 @@ export async function customerDownloads(
     Math.min(CUSTOMER_MAX_RELEASES, Math.floor(q.limit) || 1),
   );
 
+  const slug = ctx.product.slug;
+  const declared = (await listOutlets(ctx.db, slug))
+    .filter((o) => o.removed_at === null)
+    .map(feedOutlet);
+  // A build a store outlet names as its own (the Mac App Store's `pkg`) is not a download.
+  const bound = storeBoundBuildIds(declared);
+
   const releases: CustomerRelease[] = [];
   for (const r of history.releases) {
     if (releases.length >= limit) break;
@@ -225,6 +234,7 @@ export async function customerDownloads(
     const files = sortFiles(
       (await catalog.artifacts(r.releaseId))
         .filter(isUserFacing)
+        .filter((a) => a.buildId === null || !bound.has(a.buildId))
         .map((a) =>
           customerFile(
             r,
@@ -246,12 +256,10 @@ export async function customerDownloads(
     });
   }
 
-  const slug = ctx.product.slug;
   const stores: CustomerStoreLink[] = [];
-  const outlets = (await listOutlets(ctx.db, slug))
-    .filter((o) => o.removed_at === null)
-    .map(feedOutlet)
-    .filter((o) => (STORE_KINDS as readonly string[]).includes(o.kind));
+  const outlets = declared.filter((o) =>
+    (STORE_KINDS as readonly string[]).includes(o.kind),
+  );
   if (outlets.length) {
     const state = await storeState(ctx.db, slug);
     const facts = (
@@ -263,7 +271,12 @@ export async function customerDownloads(
       })
     ).platforms;
     for (const outlet of outlets) {
-      const link = storeLink(outlet.kind as StoreKind, outlet.identity, facts);
+      const link = storeLink(
+        outlet.kind as StoreKind,
+        outlet.identity,
+        facts,
+        await namedBuilds(catalog, history.releases, declared, outlet.kind),
+      );
       if (!link) continue;
       const live = state.live.get(outlet.id);
       const held = state.held.get(outlet.id);

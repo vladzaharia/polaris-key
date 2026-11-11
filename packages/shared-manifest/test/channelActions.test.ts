@@ -124,33 +124,41 @@ describe("offer order", () => {
 
 describe("platforms a channel serves for a product", () => {
   const appStore = findChannel("app-store")!;
-  const mac = (arches: string[], formats: string[]) => ({
-    platform: "macos",
-    arches,
-    formats,
-  });
-  it("serves a Mac only for a universal or arm64 pkg", () => {
-    expect(offerPlatforms(appStore, [mac(["arm64"], ["pkg"])])).toEqual([
+  const have = [
+    { platform: "ios", arches: ["arm64"] },
+    { platform: "macos", arches: ["universal", "x86_64"] },
+  ];
+  const named = (arch: string, format: string | null) => [
+    { platform: "macos", arch, format },
+  ];
+  it("serves a Mac only for one named universal or arm64 pkg", () => {
+    expect(offerPlatforms(appStore, have, named("arm64", "pkg"))).toEqual([
+      "ios",
       "macos",
     ]);
-    expect(offerPlatforms(appStore, [mac(["universal"], ["pkg"])])).toEqual([
+    expect(offerPlatforms(appStore, have, named("universal", "pkg"))).toEqual([
+      "ios",
       "macos",
     ]);
-    expect(offerPlatforms(appStore, [mac(["x86_64"], ["pkg"])])).toEqual([]);
+    expect(offerPlatforms(appStore, have, named("x86_64", "pkg"))).toEqual([
+      "ios",
+    ]);
   });
 
-  it("gives a Mac dmg no Mac App Store, however universal", () => {
-    expect(offerPlatforms(appStore, [mac(["universal"], ["dmg"])])).toEqual([]);
-    expect(offerPlatforms(appStore, [mac(["universal"], [])])).toEqual([]);
+  it("gives a Mac dmg, or no named build, no Mac App Store", () => {
+    expect(offerPlatforms(appStore, have, named("universal", "dmg"))).toEqual([
+      "ios",
+    ]);
+    expect(offerPlatforms(appStore, have)).toEqual(["ios"]);
+    expect(offerPlatforms(appStore, have, named("universal", null))).toEqual([
+      "ios",
+    ]);
   });
 
   it("serves only the platforms the product has", () => {
     expect(
-      offerPlatforms(appStore, [
-        { platform: "ios", arches: ["arm64"] },
-        { platform: "windows", arches: ["x86_64"] },
-      ]),
-    ).toEqual(["ios"]);
+      offerPlatforms(appStore, [{ platform: "windows", arches: ["x86_64"] }]),
+    ).toEqual([]);
   });
 
   it("claims no arch-limited platform when nothing is known", () => {
