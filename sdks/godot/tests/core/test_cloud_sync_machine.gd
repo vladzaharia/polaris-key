@@ -115,6 +115,27 @@ func _principal_and_blocked(t: PKeyTestContext) -> void:
 	for e: Dictionary in m.take_events():
 		offered = offered or (e["type"] == "signInOffered" and e["signInUrl"] == null)
 	t.check("403 account_required: signed out, blocked, an offer whose non-string url is null", offered and m.status().get("reason") == "account_required")
+	t.check("403 account_required: the partition is gone, no root, and a relaunch stays blocked", not m.persist()["partitions"].has("sub_alice") \
+			and not m.has_root() and m.status().get("reason") == "account_required" and m.status().get("state") == "blocked")
+	# The host's call (a key-ring or file route): the same transition; idempotent; a no-op with no subject.
+	m = _machine()
+	m.take_requests()
+	m.account_required("https://key.plrs.im/signin")
+	var offer: Dictionary = {}
+	var kinds: Array = []
+	for e: Dictionary in m.take_events():
+		kinds.append(e["type"])
+		if e["type"] == "signInOffered":
+			offer = e
+	t.check("account_required(): signedOut, the offer with the url, no unsyncedData, blocked", kinds.has("signedOut") \
+			and not kinds.has("unsyncedData") and offer.get("signInUrl") == "https://key.plrs.im/signin" \
+			and m.status().get("reason") == "account_required")
+	m.account_required("https://key.plrs.im/again")
+	t.check("account_required(): already blocked, nothing more", m.take_events().is_empty())
+	var again: Variant = Machine.relaunch(m, _opts("server", _ids(), {"hasRoot": true}))
+	t.check("account_required(): a relaunch stays blocked and signed out, and the root flag is the machine's, not the option's", \
+			again.status().get("reason") == "account_required" and again.subject() == null and not again.has_root() \
+			and again.take_requests().is_empty())
 
 	# 503 writes_paused on a push: paused, journal kept; a body that is not an object changes nothing.
 	m = _machine()

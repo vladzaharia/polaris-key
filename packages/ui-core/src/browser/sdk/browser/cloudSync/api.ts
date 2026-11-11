@@ -10,6 +10,14 @@
 //   S6  When the machine leaves a principal (`signOut`, `accountRequired`, `subjectChanged`) the
 //       key ring is forgotten and the record deleted (the host does both, root first). A failure
 //       is logged and never replaces the sign-out's own error. The sign-in offer follows.
+//   S6b `account_required` keeps the record as the machine stands (blocked, partition gone) instead of
+//       deleting it, and the subject the Worker refused is not signed in again until a sign-out or
+//       a different subject; a sign-in the person completes in this run (an identity note, in this
+//       tab or another) lifts it, the subject replayed from the session at launch does not. A
+//       key-ring or file `account_required` calls `accountRequired()` here, so a page with no
+//       `/sync` traffic learns it too, but only for the person signed in when the call started.
+//       The offered `signInUrl` is vetted. A pin that could not be removed is saved with the blocked
+//       record, retried at start and before any sign-in, and the sign-in waits for it.
 //   S7  No event, log line or error here carries a value or the root; events name keys only.
 //   SEC-HOST2  A subject that could not be read (offline) is not a sign-out: nothing is forgotten
 //       on a guess.
@@ -179,7 +187,9 @@ export class BrowserCloudSyncApi {
     const { host, config } = this.#d;
     await host.start();
     host.onEvents((events) => this.#onEvents(events));
-    host.onPrincipal(() => void this.#recheck());
+    host.onPrincipal((fresh) => void this.#recheck(fresh));
+    // A pin left behind by an earlier run goes now, before anything signs in.
+    await this.#retryForget();
     config.useSync(this.#port());
     // A journal saved while signed in still names its subject.
     this.#subject = host.machine.persist().subject;
@@ -188,25 +198,33 @@ export class BrowserCloudSyncApi {
   }
 
   /** Ask the session who it is and follow it. An answer that could not be read changes nothing. */
-  async #settle(): Promise<void> {
+  async #settle(fresh?: string): Promise<void> {
     // A purge in another tab left this tab's machine with no principal: follow it (SEC-HOST3 S-3).
     if (this.#d.host.started && this.#d.host.machine.persist().subject === null)
       this.#subject = null;
     const subject = await this.#d.subject().catch(() => undefined);
     if (subject === undefined) return;
-    if (subject !== null) await this.#signIn(subject);
-    else if (this.#subject !== null) await this.#leave();
+    if (subject !== null) await this.#signIn(subject, subject === fresh);
+    else await this.#leave();
   }
 
-  #recheck(): Promise<void> {
-    const run = this.#work.then(() => this.attach().then(() => this.#settle()));
+  #recheck(fresh?: string): Promise<void> {
+    const run = this.#work.then(() =>
+      this.attach().then(() => this.#settle(fresh)),
+    );
     this.#work = run.catch(() => undefined);
     return run;
   }
 
-  async #signIn(subject: string): Promise<void> {
+  /** `fresh`: the person completed this sign-in during this run, not the session replayed at launch. */
+  async #signIn(subject: string, fresh = false): Promise<void> {
     const { host, config } = this.#d;
     if (!host.started) return;
+    // The Worker took this subject's account away: a sign-out, another subject or a sign-in the
+    // person completes now lifts it; the session replayed at launch does not.
+    if (subject === host.refused && !fresh) return;
+    // The earlier key ring is not gone yet: nothing signs in until it is.
+    if (!(await this.#retryForget())) return;
     // Another person: the first one is dropped (never flushed: the token is the new person's now)
     // and forgotten before this one starts.
     if (this.#subject !== null && this.#subject !== subject)
@@ -229,6 +247,22 @@ export class BrowserCloudSyncApi {
     this.#d.config.noteSyncChange(null, "remote");
   }
 
+  /**
+   * A key-ring or file route answered `account_required` (V5 §11.5): the machine takes the same
+   * transition as for a `/sync` 403. `forSubject` is who was signed in when the call started; the
+   * answer is ignored if the page's person is another by now. Never throws into the route that saw
+   * it.
+   */
+  async accountRequired(
+    signInUrl: string | null,
+    forSubject: string | null,
+  ): Promise<void> {
+    await this.attach().catch(() => undefined);
+    if (forSubject !== this.#subject) return;
+    this.#d.host.accountRequired(signInUrl, forSubject);
+    await this.#chain;
+  }
+
   /** The identity session's events drive the machine. */
   identity(note: IdentityNote): Promise<void> {
     const run = this.#work.then(async () => {
@@ -236,8 +270,9 @@ export class BrowserCloudSyncApi {
       const { host } = this.#d;
       if (!host.started) return;
       if (note.kind === "signedOut") await this.#leave();
-      else if (note.subject !== this.#subject) await this.#signIn(note.subject);
-      host.notePrincipal();
+      else if (note.subject !== this.#subject)
+        await this.#signIn(note.subject, true);
+      host.notePrincipal(note.kind === "signedIn" ? note.subject : undefined);
     });
     this.#work = run.catch(() => undefined);
     return run;
@@ -278,6 +313,8 @@ export class BrowserCloudSyncApi {
    *  without a flush, and without a moment in which the old values read as the new person's. */
   async #leave(): Promise<void> {
     const { host } = this.#d;
+    // Signed out (or never signed in): what `account_required` refused is not refused any more.
+    await host.clearRefused();
     if (this.#subject === null) return;
     this.#subject = null;
     this.#d.config.noteSyncChange(null, "remote");
@@ -364,6 +401,21 @@ export class BrowserCloudSyncApi {
     await Promise.all([ring, data]);
   }
 
+  /** Try again to remove a pin an earlier blocked record left; true when none is left. */
+  async #retryForget(): Promise<boolean> {
+    const { host, keyring } = this.#d;
+    if (!host.forgetPending) return true;
+    try {
+      await Promise.resolve(keyring.lock?.());
+      await keyring.forget();
+    } catch {
+      this.#d.log?.("cloud sync: the key ring pin could not be removed");
+      return false;
+    }
+    await host.settleForget().catch(() => undefined);
+    return true;
+  }
+
   // ── The config engine's port ─────────────────────────────────────────────────────────────
 
   #port(): ConfigSyncPort {
@@ -408,5 +460,6 @@ export function clientOf(
     attach: () => api.attach(),
     identity: (n) => api.identity(n),
     beforeSignOut: () => api.beforeSignOut(),
+    accountRequired: (u, s) => api.accountRequired(u, s),
   };
 }

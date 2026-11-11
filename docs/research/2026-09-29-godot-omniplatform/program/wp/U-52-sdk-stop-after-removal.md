@@ -1,16 +1,16 @@
 # U-52 SDKs stop syncing after a per-product removal
 
-| Field       | Value                                   |
-| ----------- | --------------------------------------- |
-| Phase       | U                                       |
-| Size        | 0.2–0.3 engineer-weeks                  |
-| Depends on  | [U-12](U-12-privacy-settings-portal.md) |
-| Unblocks    | none                                    |
-| Role        | `pkey-sdk-porter`                       |
-| Plan mode   | no                                      |
-| Gates       | drift-gate, all-sdks                    |
-| Human input | none                                    |
-| Repo        | `vladzaharia/polaris-key`               |
+| Field       | Value                                                                |
+| ----------- | -------------------------------------------------------------------- |
+| Phase       | U                                                                    |
+| Size        | 0.2–0.3 engineer-weeks                                               |
+| Depends on  | [U-12](U-12-privacy-settings-portal.md)                              |
+| Unblocks    | none                                                                 |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`) |
+| Plan mode   | no                                                                   |
+| Gates       | drift-gate, all-sdks                                                 |
+| Human input | none                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                            |
 
 ## Goal
 
@@ -28,6 +28,7 @@ Split from the U-12 plan.
 ## Acceptance criteria
 
 - [ ] A scenario row covers `account_required` after removal; all six SDKs drop the root and stop.
+- [ ] `sync-scenarios.json` v6 passes in all six runners, status stays `blocked` across a relaunch, `signInUrl` is vetted everywhere, and the ui-matrix row passes in every kit.
 
 ## Hand-off
 

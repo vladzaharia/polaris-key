@@ -41,3 +41,18 @@ In end-to-end mode the record values and the files are the stored ciphertext, re
 3. Each store deletes on its own. The key ring goes before Cloud Sync's object, which deletes its file keys, its files and its storage, and refuses writes for 24 hours.
 
 If a store fails, the answer is `200` with `pending: true`: the other stores still ran, and the removal is finished on the next maintenance pass or when the person repeats it. While it is owed, the portal's summary (`GET /api/products/<product>/sync`) reads `state: "removing"`. After a database restore, the same pass removes the restored rows again. The developer is told with `subject.deleted`.
+
+## On the device
+
+A device finds out at its next contact. Its Cloud Sync call answers `403 account_required`, from a sync, key-ring or file route, and the SDK treats the subject as gone:
+
+- Unsent edits, the synced copy and the cursor are discarded. The next sign-in starts from a fresh pull.
+- The end-to-end root is dropped from memory and the key ring's pin is removed; the platform backup stays. Recovery is the wrap from another device or the recovery code.
+- `status()` reads `blocked` with reason `account_required`, across a relaunch, and nothing is sent. A `signedOut` event with the discarded count, then `signInOffered`, are emitted.
+
+Your app does two things:
+
+- Show "Sync stopped." with Sign in to sync, not an error. The kits do. Their button starts the kit's own sign-in unless your app handles it (`onAction`, `onSignIn`, `sign_in_requested`).
+- With your own UI, open the event's `signInUrl` if it is not null. The SDK has already checked it is on the Worker's origin; open nothing else. A kit needs no `signInUrl`.
+
+The block lifts when the person completes a sign-in in this run. The account the app replays at launch does not lift it. A signed-in person who is removed from another device is blocked the same way, since a device cannot tell a removal from any other cleared binding.

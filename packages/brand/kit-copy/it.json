@@ -342,7 +342,7 @@
     "cloudSync.offline": "Offline · le modifiche verranno sincronizzate quando ti riconnetti",
     "cloudSync.conflict": "Alcune modifiche sono in conflitto.",
     "cloudSync.error": "Impossibile sincronizzare. Riprova più tardi.",
-    "cloudSync.signedOut": "Sei disconnesso.",
+    "cloudSync.syncStopped": "Sincronizzazione interrotta.",
     "cloudSync.signIn": "Accedi per sincronizzare",
     "cloudSync.locked": "La sincronizzazione è bloccata.",
     "cloudSync.unlock": "Sblocca la sincronizzazione",

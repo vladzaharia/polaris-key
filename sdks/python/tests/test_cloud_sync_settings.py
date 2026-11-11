@@ -188,7 +188,12 @@ def test_import_local_runs_once(rigs: Callable[..., Rig], tmp_path: Path) -> Non
         calls: List[Any] = []
         with r.host.locked() as m:
             real = m.import_local
-            m.import_local = lambda v: (calls.append(v), real(v))[1]  # type: ignore[method-assign]
+
+            def spy(v: Any) -> Any:
+                calls.append(v)
+                return real(v)
+
+            m.import_local = spy  # type: ignore[method-assign]
         r.host.import_local_once({"theme": "other"})
         # The host passes an empty offer once the install has imported; nothing new enters.
         assert calls == [{}]
@@ -314,13 +319,19 @@ def test_deletes_the_synced_data_on_sign_out_and_does_not_write_it_back(rigs: Ca
     assert r.client.config.get("theme", "none") == "none"
 
 
-def test_deletes_the_synced_data_when_the_account_is_required_again(rigs: Callable[..., Rig]) -> None:
+def test_keeps_the_machine_blocked_without_the_persons_data_when_the_account_is_required_again(
+    rigs: Callable[..., Rig],
+) -> None:
     w = World()
     r = signed_in(rigs, w)
     w.push = lambda _b: httpx.Response(403, json={"error": {"code": "account_required"}})
     r.client.config.set("theme", "dark")
     r.client.cloud_sync.flush()
-    assert state_file(r.state_dir) == ""
+    r.client._cloud_sync_api._join_chain()
+    # The journal stays (test_cloud_sync_account_required.py), but holds nothing of the person's.
+    assert state_file(r.state_dir) != ""
+    assert '"dark"' not in Path(state_file(r.state_dir)).read_text()
+    assert r.client.cloud_sync.status()["state"] == "blocked"
     assert locked_ring(r)
 
 

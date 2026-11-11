@@ -54,6 +54,8 @@ var follow_redirects := true
 ## Every request this transport sent, newest last: {method, url, headers} (authorization, x-pkey-license and
 ## x-pkey-device redacted). Tests read it; capped at 64 entries.
 var sent: Array = []
+## Bumped by `cancel_all`: a request waiting under an older epoch is cancelled and answers `network-error`.
+var _epoch := 0
 
 
 static func _static_init() -> void:
@@ -120,6 +122,12 @@ static func resolve(base_url: String, location: String) -> String:
 		return authority + location
 	var path: String = b["path"].split("?")[0].split("#")[0]
 	return authority + path.substr(0, path.rfind("/") + 1) + location
+
+
+## Cancel every request waiting on this transport (a sign-in that was refused, a sign-out): each
+## answers `network-error` at its next frame and its HTTPRequest is cancelled. The caller drops the answer.
+func cancel_all() -> void:
+	_epoch += 1
 
 
 ## One request, redirects followed by hand. `headers` is name -> value. `body` is sent as is.
@@ -195,11 +203,14 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 	if err != OK:
 		req.queue_free()
 		return PKeyResult.failure(PKeyErrors.NETWORK, "The request could not start (error %d)." % err, {"error": err})
-	var res := await _await_completed(req, deadline)
+	var epoch := _epoch
+	var res := await _await_completed(req, deadline, epoch)
 	if not is_instance_valid(req):
 		# The host was freed with the request in flight (a scene change, an SDK node freed).
 		return PKeyResult.failure(PKeyErrors.NETWORK, "The transport's host node was freed during the request.")
 	req.queue_free()
+	if epoch != _epoch:
+		return PKeyResult.failure(PKeyErrors.NETWORK, "The request was cancelled.")
 	if res.is_empty():
 		return PKeyResult.failure(PKeyErrors.TIMEOUT, "No response within %.0f s." % timeout, {"result": HTTPRequest.RESULT_TIMEOUT})
 	var result: int = res[0]
@@ -225,7 +236,7 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 ## freed with its host. Checked once per frame, as HTTPRequest polls; the
 ## deadline must be seen on two checks, so HTTPRequest always gets a poll after it passes (one
 ## hitch frame cannot expire a request it never let run).
-func _await_completed(req: HTTPRequest, deadline: int) -> Array:
+func _await_completed(req: HTTPRequest, deadline: int, epoch: int) -> Array:
 	var box := []
 	req.request_completed.connect(func(result: int, status: int, hdrs: PackedStringArray, body: PackedByteArray) -> void:
 		box.append_array([result, status, hdrs, body]), CONNECT_ONE_SHOT)
@@ -233,6 +244,9 @@ func _await_completed(req: HTTPRequest, deadline: int) -> Array:
 	var tree := req.get_tree()
 	while box.is_empty():
 		if not is_instance_valid(req):
+			return []
+		if epoch != _epoch:
+			req.cancel_request()
 			return []
 		if deadline > 0 and Time.get_ticks_msec() >= deadline:
 			if expired:

@@ -115,6 +115,7 @@ public enum class KitAction(public val id: String) {
             "common.cancel" to cancel,
             "unlockSync.unlock" to unlock,
             "cloudSync.unlock" to unlock,
+            "cloudSync.signIn" to startSignIn,
             "unlockSync.startOver" to startOver,
             "unlockSync.startOverConfirm" to confirmStartOver,
             "ringChange.accept" to acceptRingChange,

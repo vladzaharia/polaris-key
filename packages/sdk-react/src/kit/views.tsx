@@ -821,24 +821,15 @@ function inline(c: KitCtx, layout: Layout): ReactNode {
   const order = layout.meta ?? [];
   const meta = [...p.meta].sort((a, b) => order.indexOf(a) - order.indexOf(b));
   const lines = [...p.titles, ...meta, ...p.body];
-  return (
-    <div
-      className="inline-status"
-      data-part="status"
-      data-status={statusOf(c.view)}
-      role={c.view.component === "CloudSyncStatus" ? undefined : "status"}
-    >
-      {statusGlyph(c.view)}
+  const sync = c.view.component === "CloudSyncStatus";
+  const body = (
+    <>
       {lines.map((k, i) => (
         <span
           key={i}
           className={p.titles.includes(k) ? "label" : undefined}
           data-key={k}
-          role={
-            c.view.component === "CloudSyncStatus" && i === 0
-              ? "status"
-              : undefined
-          }
+          role={sync && i === 0 ? "status" : undefined}
         >
           {text(c, k)}
         </span>
@@ -849,6 +840,29 @@ function inline(c: KitCtx, layout: Layout): ReactNode {
         button(c, k, k === c.view.decisions.primary ? "primary" : "secondary"),
       )}
       {links(c, p.links)}
+    </>
+  );
+  // The Cloud Sync strip keeps its glyph with the label and wraps the action under the label's
+  // start (one 44 px line either way), so a state that appears does not move the page.
+  return (
+    <div
+      className="inline-status"
+      data-part="status"
+      data-status={statusOf(c.view)}
+      role={sync ? undefined : "status"}
+      {...(sync ? { "data-grouped": "" } : {})}
+    >
+      {sync ? (
+        <>
+          {statusGlyph(c.view)}
+          <div className="inline-body">{body}</div>
+        </>
+      ) : (
+        <>
+          {statusGlyph(c.view)}
+          {body}
+        </>
+      )}
     </div>
   );
 }

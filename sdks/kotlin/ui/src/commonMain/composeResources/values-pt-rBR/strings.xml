@@ -785,8 +785,8 @@
     <string name="cloudSync_conflict">Algumas alterações estão em conflito.</string>
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_error">Não foi possível sincronizar. Tente novamente mais tarde.</string>
-    <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
-    <string name="cloudSync_signedOut">Você saiu da conta.</string>
+    <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when sync stopped because this device has no signed-in account for it; Sign in to sync sits beside it. Say the sync stopped, not that the person is signed out: the app may still show them as signed in. Not an error. -->
+    <string name="cloudSync_syncStopped">A sincronização parou.</string>
     <!-- CloudSyncStatus: a small sync status. Syncing needs an account. -->
     <string name="cloudSync_signIn">Entrar para sincronizar</string>
     <string name="cloudSync_signIn__macos">Entrar para sincronizar</string>

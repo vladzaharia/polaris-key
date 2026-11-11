@@ -1386,7 +1386,11 @@
           "copy": ["cloudSync.conflict", "common.review"]
         },
         "error": {
-          "copy": ["cloudSync.error", "cloudSync.signedOut", "cloudSync.signIn"]
+          "copy": [
+            "cloudSync.error",
+            "cloudSync.syncStopped",
+            "cloudSync.signIn"
+          ]
         },
         "locked": {
           "copy": ["cloudSync.locked", "cloudSync.unlock"]

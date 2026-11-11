@@ -352,6 +352,7 @@ export const ACTION_KEYS: Readonly<Record<string, readonly string[]>> = {
     "signin.key.ownedSignIn",
     "activate.waitingSignIn",
     "activate.recommend.action",
+    "cloudSync.signIn",
   ],
   "open-manage-url": [
     "deviceLimit.openBrowser",
@@ -4695,6 +4696,19 @@ function cloudSyncFamily(a: A): Draft[] {
       inv("A locked device never shows a sync time or an error.", {
         copy: ["cloudSync.synced", "cloudSync.error"],
       }),
+    ),
+    row(
+      "CloudSyncStatus/signed-out: Sign in to sync, never an error or a sync time",
+      {
+        cloudSync: { state: "error", signedIn: false, lastSynced: "2 min ago" },
+      },
+      "CloudSyncStatus",
+      "error",
+      ["cloudSync.syncStopped", "cloudSync.signIn"],
+      inv(
+        "A device whose account is gone says so and offers Sign in to sync; it is never an error or a sync time.",
+        { copy: ["cloudSync.error", "cloudSync.synced"] },
+      ),
     ),
     row(
       "CloudSyncStatus/ring-changed: Review without the host's handler",

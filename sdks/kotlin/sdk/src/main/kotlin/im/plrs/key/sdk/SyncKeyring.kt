@@ -60,7 +60,10 @@ public class SyncKeyring internal constructor(
     private val memory = RingMemory()
     private val vault = RingVault(core, options)
     private val backup = RingBackup(core, options, backupBoundMillis)
-    private val wire = RingWire(core)
+
+    /** Told of a key ring 403 `account_required` (set by the client: it reaches Cloud Sync). */
+    @Volatile internal var onAccountRequired: ((signInUrl: String?, forSubject: String?) -> Unit)? = null
+    private val wire = RingWire(core) { url, who -> onAccountRequired?.invoke(url, who) }
     private var port: DeviceKeyPort? = options.keys
     private var ring: SyncKeyringRing? = null
 

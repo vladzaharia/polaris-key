@@ -494,7 +494,7 @@
     },
     "sync.settings": {
       "status": "implemented",
-      "note": "client.cloud_sync.status()/flush() and the cloudSync event (polaris_key/cloud_sync): one machine per client over the shared keyring, driven by identity events, with typed N/A while the product has no Sync service. tests/test_cloud_sync_host.py; the cloudsync-* transcripts replay in tests/test_transcripts.py."
+      "note": "client.cloud_sync.status()/flush() and the cloudSync event (polaris_key/cloud_sync): one machine per client over the shared keyring, driven by identity events, with typed N/A while the product has no Sync service. tests/test_cloud_sync_host.py, tests/test_cloud_sync_account_required.py (a refusal blocks across a relaunch, the vetted signInUrl, key-ring and file account_required, the in-flight drop); the cloudsync-* transcripts replay in tests/test_transcripts.py."
     },
     "sync.conflict": {
       "status": "implemented",

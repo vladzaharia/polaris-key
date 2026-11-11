@@ -411,6 +411,32 @@ func refresh() -> Dictionary:
 	return Types.ok()
 
 
+## The host saw `account_required` on a route the machine does not drive: a key-ring call or a Cloud
+## Sync file transfer (WIRE-CONTRACT-V5 section 11.5). The same transition as the `/sync` 403. Nothing
+## happens on a device with no subject, or one already blocked this way. A request in flight is
+## abandoned, so its answer is for the host to drop.
+func account_required(sign_in_url: Variant = null) -> void:
+	if _s["subject"] == null or _s["blocked"] == "account_required":
+		return
+	_account_required_leave(sign_in_url if Types.is_string(sign_in_url) else null)
+
+
+## Whether the device holds the ring's root (`set_root`); a relaunch carries it.
+func has_root() -> bool:
+	return _root
+
+
+## `account_required` (section 11.5): the subject's partition is deleted whole (pending, held, snapshot,
+## cursor, clientId, E2E bookkeeping), the root is forgotten, and the device stays blocked, across a
+## relaunch, until `sign_in`. Licence state and `local` values are not touched. The unsynced count is
+## reported; its edits are not kept (no `unsyncedData`).
+func _account_required_leave(sign_in_url: Variant) -> void:
+	_leave("accountRequired", true)
+	_root = false
+	_s["blocked"] = "account_required"
+	_events.append({"type": "signInOffered", "signInUrl": sign_in_url})
+
+
 ## The effective mode: E2E when the app requires it or this device has ever accepted E2E.
 func encryption_mode() -> String:
 	return "e2e" if _requires_e2e() else "server"
@@ -901,9 +927,7 @@ func receive(res: Dictionary, opened: Variant = null) -> Dictionary:
 			var err: Dictionary = body["error"] if body is Dictionary and body.get("error") is Dictionary else {}
 			if err.get("code") == "account_required":
 				var url: Variant = err.get("signInUrl")
-				_leave("accountRequired", false)
-				_s["blocked"] = "account_required"
-				_events.append({"type": "signInOffered", "signInUrl": url if Types.is_string(url) else null})
+				_account_required_leave(url if Types.is_string(url) else null)
 				return Types.ok()
 			# The journal is kept; a document refresh lifts either block.
 			_s["blocked"] = "attestation" if err.get("code") == "attestation_required" else "forbidden"
@@ -2258,7 +2282,10 @@ func _leave(reason: String, discard: bool) -> void:
 		p["records"] = {}
 		p["cursor"] = 0
 		p.erase("empty")
-	p["signedOutAt"] = _now
+	if reason == "accountRequired":
+		_s["partitions"].erase(name)
+	else:
+		p["signedOutAt"] = _now
 	_s["subject"] = null
 	_signing_out = null
 	_in_flight = null
@@ -2293,6 +2320,7 @@ static func relaunch(machine: Object, opts: Dictionary, journal_mode: String = "
 	var o := opts.duplicate()
 	o["now"] = machine.now()
 	o["network"] = machine.network_state()
+	o["hasRoot"] = machine.has_root()
 	if journal_mode == "lost":
 		o["offsetMs"] = 0
 		o["contacted"] = false

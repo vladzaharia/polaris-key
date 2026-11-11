@@ -69,9 +69,7 @@ extension CloudSyncMachine {
             } else if status == 403 {
                 let err = body?.objectValue?["error"]?.objectValue ?? [:]
                 if err["code"]?.stringValue == "account_required" {
-                    leave(.accountRequired, discard: false)
-                    s.blocked = .accountRequired
-                    events.append(.signInOffered(signInUrl: err["signInUrl"]?.stringValue))
+                    accountRequiredLeave(signInUrl: err["signInUrl"]?.stringValue)
                     return
                 }
                 // The journal is kept; a document refresh lifts either block.

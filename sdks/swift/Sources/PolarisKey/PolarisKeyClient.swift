@@ -411,6 +411,12 @@ public actor PolarisKeyClient {
             personSignedIn: { savesEnvBox.current?.personSignedIn() },
             recovery: { try await ring().setRecoveryCode() }, merge: merge)
         self.cloudSyncApi = api
+        // A key-ring route's `account_required` reaches Cloud Sync like a `/sync` 403 does (a device with no
+        // `/sync` traffic learns it too).
+        ring().accountRequiredHook.set { url, who in
+            Task { await api.accountRequired(signInUrl: url, forSubject: who) }
+        }
+        ring().subjectProvider.set { await api.currentSubject() }
         // The bearer of a background task is read when the task is made; a 401 re-acquires once.
         let fingerprintOn = options.license.fingerprint
         let backgroundTokens: BackgroundTokens? =

@@ -808,7 +808,7 @@ func _standalone_b(t: PKeyTestContext) -> void:
 	var ins := [0]
 	so.sign_in_requested.connect(func(): ins[0] += 1)
 	await _tree().process_frame
-	t.check("cloud sync: signed out says so and offers Sign in to sync", so._text.text == "You're signed out." and so._action.text == "Sign in to sync")
+	t.check("cloud sync: signed out says so and offers Sign in to sync", so._text.text == "Sync stopped." and so._action.text == "Sign in to sync")
 	so._action.pressed.emit()
 	t.check("cloud sync: Sign in to sync asks the game", ins[0] == 1)
 	_free(so)

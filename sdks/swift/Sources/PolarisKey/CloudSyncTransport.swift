@@ -86,6 +86,8 @@ public struct CloudSyncTransport: Sendable {
         }
         // The transport stops reading one byte past the cap: a longer body is no answer.
         if res.body.count > Self.maxResponseBytes { return .transport }
+        // `account_required` is the Worker's to say: from a redirect target it is an ordinary 403.
+        if res.status == 403, !res.isFromOrigin(of: baseUrl) { return .answer(status: 403, body: nil) }
         if res.body.isEmpty { return .answer(status: res.status, body: nil) }
         do {
             return .answer(status: res.status, body: try CanonicalJSON.parse(utf8: res.body))

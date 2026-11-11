@@ -90,7 +90,7 @@ final class CloudSyncKitHostTests: XCTestCase {
             (SyncStatus(state: .locked, pending: 0, reason: .keyring), .locked, "cloudSync.locked"),
             (
                 SyncStatus(state: .blocked, pending: 0, reason: .accountRequired), .error,
-                "cloudSync.signedOut"
+                "cloudSync.syncStopped"
             ),
             (SyncStatus(state: .blocked, pending: 0, reason: .quota), .error, "cloudSync.error"),
         ]
@@ -190,16 +190,46 @@ final class CloudSyncKitHostTests: XCTestCase {
         let host = CloudSyncKitHostModel(source: fake.source())
         await host.start()
         XCTAssertEqual(host.status?.screen.state, .synced)
-        // A sign-out is not a fault: neutral copy, and Sign in only when the host app supplies it.
+        // A sign-out is not a fault: neutral copy, and Sign in only when the host app (or the kit's own
+        // sign-in, a host made over a client) supplies it.
         fake.get { fake.cont }?.yield(.signedOut(reason: .accountRequired, unsynced: 0))
         await wait(host) { host.status?.screen.state == .error }
-        XCTAssertEqual(host.status?.screen.copy.first?.key, "cloudSync.signedOut")
+        XCTAssertEqual(host.status?.screen.copy.first?.key, "cloudSync.syncStopped")
         XCTAssertNil(host.status?.onSignIn)
+        // The app's own handler gives the row its button, and a neutral row carries no primary action.
+        var signedIn = 0
+        host.onSignIn = { signedIn += 1 }
+        XCTAssertNotNil(host.status?.onSignIn)
+        host.status?.onSignIn?()
+        XCTAssertEqual(signedIn, 1)
+        XCTAssertNil(host.signInModel)
         // A change event redraws from the machine.
         fake.set { fake.status = SyncStatus(state: .syncing, pending: 1) }
         fake.get { fake.cont }?.yield(.change(keys: ["a"], origin: .local))
         await wait(host) { host.status?.screen.state == .syncing }
         XCTAssertEqual(host.status?.screen.state, .syncing)
+        host.stop()
+    }
+
+    func testSyncStoppedIsAnnouncedOncePerStop() async {
+        let fake = Fake()
+        fake.set { fake.status = SyncStatus(state: .idle, pending: 0) }
+        let host = CloudSyncKitHostModel(source: fake.source())
+        await host.start()
+        fake.get { fake.cont }?.yield(.signedOut(reason: .accountRequired, unsynced: 0))
+        await wait(host) { host.status?.screen.state == .error }
+        // The settings view appears again and again (a new row model each redraw): one announcement.
+        XCTAssertEqual(host.status?.claimStopAnnouncement?(), true)
+        host.onSignIn = {}
+        XCTAssertEqual(host.status?.claimStopAnnouncement?(), false)
+        XCTAssertEqual(host.status?.claimStopAnnouncement?(), false)
+        // The stop ends and a new one begins: announced again.
+        fake.set { fake.status = SyncStatus(state: .idle, pending: 0) }
+        fake.get { fake.cont }?.yield(.change(keys: ["a"], origin: .local))
+        await wait(host) { host.status?.screen.state == .synced }
+        fake.get { fake.cont }?.yield(.signedOut(reason: .accountRequired, unsynced: 0))
+        await wait(host) { host.status?.screen.state == .error }
+        XCTAssertEqual(host.status?.claimStopAnnouncement?(), true)
         host.stop()
     }
 

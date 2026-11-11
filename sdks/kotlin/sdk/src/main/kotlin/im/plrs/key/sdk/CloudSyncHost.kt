@@ -99,6 +99,8 @@ public class CloudSyncHost private constructor(private val core: CloudSyncHostCo
             st.started = true
             val saved = withContext(Dispatchers.IO) { st.file.load() }
             st.openKeys.addAll(saved.openKeys)
+            st.refused = saved.refused
+            st.forgetOwed = saved.forgetPending
             st.mirror = CloudSyncCatalog.vetted(st.opts.catalog)
             // The served catalog is never persisted: the compiled mirror is authoritative, and the Worker's is fetched again on start.
             core.builder.build(MachineStateJson.decode(saved.persisted))
@@ -107,6 +109,48 @@ public class CloudSyncHost private constructor(private val core: CloudSyncHostCo
             if (st.opts.encryption != "e2e" || !st.deps.codec.locked) core.exchanges.refetch(null)
         }
         touch()
+    }
+
+    /** The subject the Worker refused with `account_required`, or null. */
+    internal fun refusedSubject(): String? = st.refused
+
+    /**
+     * `account_required` took [subject]: the machine as it stands (blocked, the partition gone) is saved instead of
+     * rebuilt from nothing, so a relaunch stays blocked and does not sign the same subject in again. No retry
+     * is left armed. Another subject, a sign-out or a purge lifts it ([clearRefused], [purge]).
+     */
+    internal suspend fun saveBlocked(subject: String?) {
+        withContext(dispatcher) {
+            val m = st.machine
+            if (!st.live || m == null) return@withContext
+            st.refused = subject
+            st.forgetOwed = true
+            st.openKeys.clear()
+            st.failures = 0
+            st.purged = false
+            val snapshot = MachineStateJson.encode(m.persist())
+            val marks = BlockedMarks(subject, forgetPending = true)
+            val saved = withContext(Dispatchers.IO) { runCatching { st.file.save(snapshot, null, emptyList(), marks) }.isSuccess }
+            // The rewrite failed: the old file may still hold the person's snapshot, so it goes; the refusal stays in memory for this run.
+            if (!saved) withContext(Dispatchers.IO) { runCatching { st.file.remove() } }
+        }
+    }
+
+    /** Whether the key ring's stored root is still owed a forget (saved with the blocked state). */
+    internal fun forgetOwed(): Boolean = st.forgetOwed
+
+    /** The stored root was forgotten: the owed flag goes, saved with the blocked state. */
+    internal suspend fun forgetDone() {
+        withContext(dispatcher) {
+            if (!st.forgetOwed) return@withContext
+            st.forgetOwed = false
+            if (st.refused != null && st.live && !st.purging) core.pump.save()
+        }
+    }
+
+    /** Another subject is signing in: the refusal no longer binds. Saved with the next pass. */
+    internal suspend fun clearRefused() {
+        withContext(dispatcher) { st.refused = null }
     }
 
     /** Discovery just loaded: tell the machine what `services.sync` says. */

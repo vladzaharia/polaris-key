@@ -54,6 +54,7 @@ import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.sync.CallResult
 import im.plrs.key.core.sync.MergeKeep
 import im.plrs.key.core.sync.ReadResult
+import im.plrs.key.core.sync.SignInUrl
 import im.plrs.key.core.sync.SyncDiscovery
 import im.plrs.key.core.sync.SyncEvent
 import im.plrs.key.core.sync.SyncStatus
@@ -191,21 +192,8 @@ public class CloudSyncClient internal constructor(private val api: CloudSyncApi)
     public fun transfers(): List<SaveTransfer> = api.saves.transfers()
 }
 
-/**
- * A sign-in URL fit to hand to the app: https on the Worker's origin, else null. A path is resolved against
- * the origin; control characters and whitespace are refused before parsing.
- */
-internal fun safeSignInUrl(url: String?, origin: String): String? {
-    if (url == null || url.any { it.code <= 0x20 || it.code in 0x7F..0x9F }) return null
-    val base = runCatching { URI(origin) }.getOrNull() ?: return null
-    val resolved = runCatching { base.resolve(URI(url)) }.getOrNull() ?: return null
-    fun port(u: URI) = if (u.port == -1) HTTPS_PORT else u.port
-    val ok = resolved.scheme.equals("https", true) && base.scheme.equals("https", true) &&
-        resolved.host != null && resolved.host.equals(base.host, true) && port(resolved) == port(base)
-    return if (ok) resolved.toString() else null
-}
-
-private const val HTTPS_PORT = 443
+/** A sign-in URL fit to hand to the app: https on the Worker's origin, else null (the one rule, [SignInUrl.safe]). */
+internal fun safeSignInUrl(url: String?, origin: String): String? = SignInUrl.safe(url, origin)
 
 /** What a scheduler holds in place of a person or a transfer id: the SHA-256 hex of it. */
 internal fun ownerTag(subject: String): String =
@@ -234,6 +222,9 @@ internal class CloudSyncApi(
         class Identity(val subject: String?) : Work
 
         class Marker(val done: CompletableDeferred<Unit>) : Work
+
+        /** The person completed a sign-in during this run. */
+        object SignedIn : Work
     }
 
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
@@ -371,7 +362,7 @@ internal class CloudSyncApi(
     /** The binding of the host's records and the file transport; built once, on the first use, after the host started. */
     private inner class SavesBinding(val h: CloudSyncHost) {
         val records = HostSaveRecords(h)
-        val transport = HttpFileTransport(core) { subject }
+        val transport = HttpFileTransport(core, ::accountRequiredSoon) { subject }
         val engine = FileTransferEngine(transport, FileJournal(h.stateDir), maxRetryAfterSeconds = SAVES_MAX_RETRY_AFTER_SECONDS)
     }
 
@@ -417,11 +408,11 @@ internal class CloudSyncApi(
      * The person's save transfers go: running writes are cancelled, waiting writes settle as dropped, the transfer journal
      * and the chunk cache are deleted. Each step is tried whatever the other did; none throws.
      */
-    private suspend fun purgeSaves() {
+    private suspend fun purgeSaves(also: String? = null) {
         withContext(NonCancellable) {
             // The scheduled work goes first (off the main thread: it waits for the scheduler to stop it), then the writes.
-            val owner = savesSubject?.let(::ownerTag)
-            if (owner != null) {
+            for (who in listOfNotNull(savesSubject, also).distinct()) {
+                val owner = ownerTag(who)
                 background?.let { port -> withContext(Dispatchers.IO) { runCatching { port.cancelOwner(owner) } } }
             }
             savesBinding?.records?.dropAll()
@@ -478,6 +469,12 @@ internal class CloudSyncApi(
     fun onIdentity(subject: String?) {
         ensureConsumer()
         queue.trySend(Work.Identity(subject))
+    }
+
+    /** A sign-in the person completed during this run (not the cached subject replayed at launch): it lifts a refusal of the same subject. */
+    fun signInCompleted() {
+        ensureConsumer()
+        queue.trySend(Work.SignedIn)
     }
 
     fun attachSoon() {
@@ -538,6 +535,11 @@ internal class CloudSyncApi(
         config.useSync(Port())
         // A journal saved while signed in still names its subject.
         subject = h.withMachine { it.subject }
+        // A forget the last run did not finish (the blocked state says so): done again before anyone signs in.
+        if (h.forgetOwed()) {
+            forgetPending = true
+            startForget()
+        }
         // A-2: an unknown subject changes nothing; a known one signs in.
         account()?.let { signIn(it) }
     }
@@ -549,6 +551,7 @@ internal class CloudSyncApi(
                 when (work) {
                     is Work.Marker -> work.done.complete(Unit)
                     is Work.Identity -> onIdentityNow(work.subject)
+                    is Work.SignedIn -> onSignedInNow()
                 }
             }
         }
@@ -583,16 +586,32 @@ internal class CloudSyncApi(
         attach()
         val h = startedHost() ?: return
         if (target != null) {
-            if (target != subject) signIn(target)
+            if (target != subject) signIn(target, fresh = true)
         } else if (subject != null) {
             // A readable "no session": the principal is gone with the account (a sign-out elsewhere, a released device).
             leave(h)
         }
     }
 
-    private suspend fun signIn(target: String) {
+    /** [fresh]: the person completed this sign-in during this run (not the cached subject replayed at launch). */
+    private suspend fun onSignedInNow() {
+        attach()
+        val h = startedHost() ?: return
+        val who = account() ?: return
+        if (h.refusedSubject() == who && subject == null) signIn(who, fresh = true)
+    }
+
+    private suspend fun signIn(target: String, fresh: Boolean = false) {
         val h = host()
         if (!h.isStarted()) return
+        // The Worker refused this subject (`account_required`): it is not signed in again, and its edits do not move to
+        // a fresh partition, until a sign-out, another subject or a purge. Otherwise a relaunch would re-sign it, push
+        // the edits, get the 403 and drop them.
+        val refused = h.refusedSubject()
+        if (refused != null) {
+            if (refused == target && !fresh) return
+            h.clearRefused()
+        }
         // Another person: the first leaves (unsynced edits dropped, then forgotten) before this one starts. The device
         // credential is already the new person's, so nothing is sent for the old one.
         val old = subject
@@ -603,6 +622,7 @@ internal class CloudSyncApi(
             startForget().join()
             if (forgetPending) {
                 waitingSignIn = target
+                waitingFresh = fresh
                 return
             }
             // The job that just ended signed the held person in already.
@@ -700,10 +720,12 @@ internal class CloudSyncApi(
         merge.feed(events)
         val leftReasons = events.filterIsInstance<SyncEvent.SignedOut>().map { it.reason }
         val left = leftReasons.isNotEmpty()
+        val refusedSubject = if ("accountRequired" in leftReasons) subject else null
         // The person is gone before anything else runs, so a forget (and its purge) never takes them for the signed-in one.
         if (left) subject = null
+        if (refusedSubject != null) refusedPending = refusedSubject
         // The root leaves memory before anything else runs.
-        val forgotten = if (left && !explicitForget) startForget(purgeFirst = true) else null
+        val forgotten = if (left && !explicitForget) startForget(purgeFirst = true, blockedSubject = "accountRequired" in leftReasons) else null
         for (e in events) {
             when (e) {
                 is SyncEvent.SignedOut -> subject = null
@@ -742,6 +764,7 @@ internal class CloudSyncApi(
 
     /** The person whose sign-in waited on an owed forget; signed in when it succeeds. */
     private var waitingSignIn: String? = null
+    private var waitingFresh = false
 
     /**
      * The person left (a sign-out elsewhere, a person change): their synced data is deleted at once, then the ring
@@ -749,13 +772,21 @@ internal class CloudSyncApi(
      * and is retried: after a delay (three times) and at the next attach or touch, but only while nobody is signed in,
      * so a retry never reaches the next person's session. The next person's sign-in waits for it.
      */
-    private fun startForget(purgeFirst: Boolean = false): Job {
+    private fun startForget(purgeFirst: Boolean = false, blockedSubject: Boolean = false): Job {
         forgetJob?.let { return it }
         forgetPending = true
         val job = scope.launch {
             lockRing()
-            if (purgeFirst && subject == null) withContext(NonCancellable) { purge() }
-            purgeSaves()
+            val gone = refusedPending
+            if (blockedSubject) {
+                // `account_required`: the machine is saved as it stands (blocked, the partition gone), never purged, so the
+                // refusal survives a relaunch. The save says a forget is owed until the stored root is gone.
+                withContext(NonCancellable) { saveBlocked() }
+            } else if (purgeFirst && subject == null) {
+                withContext(NonCancellable) { purge() }
+            }
+            // The scheduled transfers stop before the stored root goes; after a relaunch the person's tag is the refused subject.
+            purgeSaves(gone)
             val ok = withContext(NonCancellable) {
                 try {
                     forgetRing()
@@ -767,6 +798,7 @@ internal class CloudSyncApi(
             if (ok) {
                 forgetPending = false
                 forgetAttempts = 0
+                hostValue?.let { runCatching { it.forgetDone() } }
             } else {
                 java.util.logging.Logger.getLogger(
                     "im.plrs.key.sdk",
@@ -782,11 +814,43 @@ internal class CloudSyncApi(
             forgetJob = null
             // Back from a failed forget with a person waiting on it: they sign in now.
             val waiting = waitingSignIn
+            val fresh = waitingFresh
             waitingSignIn = null
-            if (ok && subject == null && waiting != null) signIn(waiting)
+            waitingFresh = false
+            if (ok && subject == null && waiting != null) signIn(waiting, fresh)
         }
         forgetJob = job
         return job
+    }
+
+    /** The subject `account_required` took, until the host has saved it. */
+    private var refusedPending: String? = null
+
+    private suspend fun saveBlocked() {
+        val who = refusedPending
+        refusedPending = null
+        // The host handles a failed write itself (the old file goes); only a cancellation reaches here.
+        hostValue?.saveBlocked(who)
+    }
+
+    /**
+     * A key ring or file route answered `account_required`: the machine takes the same exit as the `/sync` 403, and
+     * its events drive the forget, the save and the sign-in offer. A request in flight is dropped by the host.
+     */
+    suspend fun accountRequired(signInUrl: String? = null, forSubject: String? = null) {
+        withContext(dispatcher) {
+            val h = startedHost() ?: return@withContext
+            // The answer belongs to the person the call started for: a late one after another sign-in is ignored.
+            if (h.withMachine { it.subject } != forSubject) return@withContext
+            h.withMachine { it.accountRequired(signInUrl) }
+            h.touch()
+            drainEvents()
+        }
+    }
+
+    /** From a route's answer (key ring, file transfer), which has no coroutine to spare. */
+    fun accountRequiredSoon(signInUrl: String?, forSubject: String?) {
+        scope.launch { runCatching { accountRequired(signInUrl, forSubject) } }
     }
 
     /** A touch from the host (the app came back): retries a forget that failed, and nudges the machine. Never throws for a product without Sync. */

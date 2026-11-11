@@ -342,7 +342,7 @@
     "cloudSync.offline": "オフライン · 再接続すると変更が同期されます",
     "cloudSync.conflict": "競合している変更があります。",
     "cloudSync.error": "同期できませんでした。後でもう一度お試しください。",
-    "cloudSync.signedOut": "サインアウトしています。",
+    "cloudSync.syncStopped": "同期が停止しました。",
     "cloudSync.signIn": "サインインして同期",
     "cloudSync.locked": "同期はロックされています。",
     "cloudSync.unlock": "同期のロックを解除",

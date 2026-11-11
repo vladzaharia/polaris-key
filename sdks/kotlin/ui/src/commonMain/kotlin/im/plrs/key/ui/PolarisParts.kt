@@ -21,9 +21,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +54,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.launch
 
 /** The catalog lines of one [KitScreen], formatted for one locale, with the dangling ones left out. */
@@ -130,7 +133,11 @@ public fun PolarisLicenseChoice(
                 val outer = MaterialTheme.shapes.medium
                 choices.choices.forEachIndexed { i, choice ->
                     if (i > 0 && connected) Spacer(Modifier.height(PolarisConnectedGap))
-                    if (i > 0 && !connected) HorizontalDivider(Modifier.padding(horizontal = PolarisSpace.medium), color = MaterialTheme.colorScheme.outlineVariant)
+                    if (i > 0 &&
+                        !connected
+                    ) {
+                        HorizontalDivider(Modifier.padding(horizontal = PolarisSpace.medium), color = MaterialTheme.colorScheme.outlineVariant)
+                    }
                     PolarisLicenseRow(
                         choice = choice,
                         title = choice.name ?: product.ifEmpty { choice.tierName },
@@ -334,7 +341,10 @@ public fun PolarisPaywall(
                 Spacer(Modifier.height(polarisWindow.section))
                 PolarisSection(title = includes) {
                     for (feature in features) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.tight), verticalAlignment = Alignment.Top) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.tight),
+                            verticalAlignment = Alignment.Top,
+                        ) {
                             Icon(PolarisSymbols.Check, contentDescription = null, tint = PolarisTheme.accentText, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(PolarisSpace.controls))
                             Text(feature, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
@@ -531,6 +541,7 @@ public enum class PolarisCloudSync {
  *
  * @param syncedAtMillis epoch milliseconds of the last sync, for "Synced 5 minutes ago".
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 public fun PolarisCloudSyncStatus(
     status: PolarisCloudSync,
@@ -570,7 +581,7 @@ public fun PolarisCloudSyncStatus(
 
         PolarisCloudSync.Error -> catalog.format("cloudSync.error", locale)
 
-        PolarisCloudSync.SignedOut -> catalog.format("cloudSync.signedOut", locale)
+        PolarisCloudSync.SignedOut -> catalog.format("cloudSync.syncStopped", locale)
 
         PolarisCloudSync.Locked -> catalog.format("cloudSync.locked", locale)
 
@@ -585,33 +596,57 @@ public fun PolarisCloudSyncStatus(
         PolarisCloudSync.Conflict -> PolarisSymbols.Warning to state.warning
         PolarisCloudSync.Error -> PolarisSymbols.Warning to state.danger
     }
+    val action = when {
+        status == PolarisCloudSync.Error && onRetry != null -> catalog.format("common.tryAgain", locale) to onRetry
+        status == PolarisCloudSync.SignedOut && onSignIn != null -> catalog.format("cloudSync.signIn", locale) to onSignIn
+        status == PolarisCloudSync.Locked && onUnlock != null -> catalog.format("cloudSync.unlock", locale) to onUnlock
+        status == PolarisCloudSync.RingChanged && onReview != null -> catalog.format("common.review", locale) to onReview
+        else -> null
+    }
+    // Sync stopped is neutral: a muted label, with its action on the label's line, or under its start
+    // when it does not fit, so the card keeps one line's height when the row appears.
+    val inline = status == PolarisCloudSync.SignedOut && action != null
     PolarisSection(title = null, modifier = modifier) {
         val row = Modifier.fillMaxWidth().heightIn(min = 52.dp)
         Row(
             (if (onOpen != null) row.clickable(role = Role.Button, onClick = onOpen) else row)
-                .padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls)
-                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+                .padding(horizontal = PolarisSpace.medium, vertical = if (inline) PolarisSpace.hairline else PolarisSpace.controls)
+                .semantics(mergeDescendants = !inline) { if (!inline) liveRegion = LiveRegionMode.Polite },
             verticalAlignment = Alignment.Top,
         ) {
             // The glyph sits on the first line of the label, not centred on a wrapped one (large fonts).
             val line = with(LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toDp() }
+            val first = if (inline) maxOf(line, 48.dp) else line
             Icon(
                 glyph,
                 contentDescription = null,
                 tint = tint,
-                modifier = Modifier.padding(top = ((line - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp),
+                modifier = Modifier.padding(top = ((first - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp),
             )
             Spacer(Modifier.width(PolarisSpace.controls))
-            Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
+            if (inline && action != null) {
+                FlowRow(
+                    Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
+                ) {
+                    // Only the label is the live region: the action stays a plain button outside it.
+                    Text(
+                        text,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = scheme.onSurfaceVariant,
+                        modifier = Modifier.heightIn(min = 48.dp).wrapContentHeight(Alignment.CenterVertically).semantics {
+                            liveRegion =
+                                LiveRegionMode.Polite
+                        },
+                    )
+                    // A small tonal button, as the other kits draw it: shaped, never bare text.
+                    PolarisSecondaryButton(action.first, action.second, Modifier.heightIn(min = 48.dp))
+                }
+            } else {
+                Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
+            }
         }
-        val action = when {
-            status == PolarisCloudSync.Error && onRetry != null -> catalog.format("common.tryAgain", locale) to onRetry
-            status == PolarisCloudSync.SignedOut && onSignIn != null -> catalog.format("cloudSync.signIn", locale) to onSignIn
-            status == PolarisCloudSync.Locked && onUnlock != null -> catalog.format("cloudSync.unlock", locale) to onUnlock
-            status == PolarisCloudSync.RingChanged && onReview != null -> catalog.format("common.review", locale) to onReview
-            else -> null
-        }
-        if (action != null) {
+        if (!inline && action != null) {
             Row(Modifier.fillMaxWidth().padding(horizontal = PolarisSpace.tight)) { PolarisTextButton(action.first, action.second) }
         }
     }
@@ -624,8 +659,28 @@ public fun PolarisCloudSyncStatus(
  * source itself binds with the host settings, Q-7).
  */
 @Composable
-public fun PolarisCloudSyncStatus(status: PolarisCloudSync, syncState: PolarisSyncState, modifier: Modifier = Modifier) {
-    PolarisCloudSyncStatus(status, modifier, onUnlock = syncState::open, onReview = syncState::open)
+public fun PolarisCloudSyncStatus(
+    status: PolarisCloudSync,
+    syncState: PolarisSyncState,
+    modifier: Modifier = Modifier,
+    onSignIn: (() -> Unit)? = null,
+) {
+    // Sign in to sync is the app's when it passes [onSignIn]; otherwise the kit's own sign-in, in the
+    // row's place, where a client is provided (PolarisKeyGate or PolarisKeyProvider).
+    val client = LocalPolarisKey.current
+    var signingIn by remember { mutableStateOf(false) }
+    if (signingIn && client != null && onSignIn == null) {
+        val held = rememberHeldSignIn(client to "cloudSyncStatus", client.signInActions()) { signingIn = false }
+        PolarisSignIn(held, modifier, onCancel = { signingIn = false })
+    } else {
+        PolarisCloudSyncStatus(
+            status,
+            modifier,
+            onSignIn = onSignIn ?: client?.let { { signingIn = true } },
+            onUnlock = syncState::open,
+            onReview = syncState::open,
+        )
+    }
 }
 
 // ── About ────────────────────────────────────────────────────────────────────────────────────

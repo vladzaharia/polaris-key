@@ -342,7 +342,7 @@
     "cloudSync.offline": "오프라인 · 다시 연결하면 변경 사항이 동기화돼요",
     "cloudSync.conflict": "일부 변경 사항이 충돌해요.",
     "cloudSync.error": "동기화하지 못했어요. 나중에 다시 시도하세요.",
-    "cloudSync.signedOut": "로그아웃된 상태예요.",
+    "cloudSync.syncStopped": "동기화가 중단되었습니다.",
     "cloudSync.signIn": "로그인하여 동기화",
     "cloudSync.locked": "동기화가 잠겨 있습니다.",
     "cloudSync.unlock": "동기화 잠금 해제",

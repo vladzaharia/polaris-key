@@ -935,6 +935,36 @@ export class CloudSyncMachine {
     return { ok: true };
   }
 
+  /**
+   * The host saw `account_required` on a route the machine does not drive: a key-ring call or a
+   * Cloud Sync file transfer (WIRE-CONTRACT-V5 §11.5). The same transition as the `/sync` 403.
+   * Nothing happens on a device with no subject, or one that is already blocked this way. A
+   * request in flight is abandoned, so its answer is for the host to drop.
+   */
+  accountRequired(signInUrl: string | null = null): void {
+    if (this.s.subject === null || this.s.blocked === "account_required")
+      return;
+    this.accountRequiredLeave(signInUrl);
+  }
+
+  /** Whether the device holds the ring's root (`setRoot`); a relaunch carries it. */
+  get hasRoot(): boolean {
+    return this.root;
+  }
+
+  /**
+   * `account_required` (§11.5): the subject's partition is deleted whole (pending, held, open
+   * requests, snapshot, cursor, clientId, E2E bookkeeping), the root is forgotten, and the device
+   * stays blocked, across a relaunch, until `signIn`. Licence state and `local` values are not
+   * touched. The unsynced count is reported; its edits are not kept (no `unsyncedData`).
+   */
+  private accountRequiredLeave(signInUrl: string | null): void {
+    this.leave("accountRequired", true);
+    this.root = false;
+    this.s.blocked = "account_required";
+    this.events.push({ type: "signInOffered", signInUrl });
+  }
+
   /** The effective mode: E2E when the app requires it or this device has ever accepted E2E. */
   encryptionMode(): EncryptionMode {
     return this.requiresE2e() ? "e2e" : "server";
@@ -1442,10 +1472,9 @@ export class CloudSyncMachine {
       const err =
         isObject(res.body) && isObject(res.body.error) ? res.body.error : {};
       if (err.code === "account_required") {
-        const url = typeof err.signInUrl === "string" ? err.signInUrl : null;
-        this.leave("accountRequired", false);
-        this.s.blocked = "account_required";
-        this.events.push({ type: "signInOffered", signInUrl: url });
+        this.accountRequiredLeave(
+          typeof err.signInUrl === "string" ? err.signInUrl : null,
+        );
         return;
       }
       // The journal is kept; a document refresh lifts either block.
@@ -2841,7 +2870,8 @@ export class CloudSyncMachine {
       p.cursor = 0;
       delete p.empty;
     }
-    p.signedOutAt = this.nowMs;
+    if (reason === "accountRequired") delete this.s.partitions[name];
+    else p.signedOutAt = this.nowMs;
     this.s.subject = null;
     this.signingOut = null;
     this.inFlight = null;
@@ -2919,6 +2949,7 @@ export function relaunch(
       ...opts,
       now: machine.now,
       network: machine.networkState,
+      hasRoot: machine.hasRoot,
       offsetMs: 0,
       contacted: false,
       subject: saved.subject,
@@ -2926,7 +2957,12 @@ export function relaunch(
       imported: saved.imported,
     });
   return new CloudSyncMachine(
-    { ...opts, now: machine.now, network: machine.networkState },
+    {
+      ...opts,
+      now: machine.now,
+      network: machine.networkState,
+      hasRoot: machine.hasRoot,
+    },
     saved,
   );
 }

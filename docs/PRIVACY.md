@@ -259,7 +259,7 @@ product keeps Cloud Sync data that way, and otherwise under a key per person tha
 upload session lasts 24 hours. Quota never deletes. The person can clear it, export it from the
 portal (the JSON copy holds the settings, counters and, while small, the records and file
 metadata; the zip copy holds every record and the stored bytes of every file, revision and delta
-chunk, which in end-to-end mode are still ciphertext), or delete it with the account; deleting a product erases its objects, and an object that finds its product gone erases itself.
+chunk, which in end-to-end mode are still ciphertext), or delete it with the account; deleting a product erases its objects, and an object that finds its product gone erases itself. After a removal, each device discards its synced copy and its stored key at its next contact.
 
 ### The key ring — wrapped keys for a person's devices
 

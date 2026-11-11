@@ -44,6 +44,7 @@ import {
   userSettingIssues,
   type ConfigEntry,
 } from "@polaris-key/catalog";
+import { safeSignInUrl } from "../../../packages/ui-core/src/browser/sdk/core/signInUrl.js";
 import {
   CloudSyncMachine,
   SYNC_DEBOUNCE_MS,
@@ -106,6 +107,12 @@ interface SyncScenarios {
   rules: { id: string }[];
   scenarios: Scenario[];
   settingCases: SettingCase[];
+  signInUrlCases: {
+    name: string;
+    origin: string;
+    url: string | null;
+    expect: string | null;
+  }[];
   /** Appended with the records binding of cloudSync.saves (plans/U-22.5.md). */
   fileRecordCases: {
     calls: string[];
@@ -154,6 +161,10 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
       return m.flush();
     case "refresh":
       return m.refresh();
+    case "accountRequired":
+      // Version 6: the host saw `account_required` on a key-ring or file route.
+      m.accountRequired(args[0] as string | null);
+      return { ok: true };
     default:
       throw new Error(`unknown call ${name}`);
   }
@@ -161,7 +172,7 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
 
 describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client state machine)`, () => {
   it(`runs on Node ${process.version}`, () => {
-    expect(corpus.syncScenariosVersion).toBe(5);
+    expect(corpus.syncScenariosVersion).toBe(6);
     expect(corpus.constants).toEqual({
       debounceMs: SYNC_DEBOUNCE_MS,
       signOutFlushMs: SYNC_SIGNOUT_FLUSH_MS,
@@ -336,5 +347,11 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
           routes.some((r) => r.key === key),
           `${c.name}: ${key} is open`,
         ).toBe(false);
+    });
+
+  // The one sign-in URL rule (U-52): the host's answer for each case, exactly.
+  for (const c of corpus.signInUrlCases)
+    it(`signInUrlCases: ${c.name}`, () => {
+      expect(safeSignInUrl(c.url, c.origin)).toBe(c.expect);
     });
 });

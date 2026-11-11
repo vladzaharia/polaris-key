@@ -277,6 +277,17 @@ export class PolarisKeyClient {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly capabilityContext: CapabilityContext;
 
+  /** A key-ring or file route answered `account_required`: Cloud Sync takes the same transition as
+   *  for a `/sync` 403. Never throws into the route that saw it. */
+  private accountRequiredFromRoute(
+    signInUrl: string | null,
+    forSubject: string | null,
+  ): void {
+    void this.cloudSyncApi
+      .accountRequired(signInUrl, forSubject)
+      .catch(() => undefined);
+  }
+
   constructor(opts: PolarisKeyClientOptions & { localOnly?: boolean }) {
     this.product = opts.productSlug;
     this.core = new CoreContext(opts);
@@ -477,7 +488,13 @@ export class PolarisKeyClient {
       subject: () => signedInAs,
       attach: () => this.cloudSyncApi.attach(),
       emit: (e) => this.events.safeEmit("cloudSync", e),
+      // A file route's `account_required` reaches the machine like a `/sync` one does.
+      onAccountRequired: (url, forSubject) =>
+        this.accountRequiredFromRoute(url, forSubject),
     });
+    this.keyring.subject = () => signedInAs;
+    this.keyring.onAccountRequired = (url, forSubject) =>
+      this.accountRequiredFromRoute(url, forSubject);
     this.cloudSync = {
       status: () => this.cloudSyncApi.status(),
       flush: () => this.cloudSyncApi.flush(),

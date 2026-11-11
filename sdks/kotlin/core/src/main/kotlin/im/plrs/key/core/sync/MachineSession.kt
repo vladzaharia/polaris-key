@@ -91,7 +91,7 @@ internal class MachineSession(private val p: MachineParts) : SyncSession {
             part.cursor = 0
             part.empty = null
         }
-        part.signedOutAt = core.now
+        if (reason == "accountRequired") core.s.partitions.remove(checkNotNull(core.s.subject)) else part.signedOutAt = core.now
         core.s.subject = null
         core.signingOut = null
         core.inFlight = null

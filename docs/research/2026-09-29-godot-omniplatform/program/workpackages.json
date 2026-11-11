@@ -5826,7 +5826,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-12-privacy-settings-portal.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "U-11a",
@@ -20143,7 +20143,15 @@
       "estimateWeeks": [0.4, 0.6],
       "deps": ["U-38", "U-39", "U-40"],
       "planMode": true,
-      "gates": ["plan-mode", "drift-gate", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "all-sdks",
+        "corpus-runner",
+        "security-review",
+        "ci:macos",
+        "ci:android"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
@@ -20163,13 +20171,31 @@
       "role": "pkey-sdk-porter",
       "estimateWeeks": [0.2, 0.3],
       "deps": ["U-12"],
-      "planMode": false,
-      "gates": ["drift-gate", "all-sdks"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate", "all-sdks", "corpus-runner"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": ["plans/U-12-PX-18.md §3 follow-up (b)"],
       "brief": "wp/U-52-sdk-stop-after-removal.md",
+      "status": "todo"
+    },
+    {
+      "id": "U-51k",
+      "title": "Kit action \"Download synced data\" and its not-encrypted warning (U-51 D8)",
+      "phase": "U",
+      "stage": "U4 later",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.4],
+      "deps": ["U-51"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "pkey-ux-reviewer", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["U-51 plan decision D8 (lead directory, plans/U-51-U-52.md)"],
+      "brief": "wp/U-51k-cloud-sync-export-kit.md",
       "status": "todo"
     },
     {

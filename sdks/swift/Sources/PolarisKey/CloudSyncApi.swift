@@ -18,7 +18,10 @@
 //         failure is reported (`purgeFailed`) and never replaces the sign-out's error. Purge also runs when
 //         Sync is off.
 //  - A-4  A sign-out that happens elsewhere (`account_required`, a released device) reaches the machine as
-//         `signedOut` and forgets and purges once.
+//         `signedOut` and forgets and purges once. `account_required` keeps the machine as it stands
+//         (blocked, partition gone; status stays `blocked` across a relaunch) instead of purging it, and
+//         the refused subject is not signed in again until a sign-out or another subject. A key-ring or
+//         file route's `account_required` calls `accountRequired(signInUrl:)` here (A-4b).
 //  - A-5  `signInUrl` is vetted (`safeSignInUrl`): no control characters or whitespace, resolved against
 //         the Worker origin, https on that origin only. The offer follows the forget and comes only for
 //         `accountRequired` / `subjectChanged`.
@@ -158,17 +161,77 @@ public final class CloudSyncClient: Sendable {
     public var recoveryCode: RecoveryCodeModel { RecoveryCodeModel { try await self.api.newRecoveryCode() } }
 }
 
-/// A sign-in URL fit to hand to the app: https on the Worker's origin, else nil. A path is resolved against
-/// the origin; control characters and whitespace are refused before parsing.
+/// A sign-in URL fit to hand to the app: https on the Worker's origin (`https://host[:port]`), normalised,
+/// else nil. `https://` or `//` start an authority that must be exactly the Worker's host (and port; 443 is
+/// the default); any other `scheme:`, userinfo, a trailing dot, a lookalike host, a backslash, whitespace or a
+/// control or non-ASCII character answers nil. Anything else is a path on the origin; there is no path
+/// restriction. The rule is the same in every SDK and pinned by the corpus's `signInUrlCases`; it uses no URL
+/// library, so no parser's quirks can differ between languages.
 func safeSignInUrl(_ url: String?, origin: String) -> String? {
-    guard let url, let base = URL(string: origin),
-        !url.unicodeScalars.contains(where: { $0.value <= 0x20 || (0x7F...0x9F).contains($0.value) }),
-        let resolved = URL(string: url, relativeTo: base)?.absoluteURL,
-        resolved.scheme?.lowercased() == "https", base.scheme?.lowercased() == "https",
-        resolved.host?.lowercased() == base.host?.lowercased(),
-        (resolved.port ?? 443) == (base.port ?? 443)
+    guard let url, !url.isEmpty, let base = parseSignInOrigin(origin) else { return nil }
+    for u in url.unicodeScalars where u.value < 0x21 || u.value > 0x7E || u.value == 0x5C { return nil }
+    let rest: Substring?
+    if url.lowercased().hasPrefix("https://") {
+        rest = url.dropFirst(8)
+    } else if url.hasPrefix("//") {
+        rest = url.dropFirst(2)
+    } else {
+        rest = nil
+    }
+    var tail: String
+    if let rest {
+        let end = rest.firstIndex(where: { $0 == "/" || $0 == "?" || $0 == "#" })
+        let authority = String(end.map { rest[..<$0] } ?? rest).lowercased()
+        let allowed = base.port == "443" ? [base.host, "\(base.host):443"] : ["\(base.host):\(base.port)"]
+        guard allowed.contains(authority) else { return nil }
+        tail = end.map { String(rest[$0...]) } ?? ""
+    } else if startsWithScheme(url) {
+        return nil
+    } else {
+        tail = url
+    }
+    if !tail.hasPrefix("/") { tail = "/" + tail }
+    return "https://\(base.host)\(base.port == "443" ? "" : ":" + base.port)\(tail)"
+}
+
+/// `https://host[:port]` as the lower-case host and the port ("443" when none).
+private func parseSignInOrigin(_ origin: String) -> (host: String, port: String)? {
+    let o = origin.lowercased()
+    guard o.hasPrefix("https://") else { return nil }
+    let rest = o.dropFirst(8)
+    let parts = rest.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+    guard let hostPart = parts.first, !hostPart.isEmpty,
+        hostPart.unicodeScalars.allSatisfy({
+            ($0.value >= 0x61 && $0.value <= 0x7A) || ($0.value >= 0x30 && $0.value <= 0x39) || $0 == "." || $0 == "-"
+        })
     else { return nil }
-    return resolved.absoluteString
+    var port = "443"
+    if parts.count == 2 {
+        let p = parts[1]
+        guard !p.isEmpty, p.count <= 5, p.allSatisfy(\.isASCII), p.allSatisfy(\.isNumber), let n = Int(p) else {
+            return nil
+        }
+        port = String(n)
+    }
+    return (String(hostPart), port)
+}
+
+/// Whether `s` starts with `scheme:` (a letter, then letters, digits, `+`, `.` or `-`, then a colon).
+private func startsWithScheme(_ s: String) -> Bool {
+    var seenFirst = false
+    for c in s.unicodeScalars {
+        if !seenFirst {
+            guard (c.value >= 0x41 && c.value <= 0x5A) || (c.value >= 0x61 && c.value <= 0x7A) else { return false }
+            seenFirst = true
+            continue
+        }
+        if c == ":" { return true }
+        let ok =
+            (c.value >= 0x41 && c.value <= 0x5A) || (c.value >= 0x61 && c.value <= 0x7A)
+            || (c.value >= 0x30 && c.value <= 0x39) || c == "+" || c == "." || c == "-"
+        if !ok { return false }
+    }
+    return false
 }
 
 actor CloudSyncApi {
@@ -187,6 +250,8 @@ actor CloudSyncApi {
     private let purgeSaves: @Sendable () async -> Void
     private let personSignedIn: @Sendable () -> Void
     private let recovery: @Sendable () async throws -> String
+    /// Diagnostics; never given a value or a secret.
+    private let log: @Sendable (String) -> Void
     let merge: MergeRegistry
     private var hostValue: CloudSyncHost?
     private var attached = false
@@ -209,8 +274,10 @@ actor CloudSyncApi {
         purgeSaves: @escaping @Sendable () async -> Void = {},
         personSignedIn: @escaping @Sendable () -> Void = {},
         recovery: @escaping @Sendable () async throws -> String,
-        merge: MergeRegistry = MergeRegistry()
+        merge: MergeRegistry = MergeRegistry(),
+        log: @escaping @Sendable (String) -> Void = { _ in }
     ) {
+        self.log = log
         self.core = core
         self.config = config
         self.makeHost = host
@@ -334,6 +401,8 @@ actor CloudSyncApi {
         }
         await config.useSync(SyncPort(api: self))
         await h.installLifecycleHooks()
+        // A pin left behind by an earlier run goes now, before anything signs in.
+        _ = await retryForget()
         // A journal saved while signed in still names its subject.
         subject = await h.machineSubject()
         // A-2: an unknown subject changes nothing; a known one signs in.
@@ -399,21 +468,34 @@ actor CloudSyncApi {
         switch change.kind {
         case IdentityChange.signedIn, IdentityChange.subjectChanged:
             if let target = change.subject {
-                if target != subject { await signIn(target) }
-            } else if subject != nil {
+                // A sign-in the person completes in this run lifts a refusal; a changed subject does not.
+                if target != subject { await signIn(target, fresh: change.kind == IdentityChange.signedIn) }
+            } else {
                 // A readable "no session": the principal is gone with the account.
-                await leave()
+                await h.clearRefused()
+                if subject != nil { await leave() }
             }
         case IdentityChange.signedOut:
             // A sign-out that happened elsewhere (the hook already left when it was ours).
+            await h.clearRefused()
             if subject != nil { await leave() }
         default: break
         }
     }
 
-    private func signIn(_ target: String) async {
+    /// `fresh`: the person completed this sign-in during this run (an identity change), not the account read
+    /// at launch.
+    private func signIn(_ target: String, fresh: Bool = false) async {
         let h = host()
         guard await h.isStarted else { return }
+        // The Worker took this subject's account away: a sign-out, another subject or a sign-in the person
+        // completes now lifts it; the account replayed at launch does not.
+        if await h.refused == target {
+            if !fresh { return }
+            await h.clearRefused()
+        }
+        // The earlier key ring is not gone yet: nothing signs in until it is.
+        if !(await retryForget()) { return }
         // Another person: the first leaves (unsynced edits dropped, then forgotten) before this one
         // starts. The device credential is already the new person's, so nothing is sent for the old one.
         if let old = subject, old != target { await signOutNow() }
@@ -477,6 +559,7 @@ actor CloudSyncApi {
         let left = max(0, SYNC_SIGNOUT_FLUSH_MS - Int(Date().timeIntervalSince(began) * 1000))
         explicitForget = true
         defer { explicitForget = false }
+        if let h = hostValue, await h.isStarted { await h.clearRefused() }
         let who = subject
         if let h = hostValue, await h.isStarted, who != nil {
             await h.signOut()
@@ -527,6 +610,37 @@ actor CloudSyncApi {
         try await forget()
     }
 
+    private func saveBlocked(_ refused: String?, pending: Bool) async {
+        guard let h = hostValue else { return }
+        do { try await h.saveBlocked(subject: refused, forgetPending: pending) } catch { emit(.purgeFailed) }
+    }
+
+    /// Try again to remove a pin an earlier blocked state left; true when none is left.
+    private func retryForget() async -> Bool {
+        guard let h = hostValue, await h.forgetPending else { return true }
+        await lockRing()
+        do { try await forgetRing() } catch {
+            log("cloud sync: the key ring pin could not be removed")
+            return false
+        }
+        await h.settleForget()
+        return true
+    }
+
+    /// A key-ring or file route answered `account_required` (WIRE-CONTRACT-V5 section 11.5): the machine takes
+    /// the same transition as for a `/sync` 403. `signInUrl` is the answer's, unvetted; it is vetted on the way
+    /// out like every offer. `forSubject` is who was signed in when the call started: the answer is ignored if
+    /// the machine's person is another by now. Never throws into the route that saw it.
+    func accountRequired(signInUrl: String?, forSubject: String?) async {
+        await attach()
+        guard let h = hostValue, await h.isStarted else { return }
+        // A late answer for a person who has gone says nothing about the one signed in now.
+        guard forSubject == subject else { return }
+        await h.accountRequired(signInUrl: signInUrl)
+        await drainEvents()
+        await settle()
+    }
+
     private func purge() async {
         do { try await host().purge() } catch { emit(.purgeFailed) }
     }
@@ -541,7 +655,10 @@ actor CloudSyncApi {
         let left = !leftReasons.isEmpty
         // The root leaves memory before anything else runs.
         var forgotten: Task<Void, Never>?
-        if left && !explicitForget { forgotten = startForget() }
+        // `account_required` keeps the machine as it stands (blocked, partition gone) instead of purging it.
+        let blocked = leftReasons.contains(.accountRequired)
+        let was = subject
+        if left && !explicitForget { forgotten = startForget(keeping: blocked ? .some(was) : nil) }
         let origin = config
         for e in events {
             switch e {
@@ -578,11 +695,29 @@ actor CloudSyncApi {
     }
 
     /// Ring first, then the purge; single-flight so two events never forget twice at once.
-    private func startForget() -> Task<Void, Never> {
+    /// With `keeping` (after `account_required`; the subject the Worker refused) the machine is saved as it
+    /// stands, so its status is still `blocked` after a relaunch; every other leave purges it.
+    private func startForget(keeping refused: String??) -> Task<Void, Never> {
         if let t = forgetTask { return t }
         let t = Task {
-            try? await self.forgetPerson()
-            await self.purge()
+            if let refused {
+                // The ring locks and the saves go first; then the state says the pin is pending before the
+                // pin is tried, so a crash cannot lose that.
+                await self.lockRing()
+                await self.purgeSaves()
+                await self.saveBlocked(refused, pending: true)
+                do {
+                    try await self.forgetRing()
+                    await self.settleForget()
+                } catch {
+                    self.log("cloud sync: the key ring pin could not be removed")
+                }
+            } else {
+                do { try await self.forgetPerson() } catch {
+                    self.log("cloud sync: the key ring pin could not be removed")
+                }
+                await self.purge()
+            }
             self.forgetDone()
         }
         forgetTask = t
@@ -590,6 +725,8 @@ actor CloudSyncApi {
     }
 
     private func forgetDone() { forgetTask = nil }
+
+    private func settleForget() async { await hostValue?.settleForget() }
 
     /// Wait for a forget the machine's events started.
     private func settle() async {

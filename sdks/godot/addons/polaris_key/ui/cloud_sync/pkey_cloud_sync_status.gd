@@ -3,8 +3,10 @@ extends PKeyUiView
 ## A small Cloud Sync status (UI-KITS.md §4.1 CloudSyncStatus; ui-core's `cloud_sync_status_view`):
 ## "Synced 2 minutes ago", "Syncing…", "Offline · changes sync when you reconnect", "Some changes
 ## conflict." (with **Review** where the game handles it) or "Couldn't sync. Try again later."; a
-## sync that failed because nobody is signed in says "You're signed out." and offers **Sign in to
-## sync**, in a neutral tone. A device with no key for the synced data says "Sync is locked." and
+## sync that failed because nobody is signed in says "Sync stopped." and offers **Sign in to
+## sync**, in a neutral tone (an info glyph, a muted label); the action is a button on the label's
+## line when it fits and under the label's start when it does not. With no handler connected to
+## `sign_in_requested`, it opens the addon's own `PKeySignInDialog` over the game. A device with no key for the synced data says "Sync is locked." and
 ## offers **Unlock sync** (`locked`); a changed key says "Your sync key changed." and always offers
 ## **Review** (`ring-changed`), which opens `PKeyRingChange` (the game connects `review_requested`).
 ## While saves move it says so and never says synced: `transferring` ("Syncing saves…" before its
@@ -17,7 +19,8 @@ extends PKeyUiView
 
 ## **Review** was chosen on a conflict.
 signal review_requested()
-## **Sign in to sync** was chosen.
+## **Sign in to sync** was chosen. Connect it to open the game's own sign-in; with nothing connected
+## (and `present_screens` on) the strip opens `PKeySignInDialog` itself.
 signal sign_in_requested()
 ## **Unlock sync** was chosen on a `locked` status: show `PKeyUnlockSync`.
 signal unlock_requested()
@@ -65,6 +68,8 @@ var _save_screen := false
 var _game_can_review := false
 var _card: BoxContainer
 var _glyph: TextureRect
+var _glyph_box: CenterContainer
+var _flow: HFlowContainer
 var _text: Label
 var _figures: Label
 var _bar: ProgressBar
@@ -94,12 +99,28 @@ func _build() -> void:
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_card = columns(card_panel("Card", false), "Body")
 	_card_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Centred in the card, so a strip given more height than its line keeps the row balanced.
+	_card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var row := hbox(_card, "Row")
 	_row = row
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_glyph = glyph_node(row, "Glyph", "info")
-	_text = label(row, "Status", "PKeyMuted")
-	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# The glyph stays on the first line, whatever the action does: its box is that line's height.
+	_glyph_box = CenterContainer.new()
+	_glyph_box.name = "GlyphBox"
+	_glyph_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_glyph_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(_glyph_box)
+	_glyph = glyph_node(_glyph_box, "Glyph", "info")
+	# The words and the action share a flow: the action sits on the label's line when it fits and
+	# wraps under the label's start (not the glyph) when it does not.
+	_flow = HFlowContainer.new()
+	_flow.name = "Flow"
+	_flow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_flow)
+	_text = label(_flow, "Status", "PKeyMuted")
+	_text.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	# The label is the live line: a state change is announced once. The byte figures are their own
 	# label, not live, so an update to them is not.
 	if "accessibility_live" in _text:
@@ -120,13 +141,13 @@ func _build() -> void:
 	_bar.custom_minimum_size = Vector2(0.0, 6.0)
 	_bar.set_meta(FREE_HEIGHT_META, true)
 	_card.add_child(_bar)
-	# A quiet action: the state is what the strip says, the button only a way on.
-	# In a margin of its own, so a failed transfer's Try again can line up with the words.
+	# A quiet action that still reads as a button (the theme's secondary look, never the game's primary).
 	_action_pad = MarginContainer.new()
 	_action_pad.name = "ActionPad"
 	_action_pad.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_card.add_child(_action_pad)
-	_action = button(_action_pad, "Action", _on_action, "PKeyLink")
+	_flow.add_child(_action_pad)
+	_action = button(_action_pad, "Action", _on_action)
+	_action.set_meta(FREE_HEIGHT_META, true)
 
 
 func _ready() -> void:
@@ -298,7 +319,7 @@ func _render() -> void:
 		return
 	var copy: Array = model.get("copy", [])
 	var args := {"time": sync_time}
-	var key := "cloudSync.signedOut" if copy.has("cloudSync.signedOut") else String(copy[0]) if not copy.is_empty() else ""
+	var key := "cloudSync.syncStopped" if copy.has("cloudSync.syncStopped") else String(copy[0]) if not copy.is_empty() else ""
 	var action_key = model.get("decisions", {}).get("primary")
 	var bar := false
 	match st:
@@ -331,7 +352,7 @@ func _render() -> void:
 		else:
 			_hold_still(_bar)
 	_glyph.set_meta(&"pkey_glyph", {
-		"synced": "success", "syncing": "info", "offline": "cloud_off", "conflict": "warning", "error": "warning",
+		"synced": "success", "syncing": "info", "offline": "cloud_off", "conflict": "warning", "error": "info" if _neutral() else "warning",
 		"locked": "lock", "ring-changed": "warning", "transferring": "info", "waiting": "info", "transfer-failed": "warning",
 	}.get(st, "info"))
 	# Waiting for a connection is the offline glyph; power and the app in the background are not offline.
@@ -339,20 +360,33 @@ func _render() -> void:
 		_glyph.set_meta(&"pkey_glyph", "cloud_off")
 
 
+## An error the model says is neutral in tone (nobody is signed in): not a fault, so no warning.
+func _neutral() -> bool:
+	return String(model.get("state", "")) == "error" and String(model.get("decisions", {}).get("tone", "")) == "neutral"
+
+
 func _arrange(m: Dictionary) -> void:
 	_float_strip()
-	# The words keep the whole width; a Review or Sign in action goes under them.
+	# The words keep the whole width; an action goes beside them, or under them when it does not fit.
 	set_columns(_card, false)
 	_action.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	super(m)
-	size_glyph(_glyph, 20.0, get_theme_color("font_color", "PKeyWarning") if state in ["conflict", "error", "ring-changed", "transfer-failed"] else get_theme_color("font_color", "PKeyMuted"))
-	# Try again after a failed transfer lines up with the words, not under the glyph.
-	var indent := 0
-	if state == "transfer-failed":
-		indent = roundi(_glyph.get_combined_minimum_size().x + float(_row.get_theme_constant("separation")))
-	var rtl := _row.is_layout_rtl()
-	_action_pad.add_theme_constant_override("margin_left", 0 if rtl else indent)
-	_action_pad.add_theme_constant_override("margin_right", indent if rtl else 0)
+	var warn := state in ["conflict", "ring-changed", "transfer-failed"] or (state == "error" and not _neutral())
+	size_glyph(_glyph, 20.0, get_theme_color("font_color", "PKeyWarning") if warn else get_theme_color("font_color", "PKeyMuted"))
+	# One line is as tall as the action (at least 44 on a phone), so a state that appears moves nothing.
+	var line := maxf(role("control_height"), 44.0)
+	_action.custom_minimum_size.y = line
+	_text.custom_minimum_size.y = line
+	_glyph_box.custom_minimum_size.y = line
+	var sep := _row.get_theme_constant("separation")
+	_flow.add_theme_constant_override("h_separation", sep)
+	_flow.add_theme_constant_override("v_separation", 0)
+	# The label takes its own width (an autowrapped label has no minimum in a flow); a longer one
+	# takes the room and wraps.
+	var room := minf(role("card_width_wide") - card_padding_x(), room_x()) - _glyph.get_combined_minimum_size().x - float(sep)
+	_text.custom_minimum_size.x = minf(ceilf(text_width(_text, _text.text)) + 2.0, maxf(room, 0.0))
+	_action_pad.add_theme_constant_override("margin_left", 0)
+	_action_pad.add_theme_constant_override("margin_right", 0)
 
 
 func _apply_width(width: float) -> void:
@@ -386,4 +420,21 @@ func _on_action() -> void:
 		"transfer-failed":
 			retry_requested.emit()
 		_:
+			# The game's own handler, when it connected one; else the addon's sign-in over the game.
+			if sign_in_requested.get_connections().is_empty() and host != null:
+				_present_sign_in()
 			sign_in_requested.emit()
+
+
+## The addon's own sign-in over the game, closed when the player is done (the machine follows its
+## own events, so the strip redraws once the sign-in lifts the block).
+func _present_sign_in() -> void:
+	if not present_screens or not is_inside_tree() or host.sdk == null:
+		return
+	_drop_screen()
+	var dialog := PKeySignInDialog.new()
+	dialog.auto_sdk = false
+	dialog.sdk = host.sdk
+	dialog.closed.connect(_drop_screen)
+	_show(dialog)
+	dialog.begin()

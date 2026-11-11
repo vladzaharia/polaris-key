@@ -3,18 +3,30 @@
 // controls open the screen they name when the host does not answer them: given no `onAction`,
 // inside `<PolarisKeyProvider>`, UnlockSync or RingChange opens in the kit's modal dialog over the
 // strip, and focus returns to the control that opened it. A host that passes `onAction` answers them itself.
+// Sign in to sync, given no `onAction`, opens the kit's sign-in form in a sheet over the strip (the
+// sign-in the gate starts); with the SDK reporting `account_required` and no `input.cloudSync`, the
+// strip draws that state itself (syncStatusInput.ts).
 // Review on a pending save conflict opens SaveConflict (its `describe` is passed on);
 // RingChange is for a changed ring. Try again on a failed transfer calls `onRetry`, then `onAction`:
 // the saves hold no bytes to resend, so the app writes again. With neither, Try again is not
 // offered: the strip says the save did not sync until the next write succeeds.
 
-import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { PolarisContext } from "../react/context.js";
 import { kitComponent } from "./kitComponent.js";
 import type { KitProps } from "./component.js";
 import { syncScreen } from "./syncLazy.js";
 import { useBoundSaves, useTransferInput } from "./saveScreens.js";
+import { useSyncStoppedInput } from "./syncStatusInput.js";
 import type {
   RingChangeProps,
   SaveConflictProps,
@@ -25,6 +37,8 @@ const Status = kitComponent("CloudSyncStatus");
 const UnlockSync = syncScreen<UnlockSyncProps>("UnlockSync");
 const RingChange = syncScreen<RingChangeProps>("RingChange");
 const SaveConflict = syncScreen<SaveConflictProps>("SaveConflict");
+// Sign in to sync with no handler of the host's: the kit's own sign-in, in a sheet over the strip.
+const AutoForm = lazy(() => import("./autoForm.js"));
 
 export interface CloudSyncStatusProps extends KitProps {
   /** Try again on a failed transfer: write the save again. */
@@ -33,17 +47,30 @@ export interface CloudSyncStatusProps extends KitProps {
   describe?: SaveConflictProps["describe"];
 }
 
+// Zero height, off the layout: the region is heard, never seen.
+const LIVE = {
+  position: "absolute",
+  inlineSize: 1,
+  blockSize: 0,
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+} as const;
+
 export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
   const { onRetry, describe, ...props } = allProps;
-  const [open, setOpen] = useState<"unlock" | "review" | "save" | null>(null);
+  const [open, setOpen] = useState<
+    "unlock" | "review" | "save" | "signin" | null
+  >(null);
   const sdk = useContext(PolarisContext);
   const saves = useBoundSaves();
   const answers = props.onAction !== undefined || !sdk;
   const close = () => setOpen(null);
   const { theme, className } = props;
   // While a save moves, its transfer states draw over the host's input (K.2T).
+  const stoppedInput = useSyncStoppedInput(props.input);
   const { input, clearFailure, muted } = useTransferInput(
-    props.input,
+    stoppedInput.input,
     onRetry !== undefined || props.onAction !== undefined,
   );
   // The screen opens in the kit's modal dialog over the strip. The control that opened it leaves
@@ -51,6 +78,24 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
   // strip: its Review control when it is asked again, else the strip itself, never the page.
   const strip = useRef<HTMLSpanElement | null>(null);
   const wasOpen = useRef(false);
+  // A status region inserted already filled is often not announced. While the SDK reports Cloud
+  // Sync, an empty live region stays mounted, and "Sync stopped." is written into it when the row
+  // draws. It takes no room.
+  const watching = stoppedInput.watching;
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    const root = strip.current;
+    if (!watching || !root) return;
+    const read = (): void =>
+      setSaid(
+        root.querySelector('[data-key="cloudSync.syncStopped"]')?.textContent ??
+          "",
+      );
+    read();
+    const seen = new MutationObserver(read);
+    seen.observe(root, { childList: true, subtree: true, characterData: true });
+    return () => seen.disconnect();
+  }, [watching]);
   useEffect(() => {
     if (open !== null) {
       wasOpen.current = true;
@@ -64,7 +109,7 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
       if (!root || root.contains(document.activeElement)) return;
       const to =
         root.querySelector<HTMLElement>(
-          '[data-key="common.review"], [data-key="cloudSync.unlock"]',
+          '[data-key="common.review"], [data-key="cloudSync.unlock"], [data-key="cloudSync.signIn"]',
         ) ??
         root.querySelector<HTMLElement>(
           '[data-part="banner"], [data-part="status"], [role]',
@@ -95,6 +140,7 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
             }
             if (answers) return;
             if (a.key === "cloudSync.unlock") setOpen("unlock");
+            else if (a.key === "cloudSync.signIn") setOpen("signin");
             else if (a.key === "common.review")
               setOpen(
                 saves && saves.conflicts().length > 0 ? "save" : "review",
@@ -102,6 +148,11 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
           }}
         />
       </span>
+      {watching ? (
+        <span role="status" data-pk-live="" style={LIVE}>
+          {said}
+        </span>
+      ) : null}
       {open === "unlock" ? (
         <UnlockSync
           theme={theme}
@@ -110,6 +161,21 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
           onCancel={close}
           onUnlocked={close}
         />
+      ) : null}
+      {open === "signin" && sdk ? (
+        <Suspense fallback={null}>
+          <AutoForm
+            adapter={sdk.adapter}
+            seed={null}
+            sheet
+            onBack={close}
+            onFallback={() => {
+              void sdk.adapter.signInWithOidc().catch(() => undefined);
+            }}
+            {...(theme ? { theme } : {})}
+            {...(className ? { className } : {})}
+          />
+        </Suspense>
       ) : null}
       {open === "save" ? (
         <SaveConflict

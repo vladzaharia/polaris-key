@@ -1717,10 +1717,10 @@
       "role": "body",
       "note": "CloudSyncStatus: a small sync status."
     },
-    "cloudSync.signedOut": {
-      "value": "You're signed out.",
+    "cloudSync.syncStopped": {
+      "value": "Sync stopped.",
       "role": "body",
-      "note": "CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it."
+      "note": "CloudSyncStatus: a small sync status. Shown instead of the error line when sync stopped because this device has no signed-in account for it; Sign in to sync sits beside it. Say the sync stopped, not that the person is signed out: the app may still show them as signed in. Not an error."
     },
     "cloudSync.signIn": {
       "value": "Sign in to sync",

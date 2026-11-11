@@ -20,6 +20,7 @@ from typing import Any, Dict
 from ..core.bounded_body import MAX_BODY_BYTES, read_capped_text
 from ..core.context import CoreContext
 from ..core.token import TokenManager
+from .sign_in_url import from_worker_origin
 
 __all__ = ["MAX_RESPONSE_BYTES", "is_sync_path", "send_sync"]
 
@@ -65,6 +66,9 @@ def send_sync(ctx: CoreContext, tokens: TokenManager, req: Dict[str, Any]) -> Di
         ) as res:
             text = read_capped_text(res, MAX_RESPONSE_BYTES)
             status = res.status_code
+            # `account_required` is the Worker's to say: from a redirect target it is an ordinary 403.
+            if status == 403 and not from_worker_origin(res, ctx.base_url):
+                return {"status": 403}
     except Exception:  # noqa: BLE001 - any failure to get an answer is "nothing was processed"
         return _TRANSPORT
     if text is None:

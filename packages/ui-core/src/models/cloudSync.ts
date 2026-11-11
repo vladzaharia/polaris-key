@@ -97,10 +97,12 @@ export function cloudSyncStatusView(
   return makeView(ctx, "CloudSyncStatus", {
     state: sync.state,
     copy: signedOut
-      ? ["cloudSync.signedOut", "cloudSync.signIn"]
+      ? ["cloudSync.syncStopped", "cloudSync.signIn"]
       : [`cloudSync.${sync.state}`, review && "common.review"],
     args: { time: sync.lastSynced },
-    primary: signedOut ? "cloudSync.signIn" : review ? "common.review" : null,
+    // Sign in to sync stays secondary, like Try again: a status inside the host's page never competes
+    // with the host's own primary.
+    primary: review && !signedOut ? "common.review" : null,
     tone: signedOut ? "neutral" : error ? "danger" : null,
     focus: null,
   });

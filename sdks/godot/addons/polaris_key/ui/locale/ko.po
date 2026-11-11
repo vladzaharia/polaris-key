@@ -2112,10 +2112,10 @@ msgstr "일부 변경 사항이 충돌해요."
 msgid "cloudSync.error"
 msgstr "동기화하지 못했어요. 나중에 다시 시도하세요."
 
-#. You're signed out.
-#. CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it.
-msgid "cloudSync.signedOut"
-msgstr "로그아웃된 상태예요."
+#. Sync stopped.
+#. CloudSyncStatus: a small sync status. Shown instead of the error line when sync stopped because this device has no signed-in account for it; Sign in to sync sits beside it. Say the sync stopped, not that the person is signed out: the app may still show them as signed in. Not an error.
+msgid "cloudSync.syncStopped"
+msgstr "동기화가 중단되었습니다."
 
 #. Sign in to sync
 #. CloudSyncStatus: a small sync status. Syncing needs an account.

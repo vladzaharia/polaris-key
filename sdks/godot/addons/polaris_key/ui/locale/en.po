@@ -2117,10 +2117,10 @@ msgstr "Some changes conflict."
 msgid "cloudSync.error"
 msgstr "Couldn't sync. Try again later."
 
-#. You're signed out.
-#. CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it.
-msgid "cloudSync.signedOut"
-msgstr "You're signed out."
+#. Sync stopped.
+#. CloudSyncStatus: a small sync status. Shown instead of the error line when sync stopped because this device has no signed-in account for it; Sign in to sync sits beside it. Say the sync stopped, not that the person is signed out: the app may still show them as signed in. Not an error.
+msgid "cloudSync.syncStopped"
+msgstr "Sync stopped."
 
 #. Sign in to sync
 #. CloudSyncStatus: a small sync status. Syncing needs an account.

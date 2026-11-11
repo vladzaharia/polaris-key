@@ -56,6 +56,20 @@ private struct HoldTransport: PolarisTransport {
     }
 }
 
+/// Marks the answers to `path` as having come from `finalUrl` (an off-origin redirect target).
+private struct OriginTransport: PolarisTransport {
+    let inner: StubTransport
+    let path: String
+    let finalUrl: String
+
+    func send(_ request: PolarisRequest) async throws -> PolarisResponse {
+        let res = try await inner.send(request)
+        guard request.url.path == path else { return res }
+        return PolarisResponse(
+            status: res.status, body: res.body, headers: res.headers, finalUrl: finalUrl, redirected: true)
+    }
+}
+
 final class CloudSyncSettingsTests: XCTestCase {
     private let signer = TestSigner(kid: "sync-kid")
     private var server = StubServer()
@@ -330,7 +344,193 @@ final class CloudSyncSettingsTests: XCTestCase {
         XCTAssertEqual(offers.count, 1)
         XCTAssertEqual(offers.first, .some(nil), "an off-origin URL is never handed to the app")
         XCTAssertNil(try r.roots.load(), "the ring was forgotten")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: stateFile.path))
+        // U-52: the machine is kept as it stands (blocked, the partition gone), not purged.
+        await eventually("the blocked machine was saved") { FileManager.default.fileExists(atPath: stateFile.path) }
+        let status = try await r.client.cloudSync.status()
+        XCTAssertEqual(status.state, .blocked)
+        XCTAssertEqual(status.reason, .accountRequired)
+        let saved = CloudSyncStateFile(stateDir: stateDirURL ?? dir, product: "djdl").load()
+        XCTAssertEqual(saved.persisted?.blocked, .accountRequired)
+        XCTAssertNil(saved.persisted?.partitions[ALICE], "the subject's partition is deleted")
+        XCTAssertEqual(saved.refused, ALICE)
+    }
+
+    func testBlockedSurvivesARelaunchAndOnlyAnotherSubjectLiftsIt() async throws {
+        let first = try await rig()
+        await signIn(first)
+        await serve(first.roots, push403: true)
+        try await first.client.config.set(VOL, .double(0.5))
+        try await first.client.cloudSync.flush()
+        await eventually("blocked") { ((try? await first.client.cloudSync.status().state) ?? .local) == .blocked }
+        await eventually("saved") { FileManager.default.fileExists(atPath: stateFile.path) }
+        await first.client.cloudSyncClose()
+        // A relaunch in the same directory, the identity still holding the refused subject.
+        server = StubServer()
+        let second = try await rig()
+        try await second.client.cloudSync.flush()  // attaches; the held subject is not signed in again
+        let status = try await second.client.cloudSync.status()
+        XCTAssertEqual(status.state, .blocked)
+        XCTAssertEqual(status.reason, .accountRequired)
+        let sent = await server.requests(forPath: "/djdl/sync").count
+        let pushed = await server.requests(forPath: "/djdl/sync/ops").count
+        XCTAssertEqual(sent + pushed, 0, "a blocked device sends nothing")
+        second.client.identity.updateSubject(BOB)
+        await eventually("another subject signs in") {
+            ((try? await second.client.cloudSync.status().state) ?? .blocked) != .blocked
+        }
+    }
+
+    func testASignInThePersonCompletesLiftsTheRefusalAndTheReplayedAccountDoesNot() async throws {
+        let first = try await rig()
+        await signIn(first)
+        await serve(first.roots, push403: true)
+        try await first.client.config.set(VOL, .double(0.5))
+        try await first.client.cloudSync.flush()
+        await eventually("blocked") { ((try? await first.client.cloudSync.status().state) ?? .local) == .blocked }
+        await eventually("saved") { FileManager.default.fileExists(atPath: stateFile.path) }
+        await first.client.cloudSyncClose()
+        server = StubServer()
+        let second = try await rig()
+        try await second.client.cloudSync.flush()  // the account replayed at launch stays refused
+        let replayed = try await second.client.cloudSync.status()
+        XCTAssertEqual(replayed.state, .blocked)
+        // The person signs in again in this run: an identity `signedIn` for the same subject.
+        second.client.identity.notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: ALICE))
+        await eventually("the same subject signs in") {
+            ((try? await second.client.cloudSync.status().state) ?? .blocked) != .blocked
+        }
+        let signedInAs = await second.client.cloudSyncApi.currentSubject()
+        XCTAssertEqual(signedInAs, ALICE, "the refused subject is Cloud Sync's person again")
+    }
+
+    func testAChangedSubjectNamingTheRefusedSubjectIsNotACompletedSignIn() async throws {
+        let first = try await rig()
+        await signIn(first)
+        await serve(first.roots, push403: true)
+        try await first.client.config.set(VOL, .double(0.5))
+        try await first.client.cloudSync.flush()
+        await eventually("blocked") { ((try? await first.client.cloudSync.status().state) ?? .local) == .blocked }
+        await eventually("saved") { FileManager.default.fileExists(atPath: stateFile.path) }
+        await first.client.cloudSyncClose()
+        server = StubServer()
+        let second = try await rig()
+        try await second.client.cloudSync.flush()
+        second.client.identity.notifyIdentity(
+            IdentityChange(kind: IdentityChange.subjectChanged, subject: ALICE, previous: nil))
+        try await Task.sleep(nanoseconds: 300_000_000)
+        let status = try await second.client.cloudSync.status()
+        XCTAssertEqual(status.state, .blocked)
+    }
+
+    func testAStuckPinIsSavedRetriedAtStartAndHoldsTheSignIn() async throws {
+        let stuck = RingRootStore(vault: LockedVault())
+        let first = try await rig(roots: stuck)
+        await signIn(first)
+        await serve(first.roots, push403: true)
+        try await first.client.config.set(VOL, .double(0.5))
+        try await first.client.cloudSync.flush()
+        await eventually("blocked") { ((try? await first.client.cloudSync.status().state) ?? .local) == .blocked }
+        await eventually("saved with the pin pending") {
+            CloudSyncStateFile(stateDir: stateDirURL ?? dir, product: "djdl").load().forgetPending
+        }
+        await first.client.cloudSyncClose()
+
+        // A relaunch with the pin still stuck: start retries and fails; another person's sign-in waits.
+        server = StubServer()
+        let second = try await rig(roots: RingRootStore(vault: LockedVault()))
+        try await second.client.cloudSync.flush()
+        second.client.identity.notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: BOB))
+        try await Task.sleep(nanoseconds: 300_000_000)
+        let held = try await second.client.cloudSync.status()
+        XCTAssertEqual(held.state, .blocked)
+        let reqs = await server.requests(forPath: "/djdl/sync").count
+        let ops = await server.requests(forPath: "/djdl/sync/ops").count
+        XCTAssertEqual(reqs + ops, 0, "the held sign-in sent nothing")
+        XCTAssertTrue(CloudSyncStateFile(stateDir: stateDirURL ?? dir, product: "djdl").load().forgetPending)
+        await second.client.cloudSyncClose()
+
+        // The pin goes: start clears the flag and the sign-in is accepted.
+        server = StubServer()
+        let third = try await rig()
+        try await third.client.cloudSync.flush()
+        XCTAssertFalse(CloudSyncStateFile(stateDir: stateDirURL ?? dir, product: "djdl").load().forgetPending)
+        third.client.identity.notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: BOB))
+        await eventually("the held person signs in") {
+            ((try? await third.client.cloudSync.status().state) ?? .blocked) != .blocked
+        }
+    }
+
+    func testAPinThatGoesAtOnceLeavesNoPendingFlag() async throws {
+        let r = try await rig()
+        await signIn(r)
+        await serve(r.roots, push403: true)
+        try await r.client.config.set(VOL, .double(0.5))
+        try await r.client.cloudSync.flush()
+        await eventually("blocked") { ((try? await r.client.cloudSync.status().state) ?? .local) == .blocked }
+        await eventually("the pin pending flag settled") {
+            let saved = CloudSyncStateFile(stateDir: stateDirURL ?? dir, product: "djdl").load()
+            return saved.persisted?.blocked == .accountRequired && !saved.forgetPending
+        }
+    }
+
+    func testALateKeyRingAnswerForThePersonWhoHasGoneDoesNotBlockTheNewOne() async throws {
+        let hold = HoldTransport(
+            inner: server.transport,
+            holdFor: { $0.url.path == "/djdl/devices/keyring" ? 0.5 : nil }, hits: LockedValue<Int>(0))
+        let r = try await rig(transport: hold)
+        await signIn(r)
+        await server.route("/djdl/devices/keyring") { _ in
+            StubServer.Reply(status: 403, body: #"{"error":{"code":"account_required","signInUrl":"/djdl/signin"}}"#)
+        }
+        let call = Task { try? await r.client.keyring.read() }
+        try await Task.sleep(nanoseconds: 150_000_000)  // the call is out
+        await serve(r.roots, subject: BOB)
+        r.client.identity.notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: BOB))
+        await eventually("bob is signed in") { await r.client.cloudSyncApi.currentSubject() == BOB }
+        _ = await call.value
+        try await Task.sleep(nanoseconds: 200_000_000)
+        let status = try await r.client.cloudSync.status()
+        XCTAssertNotEqual(status.state, .blocked)
+        let subject = await r.client.cloudSyncApi.currentSubject()
+        XCTAssertEqual(subject, BOB)
+    }
+
+    func testAKeyRingAccountRequiredFromAnotherOriginIsAnOrdinary403() async throws {
+        let r = try await rig(
+            transport: OriginTransport(
+                inner: server.transport, path: "/djdl/devices/keyring", finalUrl: "https://evil.example/r"))
+        await signIn(r)
+        await server.route("/djdl/devices/keyring") { _ in
+            StubServer.Reply(status: 403, body: #"{"error":{"code":"account_required","signInUrl":"/djdl/signin"}}"#)
+        }
+        do {
+            _ = try await r.client.keyring.read()
+            XCTFail("the ring route refuses")
+        } catch let e as PolarisError { XCTAssertEqual(e.code, ErrorCode.forbidden) }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        let status = try await r.client.cloudSync.status()
+        XCTAssertNotEqual(status.state, .blocked)
+    }
+
+    func testAKeyRingAccountRequiredBlocksCloudSyncToo() async throws {
+        let r = try await rig()
+        await signIn(r)
+        await server.route("/djdl/devices/keyring") { _ in
+            StubServer.Reply(status: 403, body: #"{"error":{"code":"account_required","signInUrl":"/djdl/signin"}}"#)
+        }
+        do {
+            _ = try await r.client.keyring.read()
+            XCTFail("the ring route refuses")
+        } catch let e as PolarisError { XCTAssertEqual(e.code, ErrorCode.accountRequired) }
+        await eventually("blocked") { ((try? await r.client.cloudSync.status().state) ?? .local) == .blocked }
+        await eventually("signed-out offer") {
+            r.events.all.contains { if case .signInOffered = $0 { return true } else { return false } }
+        }
+        let offers = r.events.all.compactMap { e -> String?? in
+            if case .signInOffered(let u) = e { return .some(u) } else { return nil }
+        }
+        XCTAssertEqual(offers.first, .some("https://key.example/djdl/signin"), "the path is vetted onto the origin")
+        XCTAssertNil(try r.roots.load(), "the ring was forgotten")
     }
 
     func testTheSignInUrlCheck() {
@@ -455,4 +655,5 @@ final class CloudSyncSettingsTests: XCTestCase {
 
 extension PolarisKeyClient {
     fileprivate func cloudSyncFlush() async { _ = try? await cloudSync.flush() }
+    fileprivate func cloudSyncClose() async { await cloudSyncApi.hostIfStarted()?.close() }
 }

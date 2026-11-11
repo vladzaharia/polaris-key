@@ -311,6 +311,73 @@ class CloudSyncHostTest {
     }
 
     @Test
+    fun anAnswerForARequestTheMachineAbandonedIsDroppedWhole() = runBlocking {
+        val r = Rig()
+        r.signIn("sub_alice")
+        val m = r.host.withMachine { it }
+        val newCatalog = """{"encryption":"server","cursor":1,"serverNow":1760000000000,"catalogVersion":7}"""
+        // The probe: a pull that names another catalog version is followed by a refetch once the rate limit is past.
+        r.now += CATALOG_REFETCH_MS * 2
+        r.answer = { SyncResponse(200, j(newCatalog)) }
+        r.host.touch()
+        assertEquals("the probe: a normal answer refetches", 2, r.schemaFetches)
+        // Abandoned while out (account_required on a key ring route): the answer is not read, and nothing follows it.
+        r.now += CATALOG_REFETCH_MS * 2
+        r.host.withMachine { it.refresh() }
+        r.answer = {
+            m.accountRequired("https://key.example/signin")
+            SyncResponse(200, j(newCatalog))
+        }
+        r.host.withMachine { it.set("audio.volume", JsonPrimitive(2)) }
+        r.host.withMachine { it.flush() }
+        r.host.touch()
+        assertEquals("no refetch for the dropped answer", 2, r.schemaFetches)
+        assertNull(r.host.withMachine { it.subject })
+        assertEquals("account_required", r.host.withMachine { it.status().reason })
+        r.host.close()
+    }
+
+    @Test
+    fun aBlockedMachineIsSavedAsItStandsAndTheRefusedSubjectSurvivesARelaunch() = runBlocking {
+        val dir = tmp.newFolder()
+        val r = Rig(dir = dir)
+        r.signIn("sub_alice")
+        r.host.touch()
+        r.host.withMachine { it.accountRequired(null) }
+        r.host.saveBlocked("sub_alice")
+        val saved = CloudSyncStateFile(dir, "demo").load()
+        assertEquals("sub_alice", saved.refused)
+        r.host.close()
+        val again = Rig(dir = dir)
+        runBlocking { again.host.start() }
+        assertEquals("sub_alice", again.host.refusedSubject())
+        assertEquals(im.plrs.key.core.sync.SyncState.Blocked, again.host.withMachine { it.status().state })
+        assertTrue(again.sent.none { it["method"] == JsonPrimitive("POST") })
+        again.host.purge()
+        assertNull("a purge lifts it", again.host.refusedSubject())
+        again.host.close()
+    }
+
+    @Test
+    fun aFailedRewriteOfTheBlockedStateRemovesTheFileAndKeepsTheRefusalInMemory() = runBlocking {
+        val dir = tmp.newFolder()
+        val r = Rig(dir = dir)
+        r.signIn("sub_alice")
+        r.host.touch()
+        assertTrue("the signed-in snapshot is on disk", File(dir, CLOUD_SYNC_FILE).exists())
+        r.host.withMachine { it.accountRequired(null) }
+        failSaves = true
+        try {
+            r.host.saveBlocked("sub_alice")
+        } finally {
+            failSaves = false
+        }
+        assertFalse("the old file with the snapshot is gone", File(dir, CLOUD_SYNC_FILE).exists())
+        assertEquals("sub_alice", r.host.refusedSubject())
+        r.host.close()
+    }
+
+    @Test
     fun h10ALockedRingSendsAndPullsNothingAndTheHostAddsNoRequest() = runBlocking {
         val r = Rig(encryption = "e2e")
         r.codec.isLocked = true

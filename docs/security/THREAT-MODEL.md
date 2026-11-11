@@ -9003,6 +9003,34 @@ the system transfer service for the task's life; the SDK cancels tasks older tha
 relaunch and all of them at sign-out. While the app is suspended, a ranged read is bounded only by
 the task's end.
 
+### Cloud Sync after a per-product removal: T34 (U-52)
+
+When the Worker takes a person's account away (`403 account_required`, from `/sync`, a key-ring route or a
+file route), a device keeps its state as it stands: the subject's partition (pending edits, snapshot, cursor,
+`clientId`, E2E bookkeeping) is deleted whole, the key ring's root is dropped and its pin forgotten, the status
+stays `blocked` across a relaunch, and "Sign in to sync" is offered. The code is unsigned, so this section is
+about a forged one.
+
+- **T34, a forged `account_required`.** Forging it takes TLS interception, a trusted-root proxy or a
+  compromised Worker. Controls: the answer counts only when the Worker's own origin sent it (a redirected,
+  opaque or off-origin 403 is an ordinary 403) and, from a key-ring or file route, only for the person signed in
+  when that call started (a late answer for a person who has gone says nothing about the one signed in now); the
+  offered `signInUrl` passes one rule in every SDK (https on the Worker's origin; no userinfo, backslash, control
+  or non-ASCII character; a trailing dot and a lookalike host fail; pinned by the corpus's `signInUrlCases`), so it
+  never sends the person to another origin; nothing is written to licence state or to the server; the refused
+  subject is signed in again only by a sign-in the person completes, never by the cached one replayed at launch;
+  a pin that could not be removed is saved with the blocked state, retried at start and before any sign-in, and
+  the sign-in waits for it; if the blocked state cannot be rewritten the old file (which holds the snapshot in the
+  clear) is removed and the refusal is kept in memory for the run. Effects, by design: the edits not yet pushed
+  are lost (D2), the snapshot is dropped (the next pull restores it), the root is locked and `sealedKeys` restart
+  as on a new device, and "Sign in to sync" shows. The root comes back through the wrap from another device, the
+  recovery code or a platform backup; a Godot desktop build has no platform backup, so there it is the wrap and the
+  recovery code. Residual, and it is the one that matters: forgetting the pin also resets the device's E2E ring pin,
+  so for a Worker or TLS adversary the next ring read is first-contact trust on demand, as on a new device (T21's
+  key substitution applies from then on; the wrap and the recovery code still need the person's other devices or
+  code). The platform backup stays (D3), a device that never comes online keeps its root (T22), and a same-origin
+  tab or process can still report it. A notice "your encryption was reset" is not built.
+
 ### The account override layer (U-03, U-27)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the

@@ -683,30 +683,33 @@ function inline(c: RenderCtx, layout: Layout): TemplateResult {
   const order = layout.meta ?? [];
   const meta = [...p.meta].sort((a, b) => order.indexOf(a) - order.indexOf(b));
   const lines = [...p.titles, ...meta, ...p.body];
+  const sync = c.view.component === "CloudSyncStatus";
+  const body = html`${lines.map(
+    (k, i) =>
+      html`<span
+        class=${p.titles.includes(k) ? "label" : ""}
+        data-key=${k}
+        role=${sync && i === 0 ? "status" : nothing}
+        >${text(c, k)}</span
+      >`,
+  )}
+  ${progressFor(c)} ${a11yOnly(c)}
+  ${p.controls.map((k) =>
+    button(c, k, k === c.view.decisions.primary ? "primary" : "secondary"),
+  )}
+  ${links(c, p.links)}`;
+  // The Cloud Sync strip keeps its glyph with the label and wraps the action under the label's
+  // start (one 44 px line either way), so a state that appears does not move the page.
   return html`<div
     class="inline-status"
     part="status"
     data-part="status"
     data-status=${statusOf(c.view)}
-    role=${c.view.component === "CloudSyncStatus" ? nothing : "status"}
+    data-grouped=${sync ? "" : nothing}
+    role=${sync ? nothing : "status"}
   >
     ${statusGlyph(c.view)}
-    ${lines.map(
-      (k, i) =>
-        html`<span
-          class=${p.titles.includes(k) ? "label" : ""}
-          data-key=${k}
-          role=${c.view.component === "CloudSyncStatus" && i === 0
-            ? "status"
-            : nothing}
-          >${text(c, k)}</span
-        >`,
-    )}
-    ${progressFor(c)} ${a11yOnly(c)}
-    ${p.controls.map((k) =>
-      button(c, k, k === c.view.decisions.primary ? "primary" : "secondary"),
-    )}
-    ${links(c, p.links)}
+    ${sync ? html`<div class="inline-body">${body}</div>` : body}
   </div>`;
 }
 

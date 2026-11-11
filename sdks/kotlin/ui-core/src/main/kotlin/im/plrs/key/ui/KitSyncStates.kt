@@ -31,7 +31,7 @@ internal fun cloudSyncStatusScreen(inputs: KitInputs): KitScreen {
     val signedOut = known == "error" && sync.boolean("signedIn") == false
     val review = known == "conflict" && sync.boolean("canReview") == true
     val head = when {
-        signedOut -> listOf(context.line("cloudSync.signedOut"), context.line("cloudSync.signIn"))
+        signedOut -> listOf(context.line("cloudSync.syncStopped"), context.line("cloudSync.signIn"))
         known == "synced" -> listOf(context.line("cloudSync.synced", mapOf("time" to CopyArgument.Text(sync.string("lastSynced").orEmpty()))))
         else -> listOf(context.line("cloudSync.$known"))
     }

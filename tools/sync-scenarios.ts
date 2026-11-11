@@ -50,10 +50,24 @@
 // listed and no event fires. The new scenarios use CONFLICT_CATALOG, which declares no `resolve`.
 // Every v4 row and expectation is unchanged.
 //
+// Version 6 (U-52; WIRE-CONTRACT-V5 §11.5 "Sign-in and sign-out", §13.1) is what a device does on
+// `account_required`: the subject's partition is deleted whole (the pending edits go with it, as
+// every host already does), the root is forgotten, no trigger sends anything until a sign-in, and
+// the status stays `blocked` / `account_required` across a relaunch. The same code from a key-ring
+// or file route reaches the machine through the new `accountRequired` call (args `[signInUrl]`).
+// Four scenarios are new (`account-required-discards-partition`, `e2e-account-required-drops-root`,
+// `e2e-locked-account-required-from-keyring`, `account-required-drops-merge-request`) and two
+// change (`account-required-on-push`, `relink-clears-binding`): the journal no longer holds the
+// subject's partition after the 403. A fifth scenario, `account-required-same-subject-signs-in-again`,
+// pins the way back: a relaunch stays blocked and a sign-in as the same subject is accepted (a host
+// skips the subject it replays at launch, and lifts its own refusal on a sign-in the person completes
+// in the run). `signInUrlCases` is a new section: the one sign-in URL rule every host applies, with
+// each case's expected accept (and normalised URL) or refusal. Every other v5 row is unchanged.
+//
 // Append-only: a scenario's expectations never change under the same `syncScenariosVersion`;
 // a vocabulary or expectation change bumps it.
 
-export const SYNC_SCENARIOS_VERSION = 5;
+export const SYNC_SCENARIOS_VERSION = 6;
 
 type J = null | boolean | number | string | J[] | { [k: string]: J };
 type Obj = { [k: string]: J };
@@ -82,6 +96,7 @@ const CALLS = [
   "flush",
   "refresh",
   "delete",
+  "accountRequired",
 ] as const;
 
 const ASSERTS = [
@@ -180,6 +195,12 @@ const RULES: { id: string; title: string; ref: string }[] = [
     title:
       "403 account_required leaves licence state untouched, keeps values local and offers sign-in",
     ref: "plans/U-01.md §2.1; S-17 §5.4",
+  },
+  {
+    id: "account-required-forgets",
+    title:
+      "403 account_required, from any route, discards the subject's partition and the root, sends nothing until a sign-in, and stays blocked across a relaunch",
+    ref: "plans/U-51-U-52.md §2; WIRE-CONTRACT-V5 §11.5",
   },
   {
     id: "principal-change",
@@ -370,6 +391,7 @@ const FLOOR = "000000000000:0000";
 const ALICE = "sub_alice";
 const BOB = "sub_bob";
 const ZED = "sub_zed";
+const ALICE_NEW = "sub_alice_new";
 
 const hlc = (ms: number, counter = 0): string =>
   `${ms.toString(16).padStart(12, "0")}:${counter.toString(16).padStart(4, "0")}`;
@@ -925,6 +947,41 @@ function started(cursor: number, changes: Obj[] = [], clientId = C1): Obj[] {
   return [
     assert({ requests: [pullReq(0, clientId)], status: st("syncing", 0) }),
     respond(pullBody({ serverNow: T0, cursor, changes })),
+  ];
+}
+
+/** A pull, a set of the volume and its push, which the Worker answers with `403 account_required`. */
+function pushRefusedAccountRequired(): Obj[] {
+  return [
+    ...started(2, [change(VOL, 0.5, 2, hlc(T0 - 1000))]),
+    local("set", [VOL, 0.6]),
+    advance(2000),
+    assert({
+      requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
+      events: [changed([VOL], "remote"), changed([VOL], "local")],
+    }),
+    respond(ACCOUNT_REQUIRED, 403),
+  ];
+}
+
+/** After the 403 above and a blocked-time edit of 0.4: the sign-in sends only that edit, as
+ *  mutationId 1 under the second clientId, and the cloud takes it. */
+function signInSendsBlockedEdit(): Obj[] {
+  return [
+    signIn(ALICE),
+    assert({
+      requests: [pushReq(C2, 0, [set(1, VOL, 0.4, hlc(T0 + 2000))])],
+      status: st("syncing", 1),
+    }),
+    respond(
+      pushBody({
+        serverNow: T0 + 4000,
+        cursor: 3,
+        lastMutationId: 1,
+        results: [ok(1, 3)],
+        changes: [change(VOL, 0.4, 3, hlc(T0 + 2000))],
+      }),
+    ),
   ];
 }
 
@@ -1725,28 +1782,20 @@ function scenarios(): Scenario[] {
   add({
     name: "account-required-on-push",
     description:
-      "403 account_required on a push is handled like sign-out: licence state untouched, the pending operation kept in the partition, values local, sign-in offered.",
-    rules: ["account-required", "principal-change"],
+      "403 account_required on a push discards the subject's partition with its pending operation: licence state untouched, values local, sign-in offered. Only an edit made while blocked is sent after the next sign-in, under a new clientId.",
+    rules: ["account-required", "account-required-forgets", "principal-change"],
     init: init(),
     steps: [
-      ...started(2, [change(VOL, 0.5, 2, hlc(T0 - 1000))]),
-      local("set", [VOL, 0.6]),
-      advance(2000),
-      assert({
-        requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
-        events: [changed([VOL], "remote"), changed([VOL], "local")],
-      }),
-      respond(ACCOUNT_REQUIRED, 403),
+      ...pushRefusedAccountRequired(),
       assert({
         events: [
           signedOut("accountRequired", 1),
-          unsynced(1),
           changed([VOL], "remote"),
           { type: "signInOffered", signInUrl: SIGN_IN_URL },
         ],
         licence: LICENCE,
         values: { [VOL]: val(0.8, "document") },
-        journal: { [ALICE]: partition(C1, 2, 0, [set(1, VOL, 0.6, hlc(T0))]) },
+        journal: {},
         status: st("blocked", 0, "account_required"),
       }),
       local("set", [VOL, 0.4]),
@@ -1756,25 +1805,7 @@ function scenarios(): Scenario[] {
         values: { [VOL]: val(0.4, "device") },
         licence: LICENCE,
       }),
-      signIn(ALICE),
-      assert({
-        requests: [
-          pushReq(C1, 0, [
-            set(1, VOL, 0.6, hlc(T0)),
-            set(2, VOL, 0.4, hlc(T0 + 2000)),
-          ]),
-        ],
-        status: st("syncing", 2),
-      }),
-      respond(
-        pushBody({
-          serverNow: T0 + 4000,
-          cursor: 4,
-          lastMutationId: 2,
-          results: [ok(1, 3), ok(2, 4)],
-          changes: [change(VOL, 0.4, 4, hlc(T0 + 2000))],
-        }),
-      ),
+      ...signInSendsBlockedEdit(),
       assert({ values: { [VOL]: val(0.4, "cloud") }, status: st("idle", 0) }),
     ],
   });
@@ -1782,8 +1813,8 @@ function scenarios(): Scenario[] {
   add({
     name: "relink-clears-binding",
     description:
-      "A relink that cleared the device's binding answers the start-up pull with account_required; values stay local and a document refresh does not lift it.",
-    rules: ["account-required", "principal-change"],
+      "A relink that cleared the device's binding answers the start-up pull with account_required; the subject's partition is gone, values stay local and a document refresh does not lift it.",
+    rules: ["account-required", "account-required-forgets", "principal-change"],
     init: init(),
     steps: [
       assert({ requests: [pullReq(0, C1)] }),
@@ -1803,7 +1834,6 @@ function scenarios(): Scenario[] {
         requests: [],
         values: { [VOL]: val(0.6, "device") },
         journal: {
-          [ALICE]: partition(C1, 1, 0, []),
           local: { settings: { [VOL]: { value: 0.6, editedHlc: hlc(T0) } } },
         },
         licence: LICENCE,
@@ -4380,7 +4410,336 @@ function scenarios(): Scenario[] {
     ],
   });
 
+  // ── version 6 (U-52; WIRE-CONTRACT-V5 §11.5) ────────────────────────────────────────────────
+  const addV6 = (sc: Omit<Scenario, "wp">): void => {
+    s.push({ ...sc, wp: "U-52" });
+  };
+  const SIGNED_OUT_OFFER = (unsyncedCount: number, changes: Obj[]): Obj[] => [
+    signedOut("accountRequired", unsyncedCount),
+    ...changes,
+    { type: "signInOffered", signInUrl: SIGN_IN_URL },
+  ];
+  const BLOCKED = st("blocked", 0, "account_required");
+  /** A push refused with account_required, and the blocked state it leaves. */
+  const refusedAndBlocked = (): Obj[] => [
+    ...pushRefusedAccountRequired(),
+    assert({
+      events: SIGNED_OUT_OFFER(1, [changed([VOL], "remote")]),
+      journal: {},
+      status: BLOCKED,
+    }),
+  ];
+
+  addV6({
+    name: "account-required-discards-partition",
+    description:
+      "A 403 account_required on a push deletes the subject's partition, pending edit included. Nothing is sent on any trigger or across a relaunch while blocked, the status stays blocked, and the next sign-in sends only the edit made meanwhile, as mutationId 1 under a new clientId.",
+    rules: ["account-required", "account-required-forgets", "relaunch"],
+    init: init(),
+    steps: [
+      ...refusedAndBlocked(),
+      local("set", [VOL, 0.4]),
+      advance(2000),
+      assert({
+        requests: [],
+        events: [changed([VOL], "local")],
+        values: { [VOL]: val(0.4, "device") },
+        status: st("blocked", 0, "account_required"),
+      }),
+      local("flush"),
+      assert({ requests: [] }),
+      local("refresh"),
+      assert({ requests: [], status: BLOCKED }),
+      network("offline"),
+      network("online"),
+      assert({ requests: [], status: BLOCKED }),
+      { relaunch: {} },
+      assert({
+        requests: [],
+        values: { [VOL]: val(0.4, "device") },
+        journal: {
+          local: {
+            settings: { [VOL]: { value: 0.4, editedHlc: hlc(T0 + 2000) } },
+          },
+        },
+        licence: LICENCE,
+        status: BLOCKED,
+      }),
+      ...signInSendsBlockedEdit(),
+      assert({
+        values: { [VOL]: val(0.4, "cloud") },
+        journal: { [ALICE]: partition(C2, 2, 3, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV6({
+    name: "e2e-account-required-drops-root",
+    description:
+      "In E2E mode a 403 account_required also takes the root away, and a relaunch does not give it back: the status stays blocked. After a sign-in the device is locked until the ring's root arrives; the pull then starts at cursor 0 under a new clientId, and an empty cloud receives the edit made while blocked.",
+    rules: ["account-required-forgets", "e2e-locked", "relaunch"],
+    init: e2e({ hasRoot: true }),
+    steps: [
+      assert({ requests: [pullReq(0, C1)], status: st("syncing", 0) }),
+      respond(ACCOUNT_REQUIRED, 403),
+      assert({
+        events: SIGNED_OUT_OFFER(0, []),
+        journal: {},
+        status: BLOCKED,
+      }),
+      { relaunch: {} },
+      assert({ requests: [], journal: {}, status: BLOCKED }),
+      local("set", [VOL, 0.5], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [],
+        values: { [VOL]: val(0.5, "device") },
+        status: BLOCKED,
+      }),
+      signIn(ALICE_NEW),
+      assert({
+        requests: [],
+        journal: {
+          [ALICE_NEW]: partition(C2, 2, 0, [
+            j(set(1, VOL, 0.5, hlc(T0)), { moved: true }),
+          ]),
+        },
+        status: st("locked", 1, "keyring"),
+      }),
+      root(true),
+      assert({ requests: [pullReq(0, C2)], status: st("syncing", 1) }),
+      respond(e2eBody({ subject: ALICE_NEW, serverNow: T0 + 2000, cursor: 0 })),
+      assert({
+        requests: [pushReq(C2, 0, [set(1, VOL, 0.5, hlc(T0))])],
+        status: st("syncing", 1),
+      }),
+      respond(
+        e2eBody({
+          subject: ALICE_NEW,
+          serverNow: T0 + 2000,
+          cursor: 1,
+          lastMutationId: 1,
+          results: [ok(1, 1)],
+          changes: [change(VOL, 0.5, 1, hlc(T0))],
+        }),
+        200,
+        sealed(1),
+      ),
+      assert({
+        values: { [VOL]: val(0.5, "cloud") },
+        journal: { [ALICE_NEW]: partition(C2, 2, 1, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV6({
+    name: "e2e-locked-account-required-from-keyring",
+    description:
+      "A locked device sends nothing to /sync, so account_required can reach it from the ring's route instead: the host reports it with the accountRequired call and the machine does what a 403 does. The edit made while locked is counted and discarded, and the status is blocked.",
+    rules: ["account-required-forgets", "e2e-locked"],
+    init: e2e({ hasRoot: false }),
+    steps: [
+      local("set", [VOL, 0.2], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [],
+        events: [changed([VOL], "local")],
+        values: { [VOL]: val(0.2, "pending") },
+        status: st("locked", 1, "keyring"),
+      }),
+      local("accountRequired", [SIGN_IN_URL]),
+      assert({
+        requests: [],
+        events: SIGNED_OUT_OFFER(1, [changed([VOL], "remote")]),
+        values: { [VOL]: val(0.8, "document") },
+        journal: {},
+        licence: LICENCE,
+        status: BLOCKED,
+      }),
+      local("flush"),
+      advance(10_000),
+      assert({ requests: [], status: BLOCKED }),
+    ],
+  });
+
+  addV6({
+    name: "account-required-drops-merge-request",
+    description:
+      "An open MergeRequest is part of the partition: a 403 account_required drops it, counts it among the unsynced edits, and leaves no conflict listed.",
+    rules: ["account-required-forgets", "merge-request-open"],
+    init: init({ catalog: CONFLICT_CATALOG }),
+    steps: [
+      ...opened(),
+      assert(openAsserts),
+      network("offline"),
+      advance(1000),
+      network("online"),
+      assert({ requests: [pullReq(10, C1)], status: stc("syncing", 0, 1) }),
+      respond(ACCOUNT_REQUIRED, 403),
+      assert({
+        requests: [],
+        conflicts: [],
+        events: SIGNED_OUT_OFFER(1, []),
+        journal: {},
+        status: BLOCKED,
+      }),
+    ],
+  });
+
+  addV6({
+    name: "account-required-same-subject-signs-in-again",
+    description:
+      "After a 403 account_required the same subject comes back: a relaunch still sends nothing and stays blocked (the host skips the cached subject it replays at launch), and a sign-in the person completes in this run as that same subject is accepted: the pull starts at cursor 0 under a new clientId and the device is idle again.",
+    rules: ["account-required", "account-required-forgets", "relaunch"],
+    init: init(),
+    steps: [
+      ...refusedAndBlocked(),
+      { relaunch: {} },
+      assert({ requests: [], journal: {}, status: BLOCKED }),
+      local("flush"),
+      advance(10_000),
+      assert({ requests: [], status: BLOCKED }),
+      signIn(ALICE),
+      assert({ requests: [pullReq(0, C2)], status: st("syncing", 0) }),
+      respond(pullBody({ subject: ALICE, serverNow: T0 + 12_000, cursor: 0 })),
+      assert({ status: st("idle", 0) }),
+    ],
+  });
+
   return s;
+}
+
+// ── signInUrlCases: the one sign-in URL rule every host applies (U-52) ─────────────────────────
+//
+// `safeSignInUrl(url, origin)`: the URL the Worker offered, or null. The rule, written so that no
+// URL library is needed (the output is by construction the same in every language):
+//   - `origin` is `https://host` or `https://host:port`; anything else answers null;
+//   - null, empty, any character outside 0x21..0x7E (control, space, DEL, C1, non-ASCII) or a
+//     backslash answers null;
+//   - `https://` (any case) or `//` start an authority, read up to the first `/`, `?` or `#`; the
+//     authority, lower-cased, must be exactly the origin's host, with the port written only when it
+//     is not 443 (`host:443` is the same as `host` for a 443 origin); userinfo, a trailing dot, an
+//     empty port, a punycode or Unicode lookalike and any other port all fail that comparison;
+//   - any other `scheme:` prefix (`http:`, `javascript:`, `data:`, `https:` without the slashes)
+//     answers null;
+//   - everything else is a path on the origin, rooted with `/` when it is not already;
+//   - the answer is `https://host[:port]` plus the path, query and fragment as written; an empty
+//     path becomes `/`. Dot segments and escapes are not rewritten; there is no path restriction.
+interface SignInUrlCase {
+  name: string;
+  origin: string;
+  url: string | null;
+  /** The normalised answer, or null for a refusal. */
+  expect: string | null;
+}
+
+function signInUrlCases(): SignInUrlCase[] {
+  const O = "https://key.plrs.im";
+  const P = "https://key.plrs.im:8443";
+  const row = (
+    name: string,
+    url: string | null,
+    expect: string | null,
+    origin = O,
+  ): SignInUrlCase => ({ name, origin, url, expect });
+  return [
+    row("path", "/signin", "https://key.plrs.im/signin"),
+    row(
+      "path-query-fragment",
+      "/signin?product=demo&x=1#top",
+      "https://key.plrs.im/signin?product=demo&x=1#top",
+    ),
+    row("path-not-rooted", "signin", "https://key.plrs.im/signin"),
+    row("query-only", "?product=demo", "https://key.plrs.im/?product=demo"),
+    row(
+      "absolute-same-origin",
+      "https://key.plrs.im/signin?product=demo",
+      "https://key.plrs.im/signin?product=demo",
+    ),
+    row("absolute-no-path", "https://key.plrs.im", "https://key.plrs.im/"),
+    row(
+      "absolute-query-no-path",
+      "https://key.plrs.im?a=1",
+      "https://key.plrs.im/?a=1",
+    ),
+    row(
+      "absolute-upper-case",
+      "HTTPS://KEY.PLRS.IM/Signin",
+      "https://key.plrs.im/Signin",
+    ),
+    row(
+      "absolute-default-port",
+      "https://key.plrs.im:443/x",
+      "https://key.plrs.im/x",
+    ),
+    row(
+      "scheme-relative-same-host",
+      "//key.plrs.im/x",
+      "https://key.plrs.im/x",
+    ),
+    row(
+      "any-path-deep",
+      "/a/b/../c/%2e/d",
+      "https://key.plrs.im/a/b/../c/%2e/d",
+    ),
+    row("origin-port-path", "/x", "https://key.plrs.im:8443/x", P),
+    row(
+      "origin-port-absolute",
+      "https://key.plrs.im:8443/x",
+      "https://key.plrs.im:8443/x",
+      P,
+    ),
+    row("origin-port-default-refused", "https://key.plrs.im/x", null, P),
+    row("origin-port-other-refused", "https://key.plrs.im:9443/x", null, P),
+    row(
+      "origin-443-written",
+      "/x",
+      "https://key.plrs.im/x",
+      "https://key.plrs.im:443",
+    ),
+    row("null", null, null),
+    row("empty", "", null),
+    row("http", "http://key.plrs.im/x", null),
+    row("other-host", "https://evil.example/x", null),
+    row("suffix-host", "https://key.plrs.im.evil.example/x", null),
+    row("prefix-host", "https://evilkey.plrs.im/x", null),
+    row("subdomain", "https://a.key.plrs.im/x", null),
+    row("other-port", "https://key.plrs.im:444/x", null),
+    row("empty-port", "https://key.plrs.im:/x", null),
+    row("zero-padded-port", "https://key.plrs.im:0443/x", null),
+    row("userinfo", "https://user@key.plrs.im/x", null),
+    row("userinfo-password", "https://user:pw@key.plrs.im/x", null),
+    row("userinfo-host-trick", "https://key.plrs.im@evil.example/x", null),
+    row("userinfo-host-first", "https://evil.example@key.plrs.im/x", null),
+    row("userinfo-port-trick", "https://key.plrs.im:443@evil.example/x", null),
+    row("backslash-after-host", "https://key.plrs.im\\@evil.example/", null),
+    row("backslash-path", "/\\evil.example", null),
+    row("backslash-leading", "\\\\evil.example\\x", null),
+    row("trailing-dot", "https://key.plrs.im./x", null),
+    row("punycode-lookalike", "https://xn--key-plrs.im/x", null),
+    row("unicode-lookalike", "https://k\u0435y.plrs.im/x", null),
+    row("percent-encoded-dot", "https://key%2eplrs.im/x", null),
+    row("scheme-relative-other-host", "//evil.example/x", null),
+    row("scheme-relative-empty-authority", "///key.plrs.im/x", null),
+    row("scheme-no-slashes", "https:key.plrs.im/x", null),
+    row("javascript", "javascript:alert(1)", null),
+    row("data", "data:text/html,x", null),
+    row("mailto", "mailto:a@key.plrs.im", null),
+    row("leading-space", " /x", null),
+    row("trailing-space", "/x ", null),
+    row("inner-space", "/x y", null),
+    row("tab", "/x\ty", null),
+    row("newline", "/x\ny", null),
+    row("carriage-return", "https://key.plrs.im/x\r\nHost: evil", null),
+    row("nul", "/x\u0000", null),
+    row("delete", "/x\u007f", null),
+    row("c1-control", "/x\u0085", null),
+    row("non-ascii-path", "/caf\u00e9", null),
+    row("origin-not-https", "/x", null, "http://key.plrs.im"),
+    row("origin-with-path", "/x", null, "https://key.plrs.im/app"),
+  ];
 }
 
 // ── settingCases: catalog entries in, `syncedSettings` routes out (plans/U-01b.md §3.1) ──────
@@ -4671,6 +5030,12 @@ function selfCheck(file: Obj): void {
   }
   for (const r of ruleIds)
     if (!covered.has(r)) fail(`rule ${r} has no scenario`);
+  const urlCases = new Set<string>();
+  for (const c of file.signInUrlCases as unknown as SignInUrlCase[]) {
+    if (!NAME_RE.test(c.name)) fail(`signInUrlCases ${c.name}: not kebab-case`);
+    if (urlCases.has(c.name)) fail(`signInUrlCases ${c.name}: duplicate name`);
+    urlCases.add(c.name);
+  }
   const caseNames = new Set<string>();
   for (const c of file.settingCases as unknown as SettingCase[]) {
     const at = (m: string): never => fail(`settingCases ${c.name}: ${m}`);
@@ -5543,7 +5908,7 @@ export function buildSyncScenarios(): Obj {
   const file: Obj = {
     syncScenariosVersion: SYNC_SCENARIOS_VERSION,
     description:
-      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 5 adds the conflict vocabulary: the `keep` step (`request`, `choice`, and an `expect` of `{ok: false, error}` when the keep is refused at once), the `delete` call, the asserts `conflicts` and `cloudEmpty`, the events `conflict` and `conflictClosed`, and `status.conflicts` (the open count, present only above 0); a collection's `resolve` is the host's inline decider (`keepLocal` or `keepRemote`). Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation. `fileRecordCases` (appended with the records binding of cloudSync.saves, plans/U-22.5.md) is a second family run by the same steps: its `calls` add `putAt` and `removeAt`, its `asserts` add `rows` (a collection's cloud rows, as `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous assert); its rows keep the pull's `file` pointer, and `putAt` takes an optional fifth argument, the file pointer the save's finalize returned, which an acknowledged `ok` adopts. A runner without the binding skips the family by name.",
+      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 6 adds the `accountRequired` call (args `[signInUrl]`, the host reporting the code from a key-ring or file route) and changes what a device does on `account_required`: the subject's partition is deleted whole, the root is forgotten, nothing is sent until a sign-in, and the status stays blocked across a relaunch; `signInUrlCases` (`{name, origin, url, expect}`) pins the rule that decides which sign-in URL a host may offer the app (see its comment in `tools/sync-scenarios.ts`: https on the Worker origin only, answer normalised, else null). Version 5 adds the conflict vocabulary: the `keep` step (`request`, `choice`, and an `expect` of `{ok: false, error}` when the keep is refused at once), the `delete` call, the asserts `conflicts` and `cloudEmpty`, the events `conflict` and `conflictClosed`, and `status.conflicts` (the open count, present only above 0); a collection's `resolve` is the host's inline decider (`keepLocal` or `keepRemote`). Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation. `fileRecordCases` (appended with the records binding of cloudSync.saves, plans/U-22.5.md) is a second family run by the same steps: its `calls` add `putAt` and `removeAt`, its `asserts` add `rows` (a collection's cloud rows, as `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous assert); its rows keep the pull's `file` pointer, and `putAt` takes an optional fifth argument, the file pointer the save's finalize returned, which an acknowledged `ok` adopts. A runner without the binding skips the family by name.",
     product: PRODUCT,
     constants: {
       debounceMs: 2000,
@@ -5559,6 +5924,7 @@ export function buildSyncScenarios(): Obj {
     rules: RULES,
     scenarios: scenarios() as unknown as J,
     settingCases: settingCases() as unknown as J,
+    signInUrlCases: signInUrlCases() as unknown as J,
     fileRecordCases: {
       calls: [...FILE_RECORD_CALLS],
       asserts: [...FILE_RECORD_ASSERTS],
