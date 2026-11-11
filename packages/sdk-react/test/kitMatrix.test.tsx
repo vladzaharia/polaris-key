@@ -8,6 +8,7 @@
 
 import { kitComponent } from "../src/kit/kitComponent.js";
 import { LinkPairing, TransferOffer } from "../src/kit/connect.js";
+import { LocalPairing, PairedDevices } from "../src/kit/localPairing.js";
 import { readFileSync } from "node:fs";
 import type { ReactNode } from "react";
 import { join } from "node:path";
@@ -107,6 +108,7 @@ const FAMILIES = [
   "cloudSync",
   "saveConflict",
   "connect",
+  "local",
 ] as const;
 const en = new Copy({ tables: { en: KIT_COPY_EN } });
 
@@ -184,6 +186,9 @@ const COMPONENTS = {
   // The inter-account screens (CC-19.9) load on demand: the matrix draws the part they load.
   LinkPairing,
   TransferOffer,
+  // Pair with a Code (CC-29K) loads on demand too.
+  LocalPairing,
+  PairedDevices,
 } as unknown as Record<
   string,
   ((p: Kit.KitProps & { children?: ReactNode }) => ReactNode) | undefined

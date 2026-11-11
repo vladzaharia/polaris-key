@@ -2372,6 +2372,157 @@
     <string name="transferOffer_failed">Não foi possível receber %1$s</string>
     <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title. -->
     <string name="transferOffer_failedBody">Nada foi salvo.</string>
+    <!-- Pair with a Code: the feature's name; also the entry button. -->
+    <string name="localPairing_title">Parear com um código</string>
+    <!-- Pair with a Code: choose: where both devices must be. -->
+    <string name="localPairing_chooseBody">Os dois dispositivos precisam estar na mesma rede.</string>
+    <!-- Pair with a Code: choose: this device shows the code. -->
+    <string name="localPairing_show">Mostrar um código</string>
+    <string name="localPairing_show__macos">Mostrar um código</string>
+    <!-- Pair with a Code: choose: this device types the code. -->
+    <string name="localPairing_enter">Inserir um código</string>
+    <string name="localPairing_enter__macos">Inserir um código</string>
+    <!-- Pair with a Code: choose: shown until the system has asked once. Arguments: {app} = the app's name. Arguments: 1=app. -->
+    <string name="localPairing_prePrompt">Se solicitado, permita que %1$s encontre dispositivos na sua rede.</string>
+    <!-- Pair with a Code: the link to the paired devices list. -->
+    <string name="localPairing_pairedDevices">Dispositivos pareados</string>
+    <string name="localPairing_pairedDevices__macos">Dispositivos pareados</string>
+    <!-- Pair with a Code: show: what to do with the code. -->
+    <string name="localPairing_showBody">Escaneie ou insira este código no outro dispositivo.</string>
+    <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
+    <string name="a11y_qrPairing">Código QR com o código de pareamento</string>
+    <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
+    <string name="localPairing_expires">Expira em %1$s</string>
+    <!-- Pair with a Code: show: shown while the code is open. -->
+    <string name="localPairing_waitingDevice">Aguardando o outro dispositivo…</string>
+    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
+    <string name="localPairing_toEnter">Inserir um código em vez disso</string>
+    <string name="localPairing_toEnter__macos">Inserir um código em vez disso</string>
+    <!-- Pair with a Code: show: after a wrong guess. -->
+    <string name="localPairing_rotatedTitle">Código incorreto inserido</string>
+    <!-- Pair with a Code: show: the code is new now. -->
+    <string name="localPairing_rotatedBody">O código mudou.</string>
+    <!-- Pair with a Code: Screen reader line after the code changes; never shown. Arguments: {code} = the new code. Arguments: 1=code. -->
+    <string name="a11y_newCode">Novo código %1$s</string>
+    <!-- Pair with a Code: show: opens a new window with a new code. -->
+    <string name="localPairing_showNew">Mostrar um novo código</string>
+    <string name="localPairing_showNew__macos">Mostrar um novo código</string>
+    <!-- Pair with a Code: show: the disabled button while the 30-second wait runs. Arguments: {time} = m:ss. Arguments: 1=time. -->
+    <string name="localPairing_showNewIn">Mostrar um novo código em %1$s</string>
+    <string name="localPairing_showNewIn__macos">Mostrar um novo código em %1$s</string>
+    <!-- Pair with a Code: show: something keeps interrupting. -->
+    <string name="localPairing_blockedTitle">O pareamento está sendo bloqueado</string>
+    <!-- Pair with a Code: show: what to try. -->
+    <string name="localPairing_blockedBody">Algo nesta rede continua interrompendo. Tente outra rede.</string>
+    <!-- Pair with a Code: closed: the fifth wrong code. -->
+    <string name="localPairing_failedTooMany">Tentativas demais.</string>
+    <!-- Pair with a Code: closed: the time ran out. -->
+    <string name="localPairing_failedExpired">O código expirou.</string>
+    <!-- Pair with a Code: closed or show: the second time in a row, or five wrong codes over several windows. -->
+    <string name="localPairing_tooManyAgainTitle">Tentativas demais de novo</string>
+    <!-- Pair with a Code: closed or show: the warning's reason. -->
+    <string name="localPairing_tooManyAgainBody">Alguém por perto pode estar tentando adivinhar códigos.</string>
+    <!-- Pair with a Code: network blocked: where the system can deep-link. -->
+    <string name="localPairing_openSettings">Abrir ajustes</string>
+    <!-- Pair with a Code: enter: the lede. -->
+    <string name="localPairing_enterBody">Insira o código do outro dispositivo.</string>
+    <!-- Pair with a Code: enter: the field's label. -->
+    <string name="localPairing_codeLabel">Código</string>
+    <!-- Pair with a Code: enter: an empty field's placeholder; shows the length and grouping. -->
+    <string name="localPairing_codePlaceholder">•••• ••••</string>
+    <!-- Pair with a Code: enter and confirm: this person's yes. -->
+    <string name="localPairing_pair">Parear</string>
+    <!-- Pair with a Code: enter: opens the show screen. -->
+    <string name="localPairing_toShow">Mostrar um código em vez disso</string>
+    <string name="localPairing_toShow__macos">Mostrar um código em vez disso</string>
+    <!-- Pair with a Code: enter: a wrong code. -->
+    <string name="localPairing_wrongCode">Esse código não funcionou. Insira o código que o outro dispositivo mostra agora.</string>
+    <!-- Pair with a Code: enter: tries left for these first two digits. Arguments: {left} = tries. Arguments: 1=left. -->
+    <plurals name="localPairing_triesLeft">
+        <item quantity="one">%1$d tentativa restante</item>
+        <item quantity="many">%1$d de tentativas restantes</item>
+        <item quantity="other">%1$d tentativas restantes</item>
+    </plurals>
+    <!-- Pair with a Code: enter: no try is left for these first two digits. -->
+    <string name="localPairing_cooldownTitle">Tentativas demais</string>
+    <!-- Pair with a Code: enter: what to do. -->
+    <string name="localPairing_cooldownBody">Peça um novo código no outro dispositivo.</string>
+    <!-- Pair with a Code: enter: under the field when the first two digits are spent. -->
+    <string name="localPairing_spentCode">Peça um novo código. Este ainda não pode ser tentado de novo.</string>
+    <!-- Pair with a Code: enter: nothing answered. -->
+    <string name="localPairing_notFoundTitle">Não foi possível encontrar o outro dispositivo</string>
+    <!-- Pair with a Code: enter: the most common causes. -->
+    <string name="localPairing_notFoundBody">Verifique o código e se vocês estão na mesma rede.</string>
+    <!-- Pair with a Code: enter: fewer than 8 digits. -->
+    <string name="localPairing_notACode">Um código tem 8 dígitos.</string>
+    <!-- Pair with a Code: confirm: after the other device proved the code. Arguments: {device} = the label it sent. Arguments: 1=device. -->
+    <string name="localPairing_confirmTitle">Parear com %1$s?</string>
+    <!-- Pair with a Code: confirm: the other device sent no label. -->
+    <string name="localPairing_confirmUnnamed">Parear com este dispositivo?</string>
+    <!-- Pair with a Code: confirm: why the prompt is there. -->
+    <string name="localPairing_confirmBody">Ele inseriu o seu código.</string>
+    <!-- Pair with a Code: waiting: Arguments: {device} = the label the shower sent. Arguments: 1=device. -->
+    <string name="localPairing_waitingWith">Pareando com %1$s.</string>
+    <!-- Pair with a Code: paired: the done state's name. -->
+    <string name="localPairing_pairedTitle">Pareado</string>
+    <!-- Pair with a Code: paired: what changed. -->
+    <string name="localPairing_pairedBody">Agora vocês podem se conectar na mesma rede sem código.</string>
+    <!-- Pair with a Code: paired: this device's name for the other one. -->
+    <string name="localPairing_nameLabel">Nome</string>
+    <!-- Pair with a Code: paired and rename: the name is never sent. -->
+    <string name="localPairing_nameHint">Mostrado somente neste dispositivo.</string>
+    <!-- Pair with a Code: paired: kept with Can connect off. Arguments: {device}. Arguments: 1=device. -->
+    <string name="localPairing_cantConnectTitle">%1$s não pode se conectar</string>
+    <!-- Pair with a Code: paired: why. Arguments: {max} = 8. Arguments: 1=max. -->
+    <string name="localPairing_cantConnectBody">Somente %1$s dispositivos pareados podem se conectar ao mesmo tempo. Desative um em “Dispositivos pareados”.</string>
+    <!-- Pair with a Code: show: back on the code after Not now. Arguments: {device}. Arguments: 1=device. -->
+    <string name="localPairing_notPairedWith">Não pareado com %1$s</string>
+    <!-- Pair with a Code: failed: one device holds the most. -->
+    <string name="localPairing_failedFull">Um de vocês não tem espaço para mais um pareamento. Esqueça um e tente de novo.</string>
+    <!-- Pair with a Code: PairedDevices: the list's title. -->
+    <string name="pairedDevices_title">Dispositivos pareados</string>
+    <!-- Pair with a Code: list: said once. -->
+    <string name="pairedDevices_lede">Eles se conectam somente na mesma rede.</string>
+    <!-- Pair with a Code: row: Arguments: {when} = today, yesterday, 3 days ago. Arguments: 1=when. -->
+    <string name="pairedDevices_lastSeen">Visto por último: %1$s</string>
+    <!-- Pair with a Code: Screen reader label; never shown. The ⋯ menu of a row. Arguments: 1=device. -->
+    <string name="a11y_deviceOptions">Opções para %1$s</string>
+    <!-- Pair with a Code: list: column label over the switches. -->
+    <string name="pairedDevices_canConnect">Pode se conectar</string>
+    <!-- Pair with a Code: Screen reader label; never shown. Each switch. Arguments: 1=device. -->
+    <string name="a11y_letConnect">Permitir que %1$s se conecte a este dispositivo</string>
+    <!-- Pair with a Code: rename: refused. Arguments: {max} = 64. Arguments: 1=max. -->
+    <string name="pairedDevices_renameLong">Use %1$s caracteres ou menos.</string>
+    <!-- Pair with a Code: rename: refused; nothing left once cleaned. -->
+    <string name="pairedDevices_renameEmpty">Insira um nome.</string>
+    <!-- Pair with a Code: row: menu item and the confirm button; local only. -->
+    <string name="pairedDevices_forget">Esquecer</string>
+    <!-- Pair with a Code: row: the question. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetConfirm">Esquecer %1$s?</string>
+    <!-- Pair with a Code: row: the one consequence. -->
+    <string name="pairedDevices_forgetBody">Para se conectar de novo, pareie com um novo código.</string>
+    <!-- Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetFailed">Não foi possível esquecer %1$s. Tente de novo.</string>
+    <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
+    <string name="pairedDevices_reachableFullTitle">Até %1$s podem se conectar</string>
+    <!-- Pair with a Code: list: what to do. -->
+    <string name="pairedDevices_reachableFullBody">Desative um para permitir que outro se conecte.</string>
+    <!-- Pair with a Code: list: 32 are paired. -->
+    <string name="pairedDevices_fullBody">Esqueça um dispositivo pareado para parear outro.</string>
+    <!-- Pair with a Code: list: nothing paired. -->
+    <string name="pairedDevices_empty">Nenhum dispositivo pareado ainda.</string>
+    <!-- Pair with a Code: list: the record can't be read. -->
+    <string name="pairedDevices_loadFailed">Não foi possível carregar seus dispositivos pareados.</string>
+    <!-- Pair with a Code: where the app connects: not seen on this network. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_notFoundTitle">Não foi possível encontrar %1$s</string>
+    <!-- Pair with a Code: where the app connects: what to check. -->
+    <string name="pairedDevices_notFoundBody">Verifique se está ligado e na mesma rede.</string>
+    <!-- Pair with a Code: where the app connects: a busy answer. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_busyTitle">%1$s está ocupado</string>
+    <!-- Pair with a Code: list: pairing is off for the app. -->
+    <string name="pairedDevices_offBody">O pareamento por código está desativado para este app. Os dispositivos pareados não podem se conectar.</string>
+    <!-- Pair with a Code: list: the one primary; opens Pair with a Code. -->
+    <string name="pairedDevices_pair">Parear com um código</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo deu errado</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

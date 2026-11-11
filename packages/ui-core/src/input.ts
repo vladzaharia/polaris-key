@@ -314,6 +314,104 @@ export interface LinkPairingInput {
   reason?: "declined" | "timeout" | "full" | "closed";
 }
 
+/** One paired device of Pair with a Code (`LocalLinkInfo` of `cloudConnect.localLinks.list`). */
+export interface PairedDeviceInput {
+  id: string;
+  /** The name this device holds for it (the label it sent, or the person's rename). */
+  label: string | null;
+  /** Unix seconds, or null when it has never been seen. */
+  lastSeen: number | null;
+  /** True when the other device may find and connect to this one. */
+  reachable: boolean;
+  /** The other device's platform as it reported it (a `Platform` os value), or null. Display only. */
+  platform?: string | null;
+}
+
+/**
+ * Pair with a Code (CC-29K, `cloudConnect.localLinks`): two devices of one app on one network pair
+ * by an 8-digit code or a QR, with no account. `choose` is the entry; one device `show`s the code
+ * (`closed` once its window ended), the other `enter`s it (`joining` while it looks) and the
+ * shower is asked to `confirm`; the entering device `waiting`s for that. `paired` and `failed` end
+ * it, `network-blocked` and `off` answer instead of it. Every member is data a model computed;
+ * nothing here is a secret beyond the code the screen shows.
+ */
+export interface LocalPairingInput {
+  step:
+    | "choose"
+    | "opening"
+    | "show"
+    | "closed"
+    | "enter"
+    | "joining"
+    | "confirm"
+    | "waiting"
+    | "paired"
+    | "failed"
+    | "network-blocked"
+    | "off";
+  /** choose: the system has not asked about the local network yet. */
+  prePrompt?: boolean;
+  /** choose: this device holds the most pairings, so neither button works. */
+  full?: boolean;
+  /** show: the code as two groups of four (`4812 3456`). */
+  code?: string;
+  /** show: the text the QR encodes. */
+  qr?: string;
+  /** show: seconds left of the window's 5 minutes. */
+  secondsLeft?: number;
+  /** show: the notice under the time row. */
+  notice?: "rotated" | "declined" | "blocked" | "guessing";
+  /** show and confirm: a press is being answered; its control keeps its label and is unavailable. */
+  busy?: "pair" | "not-now" | "new-code";
+  /** closed: why the window ended. */
+  closedBy?: "too-many-tries" | "expired";
+  /** closed: seconds left of the 30-second wait after Too many tries; 0 or absent when none. */
+  cooldownLeft?: number;
+  /** closed: the second Too many tries in a row. */
+  warn?: boolean;
+  /** enter: what the person typed (digits, grouped as typed). */
+  entry?: string;
+  /** enter: the answer to the last try, shown under the field or as a notice. */
+  error?: "wrong" | "spent" | "too-many" | "not-found" | "not-a-code";
+  /** enter: dials left for the typed first two digits (0, 1, 2), or null until two are typed. */
+  triesLeft?: number | null;
+  /** enter, joining: Pair answers its reason instead of sending. */
+  pairDisabled?: boolean;
+  /** The data categories this app asks both people to approve (ids). */
+  categories?: readonly string[];
+  /** The other device's label as it reported it (unauthenticated). */
+  device?: string;
+  /** failed: how a session that reached the other device ended without a pairing. */
+  reason?: "declined" | "timeout" | "full" | "closed";
+  /** network-blocked: the platform can open its settings. */
+  canOpenSettings?: boolean;
+  /** paired: the new pairing was kept with Can connect off because 8 already are. */
+  cantConnect?: boolean;
+  /** paired: the name could not be saved on this device; the screen stays. */
+  nameError?: "failed";
+  /** The most paired devices that can connect at once. */
+  max?: number;
+}
+
+/** The list of paired devices (CC-29K). `devices` is `localLinks.list()`; the rest is what the
+ *  person is doing to one row, and the answers the app's own connections gave. */
+export interface PairedDevicesInput {
+  step: "loading" | "list" | "renaming" | "forgetting" | "load-failed" | "off";
+  devices?: readonly PairedDeviceInput[];
+  /** renaming and forgetting: the row. */
+  target?: string;
+  /** renaming: why the name was refused (`failed`: the store could not keep it). */
+  renameError?: "long" | "empty" | "failed";
+  /** forgetting: the store could not forget it; the question stays. */
+  forgetError?: boolean;
+  /** What the app's own connection to a device answered; `id` is the device, for Try again. */
+  notice?: {
+    device: string;
+    kind: "not-found" | "busy" | "unknown";
+    id?: string;
+  };
+}
+
 /** A contact's offer to send something (D-8): consent per transfer. `device` is the contact's
  *  label, `name` what it offers, both text the other side chose. */
 export interface TransferOfferInput {
@@ -510,6 +608,10 @@ export interface UiInput {
   linkPairing?: LinkPairingInput;
   /** A contact's offer to send something; absent, TransferOffer is hidden. */
   transferOffer?: TransferOfferInput;
+  /** Pair with a Code; absent, LocalPairing is hidden. */
+  localPairing?: LocalPairingInput;
+  /** The paired devices; absent, PairedDevices is hidden. */
+  pairedDevices?: PairedDevicesInput;
   choices?: LicenseChoiceView;
   replaceView?: ReplaceView;
   /** The row the person picked in LicenseChoice (a license id, `keep` or `create`). */

@@ -1740,6 +1740,261 @@
           ]
         }
       }
+    },
+    "LocalPairing": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "choose": {
+          "copy": [
+            "localPairing.title",
+            "localPairing.chooseBody",
+            "localPairing.show",
+            "localPairing.enter",
+            "localPairing.prePrompt",
+            "localPairing.pairedDevices",
+            "core.codes.local-links-full.title",
+            "core.codes.local-links-full.message",
+            "common.cancel"
+          ]
+        },
+        "opening": {
+          "copy": [
+            "localPairing.title",
+            "localPairing.showBody",
+            "a11y.busy",
+            "localPairing.toEnter",
+            "common.cancel"
+          ]
+        },
+        "show": {
+          "copy": [
+            "localPairing.title",
+            "localPairing.showBody",
+            "a11y.linkCode",
+            "a11y.qrPairing",
+            "localPairing.expires",
+            "localPairing.waitingDevice",
+            "localPairing.toEnter",
+            "localPairing.rotatedTitle",
+            "localPairing.rotatedBody",
+            "localPairing.notPairedWith",
+            "a11y.newCode",
+            "localPairing.showNew",
+            "localPairing.blockedTitle",
+            "localPairing.blockedBody",
+            "localPairing.tooManyAgainBody",
+            "common.cancel",
+            "a11y.busy"
+          ]
+        },
+        "closed": {
+          "copy": [
+            "linkPairing.failedTitle",
+            "localPairing.failedTooMany",
+            "localPairing.failedExpired",
+            "localPairing.tooManyAgainTitle",
+            "localPairing.tooManyAgainBody",
+            "localPairing.showNew",
+            "localPairing.showNewIn",
+            "common.close"
+          ]
+        },
+        "enter": {
+          "copy": [
+            "localPairing.title",
+            "localPairing.enterBody",
+            "localPairing.codeLabel",
+            "localPairing.codePlaceholder",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "localPairing.pair",
+            "localPairing.toShow",
+            "localPairing.wrongCode",
+            "localPairing.triesLeft",
+            "localPairing.cooldownTitle",
+            "localPairing.cooldownBody",
+            "localPairing.spentCode",
+            "localPairing.notFoundTitle",
+            "localPairing.notFoundBody",
+            "localPairing.notACode",
+            "common.back"
+          ]
+        },
+        "joining": {
+          "copy": [
+            "localPairing.title",
+            "localPairing.enterBody",
+            "localPairing.codeLabel",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "localPairing.pair",
+            "a11y.busy",
+            "common.cancel"
+          ]
+        },
+        "confirm": {
+          "copy": [
+            "localPairing.confirmTitle",
+            "localPairing.confirmUnnamed",
+            "localPairing.confirmBody",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "localPairing.pair",
+            "common.notNow",
+            "a11y.busy"
+          ]
+        },
+        "waiting": {
+          "copy": [
+            "linkPairing.waiting",
+            "localPairing.waitingWith",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "common.cancel"
+          ]
+        },
+        "paired": {
+          "copy": [
+            "localPairing.pairedTitle",
+            "localPairing.pairedBody",
+            "localPairing.nameLabel",
+            "localPairing.nameHint",
+            "localPairing.cantConnectTitle",
+            "localPairing.cantConnectBody",
+            "localPairing.pairedDevices",
+            "devices.renameFailed",
+            "common.done"
+          ]
+        },
+        "failed": {
+          "copy": [
+            "linkPairing.failedTitle",
+            "linkPairing.failedDeclined",
+            "linkPairing.failedTimeout",
+            "localPairing.failedFull",
+            "linkPairing.failedClosed",
+            "common.tryAgain",
+            "common.close"
+          ]
+        },
+        "network-blocked": {
+          "copy": [
+            "core.codes.nearby-permission-denied.title",
+            "core.codes.nearby-permission-denied.message",
+            "localPairing.openSettings",
+            "common.tryAgain",
+            "common.close"
+          ]
+        },
+        "off": {
+          "copy": [
+            "core.codes.local-pairing-off.title",
+            "core.codes.local-pairing-off.message",
+            "common.close"
+          ]
+        }
+      }
+    },
+    "PairedDevices": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "loading": {
+          "copy": ["pairedDevices.title", "a11y.busy", "common.done"]
+        },
+        "list": {
+          "copy": [
+            "pairedDevices.title",
+            "pairedDevices.lede",
+            "pairedDevices.lastSeen",
+            "a11y.deviceOptions",
+            "devices.rename",
+            "pairedDevices.forget",
+            "pairedDevices.canConnect",
+            "a11y.letConnect",
+            "pairedDevices.reachableFullTitle",
+            "pairedDevices.reachableFullBody",
+            "core.codes.local-links-full.title",
+            "pairedDevices.fullBody",
+            "pairedDevices.notFoundTitle",
+            "pairedDevices.notFoundBody",
+            "pairedDevices.busyTitle",
+            "common.tryAgain",
+            "core.codes.link-unknown.title",
+            "core.codes.link-unknown.message",
+            "pairedDevices.pair",
+            "common.done"
+          ]
+        },
+        "renaming": {
+          "copy": [
+            "pairedDevices.title",
+            "pairedDevices.lede",
+            "pairedDevices.lastSeen",
+            "a11y.deviceOptions",
+            "devices.rename",
+            "pairedDevices.forget",
+            "pairedDevices.canConnect",
+            "a11y.letConnect",
+            "pairedDevices.pair",
+            "common.done",
+            "devices.renameLabel",
+            "localPairing.nameHint",
+            "common.save",
+            "common.cancel",
+            "pairedDevices.renameLong",
+            "pairedDevices.renameEmpty",
+            "devices.renameFailed"
+          ]
+        },
+        "forgetting": {
+          "copy": [
+            "pairedDevices.title",
+            "pairedDevices.lede",
+            "pairedDevices.lastSeen",
+            "a11y.deviceOptions",
+            "devices.rename",
+            "pairedDevices.forget",
+            "pairedDevices.canConnect",
+            "a11y.letConnect",
+            "pairedDevices.pair",
+            "common.done",
+            "pairedDevices.forgetConfirm",
+            "pairedDevices.forgetBody",
+            "pairedDevices.forgetFailed",
+            "common.cancel"
+          ]
+        },
+        "empty": {
+          "copy": [
+            "pairedDevices.title",
+            "pairedDevices.empty",
+            "pairedDevices.pair",
+            "common.done"
+          ]
+        },
+        "load-failed": {
+          "copy": [
+            "pairedDevices.title",
+            "pairedDevices.loadFailed",
+            "common.tryAgain",
+            "common.done"
+          ]
+        },
+        "off": {
+          "copy": [
+            "pairedDevices.title",
+            "core.codes.local-pairing-off.title",
+            "pairedDevices.offBody",
+            "pairedDevices.lastSeen",
+            "a11y.deviceOptions",
+            "devices.rename",
+            "pairedDevices.forget",
+            "common.done"
+          ]
+        }
+      }
     }
   }
 }

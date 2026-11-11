@@ -113,6 +113,9 @@ export const KEY_NAMESPACES = [
   "saveConflict",
   "linkPairing",
   "transferOffer",
+  // Pair with a Code (CC-29K): two devices on one network pair by a code, with no account.
+  "localPairing",
+  "pairedDevices",
   "about",
   "channel",
   "toast",
@@ -196,6 +199,9 @@ export const COMPONENTS = [
   // Inter-account links and direct-transfer offers (CC-19.9): ui-core CONNECT_SCREENS.
   "LinkPairing",
   "TransferOffer",
+  // Pair with a Code (CC-29K): ui-core CONNECT_SCREENS.
+  "LocalPairing",
+  "PairedDevices",
   "About",
   "ChannelPicker",
   "Toast",
@@ -318,6 +324,8 @@ const TITLE_CASE_KEYS: ReadonlySet<string> = new Set([
   "account.updates",
   "linkPairing.title",
   "linkPairing.linkedTitle",
+  "localPairing.title",
+  "localPairing.pairedTitle",
 ]);
 const BANNED_EN = /\b(licences?|grants?|retry|machines?|plans?)\b/i;
 
@@ -1205,6 +1213,20 @@ export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
   "common.updateDownload",
   "common.updateTimeMinutes",
   "common.updateTimeLessThanMinute",
+  // Pair with a Code: the list and the entry draw these on first paint (the lazy table may not
+  // load where a host pre-bundles differently), so they stay in the lean table.
+  "core.codes.local-links-full.title",
+  "core.codes.local-links-full.message",
+  "core.codes.local-pairing-off.title",
+  "core.codes.local-pairing-off.message",
+  "core.codes.nearby-permission-denied.title",
+  "core.codes.nearby-permission-denied.message",
+  "core.codes.link-unknown.title",
+  "core.codes.link-unknown.message",
+  "devices.rename",
+  "devices.renameLabel",
+  "devices.renameFailed",
+  "devices.unnamed",
 ]);
 export const isLazyEnKey = (key: string): boolean =>
   LAZY_EN_PREFIXES.some((p) => key.startsWith(p)) && !LAZY_EN_KEEP.has(key);

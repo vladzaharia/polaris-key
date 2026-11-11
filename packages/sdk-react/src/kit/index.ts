@@ -14,13 +14,14 @@
 import type { ComponentName } from "@polaris-key/ui-core";
 
 import { kitComponent } from "./kitComponent.js";
-import { connectScreen } from "./connectLazy.js";
+import { connectScreen, localScreen } from "./connectLazy.js";
 import { nearbyScreen } from "./nearbyLazy.js";
 import type { NearbyApproverProps, NearbySignInProps } from "./nearby.js";
 import { holderScreen } from "./holdersLazy.js";
 import { syncScreen } from "./syncLazy.js";
 import type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
 import type { LinkPairingProps, TransferOfferProps } from "./connect.js";
+import type { LocalPairingProps, PairedDevicesProps } from "./localPairing.js";
 import type {
   RecoveryCodeProps,
   RingChangeProps,
@@ -127,6 +128,20 @@ export {
   type UseTransferOfferOptions,
 } from "./connectHooks.js";
 export type { LinkPairingProps, TransferOfferProps } from "./connect.js";
+// Pair with a Code (CC-29K): two devices of one app on one network pair by a code or a QR, with no
+// account, and the list of what they paired. They load on demand; the hooks are the headless half.
+export const LocalPairing = localScreen<LocalPairingProps>("LocalPairing");
+export const PairedDevices = localScreen<PairedDevicesProps>("PairedDevices");
+export {
+  useLocalPairing,
+  usePairedDevices,
+  type LocalLinksLike,
+  type UseLocalPairing,
+  type UseLocalPairingOptions,
+  type UsePairedDevices,
+  type UsePairedDevicesOptions,
+} from "./connectHooks.js";
+export type { LocalPairingProps, PairedDevicesProps } from "./localPairing.js";
 // Nearby sign-in on the desktop bridge (I-47b): the new device and the signed-in device. They load
 // on demand and draw nothing where the adapter has no `nearby` (a browser, a v4 host).
 export const NearbySignIn = nearbyScreen<NearbySignInProps>("NearbySignIn");

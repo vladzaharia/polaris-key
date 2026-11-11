@@ -99,6 +99,7 @@ export * from "./cloudSync.js";
 export * from "./connect.js";
 export * from "./devices.js";
 export * from "./keyRefusal.js";
+export * from "./local.js";
 export * from "./nearby.js";
 export * from "./gate.js";
 export * from "./holders.js";

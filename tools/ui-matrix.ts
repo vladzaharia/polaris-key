@@ -123,6 +123,19 @@ export interface Expect {
   state: string;
   copy: string[];
   actions?: string[];
+  /** The copy keys of controls the state draws but does not offer (aria-disabled), sorted. */
+  disabled?: string[];
+}
+/** A window rule row of the `localLayout` family (UI-KITS 4.3, LocalPairing). */
+export interface LayoutRow {
+  name: string;
+  window: { width: number; height: number; textScale?: number; tv?: boolean };
+  expect: {
+    panes: 1 | 2;
+    logo: boolean;
+    scrolls: boolean;
+    noticeBeforeQr: boolean;
+  };
 }
 /** A negative case (UI-KITS §4.1 "Must not"): the protected behaviour and what must not show. */
 export interface MustNot {
@@ -186,6 +199,8 @@ export interface UiMatrix {
   holders: Row[];
   holdersFlow: HoldersFlow;
   connect: Row[];
+  local: Row[];
+  localLayout: LayoutRow[];
   nearby: Row[];
   theme: ThemeRow[];
   i18n: I18nRow[];
@@ -849,6 +864,8 @@ interface Opts {
   actions?: string[];
   /** Actions of a control the row draws disabled (see Draft.dropActions). */
   dropActions?: string[];
+  /** Copy keys of the controls the row draws disabled (`expect.disabled`). */
+  disabled?: string[];
   mustNot?: Omit<MustNot, "invariant"> & { invariant?: string };
 }
 
@@ -888,6 +905,7 @@ function authoring(S: UiMatrixSources) {
     if (o.default) d.isDefault = true;
     if (o.actions) d.extraActions = o.actions;
     if (o.dropActions) d.dropActions = o.dropActions;
+    if (o.disabled) d.expect.disabled = [...o.disabled].sort();
     if (o.mustNot)
       d.mustNot = {
         ...o.mustNot,
@@ -3926,6 +3944,7 @@ function finish(d: Draft): Row {
       state: d.expect.state,
       copy,
       ...(actions.length > 0 ? { actions } : {}),
+      ...(d.expect.disabled?.length ? { disabled: d.expect.disabled } : {}),
     },
   };
   if (d.mustNot) {
@@ -7091,6 +7110,1033 @@ function connectFamily(a: A): Draft[] {
   ];
 }
 
+// ── local (CC-29K) ──────────────────────────────────────────────────────────────────────────
+
+/** The local family's components. */
+export const LOCAL_FAMILY_COMPONENTS = [
+  "LocalPairing",
+  "PairedDevices",
+] as const;
+
+function localFamily(a: A): Draft[] {
+  const { row, off } = a;
+  const LP = "LocalPairing";
+  const PD = "PairedDevices";
+  const NO_CONNECT = off("connect");
+  const CATS = ["crates", "cues"];
+  /** A negative case: what must never show here, and why. */
+  const inv = (invariant: string, no: Omit<MustNot, "invariant">) => ({
+    mustNot: { ...no, invariant },
+  });
+  const pair = (step: string, more: Obj = {}): Obj => ({
+    localPairing: { ...more, step },
+  });
+  const SHOW = [
+    "localPairing.title",
+    "localPairing.showBody",
+    "a11y.linkCode",
+    "a11y.qrPairing",
+    "localPairing.expires",
+    "localPairing.waitingDevice",
+    "localPairing.toEnter",
+    "common.cancel",
+  ];
+  const WINDOW = {
+    code: "4812 3456",
+    qr: "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+    secondsLeft: 291,
+  };
+  const ENTER = [
+    "localPairing.title",
+    "localPairing.enterBody",
+    "localPairing.codeLabel",
+    "linkPairing.shares",
+    "localPairing.pair",
+    "localPairing.toShow",
+    "common.back",
+  ];
+  const PH = "localPairing.codePlaceholder";
+  const JOIN = [
+    "localPairing.title",
+    "localPairing.enterBody",
+    "localPairing.codeLabel",
+    "linkPairing.shares",
+    "localPairing.pair",
+    "a11y.busy",
+    "common.cancel",
+  ];
+  const closed = (extra: Obj, copy: string[], o: Opts = {}, name = "") =>
+    row(
+      `${LP}/closed: ${name}`,
+      pair("closed", extra),
+      LP,
+      "closed",
+      ["linkPairing.failedTitle", ...copy, "common.close"],
+      o,
+    );
+  const failed = (reason: string, body: string, name: string): Draft =>
+    row(
+      `${LP}/failed: ${name}`,
+      pair("failed", { reason }),
+      LP,
+      "failed",
+      [
+        "linkPairing.failedTitle",
+        body,
+        reason === "full" ? "common.tryAgain" : "common.tryAgain",
+        "common.close",
+      ],
+      inv("A pairing that ended never says it paired.", {
+        copy: ["localPairing.pairedTitle", "localPairing.pairedBody"],
+        states: ["paired"],
+      }),
+    );
+  const devs = (n: number, offFrom = n, seen = true): Obj[] =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `L${i + 1}`,
+      label: `Device ${i + 1}`,
+      lastSeen: seen ? 1_700_000_000 - i * 86_400 : null,
+      reachable: i < offFrom,
+    }));
+  const LIST = [
+    "pairedDevices.title",
+    "pairedDevices.lede",
+    "pairedDevices.lastSeen",
+    "a11y.deviceOptions",
+    "devices.rename",
+    "pairedDevices.forget",
+    "pairedDevices.pair",
+    "common.done",
+  ];
+  const SW = ["pairedDevices.canConnect", "a11y.letConnect"];
+  const list = (step: string, extra: Obj, n: Obj[]): Obj => ({
+    pairedDevices: { step, devices: n, ...extra },
+  });
+  return [
+    row(
+      `${LP}/choose: either device can show the code`,
+      pair("choose"),
+      LP,
+      "choose",
+      [
+        "localPairing.title",
+        "localPairing.chooseBody",
+        "localPairing.show",
+        "localPairing.enter",
+        "common.cancel",
+      ],
+      inv("Neither way is the filled one: either device can show the code.", {
+        copy: ["localPairing.pair"],
+      }),
+    ),
+    row(
+      `${LP}/choose: the system has not asked yet`,
+      pair("choose", { prePrompt: true }),
+      LP,
+      "choose",
+      [
+        "localPairing.title",
+        "localPairing.chooseBody",
+        "localPairing.show",
+        "localPairing.enter",
+        "localPairing.prePrompt",
+        "common.cancel",
+      ],
+    ),
+    row(
+      `${LP}/choose: no room, said before either button`,
+      pair("choose", { full: true, prePrompt: true }),
+      LP,
+      "choose",
+      [
+        "localPairing.title",
+        "localPairing.chooseBody",
+        "localPairing.show",
+        "localPairing.enter",
+        "core.codes.local-links-full.title",
+        "core.codes.local-links-full.message",
+        "localPairing.pairedDevices",
+        "common.cancel",
+      ],
+      {
+        disabled: ["localPairing.show", "localPairing.enter"],
+        mustNot: {
+          invariant: "A device with no room nothing is advertised or dialled.",
+          copy: ["localPairing.prePrompt"],
+        },
+      },
+    ),
+    row(
+      `${LP}/opening: a placeholder code tile while the window opens`,
+      pair("opening"),
+      LP,
+      "opening",
+      [
+        "localPairing.title",
+        "localPairing.showBody",
+        "a11y.busy",
+        "localPairing.toEnter",
+        "common.cancel",
+      ],
+      inv("A slow start never shows a code or a QR that is not there yet.", {
+        copy: ["a11y.linkCode", "a11y.qrPairing", "localPairing.expires"],
+      }),
+    ),
+    row(
+      `${LP}/show: the code is the largest text, with its time`,
+      pair("show", WINDOW),
+      LP,
+      "show",
+      SHOW,
+      inv("A shown code never has a Copy button and no countdown of tries.", {
+        copy: ["localPairing.triesLeft", "localPairing.showNewIn"],
+      }),
+    ),
+    row(
+      `${LP}/show: a wrong code changed it`,
+      pair("show", { ...WINDOW, notice: "rotated" }),
+      LP,
+      "show",
+      [
+        ...SHOW,
+        "localPairing.rotatedTitle",
+        "localPairing.rotatedBody",
+        "localPairing.showNew",
+        "a11y.newCode",
+      ],
+      inv(
+        "The shower never says how many tries are left; only the joiner's limit binds.",
+        {
+          copy: ["localPairing.triesLeft"],
+        },
+      ),
+    ),
+    row(
+      `${LP}/show: a new code is being asked for, Show a new code keeps its label`,
+      pair("show", { ...WINDOW, notice: "rotated", busy: "new-code" }),
+      LP,
+      "show",
+      [
+        ...SHOW,
+        "localPairing.rotatedTitle",
+        "localPairing.rotatedBody",
+        "localPairing.showNew",
+        "a11y.newCode",
+        "a11y.busy",
+      ],
+      {
+        disabled: ["localPairing.showNew"],
+        mustNot: {
+          invariant:
+            "A second press while the first is answered withdraws nothing and opens nothing.",
+          copy: ["localPairing.showNewIn"],
+        },
+      },
+    ),
+    row(
+      `${LP}/show: the other device said Not now`,
+      pair("show", { ...WINDOW, notice: "declined", device: "LAPTOP-7QH3RX" }),
+      LP,
+      "show",
+      [
+        ...SHOW,
+        "localPairing.notPairedWith",
+        "localPairing.rotatedBody",
+        "localPairing.showNew",
+        "a11y.newCode",
+      ],
+      inv(
+        "A decline is not shown as a wrong code, and the screen stays on its code.",
+        {
+          copy: ["localPairing.rotatedTitle", "linkPairing.failedTitle"],
+          states: ["closed"],
+        },
+      ),
+    ),
+    row(
+      `${LP}/show: something keeps interrupting`,
+      pair("show", { ...WINDOW, notice: "blocked" }),
+      LP,
+      "show",
+      [...SHOW, "localPairing.blockedTitle", "localPairing.blockedBody"],
+    ),
+    row(
+      `${LP}/show: someone nearby may be guessing, the code still open`,
+      pair("show", { ...WINDOW, notice: "guessing" }),
+      LP,
+      "show",
+      [
+        ...SHOW,
+        "localPairing.rotatedTitle",
+        "localPairing.tooManyAgainBody",
+        "localPairing.showNew",
+        "a11y.newCode",
+      ],
+      inv(
+        "Five wrong codes over renewed windows warn but do not start the 30-second wait, and the warning is not titled as a repeat the person never saw.",
+        {
+          copy: ["localPairing.showNewIn", "localPairing.tooManyAgainTitle"],
+          states: ["closed"],
+        },
+      ),
+    ),
+    closed(
+      { closedBy: "too-many-tries", cooldownLeft: 24 },
+      ["localPairing.failedTooMany", "localPairing.showNewIn"],
+      {
+        disabled: ["localPairing.showNewIn"],
+        mustNot: {
+          invariant:
+            "No code or QR remains after Too many tries, and a new code waits 30 seconds.",
+          copy: ["a11y.linkCode", "a11y.qrPairing", "localPairing.showNew"],
+        },
+      },
+      "Too many tries, 24 seconds to wait",
+    ),
+    closed(
+      { closedBy: "too-many-tries", cooldownLeft: 30, warn: true },
+      [
+        "localPairing.failedTooMany",
+        "localPairing.tooManyAgainTitle",
+        "localPairing.tooManyAgainBody",
+        "localPairing.showNewIn",
+      ],
+      { disabled: ["localPairing.showNewIn"] },
+      "the second Too many tries in a row",
+    ),
+    closed(
+      { closedBy: "too-many-tries", cooldownLeft: 0 },
+      ["localPairing.failedTooMany", "localPairing.showNew"],
+      {},
+      "the wait is over",
+    ),
+    closed(
+      { closedBy: "expired" },
+      ["localPairing.failedExpired", "localPairing.showNew"],
+      {
+        mustNot: {
+          invariant: "A code that ran out has no wait: nothing was guessed.",
+          copy: ["localPairing.showNewIn"],
+        },
+      },
+      "time ran out, no wait",
+    ),
+    row(
+      `${LP}/enter: an empty field, Pair unavailable`,
+      pair("enter", {
+        entry: "",
+        categories: CATS,
+        pairDisabled: true,
+        triesLeft: null,
+      }),
+      LP,
+      "enter",
+      [...ENTER, PH],
+      {
+        disabled: ["localPairing.pair"],
+        mustNot: {
+          invariant:
+            "The categories come before Pair, so pressing Pair is the consent.",
+          copy: ["localPairing.confirmBody"],
+        },
+      },
+    ),
+    row(
+      `${LP}/enter: eight digits, Pair ready`,
+      pair("enter", { entry: "4812 3456", categories: CATS, triesLeft: 2 }),
+      LP,
+      "enter",
+      ENTER,
+      inv("A full code with a dial left leaves Pair available.", {
+        copy: ["localPairing.notACode", "localPairing.wrongCode"],
+      }),
+    ),
+    row(
+      `${LP}/enter: one try left for these two digits`,
+      pair("enter", { entry: "4812 3456", categories: CATS, triesLeft: 1 }),
+      LP,
+      "enter",
+      [...ENTER, "localPairing.triesLeft"],
+    ),
+    row(
+      `${LP}/enter: a wrong code keeps the first two digits`,
+      pair("enter", {
+        entry: "48",
+        categories: CATS,
+        error: "wrong",
+        triesLeft: 1,
+        pairDisabled: true,
+      }),
+      LP,
+      "enter",
+      [...ENTER, "localPairing.wrongCode", "localPairing.triesLeft"],
+      {
+        disabled: ["localPairing.pair"],
+        mustNot: {
+          invariant:
+            "A code that just failed is never offered to Pair again until it differs.",
+          copy: ["localPairing.notFoundTitle"],
+        },
+      },
+    ),
+    row(
+      `${LP}/enter: these two digits are spent`,
+      pair("enter", {
+        entry: "4873",
+        categories: CATS,
+        triesLeft: 0,
+        pairDisabled: true,
+      }),
+      LP,
+      "enter",
+      [...ENTER, "localPairing.spentCode"],
+      { disabled: ["localPairing.pair"] },
+    ),
+    row(
+      `${LP}/enter: too many tries, an empty field that stays editable`,
+      pair("enter", {
+        entry: "",
+        categories: CATS,
+        error: "too-many",
+        pairDisabled: true,
+        triesLeft: null,
+      }),
+      LP,
+      "enter",
+      [...ENTER, PH, "localPairing.cooldownTitle", "localPairing.cooldownBody"],
+      {
+        disabled: ["localPairing.pair"],
+        mustNot: {
+          invariant:
+            "The joiner shows no countdown: the budget frees only after the other window closed.",
+          copy: ["localPairing.showNewIn"],
+        },
+      },
+    ),
+    row(
+      `${LP}/enter: nothing found on the network`,
+      pair("enter", {
+        entry: "4812 3456",
+        categories: CATS,
+        error: "not-found",
+        triesLeft: 2,
+      }),
+      LP,
+      "enter",
+      [...ENTER, "localPairing.notFoundTitle", "localPairing.notFoundBody"],
+    ),
+    row(
+      `${LP}/enter: not a code`,
+      pair("enter", {
+        entry: "4812",
+        categories: CATS,
+        error: "not-a-code",
+        pairDisabled: true,
+        triesLeft: 2,
+      }),
+      LP,
+      "enter",
+      [...ENTER, "localPairing.notACode"],
+      { disabled: ["localPairing.pair"] },
+    ),
+    row(
+      `${LP}/enter: the app asks for no categories`,
+      pair("enter", {
+        entry: "",
+        categories: [],
+        pairDisabled: true,
+        triesLeft: null,
+      }),
+      LP,
+      "enter",
+      [
+        ...ENTER.filter((k) => k !== "linkPairing.shares"),
+        "linkPairing.sharesNone",
+        PH,
+      ],
+      { disabled: ["localPairing.pair"] },
+    ),
+    row(
+      `${LP}/joining: Pair keeps its label while it looks, Cancel stops it`,
+      pair("joining", { entry: "4812 3456", categories: CATS }),
+      LP,
+      "joining",
+      JOIN,
+      {
+        disabled: ["localPairing.pair"],
+        mustNot: {
+          invariant:
+            "While looking, the screen never offers to show a code instead.",
+          copy: ["localPairing.toShow", "common.back"],
+        },
+      },
+    ),
+    row(
+      `${LP}/joining: nothing is shared`,
+      pair("joining", { entry: "4812 3456", categories: [] }),
+      LP,
+      "joining",
+      [
+        ...JOIN.filter((k) => k !== "linkPairing.shares"),
+        "linkPairing.sharesNone",
+      ],
+      { disabled: ["localPairing.pair"] },
+    ),
+    row(
+      `${LP}/confirm: the device that entered the code, named`,
+      pair("confirm", { device: "LAPTOP-7QH3RX", categories: CATS }),
+      LP,
+      "confirm",
+      [
+        "localPairing.confirmTitle",
+        "localPairing.confirmBody",
+        "linkPairing.shares",
+        "localPairing.pair",
+        "common.notNow",
+      ],
+      inv(
+        "Not now leads, so Enter on arrival never pairs; the name is unauthenticated text.",
+        {
+          copy: ["localPairing.confirmUnnamed"],
+          states: ["paired"],
+        },
+      ),
+    ),
+    row(
+      `${LP}/confirm: the device sent no name`,
+      pair("confirm", { categories: CATS }),
+      LP,
+      "confirm",
+      [
+        "localPairing.confirmUnnamed",
+        "localPairing.confirmBody",
+        "linkPairing.shares",
+        "localPairing.pair",
+        "common.notNow",
+      ],
+    ),
+    row(
+      `${LP}/confirm: nothing is shared`,
+      pair("confirm", { device: "Studio PC", categories: [] }),
+      LP,
+      "confirm",
+      [
+        "localPairing.confirmTitle",
+        "localPairing.confirmBody",
+        "linkPairing.sharesNone",
+        "localPairing.pair",
+        "common.notNow",
+      ],
+    ),
+    row(
+      `${LP}/confirm: Pair was pressed, both controls wait for the answer`,
+      pair("confirm", {
+        device: "LAPTOP-7QH3RX",
+        categories: CATS,
+        busy: "pair",
+      }),
+      LP,
+      "confirm",
+      [
+        "localPairing.confirmTitle",
+        "localPairing.confirmBody",
+        "linkPairing.shares",
+        "localPairing.pair",
+        "common.notNow",
+        "a11y.busy",
+      ],
+      {
+        disabled: ["localPairing.pair", "common.notNow"],
+        mustNot: {
+          invariant:
+            "A second press never confirms twice, and the screen never says it paired before the window does.",
+          copy: ["localPairing.pairedTitle"],
+          states: ["paired"],
+        },
+      },
+    ),
+    row(
+      `${LP}/confirm: Not now was pressed, both controls wait for the answer`,
+      pair("confirm", {
+        device: "LAPTOP-7QH3RX",
+        categories: CATS,
+        busy: "not-now",
+      }),
+      LP,
+      "confirm",
+      [
+        "localPairing.confirmTitle",
+        "localPairing.confirmBody",
+        "linkPairing.shares",
+        "localPairing.pair",
+        "common.notNow",
+        "a11y.busy",
+      ],
+      { disabled: ["localPairing.pair", "common.notNow"] },
+    ),
+    row(
+      `${LP}/waiting: for the other person, named, with what each shares`,
+      pair("waiting", { device: "Studio PC", categories: CATS }),
+      LP,
+      "waiting",
+      [
+        "linkPairing.waiting",
+        "localPairing.waitingWith",
+        "linkPairing.shares",
+        "common.cancel",
+      ],
+    ),
+    row(
+      `${LP}/waiting: the shower sent no name, nothing is shared`,
+      pair("waiting", { categories: [] }),
+      LP,
+      "waiting",
+      ["linkPairing.waiting", "linkPairing.sharesNone", "common.cancel"],
+    ),
+    row(
+      `${LP}/paired: the name starts as the one the device sent`,
+      pair("paired", { device: "LAPTOP-7QH3RX" }),
+      LP,
+      "paired",
+      [
+        "localPairing.pairedTitle",
+        "localPairing.pairedBody",
+        "localPairing.nameLabel",
+        "localPairing.nameHint",
+        "common.done",
+      ],
+      inv("A pairing that was made never says it failed.", {
+        copy: ["linkPairing.failedTitle"],
+        states: ["failed"],
+      }),
+    ),
+    row(
+      `${LP}/paired: kept, but it cannot connect while 8 can`,
+      pair("paired", { device: "LAPTOP-7QH3RX", cantConnect: true, max: 8 }),
+      LP,
+      "paired",
+      [
+        "localPairing.pairedTitle",
+        "localPairing.pairedBody",
+        "localPairing.nameLabel",
+        "localPairing.nameHint",
+        "localPairing.cantConnectTitle",
+        "localPairing.cantConnectBody",
+        "localPairing.pairedDevices",
+        "common.done",
+      ],
+    ),
+    row(
+      `${LP}/paired: the name could not be kept, the screen stays`,
+      pair("paired", { device: "LAPTOP-7QH3RX", nameError: "failed" }),
+      LP,
+      "paired",
+      [
+        "localPairing.pairedTitle",
+        "localPairing.pairedBody",
+        "localPairing.nameLabel",
+        "localPairing.nameHint",
+        "devices.renameFailed",
+        "common.done",
+      ],
+      inv("A name that was not kept is never lost without a word.", {
+        copy: ["pairedDevices.renameEmpty"],
+      }),
+    ),
+    failed("declined", "linkPairing.failedDeclined", "someone said Not now"),
+    failed(
+      "timeout",
+      "linkPairing.failedTimeout",
+      "time ran out before both confirmed",
+    ),
+    failed("full", "localPairing.failedFull", "one device has no room"),
+    failed("closed", "linkPairing.failedClosed", "the connection closed"),
+    row(
+      `${LP}/network-blocked: Open Settings where the platform can`,
+      pair("network-blocked", { canOpenSettings: true }),
+      LP,
+      "network-blocked",
+      [
+        "core.codes.nearby-permission-denied.title",
+        "core.codes.nearby-permission-denied.message",
+        "localPairing.openSettings",
+        "common.tryAgain",
+        "common.close",
+      ],
+    ),
+    row(
+      `${LP}/network-blocked: the words alone elsewhere`,
+      pair("network-blocked"),
+      LP,
+      "network-blocked",
+      [
+        "core.codes.nearby-permission-denied.title",
+        "core.codes.nearby-permission-denied.message",
+        "common.tryAgain",
+        "common.close",
+      ],
+      inv(
+        "A platform that cannot open its settings never offers a button that does nothing, and Try again returns to where the person was.",
+        {
+          copy: ["localPairing.openSettings"],
+        },
+      ),
+    ),
+    row(
+      `${LP}/off: pairing is off for the app`,
+      pair("off"),
+      LP,
+      "off",
+      [
+        "core.codes.local-pairing-off.title",
+        "core.codes.local-pairing-off.message",
+        "common.close",
+      ],
+      inv("An app with pairing off never offers to pair.", {
+        copy: ["localPairing.show", "localPairing.enter", "localPairing.pair"],
+        states: ["choose", "show", "enter"],
+      }),
+    ),
+    row(
+      `${LP}/hidden: Connect off`,
+      { services: NO_CONNECT, ...pair("choose") },
+      LP,
+      "hidden",
+      [],
+    ),
+
+    row(
+      `${PD}/list: five paired devices, every one can connect`,
+      list("list", {}, devs(5)),
+      PD,
+      "list",
+      LIST,
+      inv(
+        "With every device on and 8 or fewer, the switch does nothing useful and is not drawn.",
+        {
+          copy: SW,
+        },
+      ),
+    ),
+    row(
+      `${PD}/list: one is off, so the Can connect column shows`,
+      list("list", {}, devs(5, 4)),
+      PD,
+      "list",
+      [...LIST, ...SW],
+    ),
+    row(
+      `${PD}/list: 8 can connect and more are paired`,
+      list("list", {}, devs(10, 8)),
+      PD,
+      "list",
+      [
+        ...LIST,
+        ...SW,
+        "pairedDevices.reachableFullTitle",
+        "pairedDevices.reachableFullBody",
+      ],
+    ),
+    row(
+      `${PD}/list: no room for another, Pair with a Code waits`,
+      list("list", {}, devs(32, 8)),
+      PD,
+      "list",
+      [
+        ...LIST,
+        ...SW,
+        "pairedDevices.reachableFullTitle",
+        "pairedDevices.reachableFullBody",
+        "core.codes.local-links-full.title",
+        "pairedDevices.fullBody",
+      ],
+      { disabled: ["pairedDevices.pair"] },
+    ),
+    row(
+      `${PD}/list: never seen, so no Last seen`,
+      list("list", {}, devs(2, 2, false)),
+      PD,
+      "list",
+      LIST.filter((k) => k !== "pairedDevices.lastSeen"),
+    ),
+    row(
+      `${PD}/list: the app could not find a device`,
+      list(
+        "list",
+        { notice: { device: "Theo's laptop", kind: "not-found" } },
+        devs(3),
+      ),
+      PD,
+      "list",
+      [...LIST, "pairedDevices.notFoundTitle", "pairedDevices.notFoundBody"],
+    ),
+    row(
+      `${PD}/list: a device is busy`,
+      list(
+        "list",
+        { notice: { device: "Theo's laptop", kind: "busy" } },
+        devs(3),
+      ),
+      PD,
+      "list",
+      [...LIST, "pairedDevices.busyTitle", "common.tryAgain"],
+    ),
+    row(
+      `${PD}/list: a device is no longer paired`,
+      list(
+        "list",
+        { notice: { device: "Theo's laptop", kind: "unknown" } },
+        devs(3),
+      ),
+      PD,
+      "list",
+      [
+        ...LIST,
+        "core.codes.link-unknown.title",
+        "core.codes.link-unknown.message",
+      ],
+    ),
+    row(
+      `${PD}/renaming: in the row`,
+      list("renaming", { target: "L1" }, devs(4, 3)),
+      PD,
+      "renaming",
+      [
+        ...LIST,
+        ...SW,
+        "devices.renameLabel",
+        "localPairing.nameHint",
+        "common.save",
+        "common.cancel",
+      ],
+      inv("A name is never sent to the other device.", {
+        copy: ["pairedDevices.renameLong", "pairedDevices.renameEmpty"],
+      }),
+    ),
+    row(
+      `${PD}/renaming: a name over 64 characters is refused`,
+      list("renaming", { target: "L1", renameError: "long" }, devs(4, 3)),
+      PD,
+      "renaming",
+      [
+        ...LIST,
+        ...SW,
+        "devices.renameLabel",
+        "localPairing.nameHint",
+        "common.save",
+        "common.cancel",
+        "pairedDevices.renameLong",
+      ],
+    ),
+    row(
+      `${PD}/renaming: nothing left once cleaned`,
+      list("renaming", { target: "L1", renameError: "empty" }, devs(4, 3)),
+      PD,
+      "renaming",
+      [
+        ...LIST,
+        ...SW,
+        "devices.renameLabel",
+        "localPairing.nameHint",
+        "common.save",
+        "common.cancel",
+        "pairedDevices.renameEmpty",
+      ],
+    ),
+    row(
+      `${PD}/renaming: the store could not keep the name`,
+      list("renaming", { target: "L1", renameError: "failed" }, devs(4, 3)),
+      PD,
+      "renaming",
+      [
+        ...LIST,
+        ...SW,
+        "devices.renameLabel",
+        "localPairing.nameHint",
+        "common.save",
+        "common.cancel",
+        "devices.renameFailed",
+      ],
+      inv("A store failure is never worded as an empty name.", {
+        copy: ["pairedDevices.renameEmpty"],
+      }),
+    ),
+    row(
+      `${PD}/forgetting: the store could not forget it, the question stays`,
+      list("forgetting", { target: "L2", forgetError: true }, devs(4, 3)),
+      PD,
+      "forgetting",
+      [
+        ...LIST,
+        ...SW,
+        "pairedDevices.forgetConfirm",
+        "pairedDevices.forgetBody",
+        "pairedDevices.forgetFailed",
+        "common.cancel",
+      ],
+    ),
+    row(
+      `${PD}/forgetting: asks inside the row`,
+      list("forgetting", { target: "L2" }, devs(4, 3)),
+      PD,
+      "forgetting",
+      [
+        ...LIST,
+        ...SW,
+        "pairedDevices.forgetConfirm",
+        "pairedDevices.forgetBody",
+        "common.cancel",
+      ],
+      inv("Forget is local: it never reads as Remove, a server action.", {
+        copy: ["devices.manage"],
+      }),
+    ),
+    row(
+      `${PD}/loading: the first read has not answered`,
+      list("loading", {}, []),
+      PD,
+      "loading",
+      ["pairedDevices.title", "a11y.busy", "common.done"],
+      inv("Nothing is said about what is paired before the list is read.", {
+        copy: ["pairedDevices.empty", "pairedDevices.pair"],
+        states: ["empty", "list"],
+      }),
+    ),
+    row(`${PD}/empty: nothing paired yet`, list("list", {}, []), PD, "empty", [
+      "pairedDevices.title",
+      "pairedDevices.empty",
+      "pairedDevices.pair",
+      "common.done",
+    ]),
+    row(
+      `${PD}/load-failed: the record cannot be read`,
+      list("load-failed", {}, []),
+      PD,
+      "load-failed",
+      [
+        "pairedDevices.title",
+        "pairedDevices.loadFailed",
+        "common.tryAgain",
+        "common.done",
+      ],
+      inv("An unreadable record offers no list and no Pair with a Code.", {
+        copy: ["pairedDevices.pair"],
+        states: ["list", "empty"],
+      }),
+    ),
+    row(
+      `${PD}/off: pairing is off, Rename and Forget remain`,
+      list("off", {}, devs(3)),
+      PD,
+      "off",
+      [
+        "pairedDevices.title",
+        "core.codes.local-pairing-off.title",
+        "pairedDevices.offBody",
+        "pairedDevices.lastSeen",
+        "a11y.deviceOptions",
+        "devices.rename",
+        "pairedDevices.forget",
+        "common.done",
+      ],
+      inv(
+        "With pairing off no switch and no Pair with a Code is drawn; deleting what is held still works.",
+        {
+          copy: [...SW, "pairedDevices.pair"],
+        },
+      ),
+    ),
+    row(
+      `${PD}/hidden: Connect off`,
+      { services: NO_CONNECT, ...list("list", {}, devs(2)) },
+      PD,
+      "hidden",
+      [],
+    ),
+  ];
+}
+
+/** The window rule rows of the show screen (UI-KITS 4.3, LocalPairing). */
+function localLayoutRows(): LayoutRow[] {
+  const r = (
+    name: string,
+    window: LayoutRow["window"],
+    expect: LayoutRow["expect"],
+  ): LayoutRow => ({ name, window, expect });
+  const two = {
+    panes: 2,
+    logo: true,
+    scrolls: false,
+    noticeBeforeQr: false,
+  } as const;
+  return [
+    r("wide: two panes, the kit's logo", { width: 1280, height: 800 }, two),
+    r(
+      "600 wide is the first width with two panes",
+      { width: 600, height: 700 },
+      two,
+    ),
+    r(
+      "599 wide is one column",
+      { width: 599, height: 700 },
+      {
+        panes: 1,
+        logo: true,
+        scrolls: false,
+        noticeBeforeQr: false,
+      },
+    ),
+    r(
+      "200 % text keeps one column in a window that is 1100 wide",
+      { width: 1100, height: 800, textScale: 2 },
+      {
+        panes: 1,
+        logo: true,
+        scrolls: false,
+        noticeBeforeQr: false,
+      },
+    ),
+    r(
+      "short and wide (720 by 420): two panes, no logo, no scroll",
+      { width: 720, height: 420 },
+      {
+        panes: 2,
+        logo: false,
+        scrolls: false,
+        noticeBeforeQr: false,
+      },
+    ),
+    r(
+      "narrow and short (390 by 420): one column that scrolls, the notice before the QR",
+      { width: 390, height: 420 },
+      {
+        panes: 1,
+        logo: false,
+        scrolls: true,
+        noticeBeforeQr: true,
+      },
+    ),
+    r(
+      "a TV is always two panes",
+      { width: 480, height: 360, tv: true },
+      {
+        panes: 2,
+        logo: true,
+        scrolls: false,
+        noticeBeforeQr: false,
+      },
+    ),
+  ];
+}
+
+/** The local family's structure, and the window rule rows beside it. */
+function checkLocal(doc: UiMatrix, S: UiMatrixSources): string[] {
+  const errors = checkScreens(doc.local, "local", LOCAL_FAMILY_COMPONENTS, S);
+  if (!Array.isArray(doc.localLayout) || doc.localLayout.length === 0)
+    errors.push("localLayout: the family is empty");
+  return errors;
+}
+
 // ── Checks (plans/UK-02b.md §4.7, UK-02 §4) ─────────────────────────────────────────────────
 
 const isObj = (v: unknown): v is Obj =>
@@ -7264,21 +8310,28 @@ export const CONNECT_FAMILY_COMPONENTS = [
   "TransferOffer",
 ] as const;
 
-/** The connect family's structure: components, states, the keys each lists, and every key shown. */
-function checkConnect(doc: UiMatrix, S: UiMatrixSources): string[] {
+/**
+ * A family of one-state screens: components, states, the keys each lists (and the controls drawn
+ * disabled), a hidden row with Connect off for each, and every listed key shown by some row.
+ */
+function checkScreens(
+  rows: Row[] | undefined,
+  family: string,
+  components: readonly string[],
+  S: UiMatrixSources,
+): string[] {
   const errors: string[] = [];
-  const rows = doc.connect;
   if (!Array.isArray(rows) || rows.length === 0)
-    return ["connect: the family is empty"];
+    return [`${family}: the family is empty`];
   const names = new Set<string>();
   const shown = new Map<string, Set<string>>();
   for (const r of rows) {
-    const where = `connect "${r.name}"`;
+    const where = `${family} "${r.name}"`;
     if (names.has(r.name)) errors.push(`${where}: duplicate name`);
     names.add(r.name);
     const { component, state, copy } = r.expect;
-    if (!(CONNECT_FAMILY_COMPONENTS as readonly string[]).includes(component)) {
-      errors.push(`${where}: ${component} is not a connect component`);
+    if (!components.includes(component)) {
+      errors.push(`${where}: ${component} is not a ${family} component`);
       continue;
     }
     const services = r.input.services as string[] | undefined;
@@ -7294,6 +8347,9 @@ function checkConnect(doc: UiMatrix, S: UiMatrixSources): string[] {
     for (const k of copy)
       if (!listed.includes(k))
         errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
+    for (const k of r.expect.disabled ?? [])
+      if (!listed.includes(k))
+        errors.push(`${where}: disabled ${k} is not in the state's list`);
     for (const k of r.mustNot?.copy ?? [])
       if (copy.includes(k)) errors.push(`${where}: expects ${k} it forbids`);
     if (r.mustNot?.states?.includes(state))
@@ -7302,24 +8358,28 @@ function checkConnect(doc: UiMatrix, S: UiMatrixSources): string[] {
     for (const k of copy) set.add(k);
     shown.set(`${component}.${state}`, set);
   }
-  for (const c of CONNECT_FAMILY_COMPONENTS) {
+  for (const c of components) {
     if (!shown.has(`${c}.hidden`))
-      errors.push(`connect: no hidden row for ${c}`);
+      errors.push(`${family}: no hidden row for ${c}`);
     for (const [st, { copy: list }] of Object.entries(
       S.components[c]?.states ?? {},
     )) {
       const union = shown.get(`${c}.${st}`);
       if (!union) {
-        errors.push(`connect: no row for ${c}.${st}`);
+        errors.push(`${family}: no row for ${c}.${st}`);
         continue;
       }
       for (const k of list)
         if (!union.has(k))
-          errors.push(`connect: no row shows ${k} in ${c}.${st}`);
+          errors.push(`${family}: no row shows ${k} in ${c}.${st}`);
     }
   }
   return errors;
 }
+
+/** The connect family's structure. */
+const checkConnect = (doc: UiMatrix, S: UiMatrixSources): string[] =>
+  checkScreens(doc.connect, "connect", CONNECT_FAMILY_COMPONENTS, S);
 
 /** A row's copy keys against its state's list: a `core.*` key is in copy.en.json, any other is listed. */
 function copyErrors(
@@ -8116,6 +9176,7 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
   errors.push(...checkSaveConflict(doc, S));
   errors.push(...checkHolders(doc, S));
   errors.push(...checkConnect(doc, S));
+  errors.push(...checkLocal(doc, S));
   errors.push(...checkNearby(doc, S));
   return errors;
 }
@@ -8257,6 +9318,8 @@ export function buildUiMatrix(
     holders: holdersFamily(a).map(finish),
     holdersFlow: holdersFlow(),
     connect: connectFamily(a).map(finish),
+    local: localFamily(a).map(finish),
+    localLayout: localLayoutRows(),
     nearby: nearbyFamily(a).map(finish),
     theme: themeRows(),
     i18n: i18nRows(S),
