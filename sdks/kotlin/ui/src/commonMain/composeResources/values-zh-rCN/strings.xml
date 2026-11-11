@@ -2362,16 +2362,23 @@
     <string name="localPairing_pairedDevices">已配对的设备</string>
     <string name="localPairing_pairedDevices__macos">已配对的设备</string>
     <!-- Pair with a Code: show: what to do with the code. -->
-    <string name="localPairing_showBody">请在另一台设备上扫描或输入此验证码。</string>
+    <string name="localPairing_showBody">请在另一台设备上输入此验证码。</string>
     <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
     <string name="a11y_qrPairing">包含配对验证码的二维码</string>
     <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
     <string name="localPairing_expires">%1$s 后过期</string>
     <!-- Pair with a Code: show: shown while the code is open. -->
     <string name="localPairing_waitingDevice">正在等待另一台设备…</string>
-    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
-    <string name="localPairing_toEnter">改为输入验证码</string>
-    <string name="localPairing_toEnter__macos">改为输入验证码</string>
+    <!-- Pair with a Code: QR view: the title. -->
+    <string name="localPairing_qrTitle">扫描以配对</string>
+    <!-- Pair with a Code: QR view: what to do with the QR. -->
+    <string name="localPairing_qrBody">请用另一台设备的摄像头对准此处。</string>
+    <!-- Pair with a Code: code view: the quiet link to the QR view of the same window. -->
+    <string name="localPairing_toQr">显示二维码</string>
+    <string name="localPairing_toQr__macos">显示二维码</string>
+    <!-- Pair with a Code: QR view: the quiet link back to the code view of the same window. -->
+    <string name="localPairing_toCode">改为显示验证码</string>
+    <string name="localPairing_toCode__macos">改为显示验证码</string>
     <!-- Pair with a Code: show: after a wrong guess. -->
     <string name="localPairing_rotatedTitle">输入了错误的验证码</string>
     <!-- Pair with a Code: show: the code is new now. -->

@@ -135,6 +135,9 @@ export interface LocalPairingSnapshot extends LocalPairingInput {
   changed: readonly number[];
   /** show: bumps with each new code, so a renderer can restart its highlight. */
   rotation: number;
+  /** show: bumps each time the person switches between the code and the QR view, so a renderer
+   *  can announce the switch (and not the first view). */
+  switches: number;
   /** paired: the name field's text; `Done` renames when it changed. */
   name: string;
   /** paired: the pairing's id. */
@@ -207,6 +210,7 @@ export class LocalPairingModel {
         categories: [...options.categories],
         changed: [],
         rotation: 0,
+        switches: 0,
         name: "",
         left: false,
         max: MAX_CONNECTABLE,
@@ -225,6 +229,7 @@ export class LocalPairingModel {
     const {
       changed: _changed,
       rotation: _rotation,
+      switches: _switches,
       name: _name,
       id: _id,
       left: _left,
@@ -334,6 +339,10 @@ export class LocalPairingModel {
     this.go(
       {
         step: "show",
+        // The window is one window: a rotation keeps the view the person is on.
+        ...(!opened && prev.step === "show" && prev.view
+          ? { view: prev.view }
+          : {}),
         code: c.code,
         qr: c.qr,
         secondsLeft: Math.max(0, Math.ceil(c.expiresAt - this.now())),
@@ -633,6 +642,20 @@ export class LocalPairingModel {
     await this.enter();
   }
 
+  /** The QR view of the open code: the code, its time and its pairing window are untouched. */
+  showQr(): void {
+    const s = this.store.get();
+    if (s.step === "show" && s.view !== "qr")
+      this.set({ view: "qr", switches: s.switches + 1 });
+  }
+
+  /** The code view again. */
+  showCode(): void {
+    const s = this.store.get();
+    if (s.step === "show" && s.view === "qr")
+      this.set({ view: undefined, switches: s.switches + 1 });
+  }
+
   // ── Leaving ───────────────────────────────────────────────────────────────────────────────────
 
   /** Cancel: withdraws the code, stops a join or declines a prompt, and returns one step. */
@@ -791,6 +814,7 @@ export class LocalPairingModel {
       max: s.max,
       changed: [],
       rotation: s.rotation,
+      switches: s.switches,
       name: "",
       left: s.left,
       ...next,

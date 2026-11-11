@@ -39,6 +39,7 @@ const input = {
     step: "show",
     code: "4812 3456",
     qr: PAYLOAD,
+    view: "qr",
     secondsLeft: 291,
   },
 } as unknown as UiInput;

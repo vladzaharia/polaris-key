@@ -1483,23 +1483,24 @@ Mockups: [web](ui-kits/shots/web-settings-light.png),
 
 #### LocalPairing (Pair with a Code)
 
-- **Which states split.** Only the show state (the code and its QR) has two panes. Choose, enter,
-  confirm, paired and every closed or failed state stay one column. Mockups:
-  `sdk.react-pair-show`, `sdk.react-pair-enter`, `sdk.react-pair-confirm` and
-  `sdk.swiftui-pair-scan`.
-- **Layout.** The title and lede span the top. Start pane: the code in the kit's code face
-  (`--pk-kit-type-code-*`, the largest text on the screen) over its time ring, then the notice, the
-  waiting row, Cancel and the quiet switch to entering. End pane: the QR, centred on the code. One
-  column: title, lede, code, time, QR, notice, waiting, Cancel. The reading and focus order is the
-  same in both.
-- **When.** Two panes in a window at least 600 dp/pt/px wide, at any height; this is wider than
-  LinkPairing's rule on purpose, because the QR is read from another device and the code beside it
-  is the person's fallback. One column under 600 wide and at 200 % text. A window under 480 tall
-  (a 768 px laptop with a title bar, a Steam Deck, a TV) drops the kit's logo, which the window
-  already shows, and keeps the QR beside the whole start pane, so nothing scrolls. TV and consoles
-  always use two panes inside the title-safe area.
-- **Godot.** `two_pane_fits()`, as above.
-- **The QR.** Drawn as the Light Card (§4.9).
+- **One method per screen.** The show state is one window with two views, and a screen never shows
+  the digits and the QR together. The **code view** (the default) has the title, "Enter this code
+  on the other device.", the code in the kit's code face (`--pk-kit-type-code-*`, the largest text
+  on the screen) over its time ring, the waiting row, Cancel and one quiet link, Show a QR code. The
+  **QR view** (state `show-qr`, input `view: "qr"`) has "Scan to pair", "Point the other device's
+  camera here.", the Light Card (§4.9), the time ring, the waiting row, Cancel and one quiet link,
+  Show the code instead. Choose, enter, confirm, paired and every closed or failed state are one
+  column as before. Mockups: `sdk.react-pair-show` (the code view, as first drawn with the QR
+  beside it), `sdk.react-pair-enter`, `sdk.react-pair-confirm` and `sdk.swiftui-pair-scan`.
+- **One window.** Switching views never renews or rotates the code or moves its time. A renewal
+  while either view is open updates that view; in the QR view that is the Light Card's new-code
+  state. A window that ends or is withdrawn opens its next one on the code view.
+- **Focus and announcements.** After a switch focus moves to the new view's heading (the link is
+  never the default action), and the new view's line is announced politely.
+- **Layout.** One centred column at every size, sized to its content, and the same reading and
+  focus order. A window under 480 tall drops the kit's logo and the column scrolls, with a notice
+  before the QR. TV and consoles use the same column inside the title-safe area.
+- **Godot.** `two_pane_fits()` is not used here; the native kits follow in a later slice.
 
 ### 4.4 Accessibility (every kit)
 
@@ -1634,9 +1635,9 @@ port checks itself against it. Particle positions are decorative (they depend on
   `motion`; the others: their platform's setting (§4.8).
 - **Battery.** After 10 s of waiting the orbit drops to 30 frames a second. Nothing runs while the
   page or window is hidden or the stage is off-screen; the run resumes where it stopped.
-- **Fit.** The stage is square: 20 rem in one column, 17 rem in two panes from 600 wide, 23 rem from
-  768 wide (a card of 160, 136 and 184 px). A window under 480 tall has no room for it beside the
-  code and draws the plain QR, which is what the layout was built around.
+- **Fit.** The stage is square and sits alone in the QR view: 20 rem, 24 rem from 768 wide (a card
+  of 160 and 192 px). A window under 480 tall draws the plain QR, which fits the short scrolling
+  column better.
 - **Accessibility.** The canvas is one image with the accessible name the plain QR had
   (`a11y.qrPairing`). The plain QR stays as the fallback where the renderer cannot draw.
 

@@ -304,10 +304,13 @@ function Canvas(props: {
   useEffect(() => {
     const canvas = cv.current;
     if (!canvas) return;
-    // jsdom has no canvas: its getContext logs "not implemented" instead of answering null.
-    const ctx = /jsdom/i.test(navigator.userAgent)
-      ? null
-      : canvas.getContext("2d");
+    // A runtime that cannot draw (no 2D context, or one that throws) leaves the plain QR.
+    let ctx: CanvasRenderingContext2D | null = null;
+    try {
+      ctx = canvas.getContext("2d");
+    } catch {
+      ctx = null;
+    }
     if (!ctx) return props.onFail();
     // Read now, not from the state: the root's setting is known before the state catches up.
     const still = reduced || motionReduced(canvas);
