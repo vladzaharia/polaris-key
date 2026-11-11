@@ -155,6 +155,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "help/devices",
           "help/nearby-devices",
           "help/pair-with-someone-nearby",
+          "help/pair-with-a-code",
           "help/new-computer",
           "help/device-limit",
           "help/offline-activation",
@@ -474,6 +475,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/cloud-connect/relay",
           "features/cloud-connect/transfer",
           "features/cloud-connect/pairing",
+          "features/cloud-connect/local-links",
         ),
       },
       {
