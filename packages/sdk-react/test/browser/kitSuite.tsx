@@ -82,6 +82,7 @@ const FAMILIES = [
   "saveConflict",
   "holders",
   "connect",
+  "local",
   "nearby",
 ] as const;
 
