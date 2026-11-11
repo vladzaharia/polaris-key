@@ -26,12 +26,17 @@ import {
   transportFileSource,
   webCryptoSyncPort,
   type CloudSyncExport,
+  type ZipSink,
 } from "@polaris-key/client-core/sync";
 import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import type { KeyringClient } from "../keyring/client.js";
-import { createExportFile, prepareDestination } from "./exportFile.js";
+import {
+  createExportFile,
+  prepareDestination,
+  type ExportFile,
+} from "./exportFile.js";
 import { NodeFileTransport } from "./files.js";
 import type { CloudSyncHost } from "./host.js";
 import { sendSync } from "./transport.js";
@@ -95,7 +100,15 @@ export async function runNodeExport(
       waits,
       sig,
     );
-    const file = await createExportFile(paths);
+    // The partial is created at the first byte, which the export writes only once its plan is
+    // accepted: a refusal leaves nothing behind.
+    let file: ExportFile | undefined;
+    const sink: ZipSink = {
+      async write(chunk) {
+        file ??= await createExportFile(paths);
+        await file.sink.write(chunk);
+      },
+    };
     try {
       const summary = await exportToSink(
         {
@@ -110,8 +123,9 @@ export async function runNodeExport(
           files: transportFileSource(transport, waits, sig),
           ...(sig === undefined ? {} : { signal: sig }),
         },
-        file.sink,
+        sink,
       );
+      if (file === undefined) throw new Error("the export wrote nothing");
       await file.commit();
       return {
         path: paths.destination,
@@ -124,7 +138,7 @@ export async function runNodeExport(
         unsynced: summary.unsynced,
       };
     } catch (e) {
-      await file.discard();
+      await file?.discard();
       throw e;
     }
   };

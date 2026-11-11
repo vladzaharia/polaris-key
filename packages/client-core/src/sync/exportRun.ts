@@ -61,12 +61,8 @@ export interface CloudSyncExport {
 
 const cancelled = (): PolarisError =>
   new PolarisError("cancelled", "The export was cancelled");
-const network = (what: string, cause?: unknown): SyncExportError =>
-  new SyncExportError(
-    "network",
-    `The export could not read the data: ${what}`,
-    cause,
-  );
+const network = (what: string): SyncExportError =>
+  new SyncExportError("network", `The export could not read the data: ${what}`);
 
 /** Whether `e` is the cancel of an export. */
 export const isExportCancel = (e: unknown): boolean =>
@@ -183,8 +179,7 @@ async function answered<T>(
     } catch (e) {
       if (signal?.aborted) throw cancelled();
       // A route the transport refuses outright is not retried.
-      if (e instanceof TransferError)
-        throw network("the request was refused", e);
+      if (e instanceof TransferError) throw network("the request was refused");
       r = { ok: false, status: 0, code: "network" };
     }
     if (r.ok) return r;

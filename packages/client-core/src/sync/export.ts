@@ -379,7 +379,7 @@ class Opener {
     if (this.host === null) {
       return {
         id: wire,
-        version: c["version"],
+        version: c["version"] ?? null,
         hasValue: own(c, "value"),
         ...(own(c, "value") ? { value: c["value"] } : {}),
         binding: null,
@@ -417,7 +417,7 @@ class Opener {
     }
     return {
       id: rec[1],
-      version: c["version"],
+      version: c["version"] ?? null,
       hasValue: true,
       value,
       binding,
@@ -891,6 +891,10 @@ function lineText(r: OpenedRow, file: unknown, id?: string): string {
 
 // ── reading one file ─────────────────────────────────────────────────────────────────────────
 
+/** A file may take ceil(planned / this) + 8 requests of its source: a hostile Worker serving
+ *  one-byte ranges ends the file as partial instead of holding the export for ever. */
+const EXPORT_PIECE_FLOOR_BYTES = 64 * 1024;
+
 /** A reader over a source that yields at most `limit` bytes, hashing what it yields. */
 class Limited {
   private readonly it: AsyncIterator<Uint8Array>;
@@ -898,12 +902,16 @@ class Limited {
   private done = false;
   total = 0;
   readonly hash = new Sha256();
+  /** The pieces asked of the source; a source that serves more than {@link pieceCap} ends the file. */
+  private asked = 0;
+  private readonly pieceCap: number;
   constructor(
     src: AsyncIterable<Uint8Array>,
     private readonly limit: number,
     private readonly signal?: AbortSignal,
   ) {
     this.it = src[Symbol.asyncIterator]();
+    this.pieceCap = Math.ceil(limit / EXPORT_PIECE_FLOOR_BYTES) + 8;
   }
 
   /** Up to `n` bytes (fewer only at the end of the source or the limit). */
@@ -914,6 +922,11 @@ class Limited {
       if (this.buf.length === 0) {
         if (this.done || this.total >= this.limit) break;
         checkCancel(this.signal);
+        // A source that trickles tiny pieces would be asked for ever: past the cap the file is short.
+        if (++this.asked > this.pieceCap) {
+          this.done = true;
+          break;
+        }
         const r = await this.it.next();
         if (r.done) {
           this.done = true;

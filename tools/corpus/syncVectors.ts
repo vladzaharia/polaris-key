@@ -3749,6 +3749,19 @@ function buildExportCases(): unknown[] {
     }),
   });
 
+  // record-no-version: a record served without a version is written with "version": null.
+  const noVersion = sRecord("notes", "n-1", 4, { title: "a" });
+  delete (noVersion as { version?: number }).version;
+  rows.push({
+    id: "record-no-version",
+    description:
+      'Server mode: a record served without a version is written with "version": null and the export goes on; the next record keeps its version.',
+    input: xInput({
+      encryption: "server",
+      changes: [noVersion, sRecord("notes", "n-2", 5, { title: "b" })],
+    }),
+  });
+
   // e2e-file-truncated: 2.5 MiB, served up to the middle of segment 1.
   const seg = REF_FILE.segmentBytes + REF_FILE.tag;
   const big = xFile(

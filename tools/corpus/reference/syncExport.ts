@@ -890,7 +890,7 @@ function openRecord(
   const base = {
     collection,
     wire,
-    version: c["version"] as number,
+    version: (c["version"] ?? null) as number,
     pointer: pointerOf(c),
     binding: null as Row["binding"],
   };

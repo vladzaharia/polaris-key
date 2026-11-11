@@ -20,6 +20,7 @@ import {
 } from "node:fs";
 import { open as openFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { inspect } from "node:util";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
@@ -112,6 +113,8 @@ function exportWorld(opts: { file?: Stored; pointerSize?: number } = {}) {
   const hooks = {
     /** Called before a file range is answered. */
     onFile: (): Response | void => undefined,
+    /** The most bytes one range answer carries (a hostile Worker serves one byte). */
+    maxPiece: Number.POSITIVE_INFINITY,
     revisions: [] as unknown[],
   };
   const inner = w.fetch;
@@ -137,7 +140,11 @@ function exportWorld(opts: { file?: Stored; pointerSize?: number } = {}) {
     const all = file.bytes;
     if (!range) return new Response(all, { status: 200 });
     const a = Number(range[1]);
-    const b = Math.min(Number(range[2]), all.length - 1);
+    const b = Math.min(
+      Number(range[2]),
+      all.length - 1,
+      a + hooks.maxPiece - 1,
+    );
     return new Response(all.slice(a, b + 1), {
       status: 206,
       headers: { "content-range": `bytes ${a}-${b}/${all.length}` },
@@ -310,6 +317,42 @@ describe("cloudSync.export: the archive", () => {
     expect(err).toBeInstanceOf(PolarisError);
     expect(err.code).toBe("sync-export-too-large");
     expect(files(dir)).toEqual([]);
+  });
+
+  it("creates no partial before the plan accepts: a refusal never touches the partial path", async () => {
+    const { w } = exportWorld({
+      file: { bytes: bytes(10), version: 3 },
+      pointerSize: 5_000_000_000,
+    });
+    const { client } = await signedIn(w);
+    const dir = tmp();
+    const dest = join(dir, "a.zip");
+    // Planted after the destination was prepared: an early exclusive create would fail on it.
+    const pull = w.pull;
+    w.pull = (url) => {
+      writeFileSync(`${dest}.partial`, "not ours");
+      return pull(url);
+    };
+    const err = await client.cloudSync.export(dest).catch((e) => e);
+    expect(err.code).toBe("sync-export-too-large");
+    expect(readFileSync(`${dest}.partial`, "utf8")).toBe("not ours");
+  });
+
+  it("ends a file as partial when the Worker serves it in one-byte ranges, and the export goes on", async () => {
+    const { w, hooks, log } = exportWorld();
+    hooks.maxPiece = 1;
+    const { client } = await signedIn(w);
+    const dir = tmp();
+    const r = await client.cloudSync.export(join(dir, "a.zip"));
+    // ceil(2500 / 65536) + 8 requests at most, then the file is short.
+    expect(log.filter((l) => l.startsWith("file ")).length).toBeLessThanOrEqual(
+      9,
+    );
+    expect(r.skipped).toContainEqual(
+      expect.objectContaining({ kind: "file", code: "sync-file-invalid" }),
+    );
+    expect(r.records).toBe(1);
+    expect(files(dir)).toEqual(["a.zip"]);
   });
 
   it("allows one export at a time per client", async () => {
@@ -502,8 +545,10 @@ describe("cloudSync.export: cancel and failure leave nothing behind", () => {
       code: "sync-export-failed",
       reason: "destination",
     });
-    // Nothing of the cause's text (a path) is in the message.
+    // Nothing of the cause (its message and `path` name the destination) is kept.
     expect(String(err.message)).not.toContain(dir);
+    expect(err.cause).toBeUndefined();
+    expect(inspect(err, { depth: 10 })).not.toContain(dir);
     expect(files(dir).filter((f) => f !== "probe")).toEqual(["copy.zip"]);
     expect(readFileSync(dest, "utf8")).toBe("keep me");
   });
@@ -534,6 +579,7 @@ describe("cloudSync.export: the destination rules", () => {
       code: "sync-export-failed",
       reason: "destination",
     });
+    expect(inspect(err, { depth: 10 })).not.toContain(dir);
     expect(readFileSync(target, "utf8")).toBe("precious");
     expect(existsSync(dest)).toBe(false);
     expect(lstatSync(`${dest}.partial`).isSymbolicLink()).toBe(true);
@@ -599,9 +645,10 @@ describe("cloudSync.export: the destination rules", () => {
     const target = join(dir, "victim");
     writeFileSync(target, "precious");
     symlinkSync(target, paths.partial);
-    await expect(createExportFile(paths)).rejects.toMatchObject({
-      reason: "destination",
-    });
+    const err = await createExportFile(paths).catch((e) => e);
+    expect(err).toMatchObject({ reason: "destination" });
+    expect(err.cause).toBeUndefined();
+    expect(inspect(err, { depth: 10 })).not.toContain(dir);
     expect(readFileSync(target, "utf8")).toBe("precious");
   });
 

@@ -19,12 +19,9 @@ import { dirname, resolve } from "node:path";
 import { SyncExportError } from "@polaris-key/client-core/sync";
 import type { ZipSink } from "@polaris-key/client-core/sync";
 
-const destination = (what: string, cause?: unknown): SyncExportError =>
-  new SyncExportError(
-    "destination",
-    `The export cannot write there: ${what}`,
-    cause,
-  );
+/** The OS error is not chained: its message and `path` name the destination. */
+const destination = (what: string): SyncExportError =>
+  new SyncExportError("destination", `The export cannot write there: ${what}`);
 
 /** `O_NOFOLLOW` where the platform has it (Windows has no such flag; `wx` still refuses a link). */
 const NOFOLLOW = constants.O_NOFOLLOW ?? 0;
@@ -34,7 +31,7 @@ async function stat(path: string) {
     return await lstat(path);
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw destination("it cannot be read", e);
+    throw destination("it cannot be read");
   }
 }
 
@@ -65,8 +62,8 @@ export async function prepareDestination(path: string): Promise<{
       throw destination("the partial path is not a regular file");
     try {
       await unlink(partial);
-    } catch (e) {
-      throw destination("a stale partial could not be removed", e);
+    } catch {
+      throw destination("a stale partial could not be removed");
     }
   }
   return { destination: dest, partial };
@@ -84,8 +81,8 @@ export async function createExportFile(paths: {
       constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | NOFOLLOW,
       0o600,
     );
-  } catch (e) {
-    throw destination("the partial file cannot be created", e);
+  } catch {
+    throw destination("the partial file cannot be created");
   }
   let closed = false;
   const close = async (): Promise<void> => {
@@ -120,8 +117,8 @@ export async function createExportFile(paths: {
               throw new Error("the file accepted no bytes");
             at += bytesWritten;
           }
-        } catch (e) {
-          throw destination("a write failed", e);
+        } catch {
+          throw destination("a write failed");
         }
       },
     },
@@ -130,9 +127,9 @@ export async function createExportFile(paths: {
         await fh.sync();
         await close();
         await rename(paths.partial, paths.destination);
-      } catch (e) {
+      } catch {
         await discard();
-        throw destination("the file could not be completed", e);
+        throw destination("the file could not be completed");
       }
       // The rename itself reaches the disk when the directory does; best effort, and not on
       // platforms that cannot open a directory.
