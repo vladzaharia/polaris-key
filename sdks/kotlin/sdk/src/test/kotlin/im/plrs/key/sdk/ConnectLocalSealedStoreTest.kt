@@ -119,4 +119,20 @@ class ConnectLocalSealedStoreTest {
         assertTrue(failure is im.plrs.key.core.PolarisException)
         assertArrayEquals(before, file.readBytes())
     }
+
+    @Test
+    fun removingTheLastLinkClearsTheRecordAndANewPairingStartsAFreshOne() = runBlocking {
+        val sealer = AesSealer(key)
+        val s = storage(sealer)
+        val store = LocalLinkStore("djdl") { s }
+        val id = store.add(NewLocalLink(bytes(1), bytes(2), bytes(3), bytes(4), "Only", emptyList()), 1L)!!
+        assertTrue(file.exists())
+        store.update { rows -> rows.filter { it.id != id } }
+        assertFalse(file.exists())
+        assertTrue(sealer.destroyed)
+        // A fresh record works (the real sealer makes a new key on the next write).
+        val again = LocalLinkStore("djdl") { storage() }
+        val next = again.add(NewLocalLink(bytes(21), bytes(22), bytes(23), bytes(24), "Again", emptyList(), platform = "android"), 2L)!!
+        assertEquals(listOf(next), LocalLinkStore("djdl") { storage() }.rows().map { it.id })
+    }
 }

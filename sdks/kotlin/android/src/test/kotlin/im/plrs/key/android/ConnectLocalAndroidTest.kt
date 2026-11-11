@@ -88,6 +88,35 @@ class ConnectLocalAndroidTest {
         assertSame(mine, ConnectOptions(localState = mine).withAndroidDefaults(ctx, product, keys).localState)
     }
 
+    @Test
+    fun aRecordWhoseKeyIsGoneIsDeletedAndTheStoreStartsEmpty() = runBlocking {
+        storage().put(byteArrayOf(1, 2, 3))
+        keys.keys.remove(KeystoreSealer.localAliasFor(product))
+        val s = storage()
+        assertNull(s.get())
+        assertFalse(file.exists())
+        // It takes a new record, under a new key.
+        s.put(byteArrayOf(4, 5))
+        assertEquals(listOf<Byte>(4, 5), storage().get()!!.toList())
+        // An update meets the same lost key the same way.
+        keys.keys.remove(KeystoreSealer.localAliasFor(product))
+        assertTrue(storage().update { current -> if (current == null) byteArrayOf(9) else null })
+        assertEquals(listOf<Byte>(9), storage().get()!!.toList())
+    }
+
+    @Test
+    fun aRecordThatFailsUnderALiveKeyIsKeptAndRefused() = runBlocking {
+        storage().put(byteArrayOf(1, 2, 3))
+        val bytes = file.readBytes()
+        bytes[bytes.size - 1] = (bytes[bytes.size - 1].toInt() xor 1).toByte()
+        file.writeBytes(bytes)
+        val refused = runCatching { storage().get() }.exceptionOrNull()
+        assertTrue(refused is im.plrs.key.core.DeviceKeysUnreadableException)
+        assertTrue(file.exists())
+        assertEquals(bytes.toList(), file.readBytes().toList())
+        assertNotNull(keys.keys[KeystoreSealer.localAliasFor(product)])
+    }
+
     // -- the adverts: the exact calls the shower and the LAN service make -------------------------------
 
     private class FakeNsd : NsdPort {

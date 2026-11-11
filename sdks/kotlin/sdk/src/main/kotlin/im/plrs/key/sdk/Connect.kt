@@ -110,6 +110,7 @@ public data class ConnectOptions @JvmOverloads constructor(
      * 0600 file `pkey.connect.local.v1.json` in the state directory, or memory. Android has no default in this module:
      * a plain file there would hold the secrets unsealed, so local links are refused (invalid-options) until a sealed
      * storage is passed; `PolarisKeyAndroid.client` passes a Keystore-sealed one.
+     * A host that passes an unsealed storage takes that risk itself: the link secrets then rest wherever it keeps them.
      */
     val localState: DeviceKeyStorage? = null,
 )
@@ -559,7 +560,8 @@ public class ConnectClient internal constructor(
 
     /**
      * Forget the held roster, certificate and K_disc (sign-out, leaving the person's devices). The
-     * device keys are untouched, and so is the Worker's roster.
+     * device keys are untouched, and so is the Worker's roster. Local links survive a sign-out by design: they are not
+     * account data (`cloudConnect.localLinks.remove` forgets one).
      */
     public suspend fun leave(): Unit = lock.withLock {
         // Whatever the record says, the device is leaving: what the SDK kept for it (partial transfers) goes too.
