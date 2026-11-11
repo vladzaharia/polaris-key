@@ -7,11 +7,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { dispatchWith } from "../../../../src/dispatch.js";
 import {
   setClientStatus,
+  updateClient,
   type ClientRecord,
 } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import { putClientGrant } from "../../../../src/services/identity/issuer/grantsRepo.js";
 import { signIssuerJwt } from "../../../../src/services/identity/issuer/keys.js";
 import { redeemAuthorizationCode } from "../../../../src/services/identity/passthrough/code.js";
+import { signInRequestView } from "../../../../src/services/identity/passthrough/routes.js";
 import { PORTAL_COOKIE } from "../../../../src/services/identity/portal/session.js";
 import { NOW } from "../../../seed.js";
 import { issuePortalSessionRow } from "../../../portalSessionRow.js";
@@ -103,7 +105,7 @@ async function enter(
       w.db,
       opts.at ?? NOW,
     );
-  return { entry, handle: loc.searchParams.get("request")! };
+  return { entry, handle: loc.searchParams.get("request")!, binder };
 }
 
 const target = (res: Response) => {
@@ -464,5 +466,50 @@ describe("interactive requests and untouched ones", () => {
       NOW,
     );
     expect(res.headers.get("location")).toBeNull();
+  });
+});
+
+describe("a client edited after authorize", () => {
+  const OTHER_CB = "https://forum.example.com/other";
+  /** The status the card's request view answers for `handle`. */
+  const view = async (handle: string, binder: string) =>
+    (
+      await signInRequestView(
+        w.env,
+        w.db,
+        new Request(`${BASE}/api/signin/requests/${handle}`, {
+          headers: { cookie: binder },
+        }),
+        handle,
+        NOW,
+        undefined,
+      )
+    ).status;
+  const dropRedirect = () =>
+    updateClient(
+      w.db,
+      SLUG,
+      client.clientId,
+      { redirectUris: [OTHER_CB] },
+      NOW,
+    );
+
+  it("prompt=none: the silent entry sends nothing to the removed URI, and the card view is 404", async () => {
+    await grant();
+    const { entry, handle, binder } = await enter(
+      { prompt: "none", scope: "openid profile email" },
+      { session: true },
+    );
+    expect(await view(handle, binder)).toBe(200);
+    await dropRedirect();
+    expect(await view(handle, binder)).toBe(404);
+    cardShown(await entry());
+  });
+
+  it("an interactive request: the card view is 404", async () => {
+    const { handle, binder } = await enter({});
+    expect(await view(handle, binder)).toBe(200);
+    await dropRedirect();
+    expect(await view(handle, binder)).toBe(404);
   });
 });

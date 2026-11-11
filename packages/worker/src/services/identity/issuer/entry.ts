@@ -58,6 +58,7 @@ import { getActiveClient } from "./clientsRepo.js";
 import { claimsForCode, grantCovers } from "./coverage.js";
 import { getClientGrant, touchClientGrant } from "./grantsRepo.js";
 import { withQuery } from "./redirect.js";
+import { stillRegistered } from "./registration.js";
 import { issuerServed } from "./served.js";
 
 /** The silent path's budget per account: Continue's, in its own bucket. */
@@ -90,7 +91,9 @@ export async function silentSignInEntry(
   const client = (await issuerServed(db, slug))
     ? await getActiveClient(db, slug, authz.clientId)
     : null;
-  if (!client) return null;
+  // The developer may have edited the client since `authorize`: the redirect and scope must still hold.
+  if (!client || !stillRegistered(client, authz.redirectUri, authz.scope))
+    return null;
   const cx: Answer = {
     req,
     env,
