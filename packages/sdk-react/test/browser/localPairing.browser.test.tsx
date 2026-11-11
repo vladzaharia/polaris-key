@@ -102,8 +102,7 @@ async function draw(
   stage.host = document.body.appendChild(document.createElement("div"));
   stage.root = createRoot(stage.host);
   stage.root.render(node);
-  while (!stage.host.querySelector(".pk-root"))
-    await new Promise((r) => setTimeout(r, 20));
+  while (!stage.host.querySelector(".pk-root")) await frame();
   await document.fonts.ready;
   await frame();
   return stage.host.querySelector<HTMLElement>(".pk-root")!;
@@ -482,7 +481,6 @@ async function until(test: () => unknown, what: string): Promise<void> {
   for (let i = 0; i < 150; i++) {
     if (test()) return;
     await frame();
-    await new Promise((r) => setTimeout(r, 10));
   }
   throw new Error(`timed out waiting for ${what}`);
 }
