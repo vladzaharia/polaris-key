@@ -77,6 +77,9 @@ private class World {
 
     @Volatile var ranges = 0
 
+    /** The most bytes one range answer carries (a hostile Worker serves one byte). */
+    @Volatile var maxPiece = Int.MAX_VALUE
+
     fun addSave(id: String, version: Long, data: ByteArray, chapter: String) {
         stored[id to version] = data
         rows[id] = buildJsonObject {
@@ -221,7 +224,7 @@ class CloudSyncExportTest {
             else -> {
                 world.ranges++
                 val start = m.groupValues[1].toInt()
-                val end = minOf(m.groupValues[2].toInt(), data.size - 1)
+                val end = minOf(m.groupValues[2].toInt(), data.size - 1, start + world.maxPiece - 1)
                 val headers = mapOf("etag" to "\"e\"", "content-range" to "bytes $start-$end/${data.size}")
                 PolarisResponse(206, data.copyOfRange(start, end + 1), headers)
             }
@@ -315,6 +318,22 @@ class CloudSyncExportTest {
         assertTrue(result.skipped.isEmpty())
         assertNoPartial(dest)
         assertTrue("a ranged read of the stored bytes", world.ranges >= 2)
+        c.close()
+    }
+
+    @Test
+    fun aWorkerServingOneByteRangesEndsTheFileShortAndTheExportGoesOn() = runBlocking {
+        world.addSave("slot-1", 1, bytes(3000), "one")
+        world.maxPiece = 1
+        val c = signedIn()
+        val dest = dir.resolve("hostile.zip")
+        val result = c.cloudSync.export(dest)
+        // ceil(3000 / 64 KiB) + 8 requests at most, then the file is short, flagged, and the record is written.
+        assertTrue("ranges: ${world.ranges}", world.ranges <= 9)
+        assertEquals(1, result.records)
+        assertEquals(listOf("sync-file-invalid"), result.skipped.map { it.code })
+        assertTrue(result.skipped.all { it.partial })
+        assertTrue(Files.exists(dest))
         c.close()
     }
 

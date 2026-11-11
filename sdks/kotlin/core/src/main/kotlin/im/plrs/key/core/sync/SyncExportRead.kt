@@ -17,16 +17,22 @@ private const val PIECE = 1_048_576
 
 internal class FileResult(val size: Long, val sha256: String, val partial: Boolean)
 
-/** The stored bytes of a file, at most [limit] of them in all, hashed as they go by. */
+/** A file may take ceil(planned / this) + 8 requests of its source: a Worker serving one-byte ranges ends the file short. */
+private const val PIECE_FLOOR = 65_536L
+
+/** The stored bytes of a file, at most [limit] of them in all, hashed as they go by, from at most `ceil(limit / 64 KiB) + 8` pieces. */
 private class Limited(private val src: ExportStored, private val limit: Long) : AutoCloseable {
     var total = 0L
         private set
+    private var asked = 0L
+    private val cap = (limit + PIECE_FLOOR - 1) / PIECE_FLOOR + 8
     private val hash = MessageDigest.getInstance("SHA-256")
 
     suspend fun next(): ByteArray? {
         var out: ByteArray? = null
         while (out == null && total < limit) {
             currentCoroutineContext().ensureActive()
+            if (++asked > cap) break
             val piece = src.next() ?: break
             val room = limit - total
             val p = if (piece.size > room) piece.copyOf(room.toInt()) else piece
