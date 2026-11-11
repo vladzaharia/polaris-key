@@ -354,7 +354,7 @@ func _found_for(c: PKeyMdnsConsumers.Consumer, row: Dictionary) -> void:
 	var name: String = row["instance"]
 	if not c.on_up.is_valid():
 		return
-	if c.accept.is_valid() and not bool(c.accept.call(name)) and not c.tag_admits(row["txt"]):
+	if not c.accepts(name) and not c.tag_admits(row["txt"]):
 		return
 	if not c.rows.has(name) and c.rows.size() >= MAX_ROWS:
 		return

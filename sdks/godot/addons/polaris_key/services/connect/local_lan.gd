@@ -495,7 +495,12 @@ func _accept_native(pipe: PKeyPeerPipe) -> void:
 	if _stopped or _sessions.size() >= MAX_SESSIONS or _locals.is_empty() or not _allowed():
 		pipe.abort()
 		return
-	_accept(pipe, Callable(), PKeyLanAddress.group_key(pipe.remote_address()))
+	var group: Variant = PKeyLanAddress.group_key(pipe.remote_address())
+	if not group is String:
+		# A source that cannot be grouped gets no budget to spend: it is closed before a byte is read.
+		pipe.abort()
+		return
+	_accept(pipe, Callable(), group)
 
 
 func _accept(pipe: PKeyPeerPipe, release: Callable, group: Variant) -> void:

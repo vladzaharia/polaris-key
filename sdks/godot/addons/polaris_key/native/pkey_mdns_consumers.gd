@@ -33,9 +33,12 @@ class Consumer:
 						return true
 		return false
 
-	## Whether the consumer's roster filter lets `name` in (no filter lets every name in).
+	## Whether the consumer's roster filter lets `name` in. With no filter every name is let in, unless the consumer
+	## holds tags: then it wants tagged rows only.
 	func accepts(name: String) -> bool:
-		return not accept.is_valid() or bool(accept.call(name))
+		if accept.is_valid():
+			return bool(accept.call(name))
+		return tags.is_empty()
 
 
 var _list: Array = []

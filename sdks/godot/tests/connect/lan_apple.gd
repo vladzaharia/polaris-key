@@ -67,6 +67,7 @@ func run(t: PKeyTestContext) -> void:
 	_export(t)
 	_local(t)
 	_consumers(t)
+	_tags_only(t)
 	for a in _apples:
 		a.free()
 
@@ -574,3 +575,24 @@ func _consumers(t: PKeyTestContext) -> void:
 	t.check("share: the native browse runs while one is left", not fake.ops().has("bj_browse_stop") and (fake.calls[-1][1] as PackedByteArray).get_string_from_ascii() == C)
 	l.detail.stop()
 	t.check("share: the last one stops it", fake.ops().count("bj_browse_stop") == 1 and not lane.status()["active"])
+
+
+# A browse that holds tags and no roster filter takes tagged rows only (the joiner of a pairing window).
+func _tags_only(t: PKeyTestContext) -> void:
+	var pair := _local_lane()
+	var fake: FakeBin = pair[0]
+	var lane: PKeyAppleMdns = pair[1]
+	var tag := "0123456789abcdef"
+	var account := Seen.new()
+	var a := lane.browse(account.on_up, account.on_down, func(n: String) -> bool: return n == A or n == C)
+	var joiner := Seen.new()
+	var j := lane.browse(joiner.on_up, joiner.on_down, Callable(), {"q": [tag]})
+	fake.event("bj_found", {"instance": A, "txt": ["v=1", "m=a"]})
+	fake.event("bj_found", {"instance": C, "txt": ["v=1", "m=l"]})
+	fake.event("bj_found", {"instance": B, "txt": ["v=1", "m=q", "h=" + tag, "n=12"]})
+	lane.poll()
+	t.check("tags only: no account row and no m=l row reaches it, the tagged row does",
+			a.ok and j.ok and joiner.up.map(func(x): return x["instance"]) == [B] and account.up.size() == 2)
+	var late := Seen.new()
+	lane.browse(late.on_up, late.on_down, Callable(), {"q": [tag]})
+	t.check("tags only: and a browse that opens later is replayed the tagged row only", late.up.map(func(x): return x["instance"]) == [B])

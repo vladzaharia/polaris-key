@@ -531,7 +531,7 @@ func _found_for(c: PKeyMdnsConsumers.Consumer, row: Dictionary) -> void:
 	if not c.on_up.is_valid():
 		return
 	var tag_only := false
-	if c.accept.is_valid() and not bool(c.accept.call(name)):
+	if not c.accepts(name):
 		if not c.tag_admits(txt):
 			return
 		tag_only = true

@@ -175,9 +175,10 @@ func _start_browse() -> void:
 	)
 
 
-## A native lane filters on the tags; the shared lane admits any well-formed name and the TXT is judged here.
+## A native lane filters on the tags alone (no roster name is wanted); the shared lane admits any well-formed name and
+## the TXT is judged here.
 func _accepts(_instance: String) -> bool:
-	return true
+	return not (_o["mdns"] as Object).has_method("set_tags")
 
 
 func _step() -> void:

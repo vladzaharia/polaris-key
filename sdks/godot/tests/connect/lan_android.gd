@@ -82,6 +82,7 @@ func run(t: PKeyTestContext) -> void:
 	_tags(t)
 	_local(t)
 	_consumers(t)
+	_tags_only(t)
 	_older(t)
 	_export(t)
 	for a in _androids:
@@ -422,3 +423,24 @@ func _consumers(t: PKeyTestContext) -> void:
 	t.check("share: and its names", fake.last("nsd_accept")["names"] == [B])
 	l.detail.stop()
 	t.check("share: the last one stops the browse", fake.ops().count("nsd_browse_stop") == 1)
+
+
+# A browse that holds tags and no roster filter takes tagged rows only (the joiner of a pairing window).
+func _tags_only(t: PKeyTestContext) -> void:
+	var pair := _local_lane()
+	var fake: FakePlugin = pair[0]
+	var lane: PKeyAndroidMdns = pair[1]
+	var tag := "0123456789abcdef"
+	var account := Seen.new()
+	var a := lane.browse(account.on_up, account.on_down, func(n: String) -> bool: return n == A or n == C)
+	var joiner := Seen.new()
+	var j := lane.browse(joiner.on_up, joiner.on_down, Callable(), {"q": [tag]})
+	fake.event({"ev": "nsd_found", "instance": A, "hosts": ["192.168.1.9"], "port": 4100, "txt": ["v=1", "m=a"]})
+	fake.event({"ev": "nsd_found", "instance": C, "hosts": ["192.168.1.8"], "port": 4300, "txt": ["v=1", "m=l"]})
+	fake.event({"ev": "nsd_found", "instance": B, "hosts": ["192.168.1.7"], "port": 4400, "txt": ["v=1", "m=q", "h=" + tag, "n=12"]})
+	lane.poll()
+	t.check("tags only: no account row and no m=l row reaches it, the tagged row does",
+			a.ok and j.ok and joiner.up.map(func(x): return x["instance"]) == [B] and account.up.size() == 2)
+	var late := Seen.new()
+	lane.browse(late.on_up, late.on_down, Callable(), {"q": [tag]})
+	t.check("tags only: and a browse that opens later is replayed the tagged row only", late.up.map(func(x): return x["instance"]) == [B])
