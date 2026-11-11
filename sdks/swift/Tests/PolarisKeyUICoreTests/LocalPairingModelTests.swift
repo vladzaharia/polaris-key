@@ -28,6 +28,7 @@ final class FakeLinks: @unchecked Sendable {
     var confirms = 0
     var renewCode: KitLocalCode?
     var joined: [String] = []
+    var qrRead: KitQrRead = .ours
 
     var driver: LocalLinksDriver {
         let me = self
@@ -67,7 +68,8 @@ final class FakeLinks: @unchecked Sendable {
                 if let e = me.joinError { throw e }
                 try await Task.sleep(nanoseconds: 50_000_000)
                 return me.joinResult ?? KitLocalPaired(id: "L9", label: "Maya")
-            })
+            },
+            readQr: { _ in me.qrRead })
     }
 
     func offer(_ label: String? = "Maya") -> KitLocalOffer {
@@ -223,10 +225,22 @@ final class LocalPairingModelTests: XCTestCase {
 
     func testAWindowThatRanOutHasNoWait() async {
         let (m, f, _) = make()
-        await shown(m, f)
+        await m.start()
+        await m.show()
+        // It ended before any code was shown: the closed step, with no wait.
         f.events?.onEnd("expired")
         await settle()
         XCTAssertEqual(m.state.closedBy, .expired)
+        XCTAssertNil(m.state.cooldownLeft)
+    }
+
+    func testAShownWindowThatRanOutStaysOnScreenWithNoWait() async {
+        let (m, f, _) = make()
+        await shown(m, f)
+        f.events?.onEnd("expired")
+        await settle()
+        XCTAssertEqual(m.state.step, .show)
+        XCTAssertEqual(m.state.expired, true)
         XCTAssertNil(m.state.cooldownLeft)
     }
 

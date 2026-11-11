@@ -37,6 +37,11 @@ final class FakeScanner: KitScanSource {
 final class ScanModelTests: XCTestCase {
     private func settle() async { for _ in 0..<40 { await Task.yield() } }
 
+    /// Waits for the read to reach the model (the stream hands it over on another turn).
+    private func leaveScan(_ m: LocalPairingModel) async {
+        for _ in 0..<400 where m.state.step == .scan { await Task.yield() }
+    }
+
     private func make(_ status: KitCameraStatus, _ fake: FakeLinks = FakeLinks())
         -> (LocalPairingModel, FakeLinks, FakeScanner, ManualClock)
     {
@@ -138,6 +143,42 @@ final class ScanModelTests: XCTestCase {
         XCTAssertEqual(fake.joined.count, 2)
     }
 
+    func testAnotherAppsQrIsSaidInPlaceWithNoFlashNoRestartAndNoJoin() async {
+        let fake = FakeLinks()
+        fake.qrRead = .otherApp
+        let (m, _, scanner, clock) = make(.authorized, fake)
+        await m.start()
+        await m.scan()
+        var steps: [KitLocalPairing.Step] = []
+        for _ in 0..<3 {
+            scanner.sink?.yield("PKP1:OTHER:P1-AAAAAAAAAAAAAAAA:7KQ2M5TXNRB4WV3Y")
+            await settle()
+            clock.advance(LocalPairingModel.rereadSeconds + 1)
+            steps.append(m.state.step)
+        }
+        // The step never left scan, the camera never restarted, nothing was joined, one notice.
+        XCTAssertEqual(steps, [.scan, .scan, .scan])
+        XCTAssertEqual(scanner.starts, 1)
+        XCTAssertTrue(scanner.running)
+        XCTAssertTrue(fake.joined.isEmpty)
+        XCTAssertEqual(m.state.scanNotice, .otherApp)
+        XCTAssertNotNil(m.screen.line("localPairing.otherApp"))
+        // A text that is no pairing code at all says the same.
+        fake.qrRead = .invalid
+        scanner.sink?.yield("https://example.com")
+        await settle()
+        XCTAssertEqual(m.state.scanNotice, .otherApp)
+        XCTAssertTrue(fake.joined.isEmpty)
+        // A code of this app still goes on to join.
+        fake.qrRead = .ours
+        fake.joinOffer = fake.offer()
+        scanner.sink?.yield("PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y")
+        await leaveScan(m)
+        for _ in 0..<400 where fake.joined.isEmpty { try? await Task.sleep(nanoseconds: 5_000_000) }
+        XCTAssertEqual(m.state.step, .waiting)
+        XCTAssertEqual(fake.joined.count, 1)
+    }
+
     func testAReadGoesStraightToWaitingAndStopsTheCamera() async {
         let fake = FakeLinks()
         fake.joinOffer = fake.offer()
@@ -146,7 +187,7 @@ final class ScanModelTests: XCTestCase {
         await m.scan()
         XCTAssertTrue(scanner.running)
         scanner.sink?.yield("PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y")
-        await Task.yield()
+        await leaveScan(m)
         XCTAssertEqual(m.state.step, .waiting)
         await settle()
         XCTAssertFalse(scanner.running)

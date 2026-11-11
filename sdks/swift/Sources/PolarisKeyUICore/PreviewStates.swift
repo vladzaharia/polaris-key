@@ -997,7 +997,9 @@ extension PolarisKeyPreviewState {
         var p = KitLocalPairing(step: step)
         p.categories = ["crates", "cues"]
         build(&p)
-        return .init(.localPairing, step.rawValue, variant: variant, base { $0.localPairing = p })
+        // The QR view is its own state (`show-qr`) of the show step.
+        let state = step == .show && p.view == .qr ? "show-qr" : step.rawValue
+        return .init(.localPairing, state, variant: variant, base { $0.localPairing = p })
     }
 
     private static func pairedDevices(
@@ -1021,6 +1023,49 @@ extension PolarisKeyPreviewState {
             $0.code = "4812 3456"
             $0.qr = "PKP1:TIDEWATER:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
             $0.secondsLeft = 291
+        },
+        localPairing(.choose, variant: "scan") { $0.canScan = true },
+        localPairing(.opening),
+        localPairing(.show) {
+            $0.code = "4812 3456"
+            $0.qr = "PKP1:TIDEWATER:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+            $0.secondsLeft = 291
+            $0.view = .qr
+        },
+        localPairing(.show, variant: "expired") {
+            $0.code = "4812 3456"
+            $0.qr = "PKP1:TIDEWATER:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+            $0.secondsLeft = 0
+            $0.expired = true
+        },
+        localPairing(.show, variant: "expired") {
+            $0.code = "4812 3456"
+            $0.qr = "PKP1:TIDEWATER:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+            $0.secondsLeft = 0
+            $0.expired = true
+            $0.view = .qr
+        },
+        localPairing(.scanPrompt) { $0.canScan = true },
+        localPairing(.scan) { $0.canScan = true },
+        localPairing(.scan, variant: "other-app") {
+            $0.canScan = true
+            $0.scanNotice = .otherApp
+        },
+        localPairing(.scan, variant: "not-found") {
+            $0.canScan = true
+            $0.scanNotice = .notFound
+        },
+        localPairing(.scan, variant: "stale") {
+            $0.canScan = true
+            $0.scanNotice = .stale
+        },
+        localPairing(.scan, variant: "camera-busy") {
+            $0.canScan = true
+            $0.cameraBusy = true
+        },
+        localPairing(.cameraOff) {
+            $0.canScan = true
+            $0.canOpenSettings = true
         },
         localPairing(.show, variant: "rotated") {
             $0.code = "4812 9999"

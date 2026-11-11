@@ -97,6 +97,12 @@ public struct KitLocalEvents: Sendable {
     }
 }
 
+/// What a scanned text is, judged before the join: a pairing code of this app, another app's, or no
+/// pairing code at all (`PeerLocal.parseQr`).
+public enum KitQrRead: Sendable, Equatable {
+    case ours, otherApp, invalid
+}
+
 /// `client.cloudConnect.localLinks` as far as the two models need it. Calls throw `KitLocalError`
 /// (or `CancellationError` for a cancelled join).
 public struct LocalLinksDriver: Sendable {
@@ -118,6 +124,9 @@ public struct LocalLinksDriver: Sendable {
             _ code: String, _ categories: [String], _ label: String?,
             _ onConfirm: @escaping @Sendable (KitLocalOffer) -> Void
         ) async throws -> KitLocalPaired
+    /// Sorts a scanned text locally, so another app's QR is said in place and never reaches `join`.
+    /// The default trusts the text (the join answers it).
+    public var readQr: @Sendable (_ text: String) -> KitQrRead
 
     public init(
         localPairing: @escaping @Sendable () -> Bool,
@@ -131,7 +140,8 @@ public struct LocalLinksDriver: Sendable {
         join:
             @escaping @Sendable (
                 String, [String], String?, @escaping @Sendable (KitLocalOffer) -> Void
-            ) async throws -> KitLocalPaired
+            ) async throws -> KitLocalPaired,
+        readQr: @escaping @Sendable (String) -> KitQrRead = { _ in .ours }
     ) {
         self.localPairing = localPairing
         self.list = list
@@ -142,13 +152,15 @@ public struct LocalLinksDriver: Sendable {
         self.dialsLeft = dialsLeft
         self.pair = pair
         self.join = join
+        self.readQr = readQr
     }
 }
 
 #if canImport(Network)
     extension LocalLinksDriver {
-        /// The driver over `client.cloudConnect.localLinks`.
-        public static func links(_ links: LocalLinks) -> LocalLinksDriver {
+        /// The driver over `client.cloudConnect.localLinks`. `product` is this app's product slug: with
+        /// it a scanned QR is sorted before the join (another app's code is said in place).
+        public static func links(_ links: LocalLinks, product: String? = nil) -> LocalLinksDriver {
             LocalLinksDriver(
                 localPairing: { links.localPairing() },
                 list: {
@@ -200,6 +212,14 @@ public struct LocalLinksDriver: Sendable {
                     } catch is CancellationError {
                         throw CancellationError()
                     } catch { throw mapLocalError(error) }
+                },
+                readQr: { text in
+                    guard let own = product?.lowercased(), !own.isEmpty else { return .ours }
+                    switch PeerLocal.parseQr(text, own: own) {
+                    case .ok: return .ours
+                    case .otherApp: return .otherApp
+                    case .invalid: return .invalid
+                    }
                 })
         }
     }

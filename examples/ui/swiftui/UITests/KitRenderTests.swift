@@ -188,6 +188,18 @@ final class KitRenderTests: XCTestCase {
         "ActivateDone.ready", "AddToAccount.form", "AddToAccount.waiting", "AddToAccount.email-bound",
     ]
 
+    /// Pair with a Code (CC-29K): the show step's code and QR views, the scan steps and their notices, and the camera-off and
+    /// opening steps. They render at a phone's default rows plus AX3 and landscape in both schemes (`localMatrix`).
+    static let local = [
+        "LocalPairing.choose", "LocalPairing.choose.scan", "LocalPairing.opening", "LocalPairing.show",
+        "LocalPairing.show-qr", "LocalPairing.show.expired", "LocalPairing.show-qr.expired",
+        "LocalPairing.show.rotated", "LocalPairing.scan-prompt", "LocalPairing.scan",
+        "LocalPairing.scan.other-app", "LocalPairing.scan.not-found", "LocalPairing.scan.stale",
+        "LocalPairing.scan.camera-busy", "LocalPairing.camera-off", "LocalPairing.enter",
+        "LocalPairing.enter.wrong", "LocalPairing.joining", "LocalPairing.confirm",
+        "LocalPairing.waiting", "LocalPairing.paired",
+    ]
+
     static let all = [
         "PolarisKeyGate.booting", "Welcome.default", "Welcome.default.extras",
         "Welcome.default.drift-kart", "Welcome.default.no-presentation", "Welcome.busy",
@@ -249,7 +261,7 @@ final class KitRenderTests: XCTestCase {
         "AddToAccount.added.from-settings", "AddToAccount.owned", "AddToAccount.email-bound",
         "AddToAccount.other-account", "AddToAccount.failed", "SignIn.key-done", "SignIn.attach",
         "SignIn.attach.invalid", "SignIn.added",
-    ]
+    ] + local
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.
     static let localized = ["Welcome.default", "Activate.device-limit", "SignInHandoff.code"]
@@ -287,6 +299,13 @@ final class KitRenderTests: XCTestCase {
             }
             let env = ProcessInfo.processInfo.environment
             let quick = (env["PKEY_KIT_QUICK"] ?? env["TEST_RUNNER_PKEY_KIT_QUICK"]) == "1"
+            if Self.local.contains(state), !quick {
+                // The pairing screens: large text and a landscape phone are where they were cut, so each is drawn there.
+                renders.append(try render(state, scheme: "dark", type: "AX3"))
+                renders.append(try render(state, scheme: "light", orientation: .landscapeLeft))
+                renders.append(try render(state, scheme: "dark", orientation: .landscapeLeft))
+                continue
+            }
             guard Self.full.contains(state), !quick else { continue }
             for type in ["AX3", "AX5"] {
                 renders.append(try render(state, scheme: "dark", type: type))
