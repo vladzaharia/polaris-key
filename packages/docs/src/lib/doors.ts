@@ -182,6 +182,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: leaves(
           "help/account",
           "help/join-accounts",
+          "help/connected-apps",
           "help/delete-account",
           "help/your-data",
           "help/manage-your-data",
