@@ -84,6 +84,46 @@ export async function listAccountGrants(
   return rows.map(toGrant);
 }
 
+/** Every grant of the account, across products, newest first (Connected apps; erasure reads it too). */
+export async function listAllAccountGrants(
+  db: Db,
+  accountId: string,
+): Promise<ClientGrant[]> {
+  const rows = await db.all<Row>(
+    `SELECT * FROM identity_client_grants WHERE account_id = ?
+     ORDER BY granted_at DESC, product, client_id`,
+    accountId,
+  );
+  return rows.map(toGrant);
+}
+
+/**
+ * A Change: rewrite which optional claims the person granted and declined. An UPDATE, never an
+ * upsert, so a grant that a Disconnect just deleted is not brought back; `granted_at`, the scopes
+ * and the scope hash are kept. The statement's change count is 1 when the grant still existed.
+ */
+export function changeGrantClaimsStatement(
+  g: Pick<
+    ClientGrant,
+    "product" | "accountId" | "clientId" | "claimsGranted" | "claimsDeclined"
+  >,
+  now: number,
+): DbStatement {
+  return {
+    sql: `UPDATE identity_client_grants
+             SET claims_granted_json = ?, claims_declined_json = ?, changed_at = ?
+           WHERE product = ? AND account_id = ? AND client_id = ?`,
+    params: [
+      JSON.stringify(g.claimsGranted),
+      JSON.stringify(g.claimsDeclined),
+      now,
+      g.product,
+      g.accountId,
+      g.clientId,
+    ],
+  };
+}
+
 /** The upsert of a decision, as a statement for a batch. `granted_at` is kept across a change. */
 export function clientGrantStatement(
   g: Omit<ClientGrant, "grantedAt" | "changedAt" | "lastUsedAt">,

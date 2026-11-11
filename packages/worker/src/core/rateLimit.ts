@@ -140,6 +140,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // ST-34.5/34.6: approving `pkey login` releases an admin token (console card, portal API).
   adminDeviceApprove: "closed",
   portalDeviceApprove: "closed",
+  // I-21.15: Connected apps. A Disconnect revokes tokens and a Change rewrites what a client may
+  // read, so an outage refuses both (20 per 60 s per account, `portal/connectedApps.ts`).
+  portalClientDisconnect: "closed",
   portalLogin: "closed",
   // The platform device-code entry page (`/device`, `/tv`): a product-less guess oracle for live
   // user codes, so an outage must not make it unlimited.
