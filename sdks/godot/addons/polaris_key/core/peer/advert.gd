@@ -19,12 +19,14 @@ const _BASE32 := "abcdefghijklmnopqrstuvwxyz234567"
 static var _device_re: RegEx
 static var _instance_re: RegEx
 static var _tag_re: RegEx
+static var _nameplate_re: RegEx
 
 
 static func _static_init() -> void:
 	_device_re = PKeyClaims.whole("[A-Za-z0-9_-]{32}")
 	_instance_re = PKeyClaims.whole("p1-[a-z2-7]{16}")
 	_tag_re = PKeyClaims.whole("[0-9a-f]{16}")
+	_nameplate_re = PKeyClaims.whole("[0-9]{2}")
 
 
 static func advert_epoch(now_seconds: int) -> int:
@@ -88,9 +90,9 @@ static func is_instance_name(name: String) -> bool:
 	return PKeyClaims.matches_whole_re(_instance_re, name)
 
 
-## An entry splits at its first `=`; one without `=` or with an empty key is ignored; a repeated
-## key refuses.
-static func parse_txt(entries: Array) -> Dictionary:
+## The key-value entries of a TXT record: an entry splits at its first `=`; one without `=` or with an empty
+## key is ignored. Null when a key repeats.
+static func txt_entries(entries: Array) -> Variant:
 	var kv := {}
 	for e in entries:
 		if not e is String:
@@ -101,18 +103,32 @@ static func parse_txt(entries: Array) -> Dictionary:
 			continue
 		var k := entry.substr(0, at)
 		if kv.has(k):
-			return {"ok": false, "reason": "duplicate"}
+			return null
 		kv[k] = entry.substr(at + 1)
+	return kv
+
+
+## Entries split as `txt_entries` splits them; a repeated key refuses. Mode `q` (section 15.12) also carries
+## `n`, exactly two ASCII digits, which is read for `q` only.
+static func parse_txt(entries: Array) -> Dictionary:
+	var kv: Variant = txt_entries(entries)
+	if kv == null:
+		return {"ok": false, "reason": "duplicate"}
 	if kv.get("v") != "1":
 		return {"ok": false, "reason": "version"}
 	var m: Variant = kv.get("m")
-	if m != "a" and m != "v" and m != "p":
+	if m != "a" and m != "v" and m != "p" and m != "q":
 		return {"ok": false, "reason": "mode"}
 	if m == "a":
 		return {"ok": true, "mode": "a"}
 	var h: Variant = kv.get("h")
 	if h == null or not PKeyClaims.matches_whole_re(_tag_re, h):
 		return {"ok": false, "reason": "tag"}
+	if m == "q":
+		var n: Variant = kv.get("n")
+		if n == null or not PKeyClaims.matches_whole_re(_nameplate_re, n):
+			return {"ok": false, "reason": "nameplate"}
+		return {"ok": true, "mode": "q", "h": h, "n": n}
 	return {"ok": true, "mode": m, "h": h}
 
 
