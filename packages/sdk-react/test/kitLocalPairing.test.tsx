@@ -137,6 +137,29 @@ async function shown(f: Fake, text = "4812 3456") {
   act(() => f.seen.pair!.onCode(code(text)));
   return view;
 }
+/** The shower's window open under fake timers (so the prompt's 250 ms guard can be crossed). */
+async function timedWindow() {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  const f = fake();
+  const { container } = pairing(f);
+  const settle = (ms: number) =>
+    act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
+  await settle(0);
+  fireEvent.click(screen.getByRole("button", { name: /Show a code/ }));
+  await settle(0);
+  act(() => f.seen.pair!.onCode(code("4812 3456")));
+  return { f, container, settle };
+}
+/** The joiner has typed a code and pressed Pair. */
+async function startJoin(f: Fake, onField?: () => Promise<void>) {
+  const view = pairing(f);
+  await press(/Enter a code/);
+  await onField?.();
+  fireEvent.change(await codeField(), { target: { value: "48123456" } });
+  await press("Pair");
+  await waitFor(() => expect(f.seen.join).not.toBeNull());
+  return view;
+}
 const joins = (f: Fake) => f.log.filter((l) => l.startsWith("join")).length;
 
 describe("<LocalPairing>", () => {
@@ -276,15 +299,7 @@ describe("<LocalPairing>", () => {
   });
 
   it("the prompt names the other device, isolated, and ignores Pair for 250 ms", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    const f = fake();
-    const { container } = pairing(f);
-    const settle = (ms: number) =>
-      act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
-    await settle(0);
-    fireEvent.click(screen.getByRole("button", { name: /Show a code/ }));
-    await settle(0);
-    act(() => f.seen.pair!.onCode(code("4812 3456")));
+    const { f, container, settle } = await timedWindow();
     act(() => f.seen.pair!.onConfirm(offer(f.log)));
     expect(container.querySelector("h1 bdi")?.textContent).toBe(
       "LAPTOP-7QH3RX",
@@ -302,15 +317,7 @@ describe("<LocalPairing>", () => {
   });
 
   it("Pair on the prompt answers at once: one confirm, a ring, Not now waits; Pair leads, Not now takes focus", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    const f = fake();
-    const { container } = pairing(f);
-    const settle = (ms: number) =>
-      act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
-    await settle(0);
-    fireEvent.click(screen.getByRole("button", { name: /Show a code/ }));
-    await settle(0);
-    act(() => f.seen.pair!.onCode(code("4812 3456")));
+    const { f, container, settle } = await timedWindow();
     let release!: () => void;
     const slow = offer(f.log);
     slow.confirm = () => {
@@ -370,11 +377,7 @@ describe("<LocalPairing>", () => {
 
   it("Cancel while pairing keeps the typed code", async () => {
     const f = fake();
-    pairing(f);
-    await press(/Enter a code/);
-    fireEvent.change(await codeField(), { target: { value: "48123456" } });
-    await press("Pair");
-    await waitFor(() => expect(f.seen.join).not.toBeNull());
+    await startJoin(f);
     await press("Cancel");
     expect((await codeField()).value).toBe("4812 3456");
   });
@@ -397,13 +400,10 @@ describe("<LocalPairing>", () => {
 
   it("Escape is Back on the field, Cancel while pairing, Not now on the prompt", async () => {
     const f = fake();
-    const { container } = pairing(f);
-    await press(/Enter a code/);
-    fireEvent.keyDown(await codeField(), { key: "Escape" });
-    await press(/Enter a code/);
-    fireEvent.change(await codeField(), { target: { value: "48123456" } });
-    await press("Pair");
-    await waitFor(() => expect(f.seen.join).not.toBeNull());
+    const { container } = await startJoin(f, async () => {
+      fireEvent.keyDown(await codeField(), { key: "Escape" });
+      await press(/Enter a code/);
+    });
     expect(container.querySelector('[data-key="common.cancel"]')).toBeTruthy();
     fireEvent.keyDown(container.querySelector(".pk-root")!, { key: "Escape" });
     await waitFor(() => expect(f.seen.join!.signal.aborted).toBe(true));
@@ -424,6 +424,12 @@ const link = (
 });
 const devices = (f: Fake, extra: Record<string, unknown> = {}) =>
   render(<PairedDevices driver={f.driver} theme={THEME} {...extra} />);
+/** The list over `f`, drawn once its first row is there. */
+async function listed(f: Fake) {
+  const view = devices(f);
+  await screen.findByText("Device a");
+  return view;
+}
 /** Open a row's menu and pick one of its two items. */
 function fromMenu(root: HTMLElement, id: string, key: string): void {
   fireEvent.click(root.querySelector(`[data-row="${id}"] .pair-more`)!);
@@ -456,8 +462,7 @@ describe("<PairedDevices>", () => {
 
   it("renames in the row: a refused name keeps its text; Save writes it", async () => {
     const f = fake([link("a"), link("b")]);
-    const { container } = devices(f);
-    await screen.findByText("Device a");
+    const { container } = await listed(f);
     fromMenu(container, "a", "devices.rename");
     const name = (await screen.findByLabelText(
       "Device name",
@@ -475,8 +480,7 @@ describe("<PairedDevices>", () => {
 
   it("forgets in the row and moves focus to the next row", async () => {
     const f = fake([link("a"), link("b")]);
-    const { container } = devices(f);
-    await screen.findByText("Device a");
+    const { container } = await listed(f);
     fromMenu(container, "a", "pairedDevices.forget");
     await waitFor(() =>
       expect(
@@ -513,8 +517,7 @@ describe("<PairedDevices>", () => {
 
   it("the row menu is a menu: focus goes in, the arrows move, Escape returns to the button", async () => {
     const f = fake([link("a"), link("b")]);
-    const { container } = devices(f);
-    await screen.findByText("Device a");
+    const { container } = await listed(f);
     const more = container.querySelector<HTMLElement>(
       '[data-row="a"] .pair-more',
     )!;
@@ -542,8 +545,7 @@ describe("<PairedDevices>", () => {
 
   it("Cancel on a rename or a forget returns focus to the row's button", async () => {
     const f = fake([link("a"), link("b")]);
-    const { container } = devices(f);
-    await screen.findByText("Device a");
+    const { container } = await listed(f);
     fromMenu(container, "a", "devices.rename");
     await screen.findByLabelText("Device name");
     await press("Cancel");
@@ -632,8 +634,8 @@ describe("<PairedDevices>", () => {
 });
 
 describe("<LocalPairing> paired", () => {
-  const linked = async (f: Fake) => {
-    const view = pairing(f);
+  const linked = async (f: Fake, extra: Record<string, unknown> = {}) => {
+    const view = pairing(f, extra);
     await press(/Show a code/);
     await waitFor(() => expect(f.seen.pair).not.toBeNull());
     act(() =>
@@ -663,17 +665,7 @@ describe("<LocalPairing> paired", () => {
   it("Escape leaves with the name as it was; Done saves an edited one", async () => {
     const f = fake([link("L1", { label: "LAPTOP-7QH3RX" })]);
     const onClose = vi.fn();
-    const { container } = pairing(f, { onClose });
-    await press(/Show a code/);
-    await waitFor(() => expect(f.seen.pair).not.toBeNull());
-    act(() =>
-      f.seen.pair!.onLinked({
-        id: "L1",
-        label: "LAPTOP-7QH3RX",
-        categories: [],
-      }),
-    );
-    await screen.findByText("Paired");
+    const { container } = await linked(f, { onClose });
     fireEvent.change(container.querySelector("#pk-pair-name")!, {
       target: { value: "Booth" },
     });

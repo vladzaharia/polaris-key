@@ -399,11 +399,16 @@ export class LocalPairingModel {
     });
   }
 
+  /** The offer at the prompt when a press may act on it: not answered yet, not already pressed. */
+  private idleOffer(): LocalOfferLike | null {
+    const s = this.store.get();
+    return this.offer && s.step === "confirm" && !s.busy ? this.offer : null;
+  }
+
   /** Pair: the person's yes. The link exists once the other person agrees too. */
   async confirm(): Promise<void> {
-    const offer = this.offer;
-    const s = this.store.get();
-    if (!offer || s.step !== "confirm" || s.busy) return;
+    const offer = this.idleOffer();
+    if (!offer) return;
     // The press is answered at once: Pair keeps its label with a ring until the window answers.
     this.set({ busy: "pair" });
     try {
@@ -417,9 +422,8 @@ export class LocalPairingModel {
 
   /** Not now: nothing is stored; the shower stays on its changed code. */
   async notNow(): Promise<void> {
-    const offer = this.offer;
-    const s = this.store.get();
-    if (!offer || s.step !== "confirm" || s.busy) return;
+    const offer = this.idleOffer();
+    if (!offer) return;
     this.set({ busy: "not-now" });
     try {
       await offer.decline();
