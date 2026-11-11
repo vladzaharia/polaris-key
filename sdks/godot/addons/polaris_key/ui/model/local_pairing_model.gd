@@ -65,6 +65,9 @@ var _last_device: Variant = null
 var _epoch := 0
 ## What the person typed when Pair was pressed, so Cancel returns to it.
 var _typed := ""
+## Which view of the open window shows: "code" (the eight digits) or "qr" (the QR). A screen never
+## shows both. Switching does not renew the code; a renewal updates whichever is open.
+var _view := "code"
 ## Where the network answer came from, for Try again: {where, entry}.
 var _blocked: Variant = null
 
@@ -166,6 +169,14 @@ func show() -> void:
 	await _open_window()
 
 
+## Switch the open window between its two views, "code" and "qr". The window is not renewed.
+func set_view(view: String) -> void:
+	if step() != "show" or (view != "code" and view != "qr") or view == _view:
+		return
+	_view = view
+	_merge({"view": view})
+
+
 ## Show a new code: closes the window and opens one with new first two digits. Waits out the 30
 ## seconds after Too many tries. A coroutine.
 func show_new() -> void:
@@ -178,6 +189,7 @@ func _open_window(renew := false) -> void:
 	var renewing := renew and _shower != null
 	if not renewing:
 		_epoch += 1
+		_view = "code"
 	var epoch := _epoch
 	if renewing:
 		# A second press while the first is answered does nothing.
@@ -271,6 +283,7 @@ func _rotate(c: Dictionary) -> void:
 		)
 	var next := {
 		"step": "show",
+		"view": _view,
 		"code": code,
 		"qr": String(c.get("qr", "")),
 		"secondsLeft": maxi(0, ceili(_expires_at - float(_now.call()))),
@@ -595,17 +608,12 @@ func cancel() -> void:
 			_failed_code = null
 			_go({"step": "enter", "entry": _typed})
 			_refresh_entry()
-		"opening", "show", "confirm":
+		"opening", "show", "confirm", "enter":
+			# Cancel on a window or a prompt, and Back on the field: one step back, to the entry.
 			_close()
 			_go(_entry())
 		_:
 			_leave()
-
-
-## Back, from the field: to the entry.
-func back_to_choose() -> void:
-	_close()
-	_go(_entry())
 
 
 func _close(with_leave := false) -> void:

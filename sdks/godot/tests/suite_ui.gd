@@ -1894,7 +1894,7 @@ func _headers(t: PKeyTestContext, all: Array) -> void:
 	var checked := 0
 	var missing: PackedStringArray = []
 	for c in all:
-		if c[0] in ["badge", "banner", "dev_menu", "settings", "update_progress", "toast", "cloud_sync"] or String(c[1]) in NO_HEADER:
+		if c[0] in ["badge", "banner", "dev_menu", "settings", "update_progress", "toast", "cloud_sync"] or String(c[1]) in NO_HEADER or String(c[1]).begins_with("hidden"):
 			continue
 		var v: Control = await _build(c)
 		var ok := false

@@ -84,11 +84,15 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 		for entry in MATRIX.SCREENS:
 			if not only.is_empty() and not only.has(entry[0]):
 				continue
+			if not MATRIX.looks_apply(entry[0], job[0]):
+				continue
 			units.append({"id": "matrix:%s/%s/%s" % [entry[0], job[0], job[1]], "kind": "matrix", "w": _row_sizes(sizes, entry, job[2]).size(), "job": job, "entry": entry})
 	if looks.is_empty():
 		for preset in ["dark", "native", "custom"]:
 			for entry in MATRIX.SCREENS:
 				if not only.is_empty() and not only.has(entry[0]):
+					continue
+				if not MATRIX.looks_apply(entry[0], preset):
 					continue
 				# (A fresh layout builds the screen's scenario and waits for its first focus: about three
 				# resizes of the screen's cost.)

@@ -17,6 +17,11 @@ const LOCALE_TABLES := preload("res://tools/ui_matrix/locales.gd")
 ## ([left, top, right, bottom]) or null, density-independent pixels per 160 dpi on a phone or tablet
 ## (0: not mobile)]. The phones carry a status bar or notch and a home indicator, as a safe area
 ## does. The first ten are the owner's matrix; the last three are the review's additions.
+## Screens laid out in the Polaris Key look only (dark, English, German and Japanese) until their layouts
+## are tuned for a game's own theme and for 28 and 36 px type: the pairing screens (ui-matrix `local`).
+## Their states, focus walks, copy and headers are held in every look by the `ui` suite.
+const DARK_ONLY_PREFIXES := ["local."]
+
 const SIZES := [
 	["640x360", Vector2i(640, 360), 1.0, null, 0.0],
 	["800x600", Vector2i(800, 600), 1.0, null, 0.0],
@@ -473,6 +478,26 @@ const SCREENS := [
 	["holders.add_waiting", "add_to_account", "waiting", "full"],
 	["holders.add_failed", "add_to_account", "failed", "full"],
 	["holders.added", "add_to_account", "added", "full"],
+	# Pair with a Code and Paired devices (ui-matrix `local`). Left out: the paired step with its
+	# notice, the wrong-code field in German, and a list of more than eight, which need their scroll
+	# fallback on a 640x360 window and a phone held sideways (the suites `ui` and `ui_local_screens`
+	# still run them).
+	["local.choose", "local_pairing", "choose: either device can show the code", "full"],
+	["local.opening", "local_pairing", "opening: a placeholder code tile while the window opens", "full"],
+	["local.show", "local_pairing", "show: the code is the largest text, with its time", "full"],
+	["local.show_qr", "local_pairing", "show (QR view): the same window, the QR and no digits", "full"],
+	["local.show_rotated", "local_pairing", "show: a wrong code changed it", "full"],
+	["local.closed", "local_pairing", "closed: Too many tries, 24 seconds to wait", "full"],
+	["local.enter", "local_pairing", "enter: eight digits, Pair ready", "full"],
+	["local.confirm", "local_pairing", "confirm: the device that entered the code, named", "full"],
+	["local.waiting", "local_pairing", "waiting: for the other person, named, with what each shares", "full"],
+	["local.failed", "local_pairing", "failed: one device has no room", "full"],
+	["local.blocked", "local_pairing", "network-blocked: Open Settings where the platform can", "full"],
+	["local.list", "paired_devices", "list: one is off, so the Can connect column shows", "full"],
+	["local.renaming", "paired_devices", "renaming: in the row", "full"],
+	["local.forgetting", "paired_devices", "forgetting: asks inside the row", "full"],
+	["local.empty", "paired_devices", "empty: nothing paired yet", "full"],
+	["local.off", "paired_devices", "off: pairing is off, Rename and Forget remain", "full"],
 	["offline", "offline", "native", "full"],
 	["boot", "boot", "syncing", "full"],
 	["boot.waiting", "boot", "waiting needs-activation", "full"],
@@ -600,6 +625,14 @@ const MOBILE_CONTROL_DP := 48
 
 var _sc = SCENARIOS.new()
 var _translations := {}
+
+
+## Whether `screen` is laid out in `preset`.
+static func looks_apply(screen: String, preset: String) -> bool:
+	for prefix in DARK_ONLY_PREFIXES:
+		if screen.begins_with(prefix):
+			return preset == "dark"
+	return true
 
 
 ## The scenario builder for a screen entry.
@@ -1245,7 +1278,9 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 		tight = tight or cr.position.y - safe.position.y < g or safe.end.y - cr.end.y < g
 	if tight:
 		out.append("%s is within %d px of the edge: %s in %s" % [_path(view, c), PKeyUiView.GUTTER, cr, safe])
-	if c is Label and (view as PKeyUiView).is_phone_device() and not (view as PKeyUiView).pad_only() and ("scan" in (c as Label).text.to_lower() or "スキャン" in (c as Label).text):
+	# The pairing screen shows a QR for the other device's camera and says so: it is not telling this phone to scan.
+	var pairing := view is PKeyLocalPairing
+	if c is Label and not pairing and (view as PKeyUiView).is_phone_device() and not (view as PKeyUiView).pad_only() and ("scan" in (c as Label).text.to_lower() or "スキャン" in (c as Label).text):
 		out.append("%s tells a phone to scan a code: \"%s\"" % [_path(view, c), (c as Label).text])
 	if c is Label:
 		var l := c as Label
@@ -1260,7 +1295,7 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 	if c is PKeyQrRect and (c as PKeyQrRect).texture != null:
 		var m := (view as PKeyUiView).layout_metrics()
 		# Only on a pad-only device (no browser to open), or for the offline request code.
-		if not (view as PKeyUiView).pad_only() and not _under(c, "Request"):
+		if not (view as PKeyUiView).pad_only() and not _under(c, "Request") and not pairing:
 			out.append("%s shows a QR code, but this is not a pad-only device or the offline request" % _path(view, c))
 		var side := minf(c.size.x, c.size.y)
 		var phys := side * float(m["physical"])

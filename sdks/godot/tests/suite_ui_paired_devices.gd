@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature ui.kit connect.local
+# @pkey-feature ui.kit
 # The model behind Paired devices (PKeyPairedDevicesModel) over a scripted `local_links`: the first
 # read, Rename and Forget in the row and their store failures, where focus goes, the switches and the
 # cap of eight, the gate, an unreadable record and the answers of the app's own connections.

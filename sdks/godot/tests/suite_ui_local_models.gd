@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature ui.kit connect.local
+# @pkey-feature ui.kit
 # The model behind Pair with a Code (PKeyLocalPairingModel) over a scripted
 # `local_links` and a virtual clock: nothing here waits on the wall clock or the network. Each check
 # is one behaviour of the React model that every kit matches: the stale-code guard, the cooldown
@@ -17,6 +17,7 @@ const CATS := ["crates", "cues"]
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _entry_and_gate(t)
 	await _show_window(t)
+	await _views(t)
 	await _rotation_and_guessing(t)
 	await _closed_and_cooldown(t)
 	await _confirm_prompt(t)
@@ -175,6 +176,49 @@ func _show_window(t: PKeyTestContext) -> void:
 func _noop_after_cancel(f, m: PKeyLocalPairingModel) -> bool:
 	f.last_pair["on_code"].call(Fake.code("9999 9999", "opened", f.now() + 300.0))
 	return m.step() == "choose"
+
+
+# ── The two views of the open window ─────────────────────────────────────────────────────────
+
+
+func _views(t: PKeyTestContext) -> void:
+	var f := Fake.new()
+	var m := _model(f)
+	await m.show()
+	_opened(f)
+	t.check(
+		"view model: the window opens on the code view",
+		_snap(m)["view"] == "code" and m.input()["localPairing"]["view"] == "code"
+	)
+	m.set_view("qr")
+	t.check(
+		"view model: switching to the QR view renews nothing",
+		(
+			_snap(m)["view"] == "qr"
+			and f.window.renew_calls == 0
+			and f.pairs == 1
+			and _snap(m)["code"] == "4812 3456"
+		)
+	)
+	f.last_pair["on_code"].call(Fake.code("4873 3456", "wrong-code", f.now() + 280.0))
+	t.check(
+		"view model: a rotation updates the open view and keeps it",
+		(
+			_snap(m)["view"] == "qr"
+			and _snap(m)["code"] == "4873 3456"
+			and _snap(m)["notice"] == "rotated"
+		)
+	)
+	m.set_view("sideways")
+	t.check("view model: another view is ignored", _snap(m)["view"] == "qr")
+	m.set_view("code")
+	t.check("view model: and back to the code", _snap(m)["view"] == "code")
+	m.set_view("qr")
+	m.cancel()
+	await m.show()
+	_opened(f, "2222 3333")
+	t.check("view model: a new window opens on the code view again", _snap(m)["view"] == "code")
+	m.dispose()
 
 
 # ── Rotation, the changed digits and the guessing rules ──────────────────────────────────────
@@ -679,7 +723,7 @@ func _cancel_and_stale(t: PKeyTestContext) -> void:
 	f = Fake.new()
 	m = _model(f)
 	m.enter()
-	m.back_to_choose()
+	m.cancel()
 	t.check("cancel model: Back from the field is the entry", m.step() == "choose")
 	m.cancel()
 	t.check("cancel model: Cancel on the entry leaves", _snap(m)["left"] == true)

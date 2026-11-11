@@ -1,0 +1,440 @@
+== choose: either device can show the code ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Both devices need to be on the same network."
+Card/Scroll/Body/Actions/Button0: Button "Show a code" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Enter a code" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Cancel" [focus 3]
+== choose: the system has not asked yet ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Both devices need to be on the same network."
+Card/Scroll/Body/Actions/Button0: Button "Show a code" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Enter a code" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Cancel" [focus 3]
+== choose: no room, said before either button ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Both devices need to be on the same network."
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "No room to pair"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "This device has no room for another pairing. Forget a paired device first."
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Action: Button "Paired devices" [focus 1]
+Card/Scroll/Body/Actions/Button0: Button "Show a code" [focus 2]
+Card/Scroll/Body/Actions/Button1: Button "Enter a code" [focus 3]
+Card/Scroll/Body/Links/Link0: Button "Cancel" [focus 4]
+== opening: a placeholder code tile while the window opens ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Scan or enter this code on the other device."
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/Code: RichTextLabel "···· ····"
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/TimeRow/Time: Label "Expires in 5:00"
+Card/Scroll/Body/Top/Stage/Left/Live/Waiting: Label "Waiting for the other device…"
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 1]
+== show: the code is the largest text, with its time ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Scan or enter this code on the other device."
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/Code: RichTextLabel "4812 3456"
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/TimeRow/Time: Label "Expires in 4:51"
+Card/Scroll/Body/Top/Stage/Left/Live/Waiting: Label "Waiting for the other device…"
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 1]
+Card/Scroll/Body/Links/Link0: Button "Scan with your phone instead" [focus 2]
+== show: a wrong code changed it ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Scan or enter this code on the other device."
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/Code: RichTextLabel "4812 3456"
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/TimeRow/Time: Label "Expires in 4:51"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "Wrong code entered"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "The code changed."
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Action: Button "Show a new code" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/Live/Waiting: Label "Waiting for the other device…"
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Scan with your phone instead" [focus 3]
+== show: a new code is being asked for, Show a new code keeps its label ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Scan or enter this code on the other device."
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/Code: RichTextLabel "4812 3456"
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/TimeRow/Time: Label "Expires in 4:51"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "Wrong code entered"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "The code changed."
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Action: Button "Show a new code" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/Live/Waiting: Label "Waiting for the other device…"
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Scan with your phone instead" [focus 3]
+== show: the other device said Not now ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Scan or enter this code on the other device."
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/Code: RichTextLabel "4812 3456"
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/TimeRow/Time: Label "Expires in 4:51"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "Not paired with \u2068LAPTOP-7QH3RX\u2069"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "The code changed."
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Action: Button "Show a new code" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/Live/Waiting: Label "Waiting for the other device…"
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Scan with your phone instead" [focus 3]
+== show: something keeps interrupting ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Scan or enter this code on the other device."
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/Code: RichTextLabel "4812 3456"
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/TimeRow/Time: Label "Expires in 4:51"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "Pairing is being blocked"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "Something on this network keeps interrupting. Try another network."
+Card/Scroll/Body/Top/Stage/Left/Live/Waiting: Label "Waiting for the other device…"
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 1]
+Card/Scroll/Body/Links/Link0: Button "Scan with your phone instead" [focus 2]
+== show: someone nearby may be guessing, the code still open ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Scan or enter this code on the other device."
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/Code: RichTextLabel "4812 3456"
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/TimeRow/Time: Label "Expires in 4:51"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "Wrong code entered"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "Someone nearby may be guessing codes."
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Action: Button "Show a new code" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/Live/Waiting: Label "Waiting for the other device…"
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Scan with your phone instead" [focus 3]
+== closed: Too many tries, 24 seconds to wait ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Couldn’t pair"
+Card/Scroll/Body/Top/Words/Lede: Label "Too many tries."
+Card/Scroll/Body/Actions/Button0: Button "Show a new code in 0:24" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Close" [focus 2]
+== closed: the second Too many tries in a row ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Couldn’t pair"
+Card/Scroll/Body/Top/Words/Lede: Label "Too many tries."
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "Too many tries again"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "Someone nearby may be guessing codes."
+Card/Scroll/Body/Actions/Button0: Button "Show a new code in 0:30" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Close" [focus 2]
+== closed: the wait is over ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Couldn’t pair"
+Card/Scroll/Body/Top/Words/Lede: Label "Too many tries."
+Card/Scroll/Body/Actions/Button0: Button "Show a new code" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Close" [focus 2]
+== closed: time ran out, no wait ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Couldn’t pair"
+Card/Scroll/Body/Top/Words/Lede: Label "The code expired."
+Card/Scroll/Body/Actions/Button0: Button "Show a new code" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Close" [focus 2]
+== enter: an empty field, Pair unavailable ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit [placeholder "•••• ••••", focus 1]
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 3]
+Card/Scroll/Body/Links/Link1: Button "Back" [focus 4]
+== enter: eight digits, Pair ready ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit "4812 3456" [focus 1]
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 3]
+Card/Scroll/Body/Links/Link1: Button "Back" [focus 4]
+== enter: one try left for these two digits ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit "4812 3456" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/Field/FieldHint: Label "1 try left"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 3]
+Card/Scroll/Body/Links/Link1: Button "Back" [focus 4]
+== enter: a wrong code keeps the first two digits ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit "48" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/Field/FieldError: Label "That code didn’t work. Enter the code the other device shows now."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldHint: Label "1 try left"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 3]
+Card/Scroll/Body/Links/Link1: Button "Back" [focus 4]
+== enter: these two digits are spent ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit "4873" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/Field/FieldHint: Label "Ask for a new code. This one can’t be tried again yet."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 3]
+Card/Scroll/Body/Links/Link1: Button "Back" [focus 4]
+== enter: too many tries, an empty field that stays editable ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit [placeholder "•••• ••••", focus 1]
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "Too many tries"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "Ask for a new code on the other device."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 3]
+Card/Scroll/Body/Links/Link1: Button "Back" [focus 4]
+== enter: nothing found on the network ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit "4812 3456" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "Can’t find the other device"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "Check the code, and that you’re both on the same network."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 3]
+Card/Scroll/Body/Links/Link1: Button "Back" [focus 4]
+== enter: not a code ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit "4812" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/Field/FieldError: Label "A code is 8 digits."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 3]
+Card/Scroll/Body/Links/Link1: Button "Back" [focus 4]
+== enter: the app asks for no categories ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit [placeholder "•••• ••••", focus 1]
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Nothing is shared yet."
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 2]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 3]
+Card/Scroll/Body/Links/Link1: Button "Back" [focus 4]
+== joining: Pair keeps its label while it looks, Cancel stops it ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit "4812 3456" [read-only]
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 1]
+Card/Scroll/Body/Links/Link0: Button "Cancel" [focus 2]
+== joining: nothing is shared ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Enter the code from the other device."
+Card/Scroll/Body/Top/Stage/Left/Field/FieldLabel: Label "Code"
+Card/Scroll/Body/Top/Stage/Left/Field/Entry: LineEdit "4812 3456" [read-only]
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Nothing is shared yet."
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 1]
+Card/Scroll/Body/Links/Link0: Button "Cancel" [focus 2]
+== confirm: the device that entered the code, named ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with \u2068LAPTOP-7QH3RX\u2069?"
+Card/Scroll/Body/Top/Words/Lede: Label "It entered your code."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Not now" [focus 2]
+== confirm: the device sent no name ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with this device?"
+Card/Scroll/Body/Top/Words/Lede: Label "It entered your code."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Not now" [focus 2]
+== confirm: nothing is shared ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with \u2068Studio PC\u2069?"
+Card/Scroll/Body/Top/Words/Lede: Label "It entered your code."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Nothing is shared yet."
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Not now" [focus 2]
+== confirm: Pair was pressed, both controls wait for the answer ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with \u2068LAPTOP-7QH3RX\u2069?"
+Card/Scroll/Body/Top/Words/Lede: Label "It entered your code."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Not now" [focus 2]
+== confirm: Not now was pressed, both controls wait for the answer ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with \u2068LAPTOP-7QH3RX\u2069?"
+Card/Scroll/Body/Top/Words/Lede: Label "It entered your code."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Pair" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Not now" [focus 2]
+== waiting: for the other person, named, with what each shares ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Waiting for them to confirm"
+Card/Scroll/Body/Top/Words/Lede: Label "Pairing with \u2068Studio PC\u2069."
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Each of you shares"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesList: Label "• \u2068Crates\u2069\n• \u2068Cues\u2069"
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 1]
+== waiting: the shower sent no name, nothing is shared ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Waiting for them to confirm"
+Card/Scroll/Body/Top/Stage/Right/Shares/SharesHead: Label "Nothing is shared yet."
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 1]
+== paired: the name starts as the one the device sent ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Paired"
+Card/Scroll/Body/Top/Words/Lede: Label "You can now connect on the same network without a code."
+Card/Scroll/Body/Top/Stage/Left/NameField/NameLabel: Label "Name"
+Card/Scroll/Body/Top/Stage/Left/NameField/NameEdit: LineEdit "LAPTOP-7QH3RX" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/NameField/NameHint: Label "Shown on this device only."
+Card/Scroll/Body/Actions/Button0: Button "Done" [focus 2]
+== paired: kept, but it cannot connect while 8 can ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Paired"
+Card/Scroll/Body/Top/Words/Lede: Label "You can now connect on the same network without a code."
+Card/Scroll/Body/Top/Stage/Left/NameField/NameLabel: Label "Name"
+Card/Scroll/Body/Top/Stage/Left/NameField/NameEdit: LineEdit "LAPTOP-7QH3RX" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/NameField/NameHint: Label "Shown on this device only."
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Glyph: TextureRect
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Head/Title: Label "\u2068LAPTOP-7QH3RX\u2069 can’t connect"
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Body: Label "Only 8 paired devices can connect at once. Turn one off in Paired devices."
+Card/Scroll/Body/Top/Stage/Left/Live/Notice/Column/Action: Button "Paired devices" [focus 2]
+Card/Scroll/Body/Actions/Button0: Button "Done" [focus 3]
+Card/Scroll/Body/Links/Link0: Button "Paired devices" [focus 4]
+== paired: the name could not be kept, the screen stays ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Paired"
+Card/Scroll/Body/Top/Words/Lede: Label "You can now connect on the same network without a code."
+Card/Scroll/Body/Top/Stage/Left/NameField/NameLabel: Label "Name"
+Card/Scroll/Body/Top/Stage/Left/NameField/NameEdit: LineEdit "LAPTOP-7QH3RX" [focus 1]
+Card/Scroll/Body/Top/Stage/Left/NameField/NameError: Label "Couldn't rename \u2068LAPTOP-7QH3RX\u2069. Try again."
+Card/Scroll/Body/Top/Stage/Left/NameField/NameHint: Label "Shown on this device only."
+Card/Scroll/Body/Actions/Button0: Button "Done" [focus 2]
+== failed: someone said Not now ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Couldn’t pair"
+Card/Scroll/Body/Top/Words/Lede: Label "Someone said no. Nothing was paired."
+Card/Scroll/Body/Actions/Button0: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Close" [focus 2]
+== failed: time ran out before both confirmed ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Couldn’t pair"
+Card/Scroll/Body/Top/Words/Lede: Label "Time ran out before you both confirmed. Nothing was paired."
+Card/Scroll/Body/Actions/Button0: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Close" [focus 2]
+== failed: one device has no room ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Couldn’t pair"
+Card/Scroll/Body/Top/Words/Lede: Label "One of you has no room for another pairing. Forget one, then try again."
+Card/Scroll/Body/Actions/Button0: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Close" [focus 2]
+== failed: the connection closed ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Couldn’t pair"
+Card/Scroll/Body/Top/Words/Lede: Label "The connection closed. Nothing was paired."
+Card/Scroll/Body/Actions/Button0: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Close" [focus 2]
+== network-blocked: Open Settings where the platform can ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Local network blocked"
+Card/Scroll/Body/Top/Words/Lede: Label "This app can't reach devices on your local network. Allow it in system settings."
+Card/Scroll/Body/Actions/Button0: Button "Open Settings" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Try again" [focus 2]
+Card/Scroll/Body/Actions/Button2: Button "Close" [focus 3]
+== network-blocked: the words alone elsewhere ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Local network blocked"
+Card/Scroll/Body/Top/Words/Lede: Label "This app can't reach devices on your local network. Allow it in system settings."
+Card/Scroll/Body/Actions/Button0: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Button1: Button "Close" [focus 2]
+== off: pairing is off for the app ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pairing unavailable"
+Card/Scroll/Body/Top/Words/Lede: Label "Pairing with a code is off for this app."
+Card/Scroll/Body/Actions/Button0: Button "Close" [focus 1]
+== hidden: Connect off ==
+<hidden>
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+== show (QR view): the same window, the QR and no digits ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Pair with a Code"
+Card/Scroll/Body/Top/Words/Lede: Label "Scan or enter this code on the other device."
+Card/Scroll/Body/Top/Stage/Left/CodeBlock/TimeRow/Time: Label "Expires in 4:51"
+Card/Scroll/Body/Top/Stage/Left/Live/Waiting: Label "Waiting for the other device…"
+Card/Scroll/Body/Top/Stage/Right/PairVisual/QrTile/Qr: PKeyQrRect "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+Card/Scroll/Body/Actions/Button0: Button "Cancel" [focus 1]
+Card/Scroll/Body/Links/Link0: Button "Show a code instead" [focus 2]

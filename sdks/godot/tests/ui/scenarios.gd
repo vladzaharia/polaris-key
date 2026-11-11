@@ -5,6 +5,12 @@ extends RefCounted
 ## its setters (no network, no clock but the fixed NOW), and is freed by the caller.
 
 const NOW := 1700000000.0
+## The categories the pairing rows share, by id.
+const LOCAL_CATEGORY_LABELS := {"crates": "Crates", "cues": "Cues"}
+## The digits a wrong guess changed in the rotation rows.
+const LOCAL_LIT := [2, 3]
+## The state name of the QR view of the show step.
+const LOCAL_QR_VIEW := "show (QR view): the same window, the QR and no digits"
 const CONFIG := preload("res://tests/config/support.gd")
 const PRESENTATION := preload("res://tests/support/presentation_fixtures.gd")
 const NearbyApproval := preload("res://addons/polaris_key/ui/nearby/pkey_nearby_approval.gd")
@@ -143,6 +149,17 @@ func all() -> Array:
 		out.append(["activate_done", c, activate_done.bind(c)])
 	for c in ADD_TO_ACCOUNT_CASES:
 		out.append(["add_to_account", c, add_to_account.bind(c)])
+	# ── PKeyLocalPairing and PKeyPairedDevices (ui-matrix `local`): one state per row.
+	var local_rows = PKeyTestFixtures.read_json(MATRIX_PATH)
+	if local_rows is Dictionary:
+		for r in local_rows.get("local", []):
+			var parts := String(r["name"]).split("/", true, 1)
+			if parts[0] == "LocalPairing":
+				out.append(["local_pairing", parts[1], local_pairing.bind(String(r["name"]))])
+			else:
+				out.append(["paired_devices", parts[1], paired_devices.bind(String(r["name"]))])
+	# The show step's other view of the same open window (a view of the screen, not a matrix row).
+	out.append(["local_pairing", LOCAL_QR_VIEW, local_pairing.bind("LocalPairing/show: the code is the largest text, with its time", "qr")])
 	# ── PKeySignInDialog.
 	out.append(["sign_in", "starting", sign_in.bind("starting")])
 	out.append(["sign_in", "pending", sign_in.bind("pending")])
@@ -1038,6 +1055,46 @@ func matrix_row(family: String, name: String) -> Dictionary:
 			if r["name"] == name:
 				return r
 	return {}
+
+
+func local_pairing(row_name: String, view := "") -> Control:
+	var v := PKeyLocalPairing.new()
+	v.auto_sdk = false
+	v.guard_msec = 0
+	v.category_labels = LOCAL_CATEGORY_LABELS
+	add(v)
+	var row := matrix_row("local", row_name)
+	var input: Dictionary = row.get("input", {})
+	var snap: Dictionary = (input.get("localPairing", {}) as Dictionary).duplicate(true)
+	if snap.get("notice") == "rotated":
+		snap["changed"] = LOCAL_LIT
+		snap["rotation"] = 1
+	if snap.get("step") == "paired":
+		snap["name"] = String(snap.get("device", ""))
+	if view != "":
+		snap["view"] = view
+	if input.has("services"):
+		v.connect_on = false
+	v.apply_snapshot(snap)
+	return v
+
+
+func paired_devices(row_name: String) -> Control:
+	var v := PKeyPairedDevices.new()
+	v.auto_sdk = false
+	v.now_source = func() -> float: return NOW
+	add(v)
+	var row := matrix_row("local", row_name)
+	var input: Dictionary = row.get("input", {})
+	var snap: Dictionary = (input.get("pairedDevices", {}) as Dictionary).duplicate(true)
+	if snap.get("step") == "renaming":
+		for d in snap.get("devices", []):
+			if d.get("id") == snap.get("target"):
+				snap["draft"] = String(d.get("label", ""))
+	if input.has("services"):
+		v.connect_on = false
+	v.apply_snapshot(snap)
+	return v
 
 
 func license_choice(row_name: String) -> Control:
