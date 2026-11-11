@@ -1121,6 +1121,7 @@
   "pairedDevices.forget": "Entfernen",
   "pairedDevices.forgetConfirm": "{device} entfernen?",
   "pairedDevices.forgetBody": "Um sich wieder zu verbinden, koppeln Sie mit einem neuen Code.",
+  "pairedDevices.forgetFailed": "{device} konnte nicht entfernt werden. Versuchen Sie es erneut.",
   "pairedDevices.reachableFullTitle": "Bis zu {max} können sich verbinden",
   "pairedDevices.reachableFullBody": "Schalten Sie eines aus, damit sich ein anderes verbinden kann.",
   "pairedDevices.fullBody": "Entfernen Sie ein gekoppeltes Gerät, um ein weiteres zu koppeln.",

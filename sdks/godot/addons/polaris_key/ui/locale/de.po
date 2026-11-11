@@ -6594,6 +6594,11 @@ msgstr "{device} entfernen?"
 msgid "pairedDevices.forgetBody"
 msgstr "Um sich wieder zu verbinden, koppeln Sie mit einem neuen Code."
 
+#. Couldn’t forget {device}. Try again.
+#. Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}.
+msgid "pairedDevices.forgetFailed"
+msgstr "{device} konnte nicht entfernt werden. Versuchen Sie es erneut."
+
 #. Up to {max} can connect
 #. Pair with a Code: list: eight switches are on. Arguments: {max} = 8.
 msgid "pairedDevices.reachableFullTitle"

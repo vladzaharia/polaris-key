@@ -1754,6 +1754,15 @@
             "common.cancel"
           ]
         },
+        "opening": {
+          "copy": [
+            "localPairing.title",
+            "localPairing.showBody",
+            "a11y.busy",
+            "localPairing.toEnter",
+            "common.cancel"
+          ]
+        },
         "show": {
           "copy": [
             "localPairing.title",
@@ -1770,9 +1779,9 @@
             "localPairing.showNew",
             "localPairing.blockedTitle",
             "localPairing.blockedBody",
-            "localPairing.tooManyAgainTitle",
             "localPairing.tooManyAgainBody",
-            "common.cancel"
+            "common.cancel",
+            "a11y.busy"
           ]
         },
         "closed": {
@@ -1828,13 +1837,16 @@
             "linkPairing.shares",
             "linkPairing.sharesNone",
             "localPairing.pair",
-            "common.notNow"
+            "common.notNow",
+            "a11y.busy"
           ]
         },
         "waiting": {
           "copy": [
             "linkPairing.waiting",
             "localPairing.waitingWith",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
             "common.cancel"
           ]
         },
@@ -1847,6 +1859,7 @@
             "localPairing.cantConnectTitle",
             "localPairing.cantConnectBody",
             "localPairing.pairedDevices",
+            "devices.renameFailed",
             "common.done"
           ]
         },
@@ -1866,6 +1879,7 @@
             "core.codes.nearby-permission-denied.title",
             "core.codes.nearby-permission-denied.message",
             "localPairing.openSettings",
+            "common.tryAgain",
             "common.close"
           ]
         },
@@ -1882,6 +1896,9 @@
       "priority": "should",
       "family": null,
       "states": {
+        "loading": {
+          "copy": ["pairedDevices.title", "a11y.busy", "common.done"]
+        },
         "list": {
           "copy": [
             "pairedDevices.title",
@@ -1923,7 +1940,8 @@
             "common.save",
             "common.cancel",
             "pairedDevices.renameLong",
-            "pairedDevices.renameEmpty"
+            "pairedDevices.renameEmpty",
+            "devices.renameFailed"
           ]
         },
         "forgetting": {
@@ -1940,6 +1958,7 @@
             "common.done",
             "pairedDevices.forgetConfirm",
             "pairedDevices.forgetBody",
+            "pairedDevices.forgetFailed",
             "common.cancel"
           ]
         },

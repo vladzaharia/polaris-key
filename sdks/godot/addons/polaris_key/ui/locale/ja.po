@@ -6580,6 +6580,11 @@ msgstr "{device} を削除しますか？"
 msgid "pairedDevices.forgetBody"
 msgstr "再接続するには、新しいコードでペアリングしてください。"
 
+#. Couldn’t forget {device}. Try again.
+#. Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}.
+msgid "pairedDevices.forgetFailed"
+msgstr "{device}を削除できませんでした。もう一度お試しください。"
+
 #. Up to {max} can connect
 #. Pair with a Code: list: eight switches are on. Arguments: {max} = 8.
 msgid "pairedDevices.reachableFullTitle"

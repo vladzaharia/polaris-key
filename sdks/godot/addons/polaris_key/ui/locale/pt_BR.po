@@ -6608,6 +6608,11 @@ msgstr "Esquecer {device}?"
 msgid "pairedDevices.forgetBody"
 msgstr "Para se conectar de novo, pareie com um novo código."
 
+#. Couldn’t forget {device}. Try again.
+#. Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}.
+msgid "pairedDevices.forgetFailed"
+msgstr "Não foi possível esquecer {device}. Tente de novo."
+
 #. Up to {max} can connect
 #. Pair with a Code: list: eight switches are on. Arguments: {max} = 8.
 msgid "pairedDevices.reachableFullTitle"

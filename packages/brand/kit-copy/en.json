@@ -9746,6 +9746,11 @@
       "role": "body",
       "note": "Pair with a Code: row: the one consequence."
     },
+    "pairedDevices.forgetFailed": {
+      "value": "Couldn’t forget {device}. Try again.",
+      "role": "body",
+      "note": "Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}."
+    },
     "pairedDevices.reachableFullTitle": {
       "value": "Up to {max} can connect",
       "role": "label",

@@ -2483,6 +2483,8 @@
     <string name="pairedDevices_forgetConfirm">Forget %1$s?</string>
     <!-- Pair with a Code: row: the one consequence. -->
     <string name="pairedDevices_forgetBody">To connect again, pair with a new code.</string>
+    <!-- Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetFailed">Couldn’t forget %1$s. Try again.</string>
     <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
     <string name="pairedDevices_reachableFullTitle">Up to %1$s can connect</string>
     <!-- Pair with a Code: list: what to do. -->

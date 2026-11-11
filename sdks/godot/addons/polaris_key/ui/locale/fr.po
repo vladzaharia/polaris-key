@@ -1291,7 +1291,7 @@ msgstr "Impossible de renommer {device}. Réessayez."
 #. Couldn't remove {device}. Try again.
 #. Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "devices.removeFailed"
-msgstr "Impossible de retirer {device}. Réessayez."
+msgstr "Impossible d’oublier {device}. Réessayez."
 
 #. Manage your devices in your browser.
 #. Devices: the list of devices using the license. Browser mode.
@@ -6607,6 +6607,11 @@ msgstr "Oublier {device} ?"
 #. Pair with a Code: row: the one consequence.
 msgid "pairedDevices.forgetBody"
 msgstr "Pour vous reconnecter, associez-vous avec un nouveau code."
+
+#. Couldn’t forget {device}. Try again.
+#. Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}.
+msgid "pairedDevices.forgetFailed"
+msgstr "Impossible d’oublier {device}. Réessayez."
 
 #. Up to {max} can connect
 #. Pair with a Code: list: eight switches are on. Arguments: {max} = 8.

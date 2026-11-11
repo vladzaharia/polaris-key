@@ -1946,6 +1946,7 @@
     "pairedDevices.forget": "Olvidar",
     "pairedDevices.forgetConfirm": "¿Olvidar {device}?",
     "pairedDevices.forgetBody": "Para conectar de nuevo, vincula con un código nuevo.",
+    "pairedDevices.forgetFailed": "No se pudo olvidar {device}. Inténtalo de nuevo.",
     "pairedDevices.reachableFullTitle": "Pueden conectarse hasta {max}",
     "pairedDevices.reachableFullBody": "Desactiva uno para que se conecte otro.",
     "pairedDevices.fullBody": "Olvida un dispositivo vinculado para vincular otro.",

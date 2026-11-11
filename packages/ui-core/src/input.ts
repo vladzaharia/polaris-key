@@ -338,6 +338,7 @@ export interface PairedDeviceInput {
 export interface LocalPairingInput {
   step:
     | "choose"
+    | "opening"
     | "show"
     | "closed"
     | "enter"
@@ -360,6 +361,8 @@ export interface LocalPairingInput {
   secondsLeft?: number;
   /** show: the notice under the time row. */
   notice?: "rotated" | "declined" | "blocked" | "guessing";
+  /** show and confirm: a press is being answered; its control keeps its label and is unavailable. */
+  busy?: "pair" | "not-now" | "new-code";
   /** closed: why the window ended. */
   closedBy?: "too-many-tries" | "expired";
   /** closed: seconds left of the 30-second wait after Too many tries; 0 or absent when none. */
@@ -384,6 +387,8 @@ export interface LocalPairingInput {
   canOpenSettings?: boolean;
   /** paired: the new pairing was kept with Can connect off because 8 already are. */
   cantConnect?: boolean;
+  /** paired: the name could not be saved on this device; the screen stays. */
+  nameError?: "failed";
   /** The most paired devices that can connect at once. */
   max?: number;
 }
@@ -391,14 +396,20 @@ export interface LocalPairingInput {
 /** The list of paired devices (CC-29K). `devices` is `localLinks.list()`; the rest is what the
  *  person is doing to one row, and the answers the app's own connections gave. */
 export interface PairedDevicesInput {
-  step: "list" | "renaming" | "forgetting" | "load-failed" | "off";
+  step: "loading" | "list" | "renaming" | "forgetting" | "load-failed" | "off";
   devices?: readonly PairedDeviceInput[];
   /** renaming and forgetting: the row. */
   target?: string;
-  /** renaming: why the name was refused. */
-  renameError?: "long" | "empty";
-  /** What the app's own connection to a device answered. */
-  notice?: { device: string; kind: "not-found" | "busy" | "unknown" };
+  /** renaming: why the name was refused (`failed`: the store could not keep it). */
+  renameError?: "long" | "empty" | "failed";
+  /** forgetting: the store could not forget it; the question stays. */
+  forgetError?: boolean;
+  /** What the app's own connection to a device answered; `id` is the device, for Try again. */
+  notice?: {
+    device: string;
+    kind: "not-found" | "busy" | "unknown";
+    id?: string;
+  };
 }
 
 /** A contact's offer to send something (D-8): consent per transfer. `device` is the contact's

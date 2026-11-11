@@ -144,6 +144,14 @@ const make = (f: ReturnType<typeof fake>, c = clock()) => ({
   }),
 });
 
+/** The joiner with a code typed. */
+const joined = async (f: ReturnType<typeof fake>, text: string) => {
+  const { m, c } = make(f);
+  await m.enter();
+  m.setEntry(text);
+  return { m, c };
+};
+
 /** The shower with its window open and its first code on screen. */
 async function opened(f: ReturnType<typeof fake>) {
   const { m } = make(f);
@@ -371,14 +379,218 @@ describe("LocalPairingModel: show", () => {
   });
 });
 
-describe("LocalPairingModel: enter", () => {
-  const joined = async (f: ReturnType<typeof fake>, text: string) => {
-    const { m, c } = make(f);
-    await m.enter();
-    m.setEntry(text);
-    return { m, c };
+describe("LocalPairingModel: the prompt", () => {
+  const prompt = async (f: ReturnType<typeof fake>) => {
+    const m = await opened(f);
+    f.seen.pair!.onConfirm(offer(f.log, "LAPTOP-7QH3RX"));
+    expect(m.snapshot.step).toBe("confirm");
+    return m;
   };
 
+  it("a changed code ends the prompt: the next device reaches confirm, never 'one at a time'", async () => {
+    for (const reason of ["timeout", "declined", "closed"]) {
+      const f = fake();
+      const m = await prompt(f);
+      f.seen.pair!.onCode(code("4812 7777", reason));
+      expect(m.snapshot.step, reason).toBe("show");
+      const second = offer(f.log, "Studio PC");
+      f.seen.pair!.onConfirm(second);
+      expect(m.snapshot, reason).toMatchObject({
+        step: "confirm",
+        device: "Studio PC",
+      });
+      expect(f.log, reason).not.toContain("decline");
+      await m.confirm();
+      expect(f.log, reason).toContain("confirm");
+    }
+  });
+
+  it("a wrong code while the prompt is up also frees it", async () => {
+    const f = fake();
+    const m = await prompt(f);
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    f.seen.pair!.onConfirm(offer(f.log, "Studio PC"));
+    expect(m.snapshot.step).toBe("confirm");
+  });
+
+  it("a second device at the prompt is declined while the first is up", async () => {
+    const f = fake();
+    await prompt(f);
+    f.seen.pair!.onConfirm(offer(f.log, "Other"));
+    expect(f.log).toContain("decline");
+  });
+
+  it("Pair answers at once: busy until the window answers, and a repeat press confirms once", async () => {
+    const f = fake();
+    const m = await opened(f);
+    let calls = 0;
+    let release!: () => void;
+    const slow = offer(f.log, "LAPTOP-7QH3RX");
+    slow.confirm = () => {
+      calls++;
+      return new Promise<void>((r) => (release = r));
+    };
+    f.seen.pair!.onConfirm(slow);
+    const one = m.confirm();
+    expect(m.snapshot.busy).toBe("pair");
+    const v = m.view();
+    expect(v.disabled).toEqual(["common.notNow", "localPairing.pair"]);
+    expect(v.copy).toContain("a11y.busy");
+    await m.confirm();
+    await m.notNow();
+    expect(calls).toBe(1);
+    expect(f.log).not.toContain("decline");
+    release();
+    await one;
+    f.seen.pair!.onLinked({ id: "L1", label: "LAPTOP-7QH3RX", categories: [] });
+    expect(m.snapshot.step).toBe("paired");
+    expect(m.snapshot.busy).toBeUndefined();
+  });
+
+  it("a confirm that fails clears the busy state so Pair can be pressed again", async () => {
+    const f = fake();
+    const m = await opened(f);
+    const o = offer(f.log, "LAPTOP-7QH3RX");
+    o.confirm = async () => {
+      throw err("peer-closed");
+    };
+    f.seen.pair!.onConfirm(o);
+    await m.confirm();
+    expect(m.snapshot).toMatchObject({ step: "confirm" });
+    expect(m.snapshot.busy).toBeUndefined();
+  });
+
+  it("Not now is busy the same way, until the changed code arrives", async () => {
+    const f = fake();
+    const m = await prompt(f);
+    const pending = m.notNow();
+    expect(m.snapshot.busy).toBe("not-now");
+    await pending;
+    expect(m.view().disabled).toEqual(["common.notNow", "localPairing.pair"]);
+    f.seen.pair!.onCode(code("4812 9999", "declined"));
+    expect(m.snapshot).toMatchObject({ step: "show", notice: "declined" });
+    expect(m.snapshot.busy).toBeUndefined();
+  });
+
+  it("the waiting screen names what each shares", async () => {
+    const f = fake();
+    const { m } = await joined(f, "48123456");
+    void m.pair();
+    f.seen.join!.onConfirm(offer(f.log, "Studio PC"));
+    expect(m.snapshot).toMatchObject({ step: "waiting" });
+    const v = m.view();
+    expect(v.copy).toContain("linkPairing.shares");
+    expect(v.copy).not.toContain("localPairing.waitingDevice");
+  });
+});
+
+describe("LocalPairingModel: slow starts", () => {
+  it("Show a code goes to the opening tile at once, and a late window is withdrawn by Cancel", async () => {
+    const f = fake();
+    let open!: () => void;
+    f.driver.pair = (o) => {
+      f.seen.pair = o;
+      return new Promise((r) => {
+        open = () => r(f.windowHandle);
+      });
+    };
+    const { m } = make(f);
+    const pending = m.show();
+    expect(m.snapshot.step).toBe("opening");
+    expect(m.view().state).toBe("opening");
+    expect(m.view().copy).toContain("a11y.busy");
+    expect(m.view().copy).not.toContain("a11y.linkCode");
+    await new Promise((r) => setTimeout(r, 0)); // the driver is now asked
+    await m.cancel();
+    expect(m.snapshot.step).toBe("choose");
+    open();
+    await pending;
+    expect(f.log).toContain("stop");
+    expect(m.snapshot.step).toBe("choose");
+  });
+
+  it("Cancel before the driver is asked opens nothing", async () => {
+    const f = fake();
+    const { m } = make(f);
+    const pending = m.show();
+    await m.cancel();
+    await pending;
+    expect(f.log).not.toContain("pair");
+    expect(m.snapshot.step).toBe("choose");
+  });
+
+  it("Show a new code is busy while the renewal is answered, and a second press does nothing", async () => {
+    const f = fake();
+    const m = await opened(f);
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    let renewals = 0;
+    let release!: () => void;
+    f.windowHandle.renew = () => {
+      renewals++;
+      return new Promise((r) => (release = () => r(code("4900 1122"))));
+    };
+    const first = m.showNew();
+    expect(m.snapshot.busy).toBe("new-code");
+    expect(m.view().disabled).toEqual(["localPairing.showNew"]);
+    await m.showNew();
+    expect(renewals).toBe(1);
+    release();
+    await first;
+    expect(m.snapshot).toMatchObject({ step: "show", code: "4900 1122" });
+    expect(m.snapshot.busy).toBeUndefined();
+  });
+});
+
+describe("LocalPairingModel: the network answer", () => {
+  it("Try again from the shower reopens the window; from the field it returns to the code typed", async () => {
+    const f = fake();
+    let blocked = true;
+    const open = f.driver.pair;
+    f.driver.pair = async (o) => {
+      if (blocked) throw err("nearby-permission-denied");
+      return open(o);
+    };
+    const { m } = make(f);
+    await m.show();
+    expect(m.view().state).toBe("network-blocked");
+    expect(m.view().copy).toContain("common.tryAgain");
+    expect(m.view().decisions.primary).toBe("common.tryAgain");
+    blocked = false;
+    await m.retry();
+    expect(m.snapshot.step).toBe("opening");
+
+    const g = fake();
+    const { m: j } = await joined(g, "48123456");
+    g.next.join = async () => {
+      throw err("nearby-permission-denied");
+    };
+    await j.pair();
+    expect(j.snapshot.step).toBe("network-blocked");
+    await j.retry();
+    expect(j.snapshot).toMatchObject({ step: "enter", entry: "4812 3456" });
+  });
+});
+
+describe("LocalPairingModel: the paired screen", () => {
+  it("a name the store refuses keeps the screen and says so; editing clears it", async () => {
+    const f = fake();
+    const { m } = make(f);
+    await m.show();
+    f.seen.pair!.onLinked({ id: "L1", label: "Maya's PC", categories: [] });
+    f.driver.rename = async () => {
+      throw err("store");
+    };
+    m.setName("Booth");
+    await m.done();
+    expect(m.snapshot).toMatchObject({ step: "paired", nameError: "failed" });
+    expect(m.snapshot.left).toBe(false);
+    expect(m.view().copy).toContain("devices.renameFailed");
+    m.setName("Booth 2");
+    expect(m.snapshot.nameError).toBeUndefined();
+  });
+});
+
+describe("LocalPairingModel: enter", () => {
   it("groups what is typed and drops spaces, hyphens and the 9th digit", async () => {
     const { m } = await joined(fake(), "4812-3456 9");
     expect(m.snapshot.entry).toBe("4812 3456");
@@ -489,7 +701,7 @@ describe("LocalPairingModel: enter", () => {
     expect(m.snapshot).toMatchObject({ step: "paired", id: "L1" });
   });
 
-  it("Cancel while pairing aborts the join and returns to an empty field", async () => {
+  it("Cancel while pairing aborts the join and returns to the field with the code kept", async () => {
     const f = fake();
     const { m } = await joined(f, "48123456");
     void m.pair();
@@ -497,7 +709,7 @@ describe("LocalPairingModel: enter", () => {
     await m.cancel();
     expect(f.seen.join!.signal.aborted).toBe(true);
     expect(f.log).toContain("decline");
-    expect(m.snapshot).toMatchObject({ step: "enter", entry: "" });
+    expect(m.snapshot).toMatchObject({ step: "enter", entry: "4812 3456" });
   });
 
   it("maps the ends: declined, timeout, closed, full, cancelled, off", async () => {
@@ -609,6 +821,128 @@ describe("PairedDevicesModel", () => {
     await m.confirmForget();
     expect(m.snapshot.focus).toEqual({ kind: "title" });
     expect(m.view().state).toBe("empty");
+  });
+
+  it("says nothing about what is paired until the first read answers", async () => {
+    const f = fake({ rows: [row("a")] });
+    let answer!: (r: LocalLinkLike[]) => void;
+    f.driver.list = () => new Promise((r) => (answer = r));
+    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
+    const started = m.start();
+    expect(m.snapshot.loaded).toBe(false);
+    expect(m.view().state).toBe("loading");
+    expect(m.view().copy).not.toContain("pairedDevices.empty");
+    answer([row("a")]);
+    await started;
+    expect(m.view().state).toBe("list");
+    // The same for an empty answer: only now is "none yet" true.
+    const e = new PairedDevicesModel({ driver: fake().driver, base: BASE });
+    expect(e.view().state).toBe("loading");
+    await e.start();
+    expect(e.view().state).toBe("empty");
+  });
+
+  it("Try again from a failed read shows the loading state, then the list", async () => {
+    const f = fake();
+    let fail = true;
+    let answer!: (r: LocalLinkLike[]) => void;
+    f.driver.list = () =>
+      fail
+        ? Promise.reject(new Error("strict"))
+        : new Promise((r) => (answer = r));
+    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
+    await m.start();
+    expect(m.view().state).toBe("load-failed");
+    fail = false;
+    const again = m.refresh();
+    expect(m.view().state).toBe("loading");
+    answer([row("a")]);
+    await again;
+    expect(m.view().state).toBe("list");
+  });
+
+  it("a rename the store refuses keeps the text and says it failed, not 'Enter a name'", async () => {
+    const f = fake({ rows: [row("a")] });
+    f.driver.rename = async () => {
+      throw err("store");
+    };
+    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
+    await m.start();
+    m.startRename("a");
+    m.setDraft("Riverside");
+    await m.saveRename();
+    expect(m.snapshot).toMatchObject({
+      step: "renaming",
+      renameError: "failed",
+      draft: "Riverside",
+    });
+    expect(m.view().copy).toContain("devices.renameFailed");
+    expect(m.view().copy).not.toContain("pairedDevices.renameEmpty");
+    f.driver.rename = async () => {
+      throw Object.assign(new Error("bad"), { reason: "bad_input" });
+    };
+    await m.saveRename();
+    expect(m.snapshot.renameError).toBe("empty");
+  });
+
+  it("a forget the store refuses keeps the question open and says so", async () => {
+    const f = fake({ rows: [row("a"), row("b")] });
+    f.driver.remove = async () => {
+      throw err("store");
+    };
+    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
+    await m.start();
+    m.askForget("a");
+    await m.confirmForget();
+    expect(m.snapshot).toMatchObject({
+      step: "forgetting",
+      target: "a",
+      forgetError: true,
+    });
+    expect(m.view().copy).toContain("pairedDevices.forgetFailed");
+    m.cancelEdit();
+    expect(m.snapshot.forgetError).toBeUndefined();
+  });
+
+  it("Cancel and a saved rename return focus to the row's menu button; Forget moves on", async () => {
+    const f = fake({ rows: [row("a"), row("b")] });
+    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
+    await m.start();
+    m.startRename("a");
+    m.cancelEdit();
+    expect(m.snapshot.focus).toEqual({ kind: "row", id: "a" });
+    m.startRename("a");
+    expect(m.snapshot.focus).toBeNull();
+    m.setDraft("Booth");
+    await m.saveRename();
+    expect(m.snapshot.focus).toEqual({ kind: "row", id: "a" });
+    m.askForget("b");
+    m.cancelEdit();
+    expect(m.snapshot.focus).toEqual({ kind: "row", id: "b" });
+  });
+
+  it("an answer the host gave about a device shows with the list, and Try again names the device", async () => {
+    const f = fake({ rows: [row("a")] });
+    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
+    await m.start();
+    m.hostNotice = { device: "Device a", kind: "busy", id: "a" };
+    expect(m.input().pairedDevices?.notice).toEqual({
+      device: "Device a",
+      kind: "busy",
+      id: "a",
+    });
+    expect(m.view().copy).toContain("pairedDevices.busyTitle");
+    m.hostNotice = undefined;
+    m.base = {
+      ...BASE,
+      pairedDevices: {
+        step: "list",
+        notice: { device: "Device a", kind: "not-found" },
+      },
+    };
+    expect(m.view().copy).toContain("pairedDevices.notFoundTitle");
+    m.report("a", "busy");
+    expect(m.snapshot.notice).toMatchObject({ kind: "busy", id: "a" });
   });
 
   it("an unreadable record is load-failed with Try again; the gate off keeps only Rename and Forget", async () => {

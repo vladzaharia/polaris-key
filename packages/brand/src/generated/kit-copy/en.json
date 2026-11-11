@@ -1121,6 +1121,7 @@
   "pairedDevices.forget": "Forget",
   "pairedDevices.forgetConfirm": "Forget {device}?",
   "pairedDevices.forgetBody": "To connect again, pair with a new code.",
+  "pairedDevices.forgetFailed": "Couldn’t forget {device}. Try again.",
   "pairedDevices.reachableFullTitle": "Up to {max} can connect",
   "pairedDevices.reachableFullBody": "Turn one off to let another connect.",
   "pairedDevices.fullBody": "Forget a paired device to pair another.",

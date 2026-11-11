@@ -2469,6 +2469,8 @@
     <string name="pairedDevices_forgetConfirm">%1$s を削除しますか？</string>
     <!-- Pair with a Code: row: the one consequence. -->
     <string name="pairedDevices_forgetBody">再接続するには、新しいコードでペアリングしてください。</string>
+    <!-- Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetFailed">%1$sを削除できませんでした。もう一度お試しください。</string>
     <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
     <string name="pairedDevices_reachableFullTitle">最大 %1$s 台まで接続できます</string>
     <!-- Pair with a Code: list: what to do. -->
