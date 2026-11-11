@@ -26,6 +26,8 @@
 #   PKEY_TEST_PARALLEL  1 runs the `ci` selection of the editor and template steps as the four disjoint sets
 #                     ci_p1..ci_p4 (tests/runner.gd) in parallel processes, each with its own HOME (so its own
 #                     `user://`) and TMPDIR; any other selection runs as one process
+#   PKEY_TEST_DEV_LIVE  1 adds the `dev_live` suite (in no set; it needs a `pkey dev` server) to the editor step's
+#                     last parallel process; only the 4.7.2 editor CI leg sets it
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
 #   PKEY_TEST_PART    all (default) | editor | editor-a | editor-b | matrix | template: which heavy
 #                     steps run, so CI can spread them over runners. editor = the editor run + the
@@ -90,42 +92,6 @@ case "$PART:$SUITES" in
   editor-a:ci) SUITES=ci_a ;;
   editor-b:ci) SUITES=ci_b ;;
 esac
-# exit_rule_ok <engine-version> <exit-status> <log>: true only for the one exit this script forgives.
-# 2026-11-10: Godot 4.5.x can abort at engine shutdown (a signal exit, status > 128) after the suite
-# has already finished green. Forgiven only when ALL hold: the engine is 4.5.x, the status is a signal
-# exit, and the last non-empty line the process printed is its own `PKEY-TEST SUMMARY … failed=0`.
-# Every other case still fails. `run_tests.sh --self-check` exercises the rule.
-exit_rule_ok() {
-  case "$1" in 4.5.*) ;; *) return 1 ;; esac
-  [ "$2" -gt 128 ] 2>/dev/null || return 1
-  [ "$2" -ne 137 ] || return 1 # 137 is our own watchdog kill, never forgiven
-  grep -v '^[[:space:]]*$' "$3" | tail -n 1 | grep -Eq '^PKEY-TEST SUMMARY .* failed=0$'
-}
-
-if [ "${1:-}" = --self-check ]; then
-  T="$(mktemp -d)" || exit 2
-  printf 'x\nPKEY-TEST SUMMARY suites=3 failed=0\n' >"$T/green"
-  printf 'PKEY-TEST SUMMARY suites=3 failed=0\nERROR: leaked\n' >"$T/trailing"
-  printf 'PKEY-TEST SUMMARY suites=3 failed=2\n' >"$T/red"
-  bad=0
-  expect() { # expect <true|false> <version> <status> <log>
-    if exit_rule_ok "$2" "$3" "$4"; then got=true; else got=false; fi
-    [ "$got" = "$1" ] || { echo "self-check FAIL: $2 $3 $(basename "$4") -> $got, wanted $1"; bad=1; }
-  }
-  expect true 4.5.2.stable.official "134" "$T/green"
-  expect true 4.5.0.stable "139" "$T/green"
-  expect false 4.6.3.stable "134" "$T/green"
-  expect false 4.4.1.stable "134" "$T/green"
-  expect false 4.5.2.stable "1" "$T/green"
-  expect false 4.5.2.stable "0" "$T/green"
-  expect false 4.5.2.stable "137" "$T/green"
-  expect false 4.5.2.stable "134" "$T/trailing"
-  expect false 4.5.2.stable "134" "$T/red"
-  rm -rf "$T"
-  [ "$bad" -eq 0 ] && echo "self-check: ok"
-  exit "$bad"
-fi
-
 FATAL='SCRIPT ERROR|Parse Error|Failed to load script|Cannot get class|Invalid MainLoop'
 
 if [ -n "${GODOT_BIN:-}" ]; then
@@ -251,14 +217,7 @@ step() {
     if grep -Eq "$FATAL" "$log"; then
       reason="fatal line"
     elif [ "$STEP_STATUS" -ne 0 ]; then
-      if [ "$kind" = run ] && exit_rule_ok "$ENGINE_VERSION" "$STEP_STATUS" "$log"; then
-        local msg="$name: Godot $ENGINE_VERSION aborted at engine shutdown (exit $STEP_STATUS) after a green summary: known 4.5.x engine bug, step passed"
-        echo "!! WARNING: $msg"
-        [ -n "${GITHUB_ACTIONS:-}" ] && echo "::warning::$msg"
-        STEP_STATUS=0
-      else
-        reason="exit $STEP_STATUS"
-      fi
+      reason="exit $STEP_STATUS"
     elif [ "$kind" = run ] && ! grep -E '^PKEY-TEST SUMMARY ' "$log" | tail -n 1 | grep -Eq ' failed=0$'; then
       reason="no final 'PKEY-TEST SUMMARY … failed=0'"
     fi
@@ -298,7 +257,9 @@ run_selection() {
         RUN_HOME="$RUN_DIR/home-$name-p$g"
         export TMPDIR="$RUN_DIR/tmp-$name-p$g"
         mkdir -p "$RUN_HOME" "$TMPDIR"
-        step "$name-p$g" run "$launcher" "ci_p$g"
+        local sel="ci_p$g"
+        [ "$g" = 4 ] && [ "$name" = editor ] && [ "${PKEY_TEST_DEV_LIVE:-0}" = 1 ] && sel="$sel,dev_live"
+        step "$name-p$g" run "$launcher" "$sel"
       ) &
       pids="$pids $!"
     done
