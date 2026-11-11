@@ -22,6 +22,7 @@ import {
   newCode,
   reducedEnvelope,
   resume,
+  rgbaOf,
   shownGeometry,
   simEnvelope,
   type CardGeometry,
@@ -35,14 +36,6 @@ import { plain, qrCode, type KitCtx } from "./parts.js";
 
 const TAU = Math.PI * 2;
 const COLORS = LIGHT_CARD.colors;
-
-/** `#rrggbb` as [r, g, b]. */
-const rgb = (hex: string): [number, number, number] => [
-  parseInt(hex.slice(1, 3), 16),
-  parseInt(hex.slice(3, 5), 16),
-  parseInt(hex.slice(5, 7), 16),
-];
-const NIGHT = rgb(COLORS.night);
 
 /** What the renderer reports after each paint. */
 interface PaintProbe {
@@ -87,15 +80,14 @@ let sprites: HTMLCanvasElement[] | null = null;
 /** One soft glow per tint: white core, the tint, then nothing. */
 function spritesOf(): HTMLCanvasElement[] {
   sprites ??= COLORS.tints.map((hex) => {
-    const [r, g, b] = rgb(hex);
     const cv = document.createElement("canvas");
     cv.width = cv.height = 48;
     const g2 = cv.getContext("2d")!;
     const gr = g2.createRadialGradient(24, 24, 0, 24, 24, 24);
-    gr.addColorStop(0, "rgba(255,255,255,1)");
-    gr.addColorStop(0.16, `rgba(${r},${g},${b},.95)`);
-    gr.addColorStop(0.48, `rgba(${r},${g},${b},.26)`);
-    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    gr.addColorStop(0, rgbaOf(COLORS.core));
+    gr.addColorStop(0.16, rgbaOf(hex, 0.95));
+    gr.addColorStop(0.48, rgbaOf(hex, 0.26));
+    gr.addColorStop(1, rgbaOf(hex, 0));
     g2.fillStyle = gr;
     g2.fillRect(0, 0, 48, 48);
     return cv;
@@ -189,13 +181,11 @@ function drawFlare(ctx: CanvasRenderingContext2D, a: number): void {
   if (a <= 0.01) return;
   const mid = LIGHT_CARD.stage / 2;
   const r = LIGHT_CARD.stage * 0.32 * (1.4 - a * 0.4);
-  const [vr, vg, vb] = rgb(COLORS.tints[0]!);
-  const [lr, lg, lb] = rgb(COLORS.tints[1]!);
   ctx.globalCompositeOperation = "lighter";
   const gr = ctx.createRadialGradient(mid, mid, 0, mid, mid, r);
-  gr.addColorStop(0, `rgba(255,250,255,${a * 0.9})`);
-  gr.addColorStop(0.25, `rgba(${lr},${lg},${lb},${a * 0.54})`);
-  gr.addColorStop(1, `rgba(${vr},${vg},${vb},0)`);
+  gr.addColorStop(0, rgbaOf(COLORS.flareCore, a * 0.9));
+  gr.addColorStop(0.25, rgbaOf(COLORS.tints[1]!, a * 0.54));
+  gr.addColorStop(1, rgbaOf(COLORS.tints[0]!, 0));
   ctx.fillStyle = gr;
   ctx.beginPath();
   ctx.arc(mid, mid, r, 0, TAU);
@@ -212,14 +202,15 @@ function paint(
   const S = LIGHT_CARD.stage;
   ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
-  ctx.fillStyle = `rgba(${NIGHT.join(",")},.24)`;
+  ctx.fillStyle = rgbaOf(COLORS.night, 0.24);
   ctx.fillRect(0, 0, S, S);
-  drawCard(ctx, shownGeometry(sim, env), env.cardOpacity * env.dim);
+  const geometry = shownGeometry(sim, env);
+  drawCard(ctx, geometry, env.cardOpacity * env.dim);
   const sp = spritesOf();
   const p = sim.particles;
   ctx.globalCompositeOperation = "lighter";
   for (let i = 0; i < p.count; i++) {
-    const a = glowAlpha(sim, env, i);
+    const a = glowAlpha(sim, env, i, geometry);
     if (a < 0.01) continue;
     ctx.globalAlpha = a;
     const s = p.size[i]!;
@@ -239,7 +230,7 @@ function paintStill(
   const S = LIGHT_CARD.stage;
   ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
-  ctx.fillStyle = `rgb(${NIGHT.join(",")})`;
+  ctx.fillStyle = rgbaOf(COLORS.night);
   ctx.fillRect(0, 0, S, S);
   drawCard(ctx, g, env.cardOpacity * env.dim);
   if (env.check > 0) drawCheck(ctx);
@@ -358,7 +349,7 @@ function Canvas(props: {
       });
       const state = { sim, data: props.data, draw: () => undefined };
       live.current = state;
-      ctx.fillStyle = `rgb(${NIGHT.join(",")})`;
+      ctx.fillStyle = rgbaOf(COLORS.night);
       ctx.fillRect(0, 0, LIGHT_CARD.stage, LIGHT_CARD.stage);
       let raf = 0;
       let lastPaint = -Infinity;

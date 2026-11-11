@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   LIGHT_CARD,
+  ROLE,
   advance,
   cardGeometry,
   checkPoints,
@@ -115,7 +116,7 @@ function qrOf(rows: readonly string[]): QrMatrix {
   const modules = new Uint8Array(size * size);
   rows.forEach((row, y) => {
     for (let x = 0; x < size; x++)
-      modules[y * size + x] = row[x] === "#" ? 1 : 0;
+      modules[y * size + x] = row[x] === "1" ? 1 : 0;
   });
   return { size, modules };
 }
@@ -151,13 +152,9 @@ function geometrySummary(rows: readonly string[]) {
 // Written by `PKEY_WRITE_LIGHT_CARD_GOLDEN=1 pnpm --filter @polaris-key/ui-core test lightCard`;
 // the encoder is the SDK's, at level Q; then run prettier on the fixture.
 if (process.env.PKEY_WRITE_LIGHT_CARD_GOLDEN) {
-  const { encodeQr } = await import("../../sdk-node/src/qr/encoder.js");
+  const { encodeQr, qrRows } = await import("../../sdk-node/src/qr/encoder.js");
   const q = encodeQr(PAYLOAD, 1, -1, "Q")!;
-  const rows = Array.from({ length: q.size }, (_, y) =>
-    Array.from({ length: q.size }, (_, x) =>
-      q.modules[y * q.size + x] ? "#" : ".",
-    ).join(""),
-  );
+  const rows = qrRows(q);
   const written = {
     comment:
       "Light Card golden frames. Every kit checks its port of the timeline and the QR geometry against this file. Replay `events` from a timeline created at 0 and sample at each time; compare with a tolerance of 1e-6. Particle positions are not goldens.",
@@ -396,27 +393,32 @@ describe("particles", () => {
   });
 
   it("keeps every drawn light outside the card margin once it has formed", () => {
+    const g = cardGeometry(qrOf(golden.rows));
+    const mid = LIGHT_CARD.stage / 2;
     for (const seed of [1, 7, 99]) {
       const s = sim(seed, 1350);
-      const g = cardGeometry(qrOf(golden.rows));
-      const mid = LIGHT_CARD.stage / 2;
       let t = 1000;
       let checked = 0;
-      for (let n = 0; n < 900; n++) {
+      let inside = 0;
+      for (let n = 0; n < 600; n++) {
         t += LIGHT_CARD.dt;
         advance(s, t);
         const env = simEnvelope(s);
         if (env.phase !== "ready") continue;
-        for (let i = 0; i < s.particles.count; i++) {
-          if (glowAlpha(s, env, i) <= 0) continue;
-          const inside =
-            Math.abs(s.particles.x[i]! - mid) < g.half &&
-            Math.abs(s.particles.y[i]! - mid) < g.half;
-          expect(inside).toBe(false);
+        const p = s.particles;
+        for (let i = 0; i < p.count; i++) {
+          const within =
+            Math.abs(p.x[i]! - mid) < g.half &&
+            Math.abs(p.y[i]! - mid) < g.half;
+          // The card's own motes sit on the paper; every other light keeps out of the band.
+          if (within && p.role[i] !== ROLE.card) inside++;
+          if (glowAlpha(s, env, i, g) <= 0) continue;
           checked++;
+          if (within) inside++;
         }
       }
-      expect(checked).toBeGreaterThan(1000);
+      expect(checked, `seed ${seed}`).toBeGreaterThan(1000);
+      expect(inside, `seed ${seed}`).toBe(0);
     }
   });
 

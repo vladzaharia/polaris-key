@@ -89,6 +89,9 @@ export const LIGHT_CARD = {
     finderGap: "#fbf9ff",
     cardGlow: "rgba(160, 110, 255, 0.55)",
     tints: ["#9a5cff", "#c4aaff", "#b0ccff", "#fff6ff"],
+    /** The glow's white core and the connect flare's. */
+    core: "#ffffff",
+    flareCore: "#fffaff",
   },
   /** The ink dot as a share of a cell, the paper corner as a share of the card. */
   dotRadius: 0.43,
@@ -112,6 +115,12 @@ export type Phase =
   | "connected"
   | "expired";
 export type LightCardEvent = "newCode" | "connected" | "expired";
+
+/** `#rrggbb` as a CSS `rgba()` at `alpha`: the colour roles stay hex here and in the docs. */
+export function rgbaOf(hex: string, alpha = 1): string {
+  const n = (i: number): number => parseInt(hex.slice(i, i + 2), 16);
+  return `rgba(${n(1)},${n(3)},${n(5)},${alpha})`;
+}
 
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 /** Smoothstep. */
@@ -882,7 +891,12 @@ export function expire(sim: LightCardSim): boolean {
 
 /** How bright particle `i` is drawn now (0 when it is not drawn): its own alpha, the phase's glow
  *  multiplier and, for the light outside the card, the margin fade. */
-export function glowAlpha(sim: LightCardSim, env: Envelope, i: number): number {
+export function glowAlpha(
+  sim: LightCardSim,
+  env: Envelope,
+  i: number,
+  geometry: CardGeometry = shownGeometry(sim, env),
+): number {
   const p = sim.particles;
   const base = p.alpha[i]!;
   switch (p.role[i]) {
@@ -894,12 +908,7 @@ export function glowAlpha(sim: LightCardSim, env: Envelope, i: number): number {
         base *
           env.dim *
           env.ambient *
-          wispVisibility(
-            p.x[i]!,
-            p.y[i]!,
-            shownGeometry(sim, env),
-            env.cardOpacity,
-          ),
+          wispVisibility(p.x[i]!, p.y[i]!, geometry, env.cardOpacity),
       );
     default:
       return Math.min(1, base);
