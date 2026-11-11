@@ -21,6 +21,7 @@ import {
   sweepErasures,
 } from "../../../../src/services/identity/accounts/deletion.js";
 import { mergeAccounts } from "../../../../src/services/identity/accounts/merge.js";
+import { undoMerge } from "../../../../src/services/identity/accounts/mergeUndo.js";
 import { removeProductData } from "../../../../src/services/identity/accounts/productRemoval.js";
 import { scheduleAccountDeletion } from "../../../../src/services/identity/accounts/lifecycle.js";
 import { signIn as accountSignIn } from "../../../../src/services/identity/accounts/signIn.js";
@@ -521,6 +522,18 @@ describe("the account", () => {
     expect((await info(absorbed)).status).toBe(401);
     expect((await refresh(s.spa, survivor.refresh_token)).status).toBe(200);
     expect(await grants()).toBe(1);
+    // Undoing the join restores the absorbed account, and neither its grants nor its families.
+    const undone = await undoMerge(
+      ctx(),
+      { accountId: s.accountId, authenticatedAt: NOW },
+      merged.ok ? merged.mergeId : "",
+    );
+    expect(undone.ok).toBe(true);
+    expect(await grants(b.account.id)).toBe(0);
+    expect(await live(b.account.id)).toBe(0);
+    expect(await err(await refresh(s.spa, absorbed.refresh_token))).toBe(
+      "invalid_grant",
+    );
   });
 
   it("product deletion deletes every client, grant and family of the product", async () => {
