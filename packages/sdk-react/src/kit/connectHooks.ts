@@ -236,6 +236,8 @@ export function useLocalPairing(o: UseLocalPairingOptions): UseLocalPairing {
 export interface UsePairedDevicesOptions {
   driver: LocalLinksLike;
   base?: UiInput;
+  /** What the app's own connection to a device answered; shown with the list. */
+  notice?: PairedDevicesSnapshot["notice"];
 }
 
 export interface UsePairedDevices {
@@ -250,6 +252,7 @@ export function usePairedDevices(o: UsePairedDevicesOptions): UsePairedDevices {
   const held = useRef<PairedDevicesModel>();
   const model = (held.current ??= new PairedDevicesModel(o));
   model.base = o.base ?? {};
+  model.hostNotice = o.notice;
   const snapshot = useSnapshot(model.store);
   useEffect(() => {
     void model.start();
@@ -258,7 +261,7 @@ export function usePairedDevices(o: UsePairedDevicesOptions): UsePairedDevices {
   const view = useMemo(
     () => ({ snapshot, view: model.view(), input: model.input(), model }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [snapshot, model, o.base],
+    [snapshot, model, o.base, o.notice],
   );
   return view;
 }

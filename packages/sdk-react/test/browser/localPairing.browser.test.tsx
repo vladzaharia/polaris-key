@@ -12,6 +12,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createRoot, type Root } from "react-dom/client";
 import { commands, page } from "vitest/browser";
+import type { ReactNode } from "react";
 
 import * as Kit from "@polaris-key/react/kit";
 import type { UiInput } from "@polaris-key/ui-core";
@@ -319,10 +320,17 @@ describe("the show screen's window rule", () => {
       expect(notice.bottom, "the notice is above the QR").toBeLessThanOrEqual(
         kit.querySelector(".qr")!.getBoundingClientRect().top + 0.5,
       );
-      // The wrong-code notice is a live region's content, so it is announced where it is out of view.
-      expect(kit.querySelector(".pair-live")?.getAttribute("role")).toBe(
-        "status",
+      // The wrong-code notice is told by a live region that is in the page before it, so it is
+      // announced where it is out of view; the region holds the words, never the action.
+      const said = kit.querySelector(
+        '[role="status"] [data-key="a11y.newCode"]',
       );
+      expect(said?.textContent).toContain("4 8 1 2");
+      expect(
+        kit
+          .querySelector('[data-key="localPairing.showNew"]')
+          ?.closest('[role="status"]'),
+      ).toBeNull();
       noSideways();
       expect(await axeFindings(kit)).toEqual([]);
       await shoot("window.show", `390x420-${scheme}`);
@@ -390,5 +398,334 @@ describe("the paired list's rows", () => {
         "isolate",
       );
     }
+  });
+});
+
+// ── Driven screens in a real browser: focus, live regions, the menu, store failures, short windows ──
+
+type PairArgs = Parameters<Kit.LocalLinksLike["pair"]>[0];
+type JoinArgs = Parameters<Kit.LocalLinksLike["join"]>[0];
+
+const link = (id: string, reachable = true) => ({
+  id,
+  label: `Device ${id}`,
+  lastSeen: NOW - 86_400,
+  reachable,
+});
+
+/** A driver over `rows` that records what the screen asked and lets the test answer. */
+function fakeDriver(rows: ReturnType<typeof link>[] = []) {
+  const seen: { pair: PairArgs | null; join: JoinArgs | null } = {
+    pair: null,
+    join: null,
+  };
+  const next: {
+    join: () => Promise<never>;
+    rename: () => Promise<boolean>;
+    remove: () => Promise<boolean>;
+  } = {
+    join: () => new Promise(() => undefined),
+    rename: async () => true,
+    remove: async () => true,
+  };
+  const driver: Kit.LocalLinksLike = {
+    localPairing: () => true,
+    list: async () => rows,
+    rename: () => next.rename(),
+    remove: () => next.remove(),
+    setReachable: async () => true,
+    onChange: () => () => undefined,
+    dialsLeft: () => null,
+    pair: async (o) => {
+      seen.pair = o;
+      return {
+        open: true,
+        stop: async () => undefined,
+        renew: async () => ({
+          code: "5512 0000",
+          qr: "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          reason: "opened",
+          expiresAt: NOW + 300,
+          failures: 0,
+        }),
+        code: () => null,
+      };
+    },
+    join: (o) => {
+      seen.join = o;
+      return next.join();
+    },
+  };
+  return { driver, seen, next };
+}
+
+async function mountNode(
+  node: ReactNode,
+  scheme: Scheme = "dark",
+  rootPx = 16,
+): Promise<HTMLElement> {
+  takeDown();
+  document.documentElement.style.fontSize = `${rootPx}px`;
+  document.body.style.margin = "0";
+  document.body.style.background = scheme === "dark" ? "#101114" : "#ffffff";
+  stage.host = document.body.appendChild(document.createElement("div"));
+  stage.root = createRoot(stage.host);
+  stage.root.render(node);
+  while (!stage.host.querySelector(".pk-root"))
+    await new Promise((r) => setTimeout(r, 20));
+  await document.fonts.ready;
+  await frame();
+  return stage.host.querySelector<HTMLElement>(".pk-root")!;
+}
+
+/** Wait until `test` holds, drawing frames meanwhile. */
+async function until(test: () => unknown, what: string): Promise<void> {
+  for (let i = 0; i < 150; i++) {
+    if (test()) return;
+    await frame();
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error(`timed out waiting for ${what}`);
+}
+const key = (kit: HTMLElement, k: string): HTMLElement | null =>
+  kit.querySelector<HTMLElement>(`[data-key="${k}"]`);
+const press = (el: HTMLElement | null): void => {
+  if (!el) throw new Error("nothing to press");
+  el.focus();
+  el.click();
+};
+const keydown = (el: Element, k: string): void => {
+  el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
+};
+const code = (c: string, reason = "opened") => ({
+  code: c,
+  qr: "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+  reason,
+  expiresAt: NOW + 300,
+  failures: 0,
+});
+const pairingNode = (d: Kit.LocalLinksLike): ReactNode => (
+  <Kit.LocalPairing
+    driver={d}
+    categories={["crates", "cues"]}
+    categoryLabels={{ crates: "Crates", cues: "Cue points" }}
+    fill
+    theme={{ product: PRODUCT, colorScheme: "dark" }}
+  />
+);
+const devicesNode = (d: Kit.LocalLinksLike): ReactNode => (
+  <Kit.PairedDevices
+    driver={d}
+    fill
+    theme={{ product: PRODUCT, colorScheme: "dark" }}
+  />
+);
+
+describe("focus and what is announced", () => {
+  it("after Show a new code removes the notice, focus lands on the code", async () => {
+    await page.viewport(1280, 800);
+    const f = fakeDriver();
+    const kit = await mountNode(pairingNode(f.driver));
+    press(key(kit, "localPairing.show"));
+    await until(() => f.seen.pair, "the window");
+    f.seen.pair!.onCode(code("4812 3456"));
+    await until(() => key(kit, "a11y.linkCode"), "the code");
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    await until(() => key(kit, "localPairing.showNew"), "the notice");
+    press(key(kit, "localPairing.showNew"));
+    await until(() => !key(kit, "localPairing.showNew"), "the notice to go");
+    await until(
+      () => document.activeElement === key(kit, "a11y.linkCode"),
+      "focus on the code",
+    );
+    expect(document.activeElement?.getAttribute("aria-label")).toContain(
+      "5 5 1 2",
+    );
+  });
+
+  it("the joiner's late answers are told by a status region that was already there", async () => {
+    await page.viewport(1280, 800);
+    const f = fakeDriver();
+    const kit = await mountNode(pairingNode(f.driver));
+    press(key(kit, "localPairing.enter"));
+    await until(() => kit.querySelector("input"), "the field");
+    const regions = kit.querySelectorAll('[role="status"]').length;
+    expect(regions).toBeGreaterThan(0);
+    const input = kit.querySelector("input")!;
+    const set = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )!.set!;
+    set.call(input, "48123456");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    f.next.join = async () => {
+      throw Object.assign(new Error("x"), { code: "pairing-not-found" });
+    };
+    await until(
+      () =>
+        key(kit, "localPairing.pair")?.getAttribute("aria-disabled") !== "true",
+      "Pair",
+    );
+    press(key(kit, "localPairing.pair"));
+    await until(
+      () =>
+        [...kit.querySelectorAll('[role="status"]')].some((n) =>
+          /find the other device/.test(n.textContent ?? ""),
+        ),
+      "the answer in a status region",
+    );
+  });
+});
+
+describe("the paired list's menu", () => {
+  it("is a menu: focus goes in, the arrows move, Escape returns to the button", async () => {
+    await page.viewport(900, 700);
+    const kit = await mountNode(
+      devicesNode(fakeDriver([link("a"), link("b")]).driver),
+    );
+    await until(() => kit.querySelector("[data-row]"), "the rows");
+    const more = kit.querySelector<HTMLElement>('[data-row="a"] .pair-more')!;
+    press(more);
+    const rename = key(kit, "devices.rename")!;
+    await until(() => document.activeElement === rename, "focus in the menu");
+    keydown(rename, "ArrowDown");
+    expect(document.activeElement).toBe(
+      kit.querySelector('[data-row="a"] [data-key="pairedDevices.forget"]'),
+    );
+    keydown(document.activeElement!, "Escape");
+    expect(document.activeElement).toBe(more);
+    await frame();
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("is never clipped at the bottom of a scrolling list: it opens upward there", async () => {
+    await page.viewport(1440, 900);
+    const rows = Array.from({ length: 32 }, (_, i) => link(`${i + 1}`, i < 8));
+    const kit = await mountNode(devicesNode(fakeDriver(rows).driver));
+    await until(() => kit.querySelector('[data-row="32"]'), "the rows");
+    const list = kit.querySelector<HTMLElement>("[data-scroll]")!;
+    list.scrollTop = list.scrollHeight;
+    await frame();
+    press(kit.querySelector('[data-row="32"] .pair-more'));
+    await until(
+      () =>
+        !kit.querySelector<HTMLElement>('[data-row="32"] .pair-menu')!.hidden,
+      "the menu",
+    );
+    await frame();
+    const menu = kit
+      .querySelector('[data-row="32"] .pair-menu')!
+      .getBoundingClientRect();
+    const box = list.getBoundingClientRect();
+    expect(menu.top, "above the list's top").toBeGreaterThanOrEqual(
+      box.top - 0.5,
+    );
+    expect(menu.bottom, "below the list's bottom").toBeLessThanOrEqual(
+      box.bottom + 0.5,
+    );
+    expect(menu.bottom).toBeLessThanOrEqual(innerHeight);
+  });
+
+  it("the first row's menu opens downward", async () => {
+    await page.viewport(1440, 900);
+    const rows = Array.from({ length: 32 }, (_, i) => link(`${i + 1}`, i < 8));
+    const kit = await mountNode(devicesNode(fakeDriver(rows).driver));
+    await until(() => kit.querySelector('[data-row="1"]'), "the rows");
+    press(kit.querySelector('[data-row="1"] .pair-more'));
+    await until(
+      () =>
+        !kit.querySelector<HTMLElement>('[data-row="1"] .pair-menu')!.hidden,
+      "the menu",
+    );
+    expect(
+      kit.querySelector('[data-row="1"] .pair-menu')!.hasAttribute("data-up"),
+    ).toBe(false);
+  });
+
+  it("a store that refuses a rename or a forget says so in the row", async () => {
+    await page.viewport(900, 700);
+    const f = fakeDriver([link("a"), link("b")]);
+    f.next.rename = async () => {
+      throw new Error("store");
+    };
+    f.next.remove = async () => {
+      throw new Error("store");
+    };
+    const kit = await mountNode(devicesNode(f.driver));
+    await until(() => kit.querySelector("[data-row]"), "the rows");
+    press(kit.querySelector('[data-row="a"] .pair-more'));
+    press(key(kit, "devices.rename"));
+    await until(() => kit.querySelector("input"), "the rename field");
+    press(key(kit, "common.save"));
+    await until(() => key(kit, "devices.renameFailed"), "the failure line");
+    expect(key(kit, "pairedDevices.renameEmpty")).toBeNull();
+    // The text stays, and so does the person's place: the editor is still the row's.
+    expect(kit.querySelector("input")!.value).toBe("Device a");
+    expect(
+      document.activeElement?.closest('[data-editing="rename"]'),
+    ).not.toBeNull();
+    press(key(kit, "common.cancel"));
+    await until(
+      () =>
+        document.activeElement ===
+        kit.querySelector('[data-row="a"] .pair-more'),
+      "focus back on the row's button",
+    );
+    press(kit.querySelector('[data-row="b"] .pair-more'));
+    press(
+      kit.querySelector('[data-row="b"] [data-key="pairedDevices.forget"]'),
+    );
+    await until(() => key(kit, "pairedDevices.forgetConfirm"), "the question");
+    press(
+      kit.querySelector(
+        '[data-editing="forget"] [data-key="pairedDevices.forget"]',
+      ),
+    );
+    await until(
+      () => key(kit, "pairedDevices.forgetFailed"),
+      "the failure line",
+    );
+  });
+});
+
+// A short window keeps the way out of a notice in the first view: Cancel and the link share a row
+// and, side by side, sit under the code, so a wrong-code notice does not push them below the fold.
+describe("short windows after a notice", () => {
+  for (const [width, height] of [
+    [720, 420],
+    [1280, 420],
+  ] as const)
+    it(`${width}x${height}: Cancel and Enter a code instead stay in view with the notice up`, async () => {
+      await page.viewport(width, height);
+      const f = fakeDriver();
+      const kit = await mountNode(pairingNode(f.driver));
+      press(key(kit, "localPairing.show"));
+      await until(() => f.seen.pair, "the window");
+      f.seen.pair!.onCode(code("4812 3456"));
+      f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+      await until(() => key(kit, "localPairing.showNew"), "the notice");
+      await frame();
+      for (const k of [
+        "common.cancel",
+        "localPairing.toEnter",
+        "localPairing.showNew",
+      ])
+        expect(
+          key(kit, k)!.getBoundingClientRect().bottom,
+          `${k} below the fold`,
+        ).toBeLessThanOrEqual(innerHeight + 0.5);
+    });
+
+  it("1280x420: the field screen shows Pair whole", async () => {
+    await page.viewport(1280, 420);
+    const f = fakeDriver();
+    const kit = await mountNode(pairingNode(f.driver));
+    press(key(kit, "localPairing.enter"));
+    await until(() => kit.querySelector("input"), "the field");
+    await frame();
+    const pair = key(kit, "localPairing.pair")!.getBoundingClientRect();
+    expect(pair.bottom, "Pair is cut off").toBeLessThanOrEqual(
+      innerHeight + 0.5,
+    );
   });
 });

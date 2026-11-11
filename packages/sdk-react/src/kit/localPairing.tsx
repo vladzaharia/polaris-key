@@ -16,8 +16,10 @@
 
 import {
   Fragment,
+  forwardRef,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -27,6 +29,8 @@ import {
   connectEscape,
   type LocalLinksLike,
   type PairedDeviceInput,
+  type PairedDevicesInput,
+  type View,
 } from "@polaris-key/ui-core";
 
 import {
@@ -94,8 +98,8 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
   box-sizing: border-box;
   padding: var(--pk-space-3) var(--pk-space-2);
   border-radius: var(--pk-kit-radius-control);
-  background: var(--pk-surface-sunken);
-  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
+  /* A raised tile, not a sunken one: a sunken tile reads as the field Enter a code draws. */
+  background: color-mix(in oklab, var(--pk-text-strong) 7%, var(--pk-surface-raised));
   font-family: var(--pk-kit-type-code-family);
   font-weight: var(--pk-kit-type-code-weight);
   font-size: clamp(1.75rem, 1rem + 5cqi, var(--pk-kit-type-code-size));
@@ -111,6 +115,42 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 }
 .pk-root .pair-group {
   white-space: nowrap;
+}
+.pk-root .pair-code:focus-visible {
+  outline: var(--pk-kit-focus-width) solid var(--pk-ring);
+  outline-offset: 2px;
+}
+/* The window is opening: the tile holds its place, and the bars appear after the DL7 delay so a
+   fast start does not flash. */
+.pk-root .pair-code[data-wait] {
+  min-block-size: 4.5rem;
+  align-items: center;
+  gap: var(--pk-space-2);
+}
+.pk-root .pair-skel {
+  display: block;
+  inline-size: 3.5ch;
+  block-size: 0.9em;
+  border-radius: 0.2em;
+  background: var(--pk-border-subtle);
+  opacity: 0;
+  animation: pk-pair-skel 1.6s ease-in-out 0.3s infinite both;
+}
+@keyframes pk-pair-skel {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-root .pair-skel {
+    animation: none;
+    opacity: 0.5;
+    animation-delay: 0s;
+  }
 }
 .pk-root .pair-time {
   display: flex;
@@ -148,6 +188,19 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 .pk-root .pair-live {
   display: contents;
 }
+.pk-root .pair-notice .callout-title {
+  display: block;
+}
+/* The notice's actions read as actions: underlined at rest, as a link in a pane is. */
+.pk-root .pair-notice .btn[data-variant="link"],
+.pk-root .pair-stack .links .btn[data-variant="link"],
+.pk-root .pair-foot .links .btn[data-variant="link"],
+.pk-root .pair-actions .btn[data-variant="link"] {
+  color: var(--pk-accent-fg);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
 .pk-root .pair-notice {
   position: relative;
 }
@@ -175,6 +228,18 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
   flex-wrap: wrap;
   gap: var(--pk-space-2);
 }
+/* Twice the stack's gap between what is agreed to and the button that agrees. */
+.pk-root .pair-shares + .pair-actions {
+  margin-block-start: var(--pk-space-3);
+}
+/* The wait after Too many tries is the one thing the button says: full contrast, not dimmed. */
+.pk-root .btn[data-wait][aria-disabled="true"][data-variant="primary"] {
+  opacity: 1;
+  background: none;
+  color: var(--pk-text-strong);
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
+  cursor: default;
+}
 .pk-root .pair-actions .btn {
   inline-size: auto;
 }
@@ -199,7 +264,9 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 }
 .pk-root .pair-field input.pair-input::placeholder {
   color: var(--pk-text-muted);
-  opacity: 0.6;
+  opacity: 0.4;
+  font-size: 0.6em;
+  letter-spacing: 0.3em;
 }
 .pk-root .pair-error {
   margin: 0;
@@ -252,14 +319,22 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
    short and narrow keeps one column that scrolls, with the notice before the QR so a wrong code is
    not left under it. */
 .pk-root .pair-foot {
-  display: grid;
-  justify-items: start;
-  gap: var(--pk-space-1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pk-space-1) var(--pk-space-3);
 }
 @media (max-height: 480px) {
   .pk-root[data-component="LocalPairing"] [data-part="header"],
   .pk-root[data-component="LocalPairing"] .passport {
     display: none;
+  }
+  /* The field and the stack give back height, so Pair is whole in the first view. */
+  .pk-root .pair-field input.pair-input {
+    min-block-size: 3.5rem;
+  }
+  .pk-root[data-component="LocalPairing"] .pair-stack {
+    gap: var(--pk-space-2);
   }
   @container pk (min-width: 37.5rem) {
     .pk-root[data-component="LocalPairing"][data-state="show"] .stage[data-kind="screen"] {
@@ -279,11 +354,25 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
     .pk-root .pair-show .qr svg {
       inline-size: 10rem;
     }
-    .pk-root .pair-foot {
-      grid-auto-flow: column;
-      justify-content: start;
-      align-items: center;
-      gap: var(--pk-space-3);
+    /* A notice is one line: its words side by side and its action at the end, and the waiting
+       row is as tall as its text, so Cancel stays in the first view. */
+    .pk-root .pair-show .pair-notice {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      column-gap: var(--pk-space-3);
+      row-gap: 0;
+      padding-block: var(--pk-space-2);
+    }
+    .pk-root .pair-show .pair-notice .notice-glyph {
+      inset-block-start: var(--pk-space-3);
+    }
+    .pk-root .pair-show .pair-notice .btn[data-variant="link"] {
+      margin-inline-start: auto;
+      min-block-size: 1.5rem;
+    }
+    .pk-root .pair-show .pair-wait {
+      padding-block: var(--pk-space-1);
     }
   }
   @container pk (max-width: 37.49rem) {
@@ -307,6 +396,13 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
   }
 }
 /* Paired devices. */
+.pk-root .pair-rows[data-loading] .pair-row {
+  min-block-size: 3.75rem;
+}
+.pk-root .pair-rows[data-loading] .pair-skel {
+  inline-size: 40%;
+  block-size: 1em;
+}
 .pk-root .pair-rows {
   display: grid;
   margin: 0;
@@ -442,6 +538,15 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 .pk-root .pair-menu[hidden] {
   display: none;
 }
+/* Near the bottom of a scrolling list the menu opens upward, so it is never clipped. */
+.pk-root .pair-menu[data-up] {
+  inset-block-start: auto;
+  inset-block-end: calc(100% - var(--pk-space-2));
+}
+.pk-root .pair-menu .btn:focus-visible {
+  outline: var(--pk-kit-focus-width) solid var(--pk-ring);
+  outline-offset: -2px;
+}
 .pk-root .pair-menu .btn {
   justify-content: start;
   inline-size: 100%;
@@ -498,10 +603,19 @@ const ICONS = {
       <path d="M12 5v14M5 12h14" />
     </Icon>
   ),
+  // Three dots of 3 px across, side by side: the "more" mark (a menu), not a stroke of dashes.
   more: () => (
-    <Icon cls="">
-      <path d="M12 6h.01M12 12h.01M12 18h.01" />
-    </Icon>
+    <svg
+      className=""
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="5" cy="12" r="1.9" />
+      <circle cx="12" cy="12" r="1.9" />
+      <circle cx="19" cy="12" r="1.9" />
+    </svg>
   ),
 };
 
@@ -515,10 +629,9 @@ function Notice(props: {
   title: string;
   body?: string;
   glyph?: ReactNode;
-  action?: string;
-  hidden?: string;
+  action?: ReactNode;
 }): ReactNode {
-  const { c, title, body, glyph, action, hidden } = props;
+  const { c, title, body, glyph, action } = props;
   return (
     <div
       className="callout pair-notice"
@@ -531,14 +644,26 @@ function Notice(props: {
         {text(c, title)}
       </span>
       {body ? <span data-key={body}>{text(c, body)}</span> : null}
-      {hidden ? (
-        <span className="visually-hidden" data-key={hidden}>
-          {text(c, hidden, { code: c.input.localPairing?.code ?? "" })}
-        </span>
-      ) : null}
-      {action ? button(c, action, "link") : null}
+      {action ?? null}
     </div>
   );
+}
+
+/** The words a screen reader is told when a notice appears (a polite status that is always in the
+ *  page, so its changes are announced). It holds the notice's words only, never its action. */
+function Announce(props: { children?: ReactNode }): ReactNode {
+  return (
+    <div className="visually-hidden" role="status">
+      {props.children}
+    </div>
+  );
+}
+
+/** The time left, spoken to the minute and never rounded up: "4:51" is "4:00", under a minute
+ *  "0:30" or "0:00". */
+function spokenTime(left: number): string {
+  if (left >= 60) return `${Math.floor(left / 60)}:00`;
+  return left >= 30 ? "0:30" : "0:00";
 }
 
 /** The 20 px ring and "Expires in 4:51". The ring is not announced; the minute is, once a minute. */
@@ -547,7 +672,6 @@ function TimeRow(props: { c: KitCtx }): ReactNode {
   const left = Math.max(0, c.input.localPairing?.secondsLeft ?? 0);
   const r = 9;
   const whole = 2 * Math.PI * r;
-  const minutes = Math.ceil(left / 60);
   return (
     <>
       <p
@@ -568,27 +692,29 @@ function TimeRow(props: { c: KitCtx }): ReactNode {
         <span>{text(c, "localPairing.expires")}</span>
       </p>
       <span className="visually-hidden" role="status">
-        {plain(c, "localPairing.expires", { time: `${minutes}:00` })}
+        {plain(c, "localPairing.expires", { time: spokenTime(left) })}
       </span>
     </>
   );
 }
 
 /** The code, lit where it changed, as two groups of four that stay whole (at 200 % text they wrap
- *  between the groups). The reader is told the whole code; the digits are not read twice. */
-function Code(props: {
-  c: KitCtx;
-  changed: readonly number[];
-  rotation: number;
-}): ReactNode {
+ *  between the groups). The reader is told the whole code; the digits are not read twice. The tile
+ *  takes focus (`tabIndex` -1) when the control the person pressed left the page. */
+const Code = forwardRef<
+  HTMLSpanElement,
+  { c: KitCtx; changed: readonly number[]; rotation: number }
+>(function Code(props, ref) {
   const { c, changed, rotation } = props;
   const code = c.input.localPairing?.code ?? "";
   const lit = new Set(changed);
   let at = 0;
   return (
     <span
+      ref={ref}
       className="pair-code"
       role="text"
+      tabIndex={-1}
       data-key="a11y.linkCode"
       aria-label={plain(c, "a11y.linkCode", { code: spellOut(code) })}
     >
@@ -614,7 +740,7 @@ function Code(props: {
       })}
     </span>
   );
-}
+});
 
 function Waiting(props: { c: KitCtx }): ReactNode {
   return (
@@ -656,16 +782,19 @@ function PairButton(props: {
   );
 }
 
-/** Three buttons that may sit disabled with their label: drawn as the kit draws a control. */
+/** A button that may sit unavailable with its label (aria-disabled, never `disabled`, so focus and
+ *  its reason stay reachable). Pressed unavailable it does nothing; `busy` adds the ring. */
 function Disabled(props: {
   c: KitCtx;
   k: string;
-  variant: "primary" | "secondary";
+  variant: "primary" | "secondary" | "link";
   glyph?: ReactNode;
   off?: boolean;
+  busy?: boolean;
+  wait?: boolean;
   describedBy?: string;
 }): ReactNode {
-  const { c, k, variant, glyph, off, describedBy } = props;
+  const { c, k, variant, glyph, off, busy, wait, describedBy } = props;
   return (
     <button
       type="button"
@@ -673,10 +802,12 @@ function Disabled(props: {
       data-part={variant}
       data-variant={variant}
       data-key={k}
-      aria-disabled={off ? "true" : undefined}
+      data-wait={wait ? "" : undefined}
+      aria-disabled={off || busy ? "true" : undefined}
       aria-describedby={describedBy}
-      onClick={() => c.act(k)}
+      onClick={() => (off || busy ? undefined : c.act(k))}
     >
+      {busy ? <span className="ring" aria-hidden="true" /> : null}
       {glyph}
       <span>{text(c, k)}</span>
     </button>
@@ -705,7 +836,7 @@ function ChooseBody(props: { c: KitCtx }): ReactNode {
           title="core.codes.local-links-full.title"
           body="core.codes.local-links-full.message"
           glyph={GLYPHS.info("notice-glyph")}
-          action="localPairing.pairedDevices"
+          action={button(c, "localPairing.pairedDevices", "link")}
         />
       ) : null}
       <div className="pair-choose" data-part="choices">
@@ -736,36 +867,88 @@ function ChooseBody(props: { c: KitCtx }): ReactNode {
   );
 }
 
+/** Cancel and Enter a code instead, on one row (the window's two ways out). */
+function ShowFoot(props: { c: KitCtx }): ReactNode {
+  const { c } = props;
+  return (
+    <div className="pair-foot">
+      <div className="pair-actions">
+        {button(c, "common.cancel", "secondary")}
+      </div>
+      <div className="links" data-part="links">
+        {button(c, "localPairing.toEnter", "link")}
+      </div>
+    </div>
+  );
+}
+
+/** The window is opening: the code tile holds its place (its bars appear after the DL7 delay), so a
+ *  slow start is never mistaken for nothing happening. */
+function OpeningBody(props: { c: KitCtx }): ReactNode {
+  const { c } = props;
+  return (
+    <div className="pair-show" data-opening="">
+      <div className="pair-codeblock">
+        <span className="pair-code" data-wait="" aria-busy="true">
+          <span className="pair-skel" aria-hidden="true" />
+          <span className="pair-skel" aria-hidden="true" />
+        </span>
+      </div>
+      <ShowFoot c={c} />
+    </div>
+  );
+}
+
 function ShowBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
   const { c, x } = props;
   const p = c.input.localPairing!;
   const n = p.notice;
+  const renewing = p.busy === "new-code";
+  const tile = useRef<HTMLSpanElement | null>(null);
+  const seen = useRef(x.rotation);
+  // A new code can remove the control the person pressed (the notice's action); focus then falls to
+  // the page, so it goes to the code, which is what changed.
+  useEffect(() => {
+    if (seen.current === x.rotation) return;
+    seen.current = x.rotation;
+    const at = document.activeElement;
+    if (!at || at === document.body) tile.current?.focus();
+  }, [x.rotation]);
+  const again = (
+    <Disabled
+      c={c}
+      k="localPairing.showNew"
+      variant="link"
+      off={renewing}
+      busy={renewing}
+    />
+  );
+  const words: Record<string, readonly [string, string]> = {
+    rotated: ["localPairing.rotatedTitle", "localPairing.rotatedBody"],
+    declined: ["localPairing.notPairedWith", "localPairing.rotatedBody"],
+    blocked: ["localPairing.blockedTitle", "localPairing.blockedBody"],
+    guessing: ["localPairing.rotatedTitle", "localPairing.tooManyAgainBody"],
+  };
+  const said = n ? words[n] : undefined;
   return (
     <div className="pair-show" data-notice={n}>
       <div className="pair-codeblock">
-        <Code c={c} changed={x.changed} rotation={x.rotation} />
+        <Code ref={tile} c={c} changed={x.changed} rotation={x.rotation} />
         <TimeRow c={c} />
       </div>
       {qrCode(c, p.qr ?? null, "a11y.qrPairing")}
-      <div className="pair-live" role="status">
-        {n === "rotated" ? (
+      <div className="pair-live">
+        {n === "rotated" || n === "declined" || n === "guessing" ? (
           <Notice
             c={c}
-            title="localPairing.rotatedTitle"
-            body="localPairing.rotatedBody"
-            glyph={GLYPHS.info("notice-glyph")}
-            action="localPairing.showNew"
-            hidden="a11y.newCode"
-          />
-        ) : null}
-        {n === "declined" ? (
-          <Notice
-            c={c}
-            title="localPairing.notPairedWith"
-            body="localPairing.rotatedBody"
-            glyph={GLYPHS.info("notice-glyph")}
-            action="localPairing.showNew"
-            hidden="a11y.newCode"
+            title={said![0]}
+            body={said![1]}
+            glyph={
+              n === "guessing"
+                ? GLYPHS.warning("notice-glyph")
+                : GLYPHS.info("notice-glyph")
+            }
+            action={again}
           />
         ) : null}
         {n === "blocked" ? (
@@ -776,25 +959,22 @@ function ShowBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
             glyph={GLYPHS.warning("notice-glyph")}
           />
         ) : null}
-        {n === "guessing" ? (
-          <Notice
-            c={c}
-            title="localPairing.tooManyAgainTitle"
-            body="localPairing.tooManyAgainBody"
-            glyph={GLYPHS.warning("notice-glyph")}
-            action="localPairing.showNew"
-          />
+      </div>
+      {/* What a screen reader is told, apart from the notice so its action is not read as news. */}
+      <Announce>
+        {said ? (
+          <>
+            {plain(c, said[0])}. {plain(c, said[1])}.{" "}
+            {n !== "blocked" ? (
+              <span data-key="a11y.newCode">
+                {plain(c, "a11y.newCode", { code: spellOut(p.code ?? "") })}
+              </span>
+            ) : null}
+          </>
         ) : null}
-      </div>
+      </Announce>
       <Waiting c={c} />
-      <div className="pair-foot">
-        <div className="pair-actions">
-          {button(c, "common.cancel", "secondary")}
-        </div>
-        <div className="links" data-part="links">
-          {button(c, "localPairing.toEnter", "link")}
-        </div>
-      </div>
+      <ShowFoot c={c} />
     </div>
   );
 }
@@ -814,7 +994,7 @@ function ClosedBody(props: { c: KitCtx }): ReactNode {
         />
       ) : null}
       <div className="pair-actions">
-        <Disabled c={c} k={k} variant="primary" off={cooling} />
+        <Disabled c={c} k={k} variant="primary" off={cooling} wait={cooling} />
         {button(c, "common.close", "secondary")}
       </div>
     </div>
@@ -829,9 +1009,11 @@ function EnterBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
   const e = p.error;
   const spent = has(c, "localPairing.spentCode");
   const invalid = !busy && (e === "wrong" || e === "not-a-code");
+  const cooldown = has(c, "localPairing.cooldownTitle");
+  const notFound = has(c, "localPairing.notFoundTitle");
   return (
     <div className="pair-stack">
-      {has(c, "localPairing.cooldownTitle") ? (
+      {cooldown ? (
         <Notice
           c={c}
           title="localPairing.cooldownTitle"
@@ -839,7 +1021,7 @@ function EnterBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
           glyph={GLYPHS.info("notice-glyph")}
         />
       ) : null}
-      {has(c, "localPairing.notFoundTitle") ? (
+      {notFound ? (
         <Notice
           c={c}
           title="localPairing.notFoundTitle"
@@ -847,6 +1029,14 @@ function EnterBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
           glyph={GLYPHS.info("notice-glyph")}
         />
       ) : null}
+      {/* The late answers are told as they arrive: the region is in the page before they do. */}
+      <Announce>
+        {cooldown
+          ? `${plain(c, "localPairing.cooldownTitle")}. ${plain(c, "localPairing.cooldownBody")}`
+          : notFound
+            ? `${plain(c, "localPairing.notFoundTitle")}. ${plain(c, "localPairing.notFoundBody")}`
+            : null}
+      </Announce>
       <div className="field pair-field" data-part="code-field">
         <label className="label" htmlFor="pk-pair-code">
           {text(c, "localPairing.codeLabel")}
@@ -929,7 +1119,9 @@ function EnterBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
   );
 }
 
-/** Pair on the prompt is ignored for 250 ms after it appears, so Enter on arrival never pairs. */
+/** Pair on the prompt is ignored for 250 ms after it appears, so Enter on arrival never pairs. Pair
+ *  leads (the order of reading); the first focus is Not now. A press is answered at once: both
+ *  controls wait, and the one pressed shows its ring. */
 function ConfirmBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
   const { c, x } = props;
   const [armed, arm] = useState(false);
@@ -937,6 +1129,7 @@ function ConfirmBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
     const t = setTimeout(() => arm(true), 250);
     return () => clearTimeout(t);
   }, []);
+  const busy = c.input.localPairing?.busy;
   return (
     <div className="pair-stack">
       <Categories
@@ -945,8 +1138,19 @@ function ConfirmBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
         cats={c.input.localPairing?.categories}
       />
       <div className="pair-actions">
-        {button(c, "common.notNow", "secondary")}
-        <PairButton c={c} onPress={() => armed && c.act("localPairing.pair")} />
+        <PairButton
+          c={c}
+          busy={busy === "pair"}
+          disabled={busy !== undefined}
+          onPress={() => armed && !busy && c.act("localPairing.pair")}
+        />
+        <Disabled
+          c={c}
+          k="common.notNow"
+          variant="secondary"
+          off={busy === "pair"}
+          busy={busy === "not-now"}
+        />
       </div>
     </div>
   );
@@ -958,6 +1162,14 @@ function PairedBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
   const hint = useId();
   return (
     <div className="pair-stack">
+      {p.cantConnect ? (
+        <Notice
+          c={c}
+          title="localPairing.cantConnectTitle"
+          body="localPairing.cantConnectBody"
+          glyph={GLYPHS.info("notice-glyph")}
+        />
+      ) : null}
       <div className="field pair-field" data-part="name-field">
         <label className="label" htmlFor="pk-pair-name">
           {text(c, "localPairing.nameLabel")}
@@ -970,24 +1182,28 @@ function PairedBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
           spellCheck={false}
           dir="auto"
           value={x.name}
+          aria-invalid={p.nameError ? "true" : "false"}
           aria-describedby={hint}
           onChange={(ev) => c.edit("name", ev.currentTarget.value)}
           onKeyDown={(ev: KeyboardEvent<HTMLInputElement>) => {
             if (ev.key === "Enter") c.act("common.done");
           }}
         />
-        <p id={hint} className="pair-hint" data-key="localPairing.nameHint">
-          {text(c, "localPairing.nameHint")}
-        </p>
+        <div id={hint}>
+          {p.nameError ? (
+            <p
+              className="pair-error"
+              role="alert"
+              data-key="devices.renameFailed"
+            >
+              {text(c, "devices.renameFailed")}
+            </p>
+          ) : null}
+          <p className="pair-hint" data-key="localPairing.nameHint">
+            {text(c, "localPairing.nameHint")}
+          </p>
+        </div>
       </div>
-      {p.cantConnect ? (
-        <Notice
-          c={c}
-          title="localPairing.cantConnectTitle"
-          body="localPairing.cantConnectBody"
-          glyph={GLYPHS.info("notice-glyph")}
-        />
-      ) : null}
       <div className="pair-actions">
         {button(c, "common.done", "primary")}
         {p.cantConnect ? button(c, "localPairing.pairedDevices", "link") : null}
@@ -996,12 +1212,25 @@ function PairedBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
   );
 }
 
-function ClosingBody(props: { c: KitCtx; keys: string[] }): ReactNode {
-  const { c, keys } = props;
+/** A refusal or an end: its reason leads (the lede under the title), then the way out. Close is the
+ *  filled control only where the view says so. */
+function ClosingBody(props: {
+  c: KitCtx;
+  keys: string[];
+  reason?: string;
+}): ReactNode {
+  const { c, keys, reason } = props;
   const primary = c.view.decisions.primary;
   return (
-    <div className="pair-actions">
-      {keys.map((k) => button(c, k, k === primary ? "primary" : "secondary"))}
+    <div className="pair-stack">
+      {reason && has(c, reason) ? (
+        <p className="body" data-key={reason}>
+          {text(c, reason)}
+        </p>
+      ) : null}
+      <div className="pair-actions">
+        {keys.map((k) => button(c, k, k === primary ? "primary" : "secondary"))}
+      </div>
     </div>
   );
 }
@@ -1010,6 +1239,8 @@ function localBody(c: KitCtx, x: LocalExtras): ReactNode {
   switch (c.view.state) {
     case "choose":
       return <ChooseBody c={c} />;
+    case "opening":
+      return <OpeningBody c={c} />;
     case "show":
       return <ShowBody c={c} x={x} />;
     case "closed":
@@ -1022,7 +1253,11 @@ function localBody(c: KitCtx, x: LocalExtras): ReactNode {
     case "waiting":
       return (
         <div className="pair-stack">
-          <Waiting c={c} />
+          <Categories
+            c={c}
+            labels={x.labels}
+            cats={c.input.localPairing?.categories}
+          />
           <div className="pair-actions">
             {button(c, "common.cancel", "secondary")}
           </div>
@@ -1036,15 +1271,24 @@ function localBody(c: KitCtx, x: LocalExtras): ReactNode {
       return (
         <ClosingBody
           c={c}
-          keys={
-            has(c, "localPairing.openSettings")
-              ? ["localPairing.openSettings", "common.close"]
-              : ["common.close"]
-          }
+          reason="core.codes.nearby-permission-denied.message"
+          keys={[
+            ...(has(c, "localPairing.openSettings")
+              ? ["localPairing.openSettings"]
+              : []),
+            "common.tryAgain",
+            "common.close",
+          ]}
         />
       );
     case "off":
-      return <ClosingBody c={c} keys={["common.close"]} />;
+      return (
+        <ClosingBody
+          c={c}
+          reason="core.codes.local-pairing-off.message"
+          keys={["common.close"]}
+        />
+      );
     default:
       return null;
   }
@@ -1073,6 +1317,15 @@ export interface LocalPairingProps extends KitProps {
   onClose?: () => void;
 }
 
+/** Escape: the shared rule, except on the paired screen, where it leaves with the name as it was
+ *  (Done is what saves an edited one). */
+function localEscape(view: View): string | null {
+  return (view.component as string) === "LocalPairing" &&
+    view.state === "paired"
+    ? "common.close"
+    : connectEscape(view);
+}
+
 /** The chrome of a step: Back above the card on the field, Cancel in its place while it looks. */
 function chromeOf(step: string | undefined): Chrome | undefined {
   if (step === "enter") return { back: true };
@@ -1095,7 +1348,7 @@ export function LocalPairing(props: LocalPairingProps): ReactNode {
       css={sheet}
       name="LocalPairing"
       input={props.input ?? {}}
-      escape={connectEscape}
+      escape={localEscape}
       chrome={chromeOf(props.input?.localPairing?.step)}
       body={(c) =>
         localBody(c, {
@@ -1150,7 +1403,7 @@ function DrivenPairing(
       css={sheet}
       name="LocalPairing"
       input={pair.input}
-      escape={connectEscape}
+      escape={localEscape}
       chrome={chromeOf(snapshot.step)}
       onInput={(field, value) => {
         if (field === "entry") model.setEntry(value);
@@ -1210,6 +1463,12 @@ function DrivenPairing(
 
 // ── PairedDevices ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * The row's menu, as the menu pattern: the button opens it and focus goes to its first item (the
+ * last, with the up arrow); the arrows, Home and End move between the items; Escape closes it and
+ * returns to the button; Tab closes it. Near the bottom of a scrolling list it opens upward, so it
+ * is never clipped.
+ */
 function RowMenu(props: {
   c: KitCtx;
   d: PairedDeviceInput;
@@ -1217,8 +1476,16 @@ function RowMenu(props: {
 }): ReactNode {
   const { c, d, name } = props;
   const [open, setOpen] = useState(false);
+  const [up, setUp] = useState(false);
   const id = useId();
   const ref = useRef<HTMLDivElement | null>(null);
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const menu = useRef<HTMLDivElement | null>(null);
+  const first = useRef<"first" | "last">("first");
+  const items = (): HTMLElement[] =>
+    Array.from(
+      menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [],
+    );
   useEffect(() => {
     if (!open) return;
     const away = (ev: MouseEvent): void => {
@@ -1227,18 +1494,61 @@ function RowMenu(props: {
     document.addEventListener("mousedown", away);
     return () => document.removeEventListener("mousedown", away);
   }, [open]);
+  // Place the menu before it is painted: upward when the room below, inside the list that scrolls
+  // (or the window), is less than the menu is tall and the room above is more. Then focus the item.
+  useLayoutEffect(() => {
+    const m = menu.current;
+    const t = trigger.current;
+    if (!open || !m || !t) return;
+    const list = t.closest<HTMLElement>("[data-scroll]");
+    const edge = list?.getBoundingClientRect();
+    const bottom = Math.min(edge?.bottom ?? Infinity, window.innerHeight);
+    const top = Math.max(edge?.top ?? 0, 0);
+    const at = t.getBoundingClientRect();
+    const tall = m.offsetHeight;
+    const below = bottom - at.bottom;
+    setUp(below < tall && at.top - top > below);
+    const all = items();
+    (first.current === "last" ? all[all.length - 1] : all[0])?.focus({
+      preventScroll: true,
+    });
+  }, [open]);
+  const close = (back: boolean): void => {
+    setOpen(false);
+    if (back) trigger.current?.focus();
+  };
   const pick = (k: string): void => {
     setOpen(false);
     c.act(k, { id: d.id, menu: true });
   };
+  const move = (ev: KeyboardEvent<HTMLElement>): void => {
+    const all = items();
+    const at = all.indexOf(document.activeElement as HTMLElement);
+    const to: Record<string, number> = {
+      ArrowDown: (at + 1) % all.length,
+      ArrowUp: (at - 1 + all.length) % all.length,
+      Home: 0,
+      End: all.length - 1,
+    };
+    if (ev.key in to) {
+      ev.preventDefault();
+      all[to[ev.key]!]?.focus();
+    } else if (ev.key === "Escape") {
+      // The menu's own: nothing behind it closes.
+      ev.preventDefault();
+      ev.stopPropagation();
+      close(true);
+    } else if (ev.key === "Tab") setOpen(false);
+  };
   return (
     <div
       ref={ref}
-      onKeyDown={(ev) =>
-        ev.key === "Escape" && open && (ev.stopPropagation(), setOpen(false))
-      }
+      onKeyDown={(ev) => {
+        if (open) move(ev);
+      }}
     >
       <button
+        ref={trigger}
         type="button"
         className="pair-more"
         data-key="a11y.deviceOptions"
@@ -1246,15 +1556,33 @@ function RowMenu(props: {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          first.current = "first";
+          setOpen(!open);
+        }}
+        onKeyDown={(ev) => {
+          if (open || (ev.key !== "ArrowDown" && ev.key !== "ArrowUp")) return;
+          ev.preventDefault();
+          first.current = ev.key === "ArrowUp" ? "last" : "first";
+          setOpen(true);
+        }}
       >
         {ICONS.more()}
       </button>
       {/* Always in the DOM, hidden until opened: the row's actions are found by a host and a test. */}
-      <div id={id} className="pair-menu" role="menu" hidden={!open}>
+      <div
+        ref={menu}
+        id={id}
+        className="pair-menu"
+        role="menu"
+        aria-label={plain(c, "a11y.deviceOptions", { device: name })}
+        data-up={up && open ? "" : undefined}
+        hidden={!open}
+      >
         <button
           type="button"
           role="menuitem"
+          tabIndex={-1}
           className="btn"
           data-key="devices.rename"
           onClick={() => pick("devices.rename")}
@@ -1264,6 +1592,7 @@ function RowMenu(props: {
         <button
           type="button"
           role="menuitem"
+          tabIndex={-1}
           className="btn"
           data-danger=""
           data-key="pairedDevices.forget"
@@ -1275,6 +1604,13 @@ function RowMenu(props: {
     </div>
   );
 }
+
+/** The line under the rename field, by why the name was refused. */
+const RENAME_ERRORS = {
+  long: "pairedDevices.renameLong",
+  empty: "pairedDevices.renameEmpty",
+  failed: "devices.renameFailed",
+} as const;
 
 function nameOf(c: KitCtx, d: PairedDeviceInput): string {
   return d.label?.trim() ? d.label : plain(c, "devices.unnamed");
@@ -1326,18 +1662,9 @@ function Row(props: {
             <p
               className="pair-error"
               role="alert"
-              data-key={
-                p.renameError === "long"
-                  ? "pairedDevices.renameLong"
-                  : "pairedDevices.renameEmpty"
-              }
+              data-key={RENAME_ERRORS[p.renameError]}
             >
-              {text(
-                c,
-                p.renameError === "long"
-                  ? "pairedDevices.renameLong"
-                  : "pairedDevices.renameEmpty",
-              )}
+              {text(c, RENAME_ERRORS[p.renameError], { device: name })}
             </p>
           ) : null}
           <p className="pair-hint" data-key="localPairing.nameHint">
@@ -1359,6 +1686,15 @@ function Row(props: {
         <p className="pair-hint" data-key="pairedDevices.forgetBody">
           {text(c, "pairedDevices.forgetBody")}
         </p>
+        {p.forgetError ? (
+          <p
+            className="pair-error"
+            role="alert"
+            data-key="pairedDevices.forgetFailed"
+          >
+            {text(c, "pairedDevices.forgetFailed", { device: name })}
+          </p>
+        ) : null}
         <div className="pair-actions">
           {button(c, "pairedDevices.forget", "danger", {
             detail: { id: d.id, confirm: true },
@@ -1437,6 +1773,24 @@ function pairedBody(c: KitCtx, x: PairedExtras): ReactNode {
       <span>{text(c, "pairedDevices.pair")}</span>
     </button>
   );
+  if (state === "loading")
+    return (
+      <div className="pair-stack">
+        <ul
+          className="pair-rows"
+          data-part="devices"
+          data-loading=""
+          aria-hidden="true"
+        >
+          {[0, 1, 2].map((i) => (
+            <li key={i} className="pair-row">
+              <span className="pair-skel" />
+            </li>
+          ))}
+        </ul>
+        <div className="pair-actions">{done}</div>
+      </div>
+    );
   if (state === "empty")
     return (
       <div className="pair-actions">
@@ -1505,7 +1859,9 @@ function pairedBody(c: KitCtx, x: PairedExtras): ReactNode {
           c={c}
           title="pairedDevices.busyTitle"
           glyph={GLYPHS.info("notice-glyph")}
-          action="common.tryAgain"
+          action={button(c, "common.tryAgain", "link", {
+            detail: { id: notice.id },
+          })}
         />
       ) : null}
       {notice?.kind === "unknown" ? (
@@ -1541,13 +1897,22 @@ function Rows(props: {
   const list = useRef<HTMLUListElement | null>(null);
   useEffect(() => {
     const root = list.current?.closest(".pk-root");
-    if (!root || !x.focus) return;
-    if (x.focus.kind === "title")
-      root.querySelector<HTMLElement>("h1,h2,[data-part=title]")?.focus();
-    else
-      root
-        .querySelector<HTMLElement>(`[data-row="${x.focus.id}"] .pair-more`)
-        ?.focus();
+    const to = x.focus;
+    if (!root || !to) return;
+    // After the kit has moved focus to the title for the step that changed: the row's button wins.
+    let live = true;
+    queueMicrotask(() => {
+      if (!live) return;
+      if (to.kind === "title")
+        root.querySelector<HTMLElement>("h1,h2,[data-part=title]")?.focus();
+      else
+        root
+          .querySelector<HTMLElement>(`[data-row="${to.id}"] .pair-more`)
+          ?.focus();
+    });
+    return () => {
+      live = false;
+    };
   }, [x.focus]);
   return (
     <ul
@@ -1567,6 +1932,11 @@ export interface PairedDevicesProps extends KitProps {
   /** Drive the list: `client.cloudConnect.localLinks`, or any `LocalLinksLike`. Without it the part
    *  draws `input.pairedDevices` and the host does the rest. */
   driver?: LocalLinksLike;
+  /** What the app's own connection to a device answered (not found, busy, no longer paired): said
+   *  with the list. A driven list shows it beside the answers it holds itself. */
+  notice?: PairedDevicesInput["notice"];
+  /** Try again on a busy device's notice: the host connects to `id` again and clears the notice. */
+  onRetry?: (id: string) => void;
   /** Pair with a Code, the one primary: the host opens `<LocalPairing>`. */
   onPair?: () => void;
   /** Done, or Escape: the host closes the list. */
@@ -1580,19 +1950,30 @@ export interface PairedDevicesProps extends KitProps {
  * `input` it is the plain part. Hidden without either.
  */
 export function PairedDevices(props: PairedDevicesProps): ReactNode {
-  return props.driver ? (
-    <DrivenDevices {...props} driver={props.driver} />
-  ) : (
+  if (props.driver) return <DrivenDevices {...props} driver={props.driver} />;
+  const input =
+    props.notice && props.input?.pairedDevices
+      ? {
+          ...props.input,
+          pairedDevices: {
+            ...props.input.pairedDevices,
+            notice: props.notice,
+          },
+        }
+      : (props.input ?? {});
+  return (
     <Screen
       {...props}
       css={sheet}
       name="PairedDevices"
-      input={props.input ?? {}}
+      input={input}
       escape={connectEscape}
       body={(c) => pairedBody(c, { draft: null, focus: null })}
       route={(a) => {
         if (a.key === "common.done") props.onClose?.();
         if (a.key === "pairedDevices.pair") props.onPair?.();
+        if (a.key === "common.tryAgain" && typeof a.id === "string")
+          props.onRetry?.(a.id);
       }}
     />
   );
@@ -1601,7 +1982,11 @@ export function PairedDevices(props: PairedDevicesProps): ReactNode {
 function DrivenDevices(
   props: PairedDevicesProps & { driver: LocalLinksLike },
 ): ReactNode {
-  const list = usePairedDevices({ driver: props.driver, base: props.input });
+  const list = usePairedDevices({
+    driver: props.driver,
+    base: props.input,
+    notice: props.notice,
+  });
   const { model, snapshot } = list;
   const told = useRef(false);
   useEffect(() => {
@@ -1643,10 +2028,20 @@ function DrivenDevices(
           case "a11y.letConnect":
             if (id) void model.setReachable(id, a.on === true);
             break;
-          case "common.tryAgain":
-            if (snapshot.step === "load-failed") void model.refresh();
-            else model.report("", null);
+          case "common.tryAgain": {
+            if (snapshot.step === "load-failed") {
+              void model.refresh();
+              break;
+            }
+            // Try again on a device's answer: the host connects again, the answer is dismissed.
+            const id =
+              typeof a.id === "string"
+                ? a.id
+                : (snapshot.notice?.id ?? props.notice?.id);
+            model.report("", null);
+            if (id) props.onRetry?.(id);
             break;
+          }
           case "pairedDevices.pair":
             model.requestPair();
             props.onPair?.();
