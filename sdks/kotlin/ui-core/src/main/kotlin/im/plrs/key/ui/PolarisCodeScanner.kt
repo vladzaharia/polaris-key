@@ -13,6 +13,9 @@ public sealed interface PolarisScanResult {
     /** The person closed the scanner. */
     public data object Cancelled : PolarisScanResult
 
+    /** The scanner's module is still being fetched: try again in a moment. The entry stays. */
+    public data object NotReady : PolarisScanResult
+
     /** The scanner is not there (no Play services module, or it cannot run now). */
     public data object Unavailable : PolarisScanResult
 }
@@ -22,6 +25,12 @@ public interface PolarisCodeScanner {
     /** True when [scan] can run now. A false answer hides the scan entry: a dead button is never drawn. */
     public suspend fun available(): Boolean
 
-    /** Opens the scanner and answers with the text, a cancel or that it is unavailable. Never throws for those three. */
+    /**
+     * Gets the scanner ready ahead of the first scan (Google's module downloads on demand). True when it can open now; false while it is
+     * still being fetched.
+     */
+    public suspend fun prepare(): Boolean
+
+    /** Opens the scanner and answers with the text, a cancel or that it is unavailable. Never throws for these four. */
     public suspend fun scan(): PolarisScanResult
 }

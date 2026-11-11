@@ -177,7 +177,6 @@ private fun ColumnScope.PairStep(c: PairCtx, layout: KitLocal.Layout, tile: Focu
         "opening", "show" -> PairShow(c, layout, tile)
         "closed" -> PairClosed(c)
         "enter", "joining" -> PairEnter(c)
-        "scan-prompt", "scan", "camera-off" -> PairScan(c)
         "confirm" -> PairConfirm(c, armed)
         "waiting" -> PairWaiting(c)
         "paired" -> PairPaired(c)

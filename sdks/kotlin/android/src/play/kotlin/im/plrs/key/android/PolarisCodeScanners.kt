@@ -8,6 +8,9 @@ package im.plrs.key.android
 import android.content.Context
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.common.moduleinstall.ModuleInstall
+import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
+import com.google.android.gms.tasks.Task
 import com.google.mlkit.common.MlKitException
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
@@ -30,12 +33,17 @@ public object PolarisCodeScanners {
 
 /** One scan as the three things that can end it. */
 internal interface QrScanClient {
-    fun start(onText: (String) -> Unit, onCancel: () -> Unit, onFailure: (Throwable) -> Unit)
+    /** Asks for the scanner's module ahead (it downloads on demand): true when it can open now, false while it is being fetched. */
+    suspend fun prepare(): Boolean
+
+    fun start(onText: (String) -> Unit, onCancel: () -> Unit, onNotReady: () -> Unit, onFailure: (Throwable) -> Unit)
 }
 
 /** The adapter: a client and a check that Play services are there, as the kit's [PolarisCodeScanner]. */
 internal class GmsCodeScanner(private val client: QrScanClient, private val servicesReady: () -> Boolean) : PolarisCodeScanner {
     override suspend fun available(): Boolean = servicesReady()
+
+    override suspend fun prepare(): Boolean = servicesReady() && client.prepare()
 
     override suspend fun scan(): PolarisScanResult {
         if (!servicesReady()) return PolarisScanResult.Unavailable
@@ -47,6 +55,7 @@ internal class GmsCodeScanner(private val client: QrScanClient, private val serv
                 client.start(
                     onText = { text -> finish(if (text.isEmpty()) PolarisScanResult.Cancelled else PolarisScanResult.Text(text)) },
                     onCancel = { finish(PolarisScanResult.Cancelled) },
+                    onNotReady = { finish(PolarisScanResult.NotReady) },
                     onFailure = { finish(PolarisScanResult.Unavailable) },
                 )
             }.onFailure { finish(PolarisScanResult.Unavailable) }
@@ -54,15 +63,34 @@ internal class GmsCodeScanner(private val client: QrScanClient, private val serv
     }
 }
 
-/** GmsBarcodeScanning with QR only; a closed scanner is a cancel, any other failure is "not available". */
+/** GmsBarcodeScanning with QR only; a closed scanner is a cancel, a module still downloading is "not ready", any other failure is "not available". */
 private class GmsQrClient(private val context: Context) : QrScanClient {
-    override fun start(onText: (String) -> Unit, onCancel: () -> Unit, onFailure: (Throwable) -> Unit) {
-        val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+    private val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+
+    override suspend fun prepare(): Boolean {
+        val scanner = GmsBarcodeScanning.getClient(context, options)
+        val install = ModuleInstall.getClient(context)
+        val ready = runCatching { install.areModulesAvailable(scanner).await().areModulesAvailable() }.getOrDefault(true)
+        if (!ready) install.installModules(ModuleInstallRequest.newBuilder().addApi(scanner).build())
+        return ready
+    }
+
+    override fun start(onText: (String) -> Unit, onCancel: () -> Unit, onNotReady: () -> Unit, onFailure: (Throwable) -> Unit) {
         GmsBarcodeScanning.getClient(context, options).startScan()
             .addOnSuccessListener { barcode -> onText(barcode.rawValue.orEmpty()) }
             .addOnCanceledListener { onCancel() }
             .addOnFailureListener { e ->
-                if (e is MlKitException && e.errorCode == MlKitException.CODE_SCANNER_CANCELLED) onCancel() else onFailure(e)
+                when {
+                    e is MlKitException && e.errorCode == MlKitException.CODE_SCANNER_CANCELLED -> onCancel()
+                    e is MlKitException && e.errorCode == MlKitException.UNAVAILABLE -> onNotReady()
+                    else -> onFailure(e)
+                }
             }
     }
+}
+
+private suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { cont ->
+    addOnSuccessListener { cont.resume(it) }
+    addOnFailureListener { cont.cancel(it) }
+    addOnCanceledListener { cont.cancel() }
 }

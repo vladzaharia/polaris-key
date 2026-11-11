@@ -58,6 +58,16 @@ public object KitLocal {
         return Layout(panes, !short, panes == 1 && short, panes == 1 && short)
     }
 
+    /** The words a scan notice says (`scanNotice` of the matrix). */
+    public fun scanNoticeKey(notice: String): String? = when (notice) {
+        "other-app" -> "localPairing.otherApp"
+        "not-found" -> "localPairing.scanNotFound"
+        "stale" -> "localPairing.scanStale"
+        "not-ready" -> "localPairing.scannerNotReady"
+        "preparing" -> "localPairing.scannerPreparing"
+        else -> null
+    }
+
     /** The show screen's layout: [panes] 2 puts the QR beside the code. */
     public data class Layout(val panes: Int, val logo: Boolean, val scrolls: Boolean, val noticeBeforeQr: Boolean)
 }
@@ -89,6 +99,8 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
     val busy = p.string("busy")
     val entry = p.string("entry").orEmpty()
     val canScan = p.boolean("canScan") == true
+    val sheet = canScan && p.boolean("sheetScan") == true
+    val scanNotice = p.string("scanNotice")?.let(KitLocal::scanNoticeKey)
     return when (step) {
         "choose" -> {
             val full = p.boolean("full") == true
@@ -97,11 +109,11 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                 listOf(
                     "localPairing.title",
                     "localPairing.chooseBody",
-                    if (p.boolean("otherApp") == true) "localPairing.otherApp" else null,
+                    if (sheet) scanNotice else null,
                     if (canScan) "localPairing.scan" else null,
                     "localPairing.show",
-                    if (canScan) null else "localPairing.enter",
-                    if (canScan && p.boolean("sheetScan") == true) "localPairing.enterInstead" else null,
+                    if (canScan && !sheet) null else "localPairing.enter",
+                    if (sheet && p.boolean("scanShares") == true) shares(categories) else null,
                     if (p.boolean("prePrompt") == true && !full) "localPairing.prePrompt" else null,
                     if (full) "core.codes.local-links-full.title" else null,
                     if (full) "core.codes.local-links-full.message" else null,
@@ -118,7 +130,7 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                 "localPairing.title",
                 "localPairing.showBody",
                 "a11y.busy",
-                if (canScan) "localPairing.toScan" else "localPairing.toEnter",
+                "localPairing.toEnter",
                 "common.cancel",
             ),
         )
@@ -134,7 +146,7 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                     "a11y.qrPairing",
                     "localPairing.expires",
                     "localPairing.waitingDevice",
-                    if (canScan) "localPairing.toScan" else "localPairing.toEnter",
+                    "localPairing.toEnter",
                     "common.cancel",
                     if (notice == "rotated" || notice == "guessing") "localPairing.rotatedTitle" else null,
                     if (notice == "rotated" || notice == "declined") "localPairing.rotatedBody" else null,
@@ -179,10 +191,11 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                 "localPairing.title",
                 "localPairing.scanBody",
                 "a11y.cameraView",
-                if (p.boolean("otherApp") == true) "localPairing.otherApp" else null,
+                if (p.boolean("cameraBusy") == true) "localPairing.cameraBusy" else null,
+                scanNotice,
                 shares(categories),
                 "localPairing.enterInstead",
-                "common.cancel",
+                "common.back",
             ),
         )
 
@@ -195,7 +208,7 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                 if (p.boolean("canOpenSettings") != false) "localPairing.openSettings" else null,
                 shares(categories),
                 "localPairing.enterInstead",
-                "common.cancel",
+                "common.back",
             ),
         )
 

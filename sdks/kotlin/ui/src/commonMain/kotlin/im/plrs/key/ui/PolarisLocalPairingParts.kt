@@ -12,6 +12,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -68,18 +70,42 @@ internal class PairCtx(
     fun text(key: String): String = lines.text(key).orEmpty()
 }
 
+private val LINK_MIN_HEIGHT = 48.dp
+
 /** A link: text in the accent, underlined at rest, a 48 dp target, flush with the words above it. */
 @Composable
 internal fun PairLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
     Row(
         modifier
-            .heightIn(min = polarisWindow.minTarget)
+            .heightIn(min = LINK_MIN_HEIGHT)
             .alpha(if (busy) BUSY_LINK else 1f)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { if (busy) stateDescription = "…" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text, style = MaterialTheme.typography.bodyLarge.copy(textDecoration = TextDecoration.Underline), color = PolarisTheme.accentText)
+    }
+}
+
+/**
+ * What the last scan said, in body weight under the buttons: a refusal of what was read has the danger mark and colour (it is also
+ * told once, as a polite live region); a passing notice (the scanner is getting ready) stays neutral.
+ */
+@Composable
+internal fun PairScanNotice(text: String, refusal: Boolean) {
+    val color = if (refusal) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (refusal) PolarisSymbols.Warning else PolarisSymbols.Info,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(GLYPH_SIZE),
+        )
+        Text(text, style = MaterialTheme.typography.bodyLarge, color = color)
     }
 }
 
@@ -135,12 +161,19 @@ internal fun PairRing(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** Cancel (or Close) as the hug-width secondary, then the quiet "… instead" link under it. */
+/**
+ * Cancel (or Close) as the hug-width secondary, then the quiet "... instead" link beside it, wrapping under it when the row is narrow (a
+ * 200 % text size): the link keeps its own width and a 48 dp target, so it is never squeezed to a letter a line.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PairActionRow(secondary: String, onSecondary: () -> Unit, link: Pair<String, () -> Unit>? = null, initialFocus: Boolean = true) {
-    // The hug-width secondary and its link on one row, both at the start edge: nothing zigzags on a phone.
-    Row(horizontalArrangement = Arrangement.spacedBy(PolarisSpace.group), verticalAlignment = Alignment.CenterVertically) {
-        PolarisActionGroup(row = true) { PolarisSecondaryButton(secondary, onSecondary, initialFocus = initialFocus) }
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(PolarisSpace.group),
+        verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        PolarisSecondaryButton(secondary, onSecondary, initialFocus = initialFocus)
         if (link != null) PairLink(link.first, link.second)
     }
 }

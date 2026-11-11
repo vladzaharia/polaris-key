@@ -23,16 +23,10 @@ public interface PolarisPairFlowActions {
     public fun retry() {}
 }
 
-/** Scan a code: the entry, the camera pre-prompt and the way back to typing. */
+/** Scan a code: the entry. */
 public interface PolarisPairScanActions {
-    /** Scan a code: opens the host's scanner, or the camera screens. */
+    /** Scan a code: opens the host's scanner (Google's sheet on the Play build). */
     public fun scan() {}
-
-    /** Enter the code instead, from a scan screen. */
-    public fun enterInstead() {}
-
-    /** Continue on the camera pre-prompt. */
-    public fun continueToCamera() {}
 }
 
 /** The forms and the consent of Pair with a Code, and the host's own entries. */

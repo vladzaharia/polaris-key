@@ -50,24 +50,34 @@ internal fun ColumnScope.PairChoose(c: PairCtx) {
         )
     }
     Spacer(Modifier.height(PolarisSpace.medium))
-    c.lines.text("localPairing.otherApp")?.let {
-        PairNotice(it, null)
-        Spacer(Modifier.height(PolarisSpace.medium))
-    }
+    val sheet = c.ui.sheetScan
     // Either device can show the code: neither way is the filled one. Scan a code leads where the device can scan; typing is then a
-    // link under the buttons, because Google's scanner has no screen of ours to carry it.
+    // quiet link under the buttons, because Google's scanner has no screen of ours to carry it.
     Column(Modifier.fillMaxWidth().alpha(if ("localPairing.show" in c.disabled) DIMMED else 1f)) {
         if (c.lines.text("localPairing.scan") != null) {
             PolarisSecondaryButton(c.button("localPairing.scan"), c.actions::scan)
             Spacer(Modifier.height(PolarisSpace.controls))
         }
         PolarisSecondaryButton(c.button("localPairing.show"), c.actions::show)
-        if (c.lines.text("localPairing.enter") != null) {
+        if (!sheet && c.lines.text("localPairing.enter") != null) {
             Spacer(Modifier.height(PolarisSpace.controls))
             PolarisSecondaryButton(c.button("localPairing.enter"), c.actions::enter)
         }
     }
-    c.lines.text("localPairing.enterInstead")?.let { PairLink(c.button("localPairing.enterInstead"), c.actions::enter) }
+    if (sheet) {
+        // What each shares comes before Google's scanner opens: reading the other device's code is this person's yes.
+        if (c.ui.scanShares) {
+            Spacer(Modifier.height(PolarisSpace.medium))
+            Shares(c.lines, c.ui.categories, c.labels)
+        }
+        c.ui.scanNotice?.let { notice ->
+            KitLocal.scanNoticeKey(notice)?.let { key ->
+                Spacer(Modifier.height(PolarisSpace.medium))
+                PairScanNotice(c.text(key), refusal = notice in setOf("other-app", "not-found", "stale"))
+            }
+        }
+        PairLink(c.button("localPairing.enter"), c.actions::enter)
+    }
     c.lines.text("localPairing.prePrompt")?.let {
         Spacer(Modifier.height(PolarisSpace.controls))
         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -251,4 +261,14 @@ internal fun ColumnScope.PairEnding(c: PairCtx) {
             ConnectActions(listOf(ConnectButton(c.button("common.close"), c.actions::close, focus = true)))
         }
     }
+}
+
+/** A "... instead" link when the state draws it, else null. */
+@Composable
+internal fun linkFor(c: PairCtx, key: String, action: () -> Unit): Pair<String, () -> Unit>? = if (c.lines.text(key) !=
+    null
+) {
+    c.button(key) to action
+} else {
+    null
 }

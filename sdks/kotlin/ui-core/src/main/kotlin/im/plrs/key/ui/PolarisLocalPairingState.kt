@@ -61,10 +61,14 @@ public data class PolarisLocalPairingUi(
     val canOpenSettings: Boolean = false,
     /** This device can scan a code: Scan a code leads on choose and replaces the typing and showing links. */
     val canScan: Boolean = false,
-    /** choose: the last code scanned was another app's; the scan entry stays. */
-    val otherApp: Boolean = false,
+    /** choose: why the last scan did not pair, or that the scanner is being got ready; the scan entry stays. */
+    val scanNotice: String? = null,
     /** choose: the scanner is the host's own sheet, so typing is a link on choose. */
     val sheetScan: Boolean = false,
+    /** scan: the camera is in use elsewhere (a host with a camera of its own draws it). */
+    val cameraBusy: Boolean = false,
+    /** choose, with [sheetScan]: what each shares comes before the sheet opens. */
+    val scanShares: Boolean = false,
     val cantConnect: Boolean = false,
     val nameError: Boolean = false,
     val max: Int = KitLocal.MAX_CONNECTABLE,
@@ -104,8 +108,10 @@ public data class PolarisLocalPairingUi(
             reason?.let { put("reason", JsonPrimitive(it)) }
             if (canOpenSettings) put("canOpenSettings", JsonPrimitive(true))
             if (canScan && step in SCAN_STEPS) put("canScan", JsonPrimitive(true))
-            if (otherApp) put("otherApp", JsonPrimitive(true))
+            scanNotice?.let { put("scanNotice", JsonPrimitive(it)) }
             if (sheetScan && step == "choose") put("sheetScan", JsonPrimitive(true))
+            if (cameraBusy) put("cameraBusy", JsonPrimitive(true))
+            if (scanShares && step == "choose") put("scanShares", JsonPrimitive(true))
             if (cantConnect) put("cantConnect", JsonPrimitive(true))
             if (nameError) put("nameError", JsonPrimitive("failed"))
             put("max", JsonPrimitive(max))
@@ -179,7 +185,9 @@ public class PolarisLocalPairingState(
             false
         }
         canScan = scanner?.let { runCatching { it.available() }.getOrDefault(false) } ?: false
-        go(entryStep().copy(full = full))
+        // Google's module downloads on demand: ask ahead, and say so while it does.
+        val preparing = canScan && scanner?.let { runCatching { it.prepare() }.getOrDefault(true) } == false
+        go(entryStep().copy(full = full, scanNotice = if (preparing) "preparing" else null))
     }
 
     // ── Show ─────────────────────────────────────────────────────────────────────────────────────
@@ -513,6 +521,9 @@ public class PolarisLocalPairingState(
 
             PolarisScanResult.Cancelled -> if (mine == epoch) go(entryStep())
 
+            // The module is still being fetched: say so, and the entry stays.
+            PolarisScanResult.NotReady -> if (mine == epoch) go(entryStep().copy(scanNotice = "not-ready"))
+
             PolarisScanResult.Unavailable -> {
                 canScan = false
                 if (mine == epoch) go(entryStep())
@@ -563,11 +574,12 @@ public class PolarisLocalPairingState(
         when {
             f?.code == ErrorCode.pairingCodeFailed &&
                 (f.reason == PairingCodeFailedReason.otherApp || f.reason == PairingCodeFailedReason.invalid) ->
-                go(entryStep().copy(otherApp = true))
+                go(entryStep().copy(scanNotice = "other-app"))
 
-            f?.code == ErrorCode.pairingCodeFailed -> back("", "wrong")
+            // Short words on choose, over Scan a code: a scanned code never lands the person in typing.
+            f?.code == ErrorCode.pairingCodeFailed -> go(entryStep().copy(scanNotice = "stale"))
 
-            f?.code == ErrorCode.pairingNotFound -> back("", "not-found")
+            f?.code == ErrorCode.pairingNotFound -> go(entryStep().copy(scanNotice = "not-found"))
 
             f?.code == ErrorCode.peerClosed && f.reason == "cancelled" -> go(entryStep())
 
@@ -735,6 +747,7 @@ public class PolarisLocalPairingState(
             canOpenSettings = next.canOpenSettings,
             canScan = canScan,
             sheetScan = canScan,
+            scanShares = canScan,
         )
     }
 

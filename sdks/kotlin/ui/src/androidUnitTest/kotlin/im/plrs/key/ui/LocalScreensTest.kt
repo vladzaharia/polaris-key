@@ -52,6 +52,8 @@ internal class LocalCase(
     val expectState: String,
     val expectCopy: List<String>,
     val expectDisabled: List<String>,
+    /** False when the row says Compose draws nothing for it (Google's scanner is its own sheet). */
+    val drawn: Boolean = true,
 ) {
     override fun toString(): String = id
 }
@@ -85,8 +87,10 @@ internal fun pairingUiOf(p: JsonObject) = PolarisLocalPairingUi(
     reason = p.str("reason"),
     canOpenSettings = p.flag("canOpenSettings"),
     canScan = p.flag("canScan"),
-    otherApp = p.flag("otherApp"),
+    scanNotice = p.str("scanNotice"),
     sheetScan = p.flag("sheetScan"),
+    scanShares = p.flag("scanShares"),
+    cameraBusy = p.flag("cameraBusy"),
     cantConnect = p.flag("cantConnect"),
     nameError = p.str("nameError") != null,
     max = p.int("max") ?: KitLocal.MAX_CONNECTABLE,
@@ -148,11 +152,15 @@ internal object LocalCases {
                 state,
                 expect["copy"]!!.strings(),
                 expect["disabled"]?.strings().orEmpty(),
+                drawn = "compose" !in ((row["notApplicable"] as? JsonObject)?.get("sdks")?.strings().orEmpty()),
             )
         }
     }
 
-    fun case(prefix: String): LocalCase = all.first { it.id.substringAfter('-').startsWith(prefix) }
+    /** The rows Compose draws. */
+    val drawn: List<LocalCase> by lazy { all.filter { it.drawn } }
+
+    fun case(prefix: String): LocalCase = drawn.first { it.id.substringAfter('-').startsWith(prefix) }
 }
 
 @Composable
@@ -196,7 +204,7 @@ class LocalMatrixSnapshotTest(private val dark: Boolean) {
 
     @Test
     fun everyRow() {
-        val cases = LocalCases.all
+        val cases = LocalCases.drawn
         assertEquals("a baseline name per row", cases.size, cases.map { it.id }.toSet().size)
         val variant = snapshotVariants.first { it.branding == PolarisBranding.PolarisKey && it.dark == dark && it.widthDp == 411 }
         for (case in cases) {
@@ -244,13 +252,16 @@ class LocalResponsiveSnapshotTest(private val variant: SnapshotVariant) {
             "localpairing-show-the-code-is",
             "paireddevices-renaming-in-the",
         )) {
-            val case = LocalCases.all.firstOrNull { it.id.substringAfter('-').startsWith(prefix) } ?: continue
+            val case = LocalCases.drawn.firstOrNull { it.id.substringAfter('-').startsWith(prefix) } ?: continue
             rule.capture("local/${case.id}/${variant.name}", variant) {
                 CompositionLocalProvider(LocalPolarisReduceMotion provides true) { case.Draw() }
             }
         }
     }
 }
+
+private const val LINK_MIN_WIDTH_DP = 120f
+private const val LINK_MIN_HEIGHT_DP = 48f
 
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -270,6 +281,32 @@ class LocalScreensTest {
 
     private fun pairing(step: String, change: PolarisLocalPairingUi.() -> PolarisLocalPairingUi = { this }) =
         PolarisLocalPairingUi(step = step, categories = listOf("crates", "cues")).change()
+
+    /** A quiet link keeps its own width: at least its words on one line, never a letter a line (a one-line link is under 2 targets tall). */
+    private fun assertLinkIsWholeWords(text: String) {
+        val bounds = rule.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val density = rule.density.density
+        assertTrue("$text is ${bounds.width / density} dp wide", bounds.width / density >= LINK_MIN_WIDTH_DP)
+        assertTrue("$text is ${bounds.height / density} dp tall", bounds.height / density < 2 * LINK_MIN_HEIGHT_DP)
+    }
+
+    @Test
+    fun theScanLinkOnTheFieldIsNeverSqueezed() {
+        show { PolarisLocalPairingScreen(pairing("enter") { copy(entry = "", canScan = true) }) }
+        assertLinkIsWholeWords("Scan the code instead")
+    }
+
+    @Test
+    fun theShowLinkOnTheFieldIsNeverSqueezed() {
+        show { PolarisLocalPairingScreen(pairing("enter") { copy(entry = "") }) }
+        assertLinkIsWholeWords("Show a code instead")
+    }
+
+    @Test
+    fun theEnterLinkOnTheShownCodeIsNeverSqueezed() {
+        show { PolarisLocalPairingScreen(pairing("show") { copy(code = "4812 3456", qr = "PKP1:T:X:Y", secondsLeft = 291) }) }
+        assertLinkIsWholeWords("Enter a code instead")
+    }
 
     @Test
     fun theCodeIsReadDigitByDigit() {
