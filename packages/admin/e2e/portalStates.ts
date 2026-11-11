@@ -1,4 +1,4 @@
-import type { Page } from "playwright";
+import type { Locator, Page } from "playwright";
 import { atRest } from "./atRest.js";
 import { h1, type Override } from "./portalHarness.js";
 import { REQUEST_STATES } from "./portalRequestStates.js";
@@ -1723,50 +1723,50 @@ export const SHIPPED: ShippedState[] = [
         .waitFor();
     },
   },
-  {
-    // I-21.15: the apps the person signed in to with a product's account.
-    section: "4.11",
-    id: "account-apps",
-    title: "Account: Connected apps, one by another company and one turned off",
-    scenario: "three",
-    path: "/#/account/apps",
-    routes: { "GET /api/me/connected-apps": { body: CONNECTED_APPS } },
-    ready: async (p) => {
-      const region = p.getByRole("region", { name: "Connected apps" });
-      await region.getByText("Quill turned this app off").waitFor();
-      await region.getByText("Not your picture").first().waitFor();
+  ...[
+    {
+      id: "account-apps",
+      title:
+        "Account: Connected apps, one by another company and one turned off",
+      ready: async (region: Locator) => {
+        await region.getByText("Quill turned this app off").waitFor();
+        await region.getByText("Not your picture").first().waitFor();
+      },
     },
-  },
-  {
-    section: "4.11",
-    id: "account-apps-disconnect",
-    title: "Account: Connected apps, the Disconnect confirm open",
-    scenario: "three",
-    path: "/#/account/apps",
-    routes: { "GET /api/me/connected-apps": { body: CONNECTED_APPS } },
-    ready: async (p) => {
-      const region = p.getByRole("region", { name: "Connected apps" });
-      await region
-        .getByRole("button", { name: "Disconnect Quill Companion" })
-        .click();
-      await region.getByText("Signing in again asks what to share.").waitFor();
+    {
+      id: "account-apps-disconnect",
+      title: "Account: Connected apps, the Disconnect confirm open",
+      ready: async (region: Locator) => {
+        await region
+          .getByRole("button", { name: "Disconnect Quill Companion" })
+          .click();
+        await region
+          .getByText("Signing in again asks what to share.")
+          .waitFor();
+      },
     },
-  },
-  {
-    section: "4.11",
-    id: "account-apps-change",
-    title: "Account: Connected apps, the Change panel open",
-    scenario: "three",
-    path: "/#/account/apps",
-    routes: { "GET /api/me/connected-apps": { body: CONNECTED_APPS } },
-    ready: async (p) => {
-      const region = p.getByRole("region", { name: "Connected apps" });
-      await region
-        .getByRole("button", { name: "Change what Quill Companion gets" })
-        .click();
-      await region.getByRole("button", { name: "Save" }).waitFor();
+    {
+      id: "account-apps-change",
+      title: "Account: Connected apps, the Change panel open",
+      ready: async (region: Locator) => {
+        await region
+          .getByRole("button", { name: "Change what Quill Companion gets" })
+          .click();
+        await region.getByRole("button", { name: "Save" }).waitFor();
+      },
     },
-  },
+  ].map(
+    ({ id, title, ready }): ShippedState => ({
+      // I-21.15: the apps the person signed in to with a product's account.
+      section: "4.11",
+      id,
+      title,
+      scenario: "three",
+      path: "/#/account/apps",
+      routes: { "GET /api/me/connected-apps": { body: CONNECTED_APPS } },
+      ready: (p) => ready(p.getByRole("region", { name: "Connected apps" })),
+    }),
+  ),
   {
     section: "4.11",
     id: "account-apps-error",

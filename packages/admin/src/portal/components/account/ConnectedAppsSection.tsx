@@ -1,10 +1,7 @@
 import * as React from "react";
-import { Lock } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { announce } from "../../../ui/LiveRegion.js";
-import { Switch } from "../../../ui/Switch.js";
-import { Expand } from "../../../ui/motion/index.js";
 import { toast } from "../../../ui/toast.js";
 import { formatRelative } from "../../../lib/format.js";
 import { t } from "../../../lib/copy.js";
@@ -23,13 +20,15 @@ import {
 import { portalErrorCopy } from "../../errors.js";
 import { focusSectionHeading } from "../../focus.js";
 import {
-  focusOnOpen,
+  InlinePanel,
   RemovePanel,
   useRemoveConfirm,
 } from "../product/DeviceRowParts.js";
 import { ProductIcon } from "../ProductIcon.js";
-import { CLIENT_GLYPH, GetChip, clientGetText } from "../signin/clientGets.js";
+import { ClientRow } from "../signin/ClientConsentStep.js";
+import { GetChip, clientGetText } from "../signin/clientGets.js";
 import { AccountCard as SectionCard } from "./AccountCard.js";
+import { devicesVisible } from "./DevicesSection.js";
 
 type Claim = "name" | "picture" | "email";
 const isClaim = (item: PortalConnectedGet["item"]): item is Claim =>
@@ -96,12 +95,11 @@ export function connectedAppsVisible(
   hadRows: { current: boolean },
   wanted: boolean,
 ): boolean {
-  if (query.isPending) return false;
-  if (query.error) return true;
-  if (query.data == null) return false;
-  const rows = query.data.some((g) => g.clients.length > 0);
-  if (rows) hadRows.current = true;
-  return rows || hadRows.current || wanted;
+  return devicesVisible(
+    { ...query, data: query.data?.flatMap((g) => g.clients) },
+    hadRows,
+    wanted,
+  );
 }
 
 function Group({
@@ -357,121 +355,67 @@ function ChangePanel({
       },
     );
   return (
-    <Expand id={id} open={open} {...focusOnOpen(headingRef)}>
-      <div
-        className="pt-3"
-        onKeyDown={(e) => {
-          if (e.key !== "Escape") return;
-          e.stopPropagation();
-          close();
-        }}
-      >
-        <div className="space-y-3 rounded-lg border border-border-strong bg-surface-sunken p-4 @container">
-          <h4
-            ref={headingRef}
-            tabIndex={-1}
-            className="font-medium text-fg-strong outline-none"
+    <InlinePanel id={id} open={open} headingRef={headingRef} onEscape={close}>
+      <div className="space-y-3 rounded-lg border border-border-strong bg-surface-sunken p-4 @container">
+        <h4
+          ref={headingRef}
+          tabIndex={-1}
+          className="font-medium text-fg-strong outline-none"
+        >
+          {t("locker.apps.gets", { app: app.name })}
+        </h4>
+        <ul className="divide-y divide-border rounded-lg border border-border bg-surface-raised">
+          {items.map((g) => (
+            <ClientRow
+              key={g.item}
+              line={{
+                id: g.item,
+                text: clientGetText(g.item, group.name),
+                label: isClaim(g.item)
+                  ? t(`locker.issuer.share.${g.item}`, { app: app.name })
+                  : "",
+                required: g.fixed,
+                claim: isClaim(g.item),
+                startsOff: false,
+              }}
+              lock={t("locker.apps.needed", { app: app.name })}
+              on={on(g)}
+              onToggle={() =>
+                isClaim(g.item) && setDraft((d) => ({ ...d, [g.item]: !on(g) }))
+              }
+            />
+          ))}
+        </ul>
+        {failure ? (
+          <p role="alert" className="text-sm text-danger">
+            {failure}{" "}
+            {conflict ? (
+              <Button
+                variant="link"
+                onClick={() => {
+                  void apps.refetch();
+                  close();
+                }}
+              >
+                {t("locker.apps.reload")}
+              </Button>
+            ) : null}
+          </p>
+        ) : null}
+        <div className="flex flex-col gap-2 @[22rem]:flex-row @[22rem]:justify-end">
+          <Button variant="outline" onClick={close}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            variant="neutral"
+            disabled={moved.length === 0}
+            loading={change.isPending}
+            onClick={save}
           >
-            {t("locker.apps.gets", { app: app.name })}
-          </h4>
-          <ul className="divide-y divide-border rounded-lg border border-border bg-surface-raised">
-            {items.map((g) => (
-              <ChangeRow
-                key={g.item}
-                get={g}
-                app={app.name}
-                product={group.name}
-                on={on(g)}
-                onToggle={() =>
-                  isClaim(g.item) &&
-                  setDraft((d) => ({ ...d, [g.item]: !on(g) }))
-                }
-              />
-            ))}
-          </ul>
-          {failure ? (
-            <p role="alert" className="text-sm text-danger">
-              {failure}{" "}
-              {conflict ? (
-                <Button
-                  variant="link"
-                  onClick={() => {
-                    void apps.refetch();
-                    close();
-                  }}
-                >
-                  {t("locker.apps.reload")}
-                </Button>
-              ) : null}
-            </p>
-          ) : null}
-          <div className="flex flex-col gap-2 @[22rem]:flex-row @[22rem]:justify-end">
-            <Button variant="outline" onClick={close}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              variant="neutral"
-              disabled={moved.length === 0}
-              loading={change.isPending}
-              onClick={save}
-            >
-              {t("common.save")}
-            </Button>
-          </div>
+            {t("common.save")}
+          </Button>
         </div>
       </div>
-    </Expand>
-  );
-}
-
-function ChangeRow({
-  get,
-  app,
-  product,
-  on,
-  onToggle,
-}: {
-  get: PortalConnectedGet;
-  app: string;
-  product: string;
-  on: boolean;
-  onToggle: () => void;
-}): React.ReactElement {
-  const id = React.useId();
-  const Glyph = CLIENT_GLYPH[get.item];
-  const switched = isClaim(get.item) && !get.fixed;
-  const body = (
-    <>
-      <Glyph aria-hidden className="size-5 shrink-0 text-fg-muted" />
-      <span className="min-w-[9ch] flex-[1_1_9ch] [overflow-wrap:anywhere]">
-        {clientGetText(get.item, product)}
-      </span>
-      {switched ? (
-        <Switch
-          id={id}
-          touch
-          checked={on}
-          onCheckedChange={onToggle}
-          aria-label={t(`locker.issuer.share.${get.item as Claim}`, { app })}
-        />
-      ) : (
-        <span className="inline-flex shrink-0 items-center gap-1 text-sm/5 text-fg-muted">
-          <Lock aria-hidden className="size-4" />
-          {t("locker.apps.needed", { app })}
-        </span>
-      )}
-    </>
-  );
-  const row = "flex min-h-12 items-center gap-x-3 px-4 py-3 text-fg";
-  return (
-    <li data-get={get.item}>
-      {switched ? (
-        <label htmlFor={id} className={row}>
-          {body}
-        </label>
-      ) : (
-        <div className={row}>{body}</div>
-      )}
-    </li>
+    </InlinePanel>
   );
 }

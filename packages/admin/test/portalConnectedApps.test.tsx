@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -8,6 +8,7 @@ import {
   mockFetch,
   renderPortal,
   signedIn,
+  useCleanPortal,
 } from "./portalHarness.js";
 
 /**
@@ -56,14 +57,22 @@ const group = (clients: unknown[]) => ({
 });
 const URL_OF = (id: string) => `/api/me/connected-apps/quill/${id}`;
 
-beforeEach(() => {
-  window.history.replaceState(null, "", "/#/account");
-  window.localStorage.clear();
-});
-afterEach(() => {
-  cleanup();
-  vi.unstubAllGlobals();
-});
+useCleanPortal();
+
+/** Switches the picture on in the open Change panel and saves. */
+const savePicture = async (card: HTMLElement) => {
+  await userEvent.click(
+    within(card).getByRole("switch", {
+      name: "Share your picture with Quill Companion",
+    }),
+  );
+  await userEvent.click(within(card).getByRole("button", { name: "Save" }));
+};
+
+const accountSettled = () =>
+  screen.findByRole("heading", { level: 1, name: "Account" });
+const absent = () =>
+  screen.queryByRole("region", { name: "Connected apps" }) === null;
 
 const region = () => screen.findByRole("region", { name: "Connected apps" });
 
@@ -101,16 +110,16 @@ describe("Account → Connected apps", () => {
   it("is absent with nothing connected and on a Worker without the route", async () => {
     mockFetch(signedIn([], { "/api/me/connected-apps": { products: [] } }));
     renderPortal();
-    await screen.findByRole("heading", { level: 1, name: "Account" });
+    await accountSettled();
     await waitFor(() =>
       expect(fetchedRequests()).toContain("GET /api/me/connected-apps"),
     );
-    expect(screen.queryByRole("region", { name: "Connected apps" })).toBeNull();
+    expect(absent()).toBe(true);
     cleanup();
     mockFetch(signedIn());
     renderPortal();
-    await screen.findByRole("heading", { level: 1, name: "Account" });
-    expect(screen.queryByRole("region", { name: "Connected apps" })).toBeNull();
+    await accountSettled();
+    expect(absent()).toBe(true);
   });
 
   it("keeps an app its product turned off, with Disconnect only", async () => {
@@ -332,12 +341,7 @@ describe("Account → Connected apps", () => {
       renderPortal();
       const card = await region();
       await open(card);
-      await userEvent.click(
-        within(card).getByRole("switch", {
-          name: "Share your picture with Quill Companion",
-        }),
-      );
-      await userEvent.click(within(card).getByRole("button", { name: "Save" }));
+      await savePicture(card);
       expect(await screen.findByText("Saved")).toBeTruthy();
       expect(body).toEqual({ claims: { picture: true } });
       const change = within(card).getByRole("button", {
@@ -389,12 +393,7 @@ describe("Account → Connected apps", () => {
       renderPortal();
       const card = await region();
       await open(card);
-      await userEvent.click(
-        within(card).getByRole("switch", {
-          name: "Share your picture with Quill Companion",
-        }),
-      );
-      await userEvent.click(within(card).getByRole("button", { name: "Save" }));
+      await savePicture(card);
       expect(
         await within(card).findByText(/This app's access changed\./),
       ).toBeTruthy();
@@ -426,12 +425,7 @@ describe("Account → Connected apps", () => {
       renderPortal();
       const card = await region();
       await open(card);
-      await userEvent.click(
-        within(card).getByRole("switch", {
-          name: "Share your picture with Quill Companion",
-        }),
-      );
-      await userEvent.click(within(card).getByRole("button", { name: "Save" }));
+      await savePicture(card);
       await waitFor(() =>
         expect(within(card).queryByText("Quill Companion")).toBeNull(),
       );
@@ -451,12 +445,7 @@ describe("Account → Connected apps", () => {
       renderPortal();
       const card = await region();
       await open(card);
-      await userEvent.click(
-        within(card).getByRole("switch", {
-          name: "Share your picture with Quill Companion",
-        }),
-      );
-      await userEvent.click(within(card).getByRole("button", { name: "Save" }));
+      await savePicture(card);
       const alert = await within(card).findByText(/Too many attempts/);
       expect(alert.textContent).not.toMatch(/Disconnect/);
     });

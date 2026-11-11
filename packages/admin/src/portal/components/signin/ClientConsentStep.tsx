@@ -25,24 +25,28 @@ import { useTermsCheck } from "./TermsCheck.js";
 import { CLIENT_GLYPH as GLYPH } from "./clientGets.js";
 
 /** One item of what the client asks for: its glyph, its words (and value), then a switch or the lock. */
-function ClientRow({
+export function ClientRow({
   line,
   person,
+  lock = t("locker.issuer.required"),
   on,
   onToggle,
 }: {
   line: ClientLine;
-  person: AppConsentView["person"];
+  /** The person's name and picture, shown for those two items; Connected apps shows neither. */
+  person?: AppConsentView["person"];
+  /** The words beside the lock on an item the person cannot switch. */
+  lock?: string;
   on: boolean;
   onToggle: () => void;
 }): React.ReactElement {
   const id = React.useId();
   const Glyph = GLYPH[line.id];
-  const value = line.id === "name" ? person.displayName : null;
+  const value = line.id === "name" ? person?.displayName : null;
   const switched = line.claim && !line.required;
   const body = (
     <>
-      {line.id === "picture" && person.avatarUrl ? (
+      {line.id === "picture" && person?.avatarUrl ? (
         <img
           src={person.avatarUrl}
           alt=""
@@ -68,7 +72,7 @@ function ClientRow({
       ) : (
         <span className="inline-flex shrink-0 items-center gap-1 text-sm/5 text-fg-muted">
           <Lock aria-hidden className="size-4" />
-          {t("locker.issuer.required")}
+          {lock}
         </span>
       )}
     </>
