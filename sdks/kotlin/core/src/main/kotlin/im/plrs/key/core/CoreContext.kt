@@ -914,9 +914,24 @@ public class CoreContext(options: CoreOptions) {
         discoveryObservers += fn
     }
 
+    private val discoverySeq = java.util.concurrent.atomic.AtomicLong()
+    private val sequencedObservers = java.util.concurrent.CopyOnWriteArrayList<suspend (DiscoveryResult, Long) -> Unit>()
+
+    /**
+     * Called first after every discovery read, before the document is stored, with the read's sequence number: numbers
+     * are handed out as reads begin, so an answer that arrives late is known to be older than one that arrived before it
+     * (a gate applies reads in the order they began). The observer must not throw: a fault of its own is its to contain, so
+     * that it never keeps the document from being stored.
+     */
+    public fun onDiscoveryRead(fn: suspend (DiscoveryResult, Long) -> Unit) {
+        sequencedObservers += fn
+    }
+
     /** Fetch the discovery document and install the product's real capability map. */
     public suspend fun discover(): DiscoveryResult {
+        val seq = discoverySeq.incrementAndGet()
         val result = Discovery.fetch(endpoints, transport, headers(), requestTimeoutSeconds)
+        for (fn in sequencedObservers) fn(result, seq)
         if (result is DiscoveryResult.Ok) {
             lock.withLock {
                 discoveryDocumentValue = result.document

@@ -9,8 +9,13 @@
 //    permit, so a guess is counted before its tag is tried; the session's `guess` event is the verdict
 //    (`guessOpened` / `guessFailed`); `rotated` is told only after the new password, the new QR secret and both
 //    generators exist;
-//  - the password, the QR secret, the generators, the scalars and the ISK are released when the attempt or the window
-//    ends (`Data` is released, not overwritten; a password is a short string and is dropped);
+//  - the shower's password, QR secret and generators are released when the window ends (`Data` is released, not
+//    overwritten; a password is a short string and is dropped); the joiner keeps its QR secret, generator, scalar, ISK
+//    and PSK in `LocalSecret`s, which it zeroes the moment the join ends, however it ends (a cancel included);
+//  - a window that ends is counted: its nameplate goes into the product's `LocalNameplates` (the next draw skips it for
+//    300 s) and a hard end into the product's `LocalRenewFloors` (no new window for 30 s); both are process-wide
+//    per product, on the same monotonic clock as the dial budget;
+//  - a host callback is never called with a lock held;
 //  - nothing here needs a signed-in device: no identity, no K_disc, no certificate;
 //  - a link, an attempt and a window are keyed by values nothing here logs: no password, QR secret, key or secret is
 //    in a description, an error or a print;
@@ -30,7 +35,26 @@ import PolarisKeyPlatform
         public let qr: String
         /// The public two digits of the code, the advert's `n`.
         public let nameplate: String
+        /// Why this code is on show. Display only.
+        public let reason: Reason
+        /// Unix seconds at which the window closes by itself; the same on every code of one window.
+        public let expiresAt: Int
+        /// The window's counted failed guesses when this code was shown (0 to 4; a guess that opened is refunded).
+        public let failures: Int
         public var description: String { "LocalCode(redacted)" }
+
+        public enum Reason: String, Sendable, Equatable {
+            /// The first code of a window, including one `renew()` opened.
+            case opened
+            /// A counted failed guess, or a guess that was begun and abandoned.
+            case wrongCode = "wrong-code"
+            /// This device's person declined the other device.
+            case declined
+            /// The other device went quiet (`peer_timeout`).
+            case timeout
+            /// Any other end of an attempt.
+            case closed
+        }
     }
 
     /// What `pair` and `join` report once a link is stored.
@@ -50,6 +74,23 @@ import PolarisKeyPlatform
         }
         public let reason: Reason
         public let close: ConnectSessionClosed?
+    }
+
+    /// A pairing window has ended (`onEnd`).
+    public struct LocalPairEnd: Sendable, Equatable {
+        public enum Reason: String, Sendable, Equatable {
+            /// The 300 s ran out (or the `seconds` of the options).
+            case expired
+            /// The fifth failed guess.
+            case tooManyTries = "too-many-tries"
+            /// A link was made.
+            case stored
+            /// The host closed it (`stop()`).
+            case person
+            /// The local-pairing gate went off.
+            case off
+        }
+        public let reason: Reason
     }
 
     /// The other device, at the consent step.
@@ -118,6 +159,14 @@ import PolarisKeyPlatform
         public var onLinked: (@Sendable (LocalPaired) -> Void)?
         /// Called when a session that reached consent ends without a link, and at the fifth failed guess.
         public var onFailed: (@Sendable (LocalPairFailure) -> Void)?
+        /// Called with the running count of connections that closed with no counted guess since the code last changed
+        /// (a refusal, a busy or limited or invalid first message, an attempt that ended before its guess). At most
+        /// once a second, whatever the count; it restarts at each new code and at consent. Nothing fires after the
+        /// window stopped.
+        public var onInterrupted: (@Sendable (Int) -> Void)?
+        /// Called once per window, after its advert is withdrawn and its listener stopped. Not called for a window a
+        /// `renew()` replaced or one whose start failed.
+        public var onEnd: (@Sendable (LocalPairEnd) -> Void)?
         /// Seconds the window stays open (default and most 300).
         public var seconds: TimeInterval
 
@@ -125,6 +174,7 @@ import PolarisKeyPlatform
             categories: [String], label: String? = nil, onCode: @escaping @Sendable (LocalCode) -> Void,
             onConfirm: @escaping @Sendable (LocalOffer) -> Void, onLinked: (@Sendable (LocalPaired) -> Void)? = nil,
             onFailed: (@Sendable (LocalPairFailure) -> Void)? = nil,
+            onInterrupted: (@Sendable (Int) -> Void)? = nil, onEnd: (@Sendable (LocalPairEnd) -> Void)? = nil,
             seconds: TimeInterval = TimeInterval(localPairSeconds),
             network: (any ConnectLanNetwork)? = nil, allowLoopback: Bool = false,
             handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds, random: (@Sendable (Int) -> Data)? = nil,
@@ -136,6 +186,8 @@ import PolarisKeyPlatform
             self.onCode = onCode
             self.onLinked = onLinked
             self.onFailed = onFailed
+            self.onInterrupted = onInterrupted
+            self.onEnd = onEnd
             self.seconds = seconds
         }
     }
@@ -166,16 +218,84 @@ import PolarisKeyPlatform
         }
     }
 
-    /// The open pairing window.
+    /// The open pairing window. It follows the window that is current, so `renew()` can replace it; it holds no
+    /// secret of its own.
     public final class LocalPairHandle: Sendable {
-        private let w: LocalShower
-        init(_ w: LocalShower) { self.w = w }
-        /// Close the window: the advert, the listener and every session.
-        public func stop() async { await w.stop() }
+        /// A renewal in flight: `stop()` sets `stop` and waits for it, and the window it opened is closed before
+        /// anyone sees a code.
+        private final class Job: @unchecked Sendable {
+            let lock = NSLock()
+            var stop = false
+            var task: Task<LocalCode, Error>?
+        }
+        private struct State {
+            var cur: LocalShower
+            var job: Job?
+        }
+        private let state: LockedValue<State>
+        private let again: @Sendable (LocalShower) async throws -> LocalShower
+
+        init(_ first: LocalShower, again: @escaping @Sendable (LocalShower) async throws -> LocalShower) {
+            state = LockedValue(State(cur: first, job: nil))
+            self.again = again
+        }
+
+        /// Close the window: the advert, the listener and every session. A renewal in flight is told to stop: the
+        /// window it opens is closed before anyone sees a code, and that `renew()` throws `ConnectLanError` `closed`.
+        public func stop() async {
+            if let job = state.with({ $0.job }) {
+                job.lock.withLock { job.stop = true }
+                _ = try? await job.task?.value
+            }
+            await state.with { $0.cur }.stop()
+        }
+
         /// The window is still open.
-        public var isOpen: Bool { w.isOpenFlag.current }
+        public var isOpen: Bool { state.with { $0.cur }.isOpenFlag.current }
+
+        /// A renewal is in flight and `stop()` has asked it to close the window it opens. For tests.
+        var renewStopRequested: Bool { state.with { $0.job }.map { j in j.lock.withLock { j.stop } } ?? false }
+
         /// The code on show now; nil once the window has closed.
-        public func code() -> LocalCode? { w.shownCode.current }
+        public func code() -> LocalCode? { state.with { $0.cur }.shownCode.current }
+
+        /// Show a new code in a new window, with a new nameplate, password and QR secret, and no failures: for the
+        /// person who asks for one. The window being replaced closes without an `onEnd`. Two calls at once share one
+        /// new window. Works on a window that has ended. Throws `LocalPairingOff` while the gate is off,
+        /// `LocalPairingError` `local-links-full` (cap `stored`) at the cap, `ConnectLanError` `badType` when another
+        /// window is open or being opened, and `peer-closed` with reason `cooldown` for 30 s after a window ended
+        /// `too-many-tries` or after a second window within 10 minutes that ended after a failed guess (so does
+        /// `pair`). Returns the first code of the new window.
+        public func renew() async throws -> LocalCode {
+            let job = state.with { s -> Job in
+                if let j = s.job { return j }
+                let j = Job()
+                s.job = j
+                // The task starts after `job` is recorded: a second caller shares it.
+                j.lock.withLock {
+                    j.task = Task { [self] in try await run(j) }
+                }
+                return j
+            }
+            let task = job.lock.withLock { job.task }!
+            return try await task.value
+        }
+
+        private func run(_ job: Job) async throws -> LocalCode {
+            defer { state.with { if $0.job === job { $0.job = nil } } }
+            let cur = state.with { $0.cur }
+            let next = try await again(cur)
+            state.with { $0.cur = next }
+            if job.lock.withLock({ job.stop }) {
+                await next.stop()
+                throw ConnectLanError(.closed, "The window closed.")
+            }
+            // `unless` is asked inside the window's own isolation, after its stopped check: a stop that lands first shows
+            // no code.
+            await next.reveal(unless: { job.lock.withLock { job.stop } })
+            guard let c = next.shownCode.current else { throw ConnectLanError(.closed, "The window closed.") }
+            return c
+        }
     }
 
     /// What pairing reads of the client.
@@ -187,6 +307,64 @@ import PolarisKeyPlatform
         var store: LocalLinkStore
         /// The links changed: the listener and the adverts follow.
         var notify: @Sendable () -> Void
+    }
+
+    /// The HELLO `platform` of a pairing (mode `q` only): the canonical `X-PKey-Platform` spelling of this OS, so the
+    /// other device can store it (`LocalLinkInfo.platform`). iPadOS is `ios`, Mac Catalyst is `macos`.
+    let pairingPlatformName: String = {
+        #if targetEnvironment(macCatalyst)
+            return Platform.macos
+        #elseif os(macOS)
+            return Platform.macos
+        #elseif os(iOS)
+            return Platform.ios
+        #elseif os(tvOS)
+            return Platform.tvos
+        #elseif os(visionOS)
+            return Platform.visionos
+        #elseif os(watchOS)
+            return Platform.watchos
+        #else
+            return Platform.linux
+        #endif
+    }()
+
+    /// The peer's platform as the store keeps it: only an `X-PKey-Platform` spelling, else nil.
+    func localPlatformOf(_ p: String?) -> String? {
+        guard let p, PLATFORM_VALUES.contains(p) else { return nil }
+        return p
+    }
+
+    /// Key material the joiner holds for one join, in a buffer of its own that is zeroed when the join ends. A `Data`
+    /// is copy-on-write and cannot be zeroed once shared, so a secret is kept here and read (`data`) only for the
+    /// moment a call needs it. Copies made inside CryptoKit and the CPace routines are out of reach.
+    final class LocalSecret: @unchecked Sendable {
+        private let lock = NSLock()
+        private let buffer: UnsafeMutableRawBufferPointer
+        private var wiped = false
+
+        init(_ d: Data) {
+            buffer = UnsafeMutableRawBufferPointer.allocate(byteCount: max(1, d.count), alignment: 1)
+            buffer.initializeMemory(as: UInt8.self, repeating: 0)
+            d.copyBytes(to: buffer.bindMemory(to: UInt8.self), count: d.count)
+            count = d.count
+        }
+
+        let count: Int
+        deinit { buffer.deallocate() }
+
+        /// A copy of the secret; zeros once it was wiped.
+        var data: Data { lock.withLock { Data(buffer.prefix(count)) } }
+
+        func wipe() {
+            lock.withLock {
+                buffer.initializeMemory(as: UInt8.self, repeating: 0)
+                wiped = true
+            }
+        }
+
+        /// Wiped, and every byte reads zero. For tests.
+        var isWiped: Bool { lock.withLock { wiped && buffer.allSatisfy { $0 == 0 } } }
     }
 
     private func systemRandom(_ n: Int) -> Data {
@@ -242,6 +420,8 @@ import PolarisKeyPlatform
         var linked = false
         var declined = false
         var ended = false
+        /// The window's permit was given to this attempt (its guess was counted): a close after it is no interruption.
+        let permitted = LockedValue(false)
         var failure: LocalPairFailure.Reason?
         var closed: ConnectSessionClosed?
         var storing: Task<Void, Never>?
@@ -283,10 +463,11 @@ import PolarisKeyPlatform
         private let network: any ConnectLanNetwork
         private let random: @Sendable (Int) -> Data
         private let mono: @Sendable () -> TimeInterval
+        private let nameplates: LocalNameplates
+        private let floors: LocalRenewFloors
         /// Read by the session's permit, which is synchronous: one lock, one writer at a time.
         private let window = LockedValue(LocalPairingWindow())
         private var attempts: [ObjectIdentifier: LocalAttempt] = [:]
-        private var inUse: [String: String] = [:]
         private let sid: Data
         private let instance: String
         private let ci: Data
@@ -294,16 +475,25 @@ import PolarisKeyPlatform
         private var password: String?
         private var qrSecret: Data?
         private var gens: (code: Data, qr: Data)?
+        private var expiresAt = 0
+        /// Connections closed without counting a guess since the code last changed (`onInterrupted`).
+        private var interrupted = 0
+        /// When `onInterrupted` was last called (monotonic seconds): at most one call a second.
+        private var interruptedAt = -Double.infinity
         private var stopped = false
-        private var stopBrowse: (@Sendable () -> Void)?
         private var expiry: Task<Void, Never>?
         private var onEnd: (@Sendable () -> Void)?
         private var rotating: Task<Void, Never>?
 
-        private init(_ src: LocalSource, _ o: LocalPairOptions, onEnd: @escaping @Sendable () -> Void) {
+        private init(
+            _ src: LocalSource, _ o: LocalPairOptions, nameplates: LocalNameplates, floors: LocalRenewFloors,
+            onEnd: @escaping @Sendable () -> Void
+        ) {
             self.src = src
             self.o = o
             self.onEnd = onEnd
+            self.nameplates = nameplates
+            self.floors = floors
             network = o.base.network ?? SystemConnectLanNetwork(peerToPeer: false, allowLoopback: o.base.allowLoopback)
             random = o.base.random ?? systemRandom
             mono = o.base.mono ?? { ProcessInfo.processInfo.systemUptime }
@@ -312,12 +502,15 @@ import PolarisKeyPlatform
             ci = peerPrologue(slug: src.slug, mode: .q)
         }
 
-        static func start(_ src: LocalSource, _ o: LocalPairOptions, onEnd: @escaping @Sendable () -> Void) async throws
-            -> LocalShower
-        {
-            let s = LocalShower(src, o, onEnd: onEnd)
+        /// Open a window. The first code is shown by `reveal()`, once the caller has checked the gate.
+        static func start(
+            _ src: LocalSource, _ o: LocalPairOptions, nameplates: LocalNameplates, floors: LocalRenewFloors,
+            onEnd: @escaping @Sendable () -> Void
+        ) async throws -> LocalShower {
+            let s = LocalShower(src, o, nameplates: nameplates, floors: floors, onEnd: onEnd)
             do { try await s.open() } catch {
-                await s.stop()
+                // A window whose start failed is told to no one.
+                await s.close(nil)
                 throw error
             }
             return s
@@ -330,27 +523,13 @@ import PolarisKeyPlatform
 
         private func open() async throws {
             _ = window.with { $0.open(mono()) }
-            // The nameplates other windows of this product are using on the link: best effort, from what the browse has
-            // seen so far.
-            let wanted = tags()
-            do {
-                stopBrowse = try network.browse(
-                    onUp: { [weak self] f in
-                        guard let self else { return }
-                        Task { await self.seen(f, wanted) }
-                    },
-                    onDown: { [weak self] n in
-                        guard let self else { return }
-                        Task { await self.gone(n) }
-                    }, onError: { _ in })
-            } catch let e as BonjourBrowseError {
-                throw ConnectLanSupport.lanError(e)
-            }
-            guard let np = PeerLocal.drawNameplate({ [random] in random($0) }, inUse: Array(inUse.values)) else {
+            // Two tiers, from this device's own memory only: the adverts of other windows are not authenticated, so
+            // they do not steer the draw.
+            guard let np = nameplates.draw({ [random] in random($0) }, mono()) else {
                 throw ConnectLanError(.badType, "No random source.")
             }
             nameplate = np
-            try await renew()
+            try await makeSecrets()
             let port: UInt16
             do {
                 port = try await network.listen(
@@ -367,22 +546,17 @@ import PolarisKeyPlatform
             let seconds = min(o.seconds, TimeInterval(localPairSeconds))
             expiry = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                if !Task.isCancelled { await self?.shutdown(keepSessions: true) }
+                if !Task.isCancelled { await self?.shutdown(keepSessions: true, end: .expired) }
             }
-            show()
+            expiresAt = Int((Double(src.now()) + seconds).rounded(.down))
         }
 
-        private func seen(_ f: BonjourFound, _ wanted: [String]) {
-            if stopped || f.instance == instance { return }
-            guard case .ok(let h, let n) = PeerLocal.parsePairingTxt(f.txt), wanted.contains(h) else { return }
-            if inUse.count < 64 { inUse[f.instance] = n }
-        }
-
-        private func gone(_ name: String) { inUse[name] = nil }
+        /// Show the first code (`onCode`, reason `opened`): the caller does so once the gate has been checked.
+        func reveal(unless: @Sendable () -> Bool = { false }) { show(.opened, unless: unless) }
 
         /// A new password and QR secret, and both generators made from them. Nothing is kept when the window
         /// stopped while they were made.
-        private func renew() async throws {
+        private func makeSecrets() async throws {
             guard let pw = PeerLocal.drawPassword({ [random] in random($0) }) else {
                 throw ConnectLanError(.badType, "No random source.")
             }
@@ -401,67 +575,109 @@ import PolarisKeyPlatform
             gens = made
         }
 
-        private func show() {
-            guard !stopped, let pw = password, let secret = qrSecret,
+        private func show(_ reason: LocalCode.Reason, unless: @Sendable () -> Bool = { false }) {
+            guard !stopped, !unless(), let pw = password, let secret = qrSecret,
                 let display = PeerLocal.displayCode(nameplate: nameplate, password: pw),
                 let qr = PeerLocal.makeQr(slug: src.slug, instance: instance, secret: secret)
             else { return }
-            let c = LocalCode(code: display, qr: qr, nameplate: nameplate)
+            let failures = window.with { $0.state.failures }
+            let c = LocalCode(
+                code: display, qr: qr, nameplate: nameplate, reason: reason, expiresAt: expiresAt, failures: failures)
             shownCode.set(c)
+            interrupted = 0
+            interruptedAt = -.infinity
             o.onCode(c)
         }
 
         /// Make the next code, then tell the window. `rotated` comes only after the new password, the new QR secret
-        /// and both generators exist; until then a C1 meets a busy window.
-        private func rotate() async {
-            do { try await renew() } catch {
-                await stop()
+        /// and both generators exist; until then a C1 meets a busy window. `why` is what the new code says.
+        private func rotate(_ why: LocalCode.Reason) async {
+            do { try await makeSecrets() } catch {
+                await close(.person)
                 return
             }
             if stopped { return }
-            show()
+            show(why)
             window.with { $0.rotated(mono()) }
         }
 
-        private func apply(_ out: LocalWindowOutcome) {
+        /// `why` is the reason the next code carries when the outcome rotates it.
+        private func apply(_ out: LocalWindowOutcome, _ why: LocalCode.Reason) {
             if out.rotate, rotating == nil {
                 rotating = Task { [weak self] in
-                    await self?.rotate()
+                    await self?.rotate(why)
                     await self?.rotationDone()
                 }
             }
             if out.result == .tooManyTries {
+                // The window is over, and counted, before the host hears of it: a host that renews from here meets
+                // the renewal floor.
+                let first = markStopped(end: .tooManyTries)
                 o.onFailed?(LocalPairFailure(reason: .tooManyTries, close: nil))
-                Task { await self.shutdown(keepSessions: false) }
+                if first { Task { await self.teardown(keepSessions: false, end: .tooManyTries) } }
             }
         }
 
         private func rotationDone() { rotating = nil }
 
-        func stop() async { await shutdown(keepSessions: false) }
-
-        /// Close the window: the advert, the listener and the connections (`keepSessions` spares those past the
-        /// transport).
-        private func shutdown(keepSessions: Bool) async {
+        /// A connection closed without counting a guess.
+        private func interrupt() {
             if stopped { return }
+            interrupted += 1
+            let t = mono()
+            // Counted every time, told at most once a second: a flood does not flood the host.
+            if t - interruptedAt < 1 { return }
+            interruptedAt = t
+            o.onInterrupted?(interrupted)
+        }
+
+        func stop() async { await shutdown(keepSessions: false, end: .person) }
+
+        /// Close the window, telling `onEnd` why (`nil`: tell no one, for a window a renewal replaces). The
+        /// nameplate, the secrets and the advert go either way.
+        func close(_ end: LocalPairEnd.Reason?) async { await shutdown(keepSessions: false, end: end) }
+
+        private func shutdown(keepSessions: Bool, end: LocalPairEnd.Reason?) async {
+            if !markStopped(end: end) { return }
+            await teardown(keepSessions: keepSessions, end: end)
+        }
+
+        /// The synchronous part of closing: the window is over, counted, and its secrets are gone. False when it
+        /// already was.
+        private func markStopped(end: LocalPairEnd.Reason?) -> Bool {
+            if stopped { return false }
             stopped = true
             isOpenFlag.set(false)
             expiry?.cancel()
             expiry = nil
-            _ = window.with { $0.close(mono()) }
-            stopBrowse?()
-            stopBrowse = nil
-            await network.advertise(nil)
-            await network.stop()
-            for a in Array(attempts.values) where !keepSessions || a.phase != .session {
-                await end(a)
+            let t = mono()
+            // For the SDK's renewal floor: how this window ended, and whether it had counted a failed guess.
+            let failures = window.with { $0.state.failures }
+            _ = window.with { $0.close(t) }
+            // The next window of this product does not draw this nameplate for 300 s.
+            if nameplate != "" { nameplates.shown(nameplate, t) }
+            if end == .tooManyTries {
+                floors.ended(.tooManyTries, t)
+            } else if end != .stored && failures > 0 {
+                floors.ended(.wrongCode, t)
             }
             // The code, the QR secret and the generators are of no use to anyone now.
             qrSecret = nil
             gens = nil
             password = nil
             shownCode.set(nil)
-            inUse = [:]
+            return true
+        }
+
+        /// The advert, the listener and the connections (`keepSessions` spares those past the transport).
+        private func teardown(keepSessions: Bool, end: LocalPairEnd.Reason?) async {
+            await network.advertise(nil)
+            await network.stop()
+            // The host hears the end once the advert is withdrawn and the listener has stopped.
+            if let end { o.onEnd?(LocalPairEnd(reason: end)) }
+            for a in Array(attempts.values) where !keepSessions || a.phase != .session {
+                await endAttempt(a)
+            }
             let done = onEnd
             onEnd = nil
             done?()
@@ -470,7 +686,11 @@ import PolarisKeyPlatform
         // MARK: Connections
 
         private func accepted(_ pipe: NWPipe) async {
-            if stopped || !src.allowed() { return await pipe.close() }
+            if stopped { return await pipe.close() }
+            if !src.allowed() {
+                interrupt()
+                return await pipe.close()
+            }
             let at = mono()
             let a = LocalAttempt()
             a.pipe = pipe
@@ -492,6 +712,7 @@ import PolarisKeyPlatform
             // Closed, busy, limited and refused: closed silently; none of them counts a failure.
             guard out.result == .attempt, case .ok(let kind?, let share) = verdict, let id = out.id, let g = gens else {
                 over(a, pre: false)
+                interrupt()
                 return await pipe.close()
             }
             a.id = id
@@ -524,11 +745,15 @@ import PolarisKeyPlatform
             let m = mono
             let opts = PeerChannelOptions(
                 role: .responder, slug: src.slug, staticKey: staticKey, caps: [],
-                hello: (o.base.label, connectPlatformName, src.slug, nil), mode: .q,
+                hello: (o.base.label, pairingPlatformName, src.slug, nil), mode: .q,
                 pair: PeerPairingOptions(
                     psk: psk, isk: isk, held: held, cats: o.base.categories, label: o.base.label, elapsed: elapsed,
                     // The required permit: it counts the guess before the tag is tried.
-                    permit: { w.with { $0.beginGuess(id, m()) } }))
+                    permit: {
+                        let ok = w.with { $0.beginGuess(id, m()) }
+                        if ok { a.permitted.set(true) }
+                        return ok
+                    }))
             let events = a.events
             let handlers = PeerLinkHandlers(
                 onClosed: { c in events.yield(.closed(ConnectSessionClosed(code: c.code, byPeer: c.byPeer))) },
@@ -568,7 +793,7 @@ import PolarisKeyPlatform
                     window.with { opens ? $0.guessOpened(id, t) : $0.guessFailed(id, t) }
                 }
                 a.phase = opens ? .session : .done
-                if let out { apply(out) }
+                if let out { apply(out, .wrongCode) }
             case .established(let est):
                 a.pipe?.markAuthenticated()
                 a.hello = est.hello
@@ -584,6 +809,8 @@ import PolarisKeyPlatform
         private func present(_ a: LocalAttempt) {
             guard !a.shown, !stopped, let hello = a.hello else { return }
             a.shown = true
+            interrupted = 0
+            interruptedAt = -.infinity
             let handle = makeOffer(
                 a, categories: o.base.categories, hello: hello,
                 confirm: { a in
@@ -603,7 +830,7 @@ import PolarisKeyPlatform
         ) async {
             let added = try? await src.store.add(
                 ownKey: a.linkKey, ownPublic: ownKey, peerKey: peerKey, secret: secret, label: label, cats: cats,
-                now: src.now(), allowed: src.allowed)
+                now: src.now(), platform: localPlatformOf(a.hello?.platform), allowed: src.allowed)
             switch added {
             case .stored(let id)?:
                 a.linked = true
@@ -622,19 +849,23 @@ import PolarisKeyPlatform
             await a.storing?.value
             let t = mono()
             var out = LocalWindowOutcome.none
+            // What the next code says when this end rotates it (`LocalCode.reason`).
+            var why = LocalCode.Reason.wrongCode
+            let reason = a.failure ?? (c.code == "peer_timeout" ? .timeout : .closed)
             if a.phase == .session {
                 out = window.with { $0.sessionEnd(t, stored: a.linked) }
+                why = reason == .declined ? .declined : reason == .timeout ? .timeout : .closed
             } else if let id = a.id, a.phase != .done {
                 // A permitted guess that has no verdict is a failed guess; one that never reached its guess counts nothing.
                 out = window.with { $0.abandon(id, t) }
+                if !a.permitted.current { interrupt() }
             }
             over(a, pre: false)
             a.closers.fire(c)
             if a.shown && !a.linked && !stopped {
-                let reason = a.failure ?? (c.code == "peer_timeout" ? .timeout : .closed)
                 o.onFailed?(LocalPairFailure(reason: reason, close: c))
             }
-            if a.linked { await shutdown(keepSessions: false) } else { apply(out) }
+            if a.linked { await shutdown(keepSessions: false, end: .stored) } else { apply(out, why) }
         }
 
         /// The attempt is over: its key and its place go; `pre` is a socket that closed before its session began.
@@ -644,15 +875,21 @@ import PolarisKeyPlatform
             attempts[ObjectIdentifier(a)] = nil
             a.linkKey = Data()
             a.events.finish()
-            if pre, let id = a.id, a.phase == .c1 { apply(window.with { $0.abandon(id, mono()) }) }
+            if pre, let id = a.id, a.phase == .c1 {
+                apply(window.with { $0.abandon(id, mono()) }, .wrongCode)
+                interrupt()
+            }
         }
 
-        private func end(_ a: LocalAttempt) async {
+        private func endAttempt(_ a: LocalAttempt) async {
             if let link = a.link { await link.close(.peerBye) } else { await a.pipe?.close() }
         }
     }
 
     // ── The joiner ───────────────────────────────────────────────────────────────────────────────
+
+    /// Why a join was stopped from outside: the host's task was cancelled, or the gate went off.
+    enum LocalJoinStop: Sendable { case cancelled, closed }
 
     actor LocalJoiner {
         private let src: LocalSource
@@ -666,12 +903,15 @@ import PolarisKeyPlatform
         private let ci: Data
         private let password: String?
         private let nameplate: String?
-        private var qr: (instance: String, secret: Data)?
-        private var qrGen: Data?
-        private var qrInvalidDetail: String?
-        private var budgetSpent = false
+        private var qr: (instance: String, secret: LocalSecret)?
+        private var qrGen: LocalSecret?
+        /// Key material of the join (QR secret and generator, each dial's scalar, generator, ISK and PSK): zeroed when
+        /// the join ends, however it ends; one made after it ended is zeroed at once. Never shrinks: the entries are
+        /// zero afterwards.
+        private var secrets: [LocalSecret] = []
         private var browseOver = false
         private var done = false
+        private var stopWhy: LocalJoinStop?
         private var current: LocalAttempt?
         private var stopBrowse: (@Sendable () -> Void)?
         private let wake: AsyncStream<Void>
@@ -688,8 +928,7 @@ import PolarisKeyPlatform
             var input = LocalJoinInput.invalid
             var pw: String?
             var np: String?
-            var qrIn: (instance: String, secret: Data)?
-            var detail: String?
+            var qrIn: (instance: String, secret: LocalSecret)?
             if let code = o.code {
                 if let c = PeerLocal.parseCode(code) {
                     input = .code(nameplate: c.nameplate)
@@ -700,60 +939,87 @@ import PolarisKeyPlatform
                 switch PeerLocal.parseQr(text, own: src.slug) {
                 case .ok(_, let instance, let secret):
                     input = .qr(instance: instance)
-                    qrIn = (instance, secret)
-                case .otherApp: detail = "This code is for another app."
+                    qrIn = (instance, LocalSecret(secret))
+                case .otherApp: input = .otherApp
                 case .invalid: break
                 }
             }
             password = pw
             nameplate = np
             qr = qrIn
-            qrInvalidDetail = detail
             plan = LocalJoinPlan(input)
             let (s, c) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
             wake = s
             wakeUp = c
+            if let q = qrIn { secrets.append(q.secret) }
         }
 
+        /// The error of a code that did not work, with the plan's reason; or of no device found.
         private func failed(_ code: LocalJoinResult) -> LocalPairingError {
-            switch code {
-            case .pairingNotFound:
+            if code == .pairingNotFound {
                 return LocalPairingError(ErrorCode.pairingNotFound, "The other device was not found on this network.")
-            default:
-                return LocalPairingError(
-                    ErrorCode.pairingCodeFailed,
-                    qrInvalidDetail
-                        ?? (budgetSpent
-                            ? "That code did not work. Wait a few minutes, or ask the other device for a new code."
-                            : "That code did not work."))
             }
+            let reason = plan.reason().flatMap(LocalPairingError.Reason.init(rawValue:)) ?? .wrong
+            return LocalPairingError(
+                ErrorCode.pairingCodeFailed,
+                reason == .otherApp
+                    ? "This code is for another app."
+                    : reason == .spent
+                        ? "That code did not work. Wait a few minutes, or ask the other device for a new code."
+                        : "That code did not work.",
+                reason: reason)
         }
 
-        /// Cancel the join: the dial in flight closes and `run` throws `peer-closed`.
-        func cancel() {
+        /// What `run` throws once the join was stopped from outside: the host's cancel is a `CancellationError`
+        /// (never a failure, never a refund), the gate going off is `peer-closed` with reason `closed`.
+        private func stopped() -> Error {
+            stopWhy == .cancelled
+                ? CancellationError()
+                : LocalPairingError(ErrorCode.peerClosed, "The pairing was closed.", reason: .closed)
+        }
+
+        /// Hold a secret until the join ends; one made after it ended is zeroed at once.
+        private func keep(_ d: Data) -> LocalSecret {
+            let k = LocalSecret(d)
+            secrets.append(k)
+            if done { k.wipe() }
+            return k
+        }
+
+        /// Stop the join: the dial in flight closes, the secrets are zeroed and `run` throws. A dial already made is
+        /// not refunded.
+        func cancel(_ why: LocalJoinStop = .closed) {
             if done { return }
             done = true
+            stopWhy = why
             wakeUp.yield()
+            for k in secrets { k.wipe() }
             if let a = current, let link = a.link, !a.linked { Task { await link.close(.peerBye) } }
             Task { await current?.pipe?.close() }
         }
 
+        /// Key material held for this join, for tests.
+        var heldSecrets: [LocalSecret] { secrets }
+
         func run() async throws -> LocalPaired {
+            defer { cleanup() }
+            if done { throw stopped() }
             if !plan.browses { throw failed(.pairingCodeFailed) }
             // A code whose dials are spent answers at once and browses nothing; a QR is never limited.
             if let np = nameplate, !budget.check(np, mono()).allowed {
-                budgetSpent = true
+                plan.startSpent()
                 throw failed(.pairingCodeFailed)
             }
-            defer { cleanup() }
             // A QR's generator is made before anything is dialled.
             if let qr, let sid = PeerLocal.sid(ofInstance: qr.instance) {
                 let ci = ci
-                let secret = qr.secret
-                qrGen = try await Task.detached(priority: .userInitiated) {
-                    PeerCPace.generator(prs: try PeerCPace.prsQr(secret), ci: ci, sid: sid)
-                }.value
+                let secret = qr.secret.data
+                qrGen = keep(
+                    try await Task.detached(priority: .userInitiated) {
+                        PeerCPace.generator(prs: try PeerCPace.prsQr(secret), ci: ci, sid: sid)
+                    }.value)
             }
+            if done { throw stopped() }
             let wanted = [peerAdvertEpoch(src.now()), peerAdvertEpoch(src.now()) - 1].compactMap {
                 try? PeerAdvert.productTag(slug: src.slug, epoch: $0)
             }
@@ -777,14 +1043,15 @@ import PolarisKeyPlatform
             }
             defer { timer.cancel() }
             for await _ in wake {
-                if done { throw LocalPairingError(ErrorCode.peerClosed, "The pairing was closed.") }
+                if done { throw stopped() }
                 while let name = plan.next(), let endpoint = cands[name] {
+                    if done { throw stopped() }
                     if !src.allowed() {
                         cancel()
-                        throw LocalPairingError(ErrorCode.peerClosed, "The pairing was closed.")
+                        throw stopped()
                     }
                     let end = await dial(name, endpoint)
-                    if done { throw LocalPairingError(ErrorCode.peerClosed, "The pairing was closed.") }
+                    if done { throw stopped() }
                     // A QR names one instance, so one dial is all there can be.
                     if plan.next() == nil || qr != nil { browseOver = true }
                     switch end {
@@ -799,7 +1066,9 @@ import PolarisKeyPlatform
                     throw failed(r == .pairingNotFound ? r : .pairingCodeFailed)
                 }
             }
-            throw LocalPairingError(ErrorCode.peerClosed, "The pairing was closed.")
+            // The stream ended: the join was cancelled (the host's task, or the gate).
+            if Task.isCancelled && stopWhy == nil { stopWhy = .cancelled }
+            throw stopped()
         }
 
         private func cleanup() {
@@ -808,6 +1077,7 @@ import PolarisKeyPlatform
             stopBrowse = nil
             qr = nil
             qrGen = nil
+            for k in secrets { k.wipe() }
             wakeUp.finish()
         }
 
@@ -835,35 +1105,35 @@ import PolarisKeyPlatform
 
         /// One dial. It ends the plan's turn as `before-c2`, `after-c2` or `transport`.
         private func dial(_ instance: String, _ endpoint: BonjourEndpoint) async -> DialEnd {
-            let t = mono()
-            if let np = nameplate {
-                // Checked and spent in one step when the dial is made, so joins that overlap cannot multiply the dials.
-                if !budget.takeIfAllowed(np, t) {
-                    budgetSpent = true
-                    plan.ended(.beforeC2)
-                    browseOver = true
-                    return .noTransport
-                }
+            // Checked and spent in one step, before any suspension point, so joins that overlap cannot multiply the
+            // dials and a cancel that comes next refunds nothing.
+            if let np = nameplate, !budget.takeIfAllowed(np, mono()) {
+                plan.ended(.budget)
+                browseOver = true
+                return .noTransport
             }
             guard let sid = PeerLocal.sid(ofInstance: instance) else {
                 plan.ended(.beforeC2)
                 return .noTransport
             }
             // A typed code's map runs now, once per dial and at most twice per code in 300 s.
-            let gen: Data
+            let gen: LocalSecret
             if let g = qrGen {
                 gen = g
             } else if let pw = password {
                 let ci = ci
-                gen = await Task.detached(priority: .userInitiated) {
-                    PeerCPace.generator(prs: (try? PeerCPace.prsCode(pw)) ?? Data(), ci: ci, sid: sid)
-                }.value
+                gen = keep(
+                    await Task.detached(priority: .userInitiated) {
+                        PeerCPace.generator(prs: (try? PeerCPace.prsCode(pw)) ?? Data(), ci: ci, sid: sid)
+                    }.value)
             } else {
                 plan.ended(.beforeC2)
                 return .noTransport
             }
-            let y = random(32)
-            guard let ya = PeerCPace.share(scalar: y, generator: gen) else {
+            // A join cancelled while the generator was made zeroed what it made at once.
+            let y = keep(random(32))
+            if done { return .noTransport }
+            guard let ya = PeerCPace.share(scalar: y.data, generator: gen.data) else {
                 plan.ended(.beforeC2)
                 return .noTransport
             }
@@ -894,15 +1164,32 @@ import PolarisKeyPlatform
             guard (try? await pipe.write(PeerFrame.encode(PeerCPace.encodeC1(qr != nil ? .qr : .code, ya: ya)))) != nil,
                 let reply = await readSingleFrame(LanPipe(pipe: pipe), within: TimeInterval(localAttemptSeconds)),
                 case .ok(_, let yb) = PeerCPace.parseC2(reply),
-                let isk = PeerCPace.isk(sid: sid, scalar: y, ya: ya, yb: yb, role: .initiator), !done
+                let iskData = PeerCPace.isk(sid: sid, scalar: y.data, ya: ya, yb: yb, role: .initiator)
             else {
                 await pipe.close()
                 plan.ended(.beforeC2)
                 return .noTransport
             }
-            let psk = PeerCPace.psk(isk: isk, slug: src.slug)
+            let isk = keep(iskData)
+            if done {
+                await pipe.close()
+                plan.ended(.beforeC2)
+                return .noTransport
+            }
+            let psk = keep(PeerCPace.psk(isk: isk.data, slug: src.slug))
             let held = (try? await src.store.count()) ?? maxLocalLinks
-            return await session(a, pipe, psk: psk, isk: isk, held: held, elapsed: mono() - at)
+            if done {
+                await pipe.close()
+                return .noTransport
+            }
+            return await session(a, pipe, psk: psk.data, isk: isk.data, held: held, elapsed: mono() - at)
+        }
+
+        /// Why a session that reached the transport ended without a link (`peer-closed`'s reason).
+        private func closeReason(_ a: LocalAttempt, _ c: ConnectSessionClosed) -> LocalPairingError.Reason {
+            // This person said no, or the other device did (a `peer_bye` before any link was exchanged).
+            if a.declined || (c.byPeer && c.code == "peer_bye") { return .declined }
+            return c.code == "peer_timeout" ? .timeout : .closed
         }
 
         private func session(
@@ -917,7 +1204,7 @@ import PolarisKeyPlatform
             }
             let opts = PeerChannelOptions(
                 role: .initiator, slug: src.slug, staticKey: staticKey, caps: [],
-                hello: (o.base.label, connectPlatformName, src.slug, nil), mode: .q,
+                hello: (o.base.label, pairingPlatformName, src.slug, nil), mode: .q,
                 pair: PeerPairingOptions(
                     psk: psk, isk: isk, held: held, cats: o.base.categories, label: o.base.label, elapsed: elapsed))
             let events = a.events
@@ -968,10 +1255,11 @@ import PolarisKeyPlatform
                     let now = src.now()
                     let key = a.linkKey
                     let allowed = src.allowed
+                    let platform = localPlatformOf(a.hello?.platform)
                     storing = Task {
                         let added = try? await store.add(
                             ownKey: key, ownPublic: ownKey, peerKey: peerKey, secret: secret, label: label, cats: cats,
-                            now: now, allowed: allowed)
+                            now: now, platform: platform, allowed: allowed)
                         switch added {
                         case .stored(let id)?:
                             a.linked = true
@@ -998,12 +1286,17 @@ import PolarisKeyPlatform
             if !up { plan.ended(.afterC2) }
             if let p = paired { return .paired(p) }
             if up {
+                if a.failure == .full {
+                    return .failed(
+                        LocalPairingError(
+                            ErrorCode.localLinksFull, "This device holds the most local links it can.", cap: .stored))
+                }
+                let reason = closedWith.map { closeReason(a, $0) } ?? .closed
                 return .failed(
-                    a.failure == .full
-                        ? LocalPairingError(ErrorCode.localLinksFull, "This device holds the most local links it can.")
-                        : LocalPairingError(
-                            ErrorCode.peerClosed,
-                            a.declined ? "The pairing was declined." : "The pairing ended before it finished."))
+                    LocalPairingError(
+                        ErrorCode.peerClosed,
+                        reason == .declined ? "The pairing was declined." : "The pairing ended before it finished.",
+                        reason: reason))
             }
             return .noTransport
         }
@@ -1024,6 +1317,10 @@ import PolarisKeyPlatform
         func takeIfAllowed(_ nameplate: String, _ t: Double) -> Bool {
             budget.with { $0.takeIfAllowed(nameplate, t) }
         }
+        /// The dials left for the typed text (`localLinks.dialsLeft`): reads two digits, spends nothing.
+        func dialsLeft(_ text: String, _ t: Double) -> Int? {
+            budget.with { localDialsLeft(&$0, text, t) }
+        }
         var keyCount: Int { budget.with { $0.keyCount } }
 
         private static let all = LockedValue<[String: LocalDialBudgets]>([:])
@@ -1035,7 +1332,50 @@ import PolarisKeyPlatform
                 return b
             }
         }
-        /// Forget every dial budget. For tests.
+        /// Forget every dial budget, remembered nameplate and renewal floor. For tests.
+        static func reset() {
+            all.with { $0 = [:] }
+            LocalNameplates.reset()
+            LocalRenewFloors.reset()
+        }
+    }
+
+    /// The nameplates the shower's windows of a product closed with, one memory per product for the whole process like
+    /// the dial budgets: a window that closes and the next one that opens, even through a new client, never share a
+    /// nameplate within 300 s. One lock; the clock is the caller's (the pairing's own monotonic clock).
+    final class LocalNameplates: Sendable {
+        private let memory = LockedValue(LocalNameplateMemory())
+        func shown(_ nameplate: String, _ t: Double) { memory.with { $0.shown(nameplate, t) } }
+        func draw(_ source: PeerLocal.DrawSource, _ t: Double) -> String? { memory.with { $0.draw(source, t) } }
+
+        private static let all = LockedValue<[String: LocalNameplates]>([:])
+        static func of(_ slug: String) -> LocalNameplates {
+            all.with { m in
+                if let b = m[slug] { return b }
+                let b = LocalNameplates()
+                m[slug] = b
+                return b
+            }
+        }
+        static func reset() { all.with { $0 = [:] } }
+    }
+
+    /// The renewal floors, one per product for the whole process, like the dial budgets: a host that renews from
+    /// `onEnd` meets the same floor through a new client.
+    final class LocalRenewFloors: Sendable {
+        private let floor = LockedValue(LocalRenewFloor())
+        func ended(_ end: LocalRenewEnd, _ t: Double) { floor.with { $0.ended(end, t) } }
+        func check(_ t: Double) -> (allowed: Bool, retryIn: Int) { floor.with { $0.check(t) } }
+
+        private static let all = LockedValue<[String: LocalRenewFloors]>([:])
+        static func of(_ slug: String) -> LocalRenewFloors {
+            all.with { m in
+                if let b = m[slug] { return b }
+                let b = LocalRenewFloors()
+                m[slug] = b
+                return b
+            }
+        }
         static func reset() { all.with { $0 = [:] } }
     }
 #endif

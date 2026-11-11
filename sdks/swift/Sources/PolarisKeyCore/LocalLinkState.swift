@@ -32,10 +32,13 @@ package struct LocalLinkRow: Codable, Equatable, Sendable, CustomStringConvertib
     package var lastSeen: Int?
     /// The host's local "advertise this link on the LAN" choice.
     package var reachable: Bool
+    /// The peer's HELLO platform at pairing, an `X-PKey-Platform` spelling. Display only; a reader drops any other
+    /// spelling and ignores members it does not know (no schema bump).
+    package var platform: String?
 
     package init(
         id: String, ownKey: String, ownPublic: String, peerKey: String, secret: String, label: String?, cats: [String],
-        createdAt: Int, lastSeen: Int? = nil, reachable: Bool
+        createdAt: Int, lastSeen: Int? = nil, reachable: Bool, platform: String? = nil
     ) {
         self.id = id
         self.ownKey = ownKey
@@ -47,6 +50,7 @@ package struct LocalLinkRow: Codable, Equatable, Sendable, CustomStringConvertib
         self.createdAt = createdAt
         self.lastSeen = lastSeen
         self.reachable = reachable
+        self.platform = platform.flatMap { PLATFORM_VALUES.contains($0) ? $0 : nil }
     }
 
     package var description: String { "LocalLinkRow(redacted)" }
@@ -119,7 +123,12 @@ public final class LocalLinkStateStore: @unchecked Sendable {
             r.product == product, r.links.count <= maxLocalLinks, r.links.allSatisfy(\.valid),
             Set(r.links.map(\.id)).count == r.links.count
         else { throw LocalLinkStateError.unreadable }
-        return r.links
+        // A platform that is not an `X-PKey-Platform` spelling is dropped, not a reason to refuse the record.
+        return r.links.map { row in
+            var row = row
+            if let p = row.platform, !PLATFORM_VALUES.contains(p) { row.platform = nil }
+            return row
+        }
     }
 
     package func save(_ rows: [LocalLinkRow]) throws {

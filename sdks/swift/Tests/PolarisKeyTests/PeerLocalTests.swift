@@ -378,6 +378,105 @@ final class PeerLocalTests: XCTestCase {
         }
     }
 
+    // ── The nameplate memory, the renewal floor and the join reasons (CC-29.15) ─────────
+
+    func testNameplateMemoryRows() {
+        XCTAssertEqual(obj("nameplateMemory")["seconds"]?.intValue, localDialBudgetSeconds)
+        for r in rows("nameplateMemory", "rows") {
+            var memory = LocalNameplateMemory()
+            var got: [Row] = []
+            for e in r["events"]!.arrayValue!.map({ $0.objectValue! }) {
+                let t = e["t"]!.doubleValue!
+                if let n = e["shown"]?.stringValue {
+                    memory.shown(n, t)
+                    continue
+                }
+                // `inUse` is not an input of the draw: the adverts of other windows never steer it.
+                let s = Stream(str(e, "draw"))
+                let np = memory.draw({ s.take($0) }, t)
+                got.append(["nameplate": np.map { .string($0) } ?? .null, "consumed": .int(s.at)])
+            }
+            XCTAssertEqual(got, r["want"]!.arrayValue!.map { $0.objectValue! }, id(r))
+        }
+    }
+
+    func testRenewFloorRows() {
+        let c = obj("renewFloor")
+        XCTAssertEqual(c["cooldownSeconds"]?.intValue, localRenewCooldownSeconds)
+        XCTAssertEqual(c["wrongSeconds"]?.intValue, localRenewWrongSeconds)
+        XCTAssertEqual(c["wrongLimit"]?.intValue, localRenewWrongLimit)
+        for r in rows("renewFloor", "rows") {
+            var floor = LocalRenewFloor()
+            var got: [Row] = []
+            for e in r["events"]!.arrayValue!.map({ $0.objectValue! }) {
+                let t = e["t"]!.doubleValue!
+                if let end = e["ended"]?.stringValue {
+                    floor.ended(LocalRenewEnd(rawValue: end)!, t)
+                } else {
+                    let v = floor.check(t)
+                    got.append(["allowed": .bool(v.allowed), "retryIn": .int(v.retryIn)])
+                }
+            }
+            XCTAssertEqual(got, r["want"]!.arrayValue!.map { $0.objectValue! }, id(r))
+        }
+    }
+
+    func testJoinReasonRows() {
+        XCTAssertEqual(
+            strs(obj("joinReasons"), "precedence"),
+            ["invalid", "other-app", "spent-at-start", "wrong", "spent-mid-join"])
+        for r in rows("joinReasons", "rows") {
+            let input = r["input"]!.objectValue!
+            let kind: LocalJoinInput
+            switch str(input, "kind") {
+            case "code": kind = .code(nameplate: str(input, "nameplate"))
+            case "qr": kind = .qr(instance: str(input, "instance"))
+            case "other-app": kind = .otherApp
+            default: kind = .invalid
+            }
+            var plan = LocalJoinPlan(kind)
+            if case .code(let np) = kind {
+                var budget = LocalDialBudget()
+                budget.spend(np, 0, dials: r["budget"]!.intValue!)
+                if !budget.check(np, 1).allowed { plan.startSpent() }
+            }
+            // Two matching adverts, so a plan that browses has a dial for each outcome.
+            for n in ["a", "b"] {
+                var instance = "p1-\(n)"
+                var nameplate = "00"
+                if case .qr(let i) = kind { instance = i }
+                if case .code(let np) = kind { nameplate = np }
+                _ = plan.see(instance: instance, tagMatches: true, n: nameplate)
+            }
+            for outcome in strs(r, "dials") {
+                if plan.next() == nil { break }
+                plan.ended(LocalDialOutcome(rawValue: outcome)!)
+            }
+            let want = r["want"]!.objectValue!
+            XCTAssertEqual(plan.result().rawValue, str(want, "result"), id(r))
+            XCTAssertEqual(plan.reason(), want["reason"]?.stringValue, id(r))
+        }
+    }
+
+    func testDialsLeftReadsTwoDigitsAndSpendsNothing() {
+        var b = LocalDialBudget()
+        b.spend("48", 10, dials: 1)
+        XCTAssertEqual(localDialsLeft(&b, "48", 11), 1)
+        XCTAssertEqual(localDialsLeft(&b, "4 8-1", 11), 1, "spaces and hyphens are dropped")
+        XCTAssertEqual(localDialsLeft(&b, "4812 3456", 11), 1)
+        XCTAssertEqual(localDialsLeft(&b, "49", 11), 2, "another nameplate is unaffected")
+        XCTAssertNil(localDialsLeft(&b, "4", 11))
+        XCTAssertNil(localDialsLeft(&b, "", 11))
+        XCTAssertNil(localDialsLeft(&b, "4x", 11))
+        XCTAssertNil(localDialsLeft(&b, "\u{0664}\u{0668}", 11), "only ASCII digits count")
+        XCTAssertEqual(localDialsLeft(&b, "48", 11), 1, "reading spends nothing")
+        b.spend("48", 12, dials: 1)
+        XCTAssertEqual(localDialsLeft(&b, "48", 13), 0)
+        XCTAssertEqual(localDialsLeft(&b, "48", 10 + Double(localDialBudgetSeconds) - 1), 0)
+        XCTAssertEqual(localDialsLeft(&b, "48", 10 + Double(localDialBudgetSeconds)), 1, "the first dial ages out")
+        XCTAssertEqual(b.keyCount, 1)
+    }
+
     // ── The exchange guard, the pin and the trial order ──────────────────────────────
 
     func testExchangeRows() {

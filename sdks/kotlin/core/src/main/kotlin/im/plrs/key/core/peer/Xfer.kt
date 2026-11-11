@@ -357,7 +357,7 @@ public class XferOut {
 
 /** What a machine needs to know. */
 public class XferMachineOptions(
-    /** The session's mode: transfers run in `a` and `c` only. */
+    /** The session's mode: transfers run in `a`, `c` and `l` only (section 15.11, "Where it runs"). */
     public val mode: RecordMode,
     /** The session's capabilities (the intersection of both payloads). */
     public val caps: List<String>,
@@ -370,7 +370,7 @@ public class XferMachineOptions(
     public val hostLimit: Long? = null,
     /** Bytes the store can still take; null for unlimited. */
     public val free: (() -> Long?)? = null,
-    /** The link's categories (mode c). */
+    /** The link's categories (modes c and l). */
     public val categories: List<String> = emptyList(),
     /** The kept partials of this peer key. */
     public val partials: List<XferPartial> = emptyList(),
@@ -642,9 +642,10 @@ public class XferMachine(private val o: XferMachineOptions) {
 
     // -- records ---------------------------------------------------------------------------------------------
 
+    @Suppress("ComplexCondition")
     private fun onRecord(type: Int, body: ByteArray, more: Boolean) {
         // Step 1: the mode and the capability.
-        if ((o.mode != RecordMode.a && o.mode != RecordMode.c) || XFER_CAP !in o.caps) {
+        if ((o.mode != RecordMode.a && o.mode != RecordMode.c && o.mode != RecordMode.l) || XFER_CAP !in o.caps) {
             out.close = PeerCloseCode.peer_not_allowed
             closed = true
             return
@@ -693,6 +694,7 @@ public class XferMachine(private val o: XferMachineOptions) {
         out.drop = true
     }
 
+    @Suppress("ComplexCondition")
     private fun onOffer(body: ByteArray) {
         val f = parseXferOffer(body, o.maxMessage) ?: return fault()
         if (tr.containsKey(f.id) || ended.any { it.id == f.id }) return fault()
@@ -704,8 +706,8 @@ public class XferMachine(private val o: XferMachineOptions) {
         // Step 4: busy.
         val kept = parts.firstOrNull { it.id == f.id && it.sha256 == f.sha256 }
         if (tr.size >= XFER_MAX_TRANSFERS || tr.values.any { it.st == St.asking } || kept?.held == true) return refuse(XferReason.busy)
-        // Step 5: the category, before the person is asked.
-        if (o.mode == RecordMode.c && (f.cat == null || f.cat !in o.categories)) return refuse(XferReason.category)
+        // Step 5: the category, before the person is asked (a link: mode c or l).
+        if ((o.mode == RecordMode.c || o.mode == RecordMode.l) && (f.cat == null || f.cat !in o.categories)) return refuse(XferReason.category)
         // Step 6: size and quota; a resume counts only the bytes still to come.
         val limit = o.hostLimit
         if (limit != null && f.size > limit) return refuse(XferReason.size)

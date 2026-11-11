@@ -18,22 +18,24 @@ import java.io.IOException
 import java.net.Socket
 
 /** What [AcceptGate.admit] hands back for an admitted socket. */
-internal class GateSlot(
+public class GateSlot internal constructor(
     /** The judged source address (a link-local one keeps its zone). */
-    val address: String,
+    public val address: String,
+    /** The source group (a link, an IPv4 /24 or an IPv6 /64; the address when it has none). */
+    public val group: String,
     private val onEstablished: () -> Unit,
     private val onSettle: () -> Unit,
 ) {
     /** The transport is up: the handshake window ends, the slot is kept. */
-    fun established(): Unit = onEstablished()
+    public fun established(): Unit = onEstablished()
 
     /** Release the slot and end the window. Safe to call again. */
-    fun settle(): Unit = onSettle()
+    public fun settle(): Unit = onSettle()
 
     override fun toString(): String = "GateSlot"
 }
 
-internal class AcceptGate(
+public class AcceptGate(
     private val allowLoopback: Boolean = false,
     maxPending: Int = LAN_MAX_PENDING,
     maxPendingPerAddress: Int = LAN_MAX_PENDING_PER_ADDRESS,
@@ -48,13 +50,13 @@ internal class AcceptGate(
     private val up = HashSet<Socket>()
 
     /** Sockets that hold a slot. */
-    val size: Int get() = synchronized(lock) { pending.size }
+    public val size: Int get() = synchronized(lock) { pending.size }
 
     /**
      * Judge, limit and time a new inbound socket. Null means it was closed: its source is off the LAN,
      * [refuse] is set (stopped, or no room for a session), or a limit is met.
      */
-    fun admit(sock: Socket, refuse: Boolean = false): GateSlot? {
+    public fun admit(sock: Socket, refuse: Boolean = false): GateSlot? {
         // Judged first, on the socket's own addresses and before a byte is read: a source off the LAN is
         // closed at once and costs no slot.
         val v = socketVerdict(literalOfInetAddress(sock.inetAddress), literalOfInetAddress(sock.localAddress), allowLoopback)
@@ -79,6 +81,7 @@ internal class AcceptGate(
         }
         return GateSlot(
             key,
+            lanGroupKey(key) ?: key,
             onEstablished = {
                 cancelDeadline()
                 synchronized(lock) { up += sock }
@@ -88,7 +91,7 @@ internal class AcceptGate(
     }
 
     /** Close every socket that still holds a slot; [keepUp] spares those past [GateSlot.established]. */
-    fun destroyPending(keepUp: Boolean = false) {
+    public fun destroyPending(keepUp: Boolean = false) {
         val socks = synchronized(lock) { pending.filter { !keepUp || it !in up } }
         for (s in socks) close(s)
     }

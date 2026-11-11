@@ -27,6 +27,9 @@ public struct LocalLinkInfo: Sendable, Equatable {
     public let lastSeen: Int?
     /// Advertised on the LAN (at most 8 at once).
     public let reachable: Bool
+    /// The other device's platform as it reported it when you paired, one of the `Platform` values; nil when it
+    /// reported none we know, and for a link made before this was stored. Display only: it is not authenticated.
+    public let platform: String?
 }
 
 /// The local link a session was made over (mode `l`). No key, no secret.
@@ -77,7 +80,7 @@ enum ConnectLocals {
         rows.map {
             LocalLinkInfo(
                 id: $0.id, label: $0.label, categories: $0.cats, createdAt: $0.createdAt, lastSeen: $0.lastSeen,
-                reachable: $0.reachable)
+                reachable: $0.reachable, platform: $0.platform)
         }
     }
 
@@ -86,13 +89,32 @@ enum ConnectLocals {
 }
 
 /// Why a local-pairing call refused, with its registered code (`ErrorCode`): `pairing-code-failed`,
-/// `pairing-not-found`, `local-links-full`, `peer-closed`, `store-failed`.
+/// `pairing-not-found`, `local-links-full`, `peer-closed`, `store-failed`. `reason` and `cap` are for display and
+/// hold no digit: `pairing-code-failed` carries `invalid`, `otherApp`, `spent` or `wrong`; `peer-closed` one of
+/// `declined`, `timeout`, `closed` or `cooldown`; `local-links-full` a `cap`.
 public struct LocalPairingError: Error, Sendable, Equatable, CustomStringConvertible {
+    public enum Reason: String, Sendable, Equatable {
+        case invalid
+        case otherApp = "other-app"
+        case spent, wrong
+        case declined, timeout, closed, cancelled, cooldown
+    }
+    /// Which limit `local-links-full` hit.
+    public enum Cap: String, Sendable, Equatable {
+        /// The device holds `maxLocalLinks`.
+        case stored
+        /// Eight links are already advertised.
+        case reachable
+    }
     public let code: String
     public let message: String
-    public init(_ code: String, _ message: String) {
+    public let reason: Reason?
+    public let cap: Cap?
+    public init(_ code: String, _ message: String, reason: Reason? = nil, cap: Cap? = nil) {
         self.code = code
         self.message = message
+        self.reason = reason
+        self.cap = cap
     }
     public var description: String { "LocalPairingError(\(code))" }
 }
@@ -152,7 +174,7 @@ actor LocalLinkStore {
     /// gate cleared writes nothing (`.off`).
     func add(
         ownKey: Data, ownPublic: Data, peerKey: Data, secret: Data, label: String?, cats: [String], now: Int,
-        allowed: (@Sendable () -> Bool)? = nil
+        platform: String? = nil, allowed: (@Sendable () -> Bool)? = nil
     ) throws -> Added {
         let id = PeerLocal.linkId(peerKey: peerKey)
         let (ownB, pubB, peerB, secB) = (
@@ -165,22 +187,24 @@ actor LocalLinkStore {
             let reachable = others.filter(\.reachable).count < maxLiveLocalAdverts
             let row = LocalLinkRow(
                 id: id, ownKey: ownB, ownPublic: pubB, peerKey: peerB, secret: secB, label: label, cats: cats,
-                createdAt: now, reachable: reachable)
+                createdAt: now, reachable: reachable, platform: platform)
             return (others + [row], .stored(id: id))
         }
     }
 
     /// Write `lastSeen` for a link when the hour is newer than the stored one.
-    func touch(id: String, now: Int) {
+    @discardableResult
+    func touch(id: String, now: Int) -> Bool {
         let hour = ConnectLocals.hour(now)
-        _ = try? update { rows -> (next: [LocalLinkRow]?, result: Bool) in
-            guard let i = rows.firstIndex(where: { $0.id == id }), (rows[i].lastSeen ?? -1) < hour else {
-                return (nil, false)
-            }
-            var next = rows
-            next[i].lastSeen = hour
-            return (next, true)
-        }
+        return
+            (try? update { rows -> (next: [LocalLinkRow]?, result: Bool) in
+                guard let i = rows.firstIndex(where: { $0.id == id }), (rows[i].lastSeen ?? -1) < hour else {
+                    return (nil, false)
+                }
+                var next = rows
+                next[i].lastSeen = hour
+                return (next, true)
+            }) ?? false
     }
 }
 

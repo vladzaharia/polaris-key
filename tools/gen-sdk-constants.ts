@@ -1554,6 +1554,7 @@ function swiftScalar(s: Scalar): string {
 export const SWIFT_DECLARED: ReadonlySet<string> = new Set([
   "StoreBackend", // Store.swift (P1b-09)
   "StoreDegradedReason", // Store.swift (P1b-09)
+  "LocalPairFailure", // ConnectLocalPairing.swift: the `onFailed` struct; its `Reason` raw values are this enum's
 ]);
 
 function swiftCaps(caps: SdkCapabilities): string {

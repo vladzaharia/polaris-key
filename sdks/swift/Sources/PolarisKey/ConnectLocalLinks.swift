@@ -13,17 +13,22 @@
 //   open(_:)            a session to the peer, found by its advert on the LAN (no relay)
 //   onLink(_:)          called with each session a local link opened to this device
 //   localPairing()      the cached discovery answer the calls are gated on
+//   dialsLeft(_:)       the dials a join of the code typed so far may still make (2, 1, 0, or nil)
+//   onChange(_:)        called after the links or the gate changed; re-read `list()` and `localPairing()`
 //
 // Rules this file keeps:
 //  - `pair`, `join` and every accept and dial need the cached discovery answer `localPairing: true` (§15.12 "Gates");
 //    without it they throw the typed N/A `LocalPairingOff` (code `local-pairing-off`), and a read that clears it
 //    closes the window and every join;
 //  - one window per device and product, and a device that holds `maxLocalLinks` answers `local-links-full` before
-//    anything is advertised or dialled; the slot is taken before the first await;
+//    anything is advertised or dialled (`cap` `stored`); the slot is taken before the first await;
 //  - `open`, the `m=l` adverts and the mode-`l` answer need the same cached answer; a read that clears it withdraws the
 //    adverts and ends the open sessions with `peer_bye`, and the links stay on disk, inert. Managing links (`list`,
 //    `rename`, `remove`, `setReachable`) is never gated;
-//  - the joiner's dials are counted per typed nameplate across joins, per product, in memory;
+//  - the joiner's dials are counted per typed nameplate across joins, per product, in memory, and so are the nameplates
+//    the shower's windows closed with in the last 300 s (a renewed window skips them) and the renewal floor (30 s
+//    after a window ended `too-many-tries` or after a second wrong-code window within 10 minutes);
+//  - a cancelled `join` throws `CancellationError`: it is never a failure, refunds no dial and zeroes the key material;
 //  - `open` makes one dial per link at a time, waits 3 to 5 s after a dial that failed (doubled for each failure in a
 //    row, up to 60 s), and adopts a session only once the link is known to be held;
 //  - a session whose link is forgotten ends `peer_revoked`; a session with no handler is closed.
@@ -68,21 +73,41 @@ import PolarisKeyCore
         /// setting, `launch.localPairing` and the service are on. False before discovery.
         public func localPairing() -> Bool { core.connect.localPairing() }
 
+        /// How many dials a join of the code typed so far may still make: 2, 1 or 0, from the first two digits alone;
+        /// nil until the text (spaces and hyphens ignored) starts with two digits. It reads those two digits, keeps
+        /// nothing and spends nothing.
+        public func dialsLeft(_ text: String) -> Int? { core.dialsLeft(text) }
+
+        /// Called after the links or the gate changed: a pairing was stored, a link was renamed, forgotten, re-marked
+        /// or seen, or the `localPairing` answer flipped. It carries no data: read `list()` and `localPairing()`
+        /// again. Returns the unsubscribe. Never gated: it works with the gate off and with no cached document.
+        @discardableResult
+        public func onChange(_ fn: @escaping @Sendable () -> Void) -> @Sendable () -> Void {
+            core.connect.localView.add(fn)
+        }
+
         /// The local links this device holds. Listing is not gated. Throws `LocalPairingError` (`store-failed`) for
         /// an unreadable record.
         public func list() async throws -> [LocalLinkInfo] { try await core.list() }
 
         /// Show a code and a QR and wait for the other device (the responder). Throws `LocalPairingOff` while the gate
-        /// is off, `LocalPairingError` (`local-links-full`) at the cap, and `ConnectLanError` `badType` for options that
-        /// break a rule or when this product already has a window open. The handle closes the window (`stop()`); it
-        /// also closes by itself after `seconds` (at most 300), after the fifth failed guess and once a link is made.
+        /// is off, `LocalPairingError` (`local-links-full`, cap `stored`) at the cap, and `ConnectLanError` `badType`
+        /// for options that break a rule or when this product already has a window open. The handle closes the window
+        /// (`stop()`) and makes the next one (`renew()`); the window also closes by itself after `seconds` (at most
+        /// 300), after the fifth failed guess, once a link is made and when the gate goes off, and `onEnd` says which.
+        /// For 30 s after a window ended `too-many-tries`, or after the second window within 10 minutes that ended
+        /// after a failed guess, it throws `peer-closed` with reason `cooldown`.
         public func pair(_ options: LocalPairOptions) async throws -> LocalPairHandle { try await core.pair(options) }
 
         /// Type or scan the other device's code (the initiator). Returns the link when both people confirmed and both
-        /// devices stored it. Throws `LocalPairingError`: `pairing-code-failed` (the code did not parse, the QR was not
-        /// this app's, the dial budget for this code is spent, or an attempt failed after the other device answered),
-        /// `pairing-not-found` (no matching advert in 15 s, or every attempt ended before an answer) and `peer-closed`
-        /// (the session ended first); `LocalPairingOff` and `local-links-full` are thrown before anything is browsed.
+        /// devices stored it. Throws `LocalPairingError`:
+        ///  - `pairing-code-failed`, reason `invalid` (the code did not parse), `otherApp` (the QR was not this app's),
+        ///    `spent` (the dials for this code are spent) or `wrong` (an attempt failed after the other device answered);
+        ///  - `pairing-not-found` (no matching advert in 15 s, or every attempt ended before an answer);
+        ///  - `peer-closed`, reason `declined` (the other device said no), `timeout` or `closed`.
+        /// `LocalPairingOff` and `local-links-full` (cap `stored`) are thrown before anything is browsed. Cancelling
+        /// the task stops the browse, closes the dial and zeroes the key material, and throws `CancellationError`: it
+        /// is no failure and refunds no dial.
         public func join(_ options: LocalJoinOptions) async throws -> LocalPaired { try await core.join(options) }
 
         /// Change a link's label on this device only; it is never sent. False when `id` names no link. Throws
@@ -130,11 +155,20 @@ import PolarisKeyCore
         let takesSessions = LockedValue<(@Sendable () -> Bool)?>(nil)
     }
 
-    /// A join in flight: cancelled by a read that clears the gate, even before its first await returns.
+    /// A join in flight: stopped by a read that clears the gate or by the host's cancel, even before its first await
+    /// returns. The first reason stays.
     private final class JoinHandle: @unchecked Sendable {
         let lock = NSLock()
-        var cancelled = false
+        var why: LocalJoinStop?
         var joiner: LocalJoiner?
+
+        /// Record `w` (the first wins) and answer the joiner, if it exists yet.
+        func stop(_ w: LocalJoinStop) -> LocalJoiner? {
+            lock.withLock {
+                if why == nil { why = w }
+                return joiner
+            }
+        }
     }
 
     actor LocalLinksCore {
@@ -154,7 +188,7 @@ import PolarisKeyCore
         private var dials: [String: Task<ConnectSession, Error>] = [:]
         /// Per link: no dial before `until` (monotonic seconds), and the failures in a row.
         private var cool: [String: (until: TimeInterval, fails: Int)] = [:]
-        private let mono: @Sendable () -> TimeInterval
+        nonisolated let mono: @Sendable () -> TimeInterval
         private let jitter: @Sendable () -> Double
 
         init(
@@ -165,6 +199,11 @@ import PolarisKeyCore
             self.connect = connect
             self.mono = mono
             self.jitter = jitter
+        }
+
+        /// The dials left for the typed text; the clock is the one the dial cooldown uses.
+        nonisolated func dialsLeft(_ text: String) -> Int? {
+            LocalDialBudgets.of(connect.core.product).dialsLeft(text, mono())
         }
 
         private func requireOn(_ what: String) throws {
@@ -195,25 +234,52 @@ import PolarisKeyCore
             try requireOn("pair")
             try checkLocalOptions(o.base)
             guard o.seconds > 0 else { throw ConnectLanError(.badType, "seconds must be above 0.") }
-            if let s = shower, s.isOpenFlag.current {
+            let first = try await window(o, replacing: nil)
+            await first.reveal()
+            return LocalPairHandle(
+                first,
+                again: { [weak self] cur in
+                    guard let self else { throw ConnectLanError(.closed, "The window closed.") }
+                    return try await self.window(o, replacing: cur)
+                })
+        }
+
+        /// Open a window; `replacing` is the one a renewal closes first (it makes no `onEnd`). The slot is taken before
+        /// the first await and kept across the replacement.
+        private func window(_ o: LocalPairOptions, replacing: LocalShower?) async throws -> LocalShower {
+            try requireOn("pair")
+            if starting || (shower?.isOpenFlag.current == true && shower !== replacing) {
                 throw ConnectLanError(.badType, "A pairing window is already open.")
             }
-            if starting { throw ConnectLanError(.badType, "A pairing window is already open.") }
             starting = true
             defer { starting = false }
             let mine = epoch
             let src = try await source()
             if try await src.store.count() >= maxLocalLinks {
-                throw LocalPairingError(ErrorCode.localLinksFull, "This device holds the most local links it can.")
+                throw LocalPairingError(
+                    ErrorCode.localLinksFull, "This device holds the most local links it can.", cap: .stored)
             }
-            let s = try await LocalShower.start(src, o, onEnd: { [weak self] in Task { await self?.showerEnded() } })
+            await replacing?.close(nil)
+            // The SDK's floor under new windows (after a hard end, 30 s), checked once the window a renewal replaces
+            // has ended and been counted.
+            let floors = LocalRenewFloors.of(src.slug)
+            let floor = floors.check((o.base.mono ?? mono)())
+            if !floor.allowed {
+                throw LocalPairingError(
+                    ErrorCode.peerClosed,
+                    "Too many failed tries. Wait \(floor.retryIn) s before opening another window.",
+                    reason: .cooldown)
+            }
+            let s = try await LocalShower.start(
+                src, o, nameplates: LocalNameplates.of(src.slug), floors: floors,
+                onEnd: { [weak self] in Task { await self?.showerEnded() } })
             shower = s
             // The gate was cleared while the window was opening: it closes before anyone sees a code.
             if mine != epoch || !connect.localPairing() {
-                await s.stop()
+                await s.close(.off)
                 throw LocalPairingOff("pair")
             }
-            return LocalPairHandle(s)
+            return s
         }
 
         private func showerEnded() {
@@ -227,21 +293,44 @@ import PolarisKeyCore
                 throw ConnectLanError(.badType, "Give exactly one of code and qr.")
             }
             guard o.browseSeconds > 0 else { throw ConnectLanError(.badType, "browseSeconds must be above 0.") }
-            // Registered before the first await, so a gate-clearing read can cancel it.
+            // Cancelled before the call: nothing is browsed, dialled or spent.
+            try Task.checkCancellation()
+            // Registered before the first await, so a gate-clearing read or a cancel can stop it.
             let handle = JoinHandle()
             let key = ObjectIdentifier(handle)
             joins[key] = handle
             defer { joins[key] = nil }
+            do {
+                return try await withTaskCancellationHandler {
+                    try await self.runJoin(o, handle)
+                } onCancel: {
+                    if let j = handle.stop(.cancelled) { Task { await j.cancel(.cancelled) } }
+                }
+            } catch {
+                // The host's cancel is a `CancellationError` whatever the join was doing when it noticed.
+                if handle.lock.withLock({ handle.why }) == .cancelled { throw CancellationError() }
+                throw error
+            }
+        }
+
+        private func runJoin(_ o: LocalJoinOptions, _ handle: JoinHandle) async throws -> LocalPaired {
             let src = try await source()
             if try await src.store.count() >= maxLocalLinks {
-                throw LocalPairingError(ErrorCode.localLinksFull, "This device holds the most local links it can.")
+                throw LocalPairingError(
+                    ErrorCode.localLinksFull, "This device holds the most local links it can.", cap: .stored)
             }
-            if handle.lock.withLock({ handle.cancelled }) || !connect.localPairing() {
+            if let why = handle.lock.withLock({ handle.why }) {
+                if why == .cancelled { throw CancellationError() }
                 throw LocalPairingOff("join")
             }
+            if !connect.localPairing() { throw LocalPairingOff("join") }
             let j = LocalJoiner(src, LocalDialBudgets.of(src.slug), o)
-            handle.lock.withLock { handle.joiner = j }
-            if handle.lock.withLock({ handle.cancelled }) { await j.cancel() }
+            if let why = handle.lock.withLock({ () -> LocalJoinStop? in
+                handle.joiner = j
+                return handle.why
+            }) {
+                await j.cancel(why)
+            }
             return try await j.run()
         }
 
@@ -272,7 +361,7 @@ import PolarisKeyCore
             if refused {
                 throw LocalPairingError(
                     ErrorCode.localLinksFull,
-                    "Eight local links are already reachable on this network; turn one off first.")
+                    "Eight local links are already reachable on this network; turn one off first.", cap: .reachable)
             }
             return outcome == .found
         }
@@ -403,14 +492,8 @@ import PolarisKeyCore
         /// time.
         func closeAll() async {
             epoch += 1
-            for j in Array(joins.values) {
-                let joiner = j.lock.withLock { () -> LocalJoiner? in
-                    j.cancelled = true
-                    return j.joiner
-                }
-                await joiner?.cancel()
-            }
-            await shower?.stop()
+            for j in Array(joins.values) { await j.stop(.closed)?.cancel(.closed) }
+            await shower?.close(.off)
             for s in Array(sessions.values) { await s.close(.peerBye) }
         }
 

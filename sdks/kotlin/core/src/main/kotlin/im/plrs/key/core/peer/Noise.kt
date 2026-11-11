@@ -204,12 +204,23 @@ public fun hkdfSha256(salt: ByteArray, ikm: ByteArray, info: ByteArray, length: 
 
 // -- Protocol names, prologue, PSK (15.5) --------------------------------------------------------
 
-/** The channel modes of `pkey-peer/1`: `a` account, `v` approver, `p` pair, `c` contact (section 15.10). */
-public enum class PeerMode(public val wire: String) { a("a"), v("v"), p("p"), c("c") }
+/**
+ * The channel modes of `pkey-peer/1`: `a` account, `v` approver, `p` pair, `c` contact (section 15.10), `q` local
+ * pairing and `l` local link (section 15.12).
+ */
+@Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
+public enum class PeerMode(public val wire: String) { a("a"), v("v"), p("p"), c("c"), q("q"), l("l") }
 
-/** The Noise protocol name of a mode: XXpsk0 for `a` (R-1) and for the contact mode `c`, plain XX for `v` and `p`. */
-public fun peerNoiseProtocol(mode: PeerMode): String =
-    if (mode == PeerMode.a || mode == PeerMode.c) "Noise_XXpsk0_25519_AESGCM_SHA256" else "Noise_XX_25519_AESGCM_SHA256"
+/**
+ * The Noise protocol name of a mode: XXpsk0 for `a` (R-1), the contact mode `c` and the local-link modes `q` and
+ * `l`, plain XX for `v` and `p`.
+ */
+@Suppress("ComplexCondition")
+public fun peerNoiseProtocol(mode: PeerMode): String = if (mode == PeerMode.a || mode == PeerMode.c || mode == PeerMode.q || mode == PeerMode.l) {
+    "Noise_XXpsk0_25519_AESGCM_SHA256"
+} else {
+    "Noise_XX_25519_AESGCM_SHA256"
+}
 
 /** `"pkey-peer/1" 0x00 slug 0x00 mode 0x00`. */
 public fun peerPrologue(slug: String, mode: PeerMode): ByteArray =

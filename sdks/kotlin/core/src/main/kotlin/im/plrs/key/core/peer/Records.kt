@@ -29,12 +29,15 @@ public const val MAX_VP_CHAIN_BYTES: Int = 16_384
 /** Records in one MORE chain: a full message in the smallest records, plus one. */
 public const val MAX_CHAIN_RECORDS: Int = (MAX_PEER_MESSAGE_BYTES + MAX_RECORD_BODY - 1) / MAX_RECORD_BODY + 1
 
-/** The channel modes a record table distinguishes (`c` is the content-key channel). */
+/** The channel modes a record table distinguishes (`c` is the contact channel, `q` and `l` the local-link modes). */
+@Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
 public enum class RecordMode {
     a,
     v,
     p,
     c,
+    q,
+    l,
     ;
 
     /** Modes v and p take their records from a peer that is not yet verified. */
@@ -65,6 +68,7 @@ public object RecordType {
     public const val VOUCH_RESULT: Int = 0x8011
     public const val CONFIRM: Int = 0x8012
     public const val CONTACT: Int = 0x0013
+    public const val LOCAL_LINK: Int = 0x0014
     public const val SAS_COMMIT: Int = 0x8014
     public const val SAS_NONCE: Int = 0x8015
     public const val SAS_REVEAL: Int = 0x8016
@@ -80,8 +84,11 @@ private val A = setOf(RecordMode.a)
 private val V = setOf(RecordMode.v)
 private val P = setOf(RecordMode.p)
 private val VP = setOf(RecordMode.v, RecordMode.p)
-private val AC = setOf(RecordMode.a, RecordMode.c)
+private val ACL = setOf(RecordMode.a, RecordMode.c, RecordMode.l)
+private val PQ = setOf(RecordMode.p, RecordMode.q)
+private val Q = setOf(RecordMode.q)
 
+@Suppress("MagicNumber")
 private val TYPES = listOf(
     TypeRow(0x8001, 0x8001, ALL),
     TypeRow(0x0002, 0x0002, A),
@@ -91,13 +98,14 @@ private val TYPES = listOf(
     TypeRow(0x0006, 0x0006, A),
     TypeRow(0x8010, 0x8010, V),
     TypeRow(0x8011, 0x8011, V),
-    TypeRow(0x8012, 0x8012, P),
+    TypeRow(0x8012, 0x8012, PQ),
     TypeRow(0x0013, 0x0013, P),
+    TypeRow(0x0014, 0x0014, Q),
     TypeRow(0x8014, 0x8016, VP),
-    TypeRow(0x0020, 0x0025, AC),
+    TypeRow(0x0020, 0x0025, ACL),
     TypeRow(0x0030, 0x003f, V),
-    TypeRow(0x0100, 0x7fff, AC),
-    TypeRow(0x8100, 0xfffd, AC),
+    TypeRow(0x0100, 0x7fff, ACL),
+    TypeRow(0x8100, 0xfffd, ACL),
     TypeRow(0x80fe, 0x80fe, ALL, 0),
     TypeRow(0x80ff, 0x80ff, ALL),
 )

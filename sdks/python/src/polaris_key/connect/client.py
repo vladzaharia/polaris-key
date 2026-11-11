@@ -301,6 +301,7 @@ class ConnectClient:
         self._local_pairing = local_pairing
         self._local: Optional[LocalLinkStore] = None
         self._on_locals: List[Callable[[], None]] = []
+        self._on_locals_view: List[Callable[[], None]] = []
         self._on_contacts: List[Callable[[], None]] = []
         self._on_leave: List[Callable[[List[bytes]], None]] = []
         self._ctx = ctx
@@ -687,6 +688,7 @@ class ConnectClient:
             store=self.local_store(),
             notify=self.notify_locals,
             on_change=self.on_locals_changed,
+            on_view=self.on_locals_view,
         )
 
     def live_locals(self) -> List[LiveLocal]:
@@ -705,17 +707,23 @@ class ConnectClient:
         (§15.12)."""
         hour = (int(self._ctx.now()) // 3600) * 3600
 
+        wrote = [False]
+
         def fn(rows: List[LocalLinkRow]) -> Optional[List[LocalLinkRow]]:
-            if not any(
+            wrote[0] = any(
                 r.id == ref.id
                 and (r.last_seen is None or r.last_seen < hour)
                 and local_tag(b64url_decode(r.secret)) == ref.tag
                 for r in rows
-            ):
+            )
+            if not wrote[0]:
                 return None
             return [dataclasses.replace(r, last_seen=hour) if r.id == ref.id else r for r in rows]
 
         self.local_store().update(fn)
+        # The host's list shows the time; the adverts and sessions do not depend on it.
+        if wrote[0]:
+            self._view_locals()
 
     def on_locals_changed(self, fn: Callable[[], None]) -> Callable[[], None]:
         """Called when the local links changed or the ``localPairing`` answer may have (on the caller's
@@ -723,8 +731,22 @@ class ConnectClient:
         self._on_locals.append(fn)
         return lambda: self._on_locals.remove(fn) if fn in self._on_locals else None
 
+    def on_locals_view(self, fn: Callable[[], None]) -> Callable[[], None]:
+        """The host-facing feed of ``local_links.on_change``: the links or the gate changed (on the caller's
+        thread, whichever it is). Returns the unsubscribe."""
+        self._on_locals_view.append(fn)
+        return lambda: self._on_locals_view.remove(fn) if fn in self._on_locals_view else None
+
+    def _view_locals(self) -> None:
+        for f in list(self._on_locals_view):
+            try:
+                f()
+            except Exception:
+                pass  # a host's listener cannot stop the others
+
     def notify_locals(self) -> None:
         """Tell the listeners the local links or the gate moved."""
+        self._view_locals()
         for f in list(self._on_locals):
             try:
                 f()

@@ -25,6 +25,14 @@
 // built with `holdSas` stops after HELLO until the host calls [PeerChannel.startSas], and its 120 s code
 // deadline restarts then (the approver's restarts when `SAS_COMMIT` arrives).
 //
+// Modes q and l (section 15.12, CC-29.13) are the account-free local links. Mode q is the pairing: XXpsk0 under a PSK
+// from CPace ([cpacePsk], run by the caller before message 1), a fresh link key as the static key, then HELLO, the
+// person's consent ([PeerChannel.confirmPairing]), CONFIRM each way and one LOCAL_LINK each way ([LocalExchange]); a side
+// that reads the peer's LOCAL_LINK reports a [SessionEvent.LocalLinked] and closes `peer_bye`. A responder needs
+// [PairingOptions.permit], which counts the guess before the tag is tried. Mode l is a later session: XXpsk0 under a
+// link's secret, the link's own key as the static key, and the remote static key pinned to the stored peer link key. A
+// responder that holds local links tries them after the account keys and the contacts, behind the same limiter.
+//
 // Keys: the static private key is reached only through a [NoiseStatic] whose `dh` runs the static
 // operations (G1). Nothing here prints a key, certificate or record body (G19).
 
@@ -67,6 +75,7 @@ private const val MAX_UNVERIFIED_HELLO = 4096
 
 private const val SAS_NONCE_BYTES = 32
 private const val KEY_BYTES = 32
+private const val ISK_BYTES = 64
 private const val RATE_WINDOW_SECONDS = 60.0
 private const val MAX_SAFE_INTEGER = 9_007_199_254_740_991L
 private const val DEFAULT_REKEY_MESSAGES = 1 shl 20
@@ -104,6 +113,48 @@ public class ContactLink(
     override fun toString(): String = "ContactLink(redacted)"
 }
 
+/**
+ * A local link the device holds (mode l, section 15.12): the link's secret (the PSK), its own private key and the peer's link
+ * key. Prints as redacted.
+ */
+public class LocalLink(
+    /** The 32-byte link secret. */
+    public val secret: ByteArray,
+    /** This device's private key for the link: the static key of every session under it. */
+    public val ownKey: ByteArray,
+    /** The peer's link public key: the remote static key must equal it. */
+    public val peerKey: ByteArray,
+) {
+    override fun toString(): String = "LocalLink(redacted)"
+}
+
+/** What a mode-`q` session needs (section 15.12): the CPace outputs and this side's part of the exchange. */
+@Suppress("LongParameterList")
+public class PairingOptions(
+    /** `HKDF-SHA256(ISK)`, the Noise PSK ([cpacePsk]). Overwritten once the handshake is done. */
+    public val psk: ByteArray,
+    /** The CPace ISK, 64 bytes: it makes the link secret. Overwritten when the session ends. */
+    public val isk: ByteArray,
+    /** The number of local links the device holds for the product ([MAX_LOCAL_LINKS] refuses a link). */
+    public val held: Int,
+    /** The categories this side's person approved. */
+    public val cats: List<String>,
+    /** This device's label for the peer to show. */
+    public val label: String? = null,
+    /**
+     * Seconds already spent since the first byte (C1 and C2 ran before the session). At 30 or more the session starts no handshake
+     * and tries no tag.
+     */
+    public val elapsed: Double = 0.0,
+    /**
+     * A responder's permit to try message 1's tag ([PairingWindow.beginGuess]): synchronous, it counts the guess before
+     * the tag is tried. The session never tries a tag without one, and a mode-q responder is refused without it.
+     */
+    public val permit: (() -> Boolean)? = null,
+) {
+    override fun toString(): String = "PairingOptions(redacted)"
+}
+
 /** This device's side of the contact exchange (mode p, section 15.10). */
 public class ContactOffer(
     /** This device's own agreeKey, 43 canonical base64url characters. */
@@ -126,6 +177,7 @@ public data class HelloInfo(val platform: String, val app: String, val label: St
 /** Everything a session tells its host. */
 public sealed class SessionEvent {
     /** The handshake and the HELLO exchange are done (modes v and p still need the SAS). */
+    @Suppress("LongParameterList")
     public class Established(
         public val caps: List<String>,
         public val hello: PeerHello,
@@ -134,6 +186,8 @@ public sealed class SessionEvent {
         public val peerDeviceId: String?,
         /** Mode c: the index, in the channel's contacts, of the contact the peer is. */
         public val contactIndex: Int? = null,
+        /** Mode l: the index, in the channel's local links, of the link the peer is. */
+        public val localIndex: Int? = null,
     ) : SessionEvent() {
         override fun toString(): String = "Established(caps=${caps.size})"
     }
@@ -149,6 +203,29 @@ public sealed class SessionEvent {
      */
     public class Contact(public val secret: ByteArray, public val body: ContactBody, public val pending: Boolean) : SessionEvent() {
         override fun toString(): String = "Contact(pending=$pending)"
+    }
+
+    /**
+     * Mode q, responder: its message 1 was judged (section 15.12, "Failure accounting"). [opens] false is one failed
+     * guess: the window rotates the code, and the session closes silently.
+     */
+    public class Guess(public val opens: Boolean) : SessionEvent() {
+        override fun toString(): String = "Guess(opens=$opens)"
+    }
+
+    /**
+     * Mode q: the peer's valid `LOCAL_LINK`, read in order. [secret] is the link secret (key material: store it, zero your
+     * copy, never log it) with [ownKey] and [peerKey] the two link public keys and [cats] the categories both sides
+     * listed. The host stores the link; the session closes `peer_bye`.
+     */
+    public class LocalLinked(
+        public val secret: ByteArray,
+        public val ownKey: ByteArray,
+        public val peerKey: ByteArray,
+        public val label: String?,
+        public val cats: List<String>,
+    ) : SessionEvent() {
+        override fun toString(): String = "LocalLinked(cats=${cats.size})"
     }
 
     /** A roster that replaced the held one at [epoch]; the host stores it. */
@@ -175,6 +252,22 @@ public sealed class SessionEvent {
 
 private class Fail(val code: String) : Exception(code)
 
+/** Message 1s a minute one source group may send a listener that holds no account key (section 15.10). */
+public const val LOCAL_GROUP_PER_MINUTE: Int = 2
+
+/** What [HandshakeLimiter.beginLocal] answers. */
+public sealed class LocalAdmission {
+    /** Refused with no trial: [by] is `group` or `shared`. */
+    public class Refused(public val by: String) : LocalAdmission() {
+        override fun toString(): String = "Refused($by)"
+    }
+
+    /** One trial is allowed. Call [hit] when it opens (it returns the waiting slot's release) or [miss] when it does not. */
+    public class Admitted(public val hit: () -> () -> Unit, public val miss: () -> Unit) : LocalAdmission() {
+        override fun toString(): String = "Admitted"
+    }
+}
+
 /**
  * The approver's admission: at most [maxPerMinute] handshakes a minute (default 5) and at most
  * [maxPending] sessions waiting on a code (default 4), on a monotonic clock. An attempt counts only
@@ -183,11 +276,76 @@ private class Fail(val code: String) : Exception(code)
 public class HandshakeLimiter(
     private val maxPerMinute: Int = 5,
     private val maxPending: Int = 4,
+    private val groupMax: Int = LOCAL_GROUP_PER_MINUTE,
     private val mono: () -> Double = { System.nanoTime() / 1e9 },
 ) {
     private val lock = Any()
     private val stamps = ArrayList<Double>()
     private var pending = 0
+
+    /** Per source group, the message 1s of the last minute ([beginLocal]). */
+    private val groups = HashMap<String, ArrayList<Double>>()
+
+    /**
+     * The admission of a listener that holds no account key (section 15.10, "Admission"): the group's budget
+     * ([groupMax] a minute, counted as the message 1 arrives) comes first, then the shared limit, which counts only
+     * failed trials (and the sessions waiting on message 3). A refusal costs no trial. `hit()` refunds the group's
+     * count and takes a waiting slot; `miss()` spends the shared budget.
+     */
+    @Suppress("CyclomaticComplexMethod")
+    public fun beginLocal(group: String): LocalAdmission {
+        var refusal: String? = null
+        val t = mono()
+        synchronized(lock) {
+            stamps.removeAll { t - it >= RATE_WINDOW_SECONDS }
+            val live = groups.entries.iterator()
+            while (live.hasNext()) {
+                val e = live.next()
+                e.value.removeAll { s -> t - s >= RATE_WINDOW_SECONDS }
+                if (e.value.isEmpty()) live.remove()
+            }
+            val mine = groups[group] ?: ArrayList()
+            if (mine.size >= groupMax) {
+                refusal = "group"
+            } else if (stamps.size >= maxPerMinute || pending >= maxPending) {
+                refusal = "shared"
+            } else {
+                mine += t
+                groups[group] = mine
+            }
+        }
+        refusal?.let { return LocalAdmission.Refused(it) }
+        var settled = false
+        return LocalAdmission.Admitted(
+            hit = {
+                var first = false
+                synchronized(lock) {
+                    if (!settled) {
+                        settled = true
+                        first = true
+                        // The refund takes this message's timestamp out of the group's LIVE list, not out of the list captured
+                        // when it arrived: the list may have been trimmed or replaced since, and other messages counted.
+                        val live = groups[group]
+                        val i = live?.lastIndexOf(t) ?: -1
+                        if (live != null && i >= 0) {
+                            live.removeAt(i)
+                            if (live.isEmpty()) groups.remove(group)
+                        }
+                        pending++
+                    }
+                }
+                if (first) waitingSlot() else NO_RELEASE
+            },
+            miss = {
+                synchronized(lock) {
+                    if (!settled) {
+                        settled = true
+                        stamps += mono()
+                    }
+                }
+            },
+        )
+    }
 
     /** A release function when one more session may start now; null when refused. */
     public fun begin(): (() -> Unit)? {
@@ -198,6 +356,11 @@ public class HandshakeLimiter(
             stamps += t
             pending++
         }
+        return waitingSlot()
+    }
+
+    /** The release of one waiting slot (already counted): idempotent. */
+    private fun waitingSlot(): () -> Unit {
         var done = false
         return {
             synchronized(lock) {
@@ -212,6 +375,10 @@ public class HandshakeLimiter(
     override fun toString(): String = "HandshakeLimiter"
 }
 
+private val NO_RELEASE: () -> Unit = {}
+
+private val DEFAULT_PORTS = NoisePorts()
+
 private class Pending(val remote: ByteArray, val peerDeviceId: String?)
 
 /**
@@ -219,10 +386,11 @@ private class Pending(val remote: ByteArray, val peerDeviceId: String?)
  * also needs [admission]). [staticKey] is the device's agreement key (a [NoiseStatic]); [send] takes
  * one Noise message (the host frames it); [onEvent] runs inside whichever call produced the event.
  */
+@Suppress("LargeClass")
 public class PeerChannel(
     private val role: NoiseRole,
     private val slug: String,
-    private val staticKey: NoiseStatic,
+    private val staticKey: NoiseStatic?,
     private val account: AccountContext?,
     private val hello: HelloInfo,
     private val send: (ByteArray) -> Unit,
@@ -249,17 +417,47 @@ public class PeerChannel(
      * host dials several approvers and starts the one the person chose (N9).
      */
     private val holdSas: Boolean = false,
+    /**
+     * Mode l, and a responder that also serves local links (section 15.12): the links the device holds in held order, at
+     * most 32. A mode-l initiator names exactly one. A responder tries them after the account's keys and the contacts,
+     * behind the same [admission] limiter.
+     */
+    private val locals: List<LocalLink> = emptyList(),
+    /** Mode q only: the CPace outputs and this side's part of the pairing. */
+    private val pair: PairingOptions? = null,
+    /**
+     * A responder that holds no account key (a local-links-only listener): the source group of the connection (the accept
+     * gate's own key). With it, the trial is admitted by the group's budget first and only a failed trial spends the
+     * shared one (section 15.10, "Admission"). Without it, or with an account key tried, the shared limiter admits.
+     */
+    private val admissionGroup: String? = null,
 ) {
     private val lock = Mutex()
     private var mode: PeerMode = mode
     private var asm = RecordAssembler(RecordMode.valueOf(mode.name))
     private val xchg: ContactExchange? = exchange?.let { ContactExchange(it.agreeKey, it.held) }
     private var contactIdx = -1
+    private var localIdx = -1
     private var contactDue: Double? = null
     private var hash: ByteArray? = null
 
+    /** Mode q: the pairing's order guard, the clock that runs once both CONFIRMs are done, and this side's link public key. */
+    private val lx: LocalExchange? = pair?.let { LocalExchange(it.held, it.cats) }
+    private var lxTimer = false
+    private var ownPub: ByteArray? = null
+
+    /** The static keys made for local-link trials: wiped when the session ends. */
+    private val linkKeys = ArrayList<RawNoiseStatic>()
+
     // Both mode-v payloads list `vouch/1` (rule 1); the host cannot leave it out.
-    private var caps: List<String> = if (mode == PeerMode.v && VOUCH_CAP !in caps) caps + VOUCH_CAP else caps.toList()
+    private var caps: List<String> = when {
+        mode == PeerMode.v && VOUCH_CAP !in caps -> caps + VOUCH_CAP
+
+        // Mode q needs `local/1` on both sides (section 15.12): the host cannot leave it out of its payload.
+        mode == PeerMode.q && LOCAL_CAP !in caps -> caps + LOCAL_CAP
+
+        else -> caps.toList()
+    }
     private val flow: VouchFlow<VouchMessage>? =
         if (mode == PeerMode.v) VouchFlow(if (role == NoiseRole.initiator) VouchRole.Requester else VouchRole.Approver) else null
     private var hs: NoiseHandshake? = null
@@ -289,18 +487,40 @@ public class PeerChannel(
 
     init {
         require((mode == PeerMode.a) == (account != null)) { "account context" }
+        require(mode == PeerMode.l || staticKey != null) { "static key" }
+        require(
+            contacts.all {
+                it.secret.size == KEY_BYTES
+            } && locals.all { l -> listOf(l.secret, l.ownKey, l.peerKey).all { it.size == KEY_BYTES } },
+        ) {
+            "secrets"
+        }
         if (mode == PeerMode.c) {
             require(contacts.size in 1..MAX_CONTACT_SECRETS && (role != NoiseRole.initiator || contacts.size == 1)) { "contacts" }
-            require(contacts.all { it.secret.size == KEY_BYTES }) { "contacts" }
             require(role == NoiseRole.initiator || admission != null) { "a contact responder needs an admission limiter" }
-        } else if (contacts.isNotEmpty()) {
-            // The shared listener: a mode-a responder that also serves contacts.
-            require(mode == PeerMode.a && role == NoiseRole.responder && contacts.size <= MAX_CONTACT_SECRETS) { "contacts" }
-            require(contacts.all { it.secret.size == KEY_BYTES }) { "contacts" }
+            require(locals.isEmpty() || (role == NoiseRole.responder && locals.size <= MAX_LOCAL_LINKS)) { "locals" }
+        } else if (mode == PeerMode.l) {
+            require(locals.size in 1..MAX_LOCAL_LINKS && (role != NoiseRole.initiator || locals.size == 1)) { "locals" }
+            require(contacts.isEmpty() || (role == NoiseRole.responder && contacts.size <= MAX_CONTACT_SECRETS)) { "contacts" }
+            require(role == NoiseRole.initiator || admission != null) { "a local-link responder needs an admission limiter" }
+        } else if (contacts.isNotEmpty() || locals.isNotEmpty()) {
+            // The shared listener: a mode-a responder that also serves contacts and local links.
+            require(mode == PeerMode.a && role == NoiseRole.responder) { "contacts" }
+            require(contacts.size <= MAX_CONTACT_SECRETS && locals.size <= MAX_LOCAL_LINKS) { "contacts" }
             require(admission != null) { "a contact responder needs an admission limiter" }
         }
+        if (mode == PeerMode.q) {
+            require(
+                pair != null && pair.psk.size == KEY_BYTES && pair.isk.size == ISK_BYTES && pair.held >= 0 && pair.elapsed >= 0.0 &&
+                    (role != NoiseRole.responder || pair.permit != null),
+            ) { "pairing" }
+        } else {
+            require(pair == null) { "pairing is for mode q" }
+        }
         require(exchange == null || mode == PeerMode.p) { "exchange is for mode p" }
-        require(mode != PeerMode.v && mode != PeerMode.p || role != NoiseRole.responder || admission != null) { "an approver needs an admission limiter" }
+        require(mode != PeerMode.v && mode != PeerMode.p || role != NoiseRole.responder || admission != null) {
+            "an approver needs an admission limiter"
+        }
         require(!holdSas || (mode == PeerMode.v && role == NoiseRole.initiator)) { "holdSas is for the mode v initiator" }
     }
 
@@ -349,12 +569,20 @@ public class PeerChannel(
     public suspend fun tick(): Unit = lock.withLock {
         if (phase == "closed") return@withLock
         val expires = certExpires
-        if (deadlinePassed(transportDue) || deadlinePassed(sasDue)) {
+        if (lx != null && deadlinePassed(sasDue) && !deadlinePassed(transportDue)) {
+            // Mode q: 120 s from the first byte until both CONFIRMs are done (section 15.12).
+            sasDue = null
+            try {
+                localStep(LocalExchangeEvent.TimeoutConfirm)
+            } catch (e: Fail) {
+                fail(e.code, false)
+            }
+        } else if (deadlinePassed(transportDue) || deadlinePassed(sasDue)) {
             fail(PeerCloseCode.peer_timeout.name, false)
         } else if (deadlinePassed(contactDue)) {
             contactDue = null
             try {
-                exchangeStep(ExchangeEvent.Timeout)
+                if (lx != null) localStep(LocalExchangeEvent.TimeoutExchange) else exchangeStep(ExchangeEvent.Timeout)
             } catch (e: Fail) {
                 fail(e.code, false)
             }
@@ -366,12 +594,20 @@ public class PeerChannel(
     private fun deadlinePassed(due: Double?): Boolean = due != null && mono() >= due
 
     /** Initiator only: write message 1. */
+    @Suppress("CyclomaticComplexMethod")
     public suspend fun start(): Unit = guarded {
         if (role != NoiseRole.initiator || hs != null || phase != "hs") throw Fail(HANDSHAKE_FAILED)
+        if (pair != null && pair.elapsed >= TRANSPORT_DEADLINE_SECONDS) throw Fail(HANDSHAKE_FAILED)
         val key = account?.let { it.discKeys.firstOrNull() ?: throw Fail(HANDSHAKE_FAILED) }
         startClock()
         if (mode == PeerMode.c) contactIdx = 0
-        val h = newHandshake(mode, key, if (mode == PeerMode.c) contacts[0].secret else null)
+        if (mode == PeerMode.l) localIdx = 0
+        val h = when (mode) {
+            PeerMode.c -> newHandshake(mode, contacts[0].secret)
+            PeerMode.l -> newHandshake(mode, locals[0].secret, linkStatic(locals[0]))
+            PeerMode.q -> newHandshake(mode, pair!!.psk)
+            else -> newHandshake(mode, key?.let { peerPsk(it, slug) })
+        }
         hs = h
         send(h.writeMessage(payload1()))
         hsStep = 1
@@ -393,7 +629,12 @@ public class PeerChannel(
     /** Send one message of the host's, split into records. Only once the session is open. */
     public suspend fun sendRecord(type: Int, body: ByteArray): Unit = lock.withLock {
         check(phase == "open") { "session not open" }
-        require(type !in OWNED && !isXferType(type) && !(type == RecordType.CONFIRM && mode == PeerMode.p) && !(type == RecordType.CONTACT && xchg != null)) {
+        // A pairing carries no host records: the session owns every one it may send (section 15.12).
+        require(mode != PeerMode.q) { "record owned by the session" }
+        require(
+            type !in OWNED && !isXferType(type) && !(type == RecordType.CONFIRM && mode == PeerMode.p) &&
+                !(type == RecordType.CONTACT && xchg != null),
+        ) {
             "record owned by the session"
         }
         require(body.size <= maxSend) { "message too large" }
@@ -449,6 +690,22 @@ public class PeerChannel(
         for ((t, b) in q) onEvent(SessionEvent.Record(t, b))
     }
 
+    /**
+     * Mode q: the person agreed to pair. Sends `CONFIRM`, and `LOCAL_LINK` once the peer's `CONFIRM` has been read. Only
+     * once, only after the session is established; any other call closes the session `peer_not_allowed`.
+     */
+    public suspend fun confirmPairing(): Unit = guarded {
+        if (lx == null || phase != "sas-shown") throw Fail(PeerCloseCode.peer_not_allowed.name)
+        phase = "open"
+        localStep(LocalExchangeEvent.OwnConfirm)
+    }
+
+    /** Mode q: the person declined. Closes `peer_bye` (a decline after the person agreed is ignored). */
+    public suspend fun declinePairing(): Unit = guarded {
+        if (lx == null) throw Fail(PeerCloseCode.peer_not_allowed.name)
+        localStep(LocalExchangeEvent.OwnDecline)
+    }
+
     /** Close with a code; sends CLOSE when the transport exists. */
     public suspend fun close(code: PeerCloseCode = PeerCloseCode.peer_bye): Unit = guarded { fail(code.name, false) }
 
@@ -502,25 +759,41 @@ public class PeerChannel(
 
     private fun wipe() {
         tp?.wipe()
+        // The CPace outputs and the per-link keys are key material: gone once the session is over.
+        pair?.psk?.fill(0)
+        pair?.isk?.fill(0)
+        for (k in linkKeys) k.wipe()
+        linkKeys.clear()
     }
 
     private fun startClock() {
         if (started) return
         started = true
-        transportDue = mono() + TRANSPORT_DEADLINE_SECONDS
-        if (mode == PeerMode.v || mode == PeerMode.p) sasDue = mono() + SAS_DEADLINE_SECONDS
+        // Mode q: C1 and C2 ran before this session, so their time counts against both deadlines.
+        val spent = pair?.elapsed ?: 0.0
+        transportDue = mono() + maxOf(0.0, TRANSPORT_DEADLINE_SECONDS - spent)
+        if (mode == PeerMode.v || mode == PeerMode.p) {
+            sasDue = mono() + SAS_DEADLINE_SECONDS
+        } else if (mode == PeerMode.q) {
+            // 120 s from the first byte until both CONFIRMs are done (section 15.12).
+            sasDue = mono() + maxOf(0.0, SAS_DEADLINE_SECONDS - spent)
+        }
     }
 
-    private suspend fun newHandshake(mode: PeerMode, discKey: ByteArray?, contactPsk: ByteArray? = null): NoiseHandshake = NoiseHandshake(
+    /** A handshake of [mode] under [psk] (the discovery key's, a contact's, a link's or the pairing's; null in modes v and p). */
+    private fun newHandshake(mode: PeerMode, psk: ByteArray?, key: NoiseStatic? = staticKey): NoiseHandshake = NoiseHandshake(
         NoiseHandshakeOptions(
             role = role,
             protocol = peerNoiseProtocol(mode),
             prologue = peerPrologue(slug, mode),
-            psk = if (mode == PeerMode.a && discKey != null) peerPsk(discKey, slug) else contactPsk,
-            staticKey = staticKey,
+            psk = psk,
+            staticKey = key ?: throw Fail(HANDSHAKE_FAILED),
             ports = ports,
         ),
     )
+
+    /** The static key of one local link: a copy of its private key, wiped when the session ends. */
+    private fun linkStatic(l: LocalLink): NoiseStatic = RawNoiseStatic(l.ownKey, ports.curves).also { linkKeys += it }
 
     private fun ownPayload(): ByteArray {
         val a = account
@@ -556,6 +829,16 @@ public class PeerChannel(
             // The pin (section 15.10): the peer must be the key the contact was made with. Nothing is sent.
             if (!contactPin(contacts[contactIdx].agreeKey, remote)) throw Fail(PeerCloseCode.peer_revoked.name)
         }
+        if (mode == PeerMode.l) {
+            // The pin (section 15.12): the peer must be the key the link was made with. Nothing is sent.
+            if (!localPin(locals[localIdx].peerKey, remote)) throw Fail(PeerCloseCode.peer_revoked.name)
+        }
+        if (mode == PeerMode.q) {
+            // A reflected handshake (the peer's static key is our own) ends silently, before the transport (section 15.12, "Link keys").
+            val own = (staticKey ?: throw Fail(HANDSHAKE_FAILED)).publicKey()
+            ownPub = own
+            if (!pairingRemoteOk(own, remote)) throw Fail(HANDSHAKE_FAILED)
+        }
         if (mode == PeerMode.a) {
             val cert = verdict.cert
             val ring = verdict.ring
@@ -565,6 +848,7 @@ public class PeerChannel(
         peerCaps = verdict.caps
         if (role == NoiseRole.initiator) send(h.writeMessage(ownPayload()))
         tp = h.transport()
+        pair?.psk?.fill(0)
         transportDue = null
         keyedAt = mono()
         phase = "hello"
@@ -608,19 +892,39 @@ public class PeerChannel(
     }
 
     /**
-     * Message 1, tried in a fixed order (section 15.5, section 15.10): the account's current then previous
-     * discovery key (mode a), then each contact's secret in the order given (mode c; no DH happens before the
-     * tag). The first tag that verifies decides the mode and the contact; a failed tag on every one closes
-     * silently. The contact trial is admitted by the limiter first, so a refused attempt tries no secret.
+     * Message 1, tried in a fixed order (section 15.5, 15.10, 15.12): the account's current then previous discovery key
+     * (mode a), then each contact's secret and each local link's secret in the order of [listenerTrialOrder] (no DH
+     * happens before the tag). The first tag that verifies decides the mode and the secret; a failed tag on every one
+     * closes silently. The contact and local-link trials are admitted by the limiter first, so a refused attempt tries no
+     * secret.
      */
+    @Suppress("SwallowedException")
     private suspend fun onFirstMessage(noise: ByteArray) {
         var payload: ByteArray? = null
+        var accountTried = 0
+
         val acct = account
-        if (mode != PeerMode.c) {
+        if (mode == PeerMode.q) {
+            // The pairing window's attempt: one secret, the code's PSK. A tag that fails is one failed guess (section
+            // 15.12): the host's window rotates the code. The permit counts the guess before the tag is tried; without it,
+            // or past the attempt's 30 s, the tag is never tried ("Failure accounting").
+            val p = pair!!
+            if (p.elapsed >= TRANSPORT_DEADLINE_SECONDS || !p.permit!!()) throw Fail(HANDSHAKE_FAILED)
+            val h = newHandshake(PeerMode.q, p.psk)
+            try {
+                payload = h.readMessage(noise)
+                hs = h
+            } catch (e: NoiseException) {
+                onEvent(SessionEvent.Guess(false))
+                throw Fail(HANDSHAKE_FAILED)
+            }
+            onEvent(SessionEvent.Guess(true))
+        } else if (mode != PeerMode.c && mode != PeerMode.l) {
             for (k in if (acct != null) acct.discKeys.take(2) else listOf<ByteArray?>(null)) {
                 if (acct != null && k == null) continue
+                accountTried++
                 try {
-                    val h = newHandshake(mode, k)
+                    val h = newHandshake(mode, k?.let { peerPsk(it, slug) })
                     payload = h.readMessage(noise)
                     hs = h
                     break
@@ -629,29 +933,91 @@ public class PeerChannel(
                 }
             }
         }
-        if (hs == null && contacts.isNotEmpty()) {
-            release = admission!!.begin() ?: throw Fail(PeerCloseCode.peer_busy.name)
-            for ((i, c) in contacts.withIndex()) {
-                try {
-                    val h = newHandshake(PeerMode.c, null, c.secret)
-                    payload = h.readMessage(noise)
-                    hs = h
-                    contactIdx = i
-                    break
-                } catch (e: NoiseException) {
-                    continue
-                }
-            }
-            if (hs != null) {
-                mode = PeerMode.c
-                asm = RecordAssembler(RecordMode.c)
-            }
-        }
+        if (hs == null && (contacts.isNotEmpty() || locals.isNotEmpty())) payload = trySecrets(noise, accountTried)
         val h = hs
         if (h == null || payload == null) throw Fail(HANDSHAKE_FAILED)
         if (parseHandshakePayload(mode, 1, payload) !is PayloadVerdict.Accepted) throw Fail(HANDSHAKE_FAILED)
         send(h.writeMessage(ownPayload()))
         hsStep = 2
+    }
+
+    /**
+     * The contact and local-link trials of a shared listener, behind the limiter. No account key held and a group known:
+     * the group's budget, then the shared limiter that only a failed trial spends (section 15.10, "Admission");
+     * otherwise the shared limiter counts the attempt as it begins. A miss costs the same whatever the host holds: dummy
+     * trials make up the difference. Returns message 1's payload when a secret opened it.
+     */
+    private suspend fun trySecrets(noise: ByteArray, accountTried: Int): ByteArray? {
+        var attempt: LocalAdmission.Admitted? = null
+        val group = admissionGroup
+        if (accountTried == 0 && group != null) {
+            attempt = admission!!.beginLocal(group) as? LocalAdmission.Admitted ?: throw Fail(PeerCloseCode.peer_busy.name)
+        } else {
+            release = admission!!.begin() ?: throw Fail(PeerCloseCode.peer_busy.name)
+        }
+        var tried = 0
+        var payload: ByteArray? = null
+        for (t in listenerTrialOrder(null, contacts.size, locals.size)) {
+            payload = openTrial(t, noise)
+            if (hs != null) {
+                if (attempt != null) release = attempt.hit()
+                break
+            }
+            tried++
+        }
+        if (hs == null) {
+            attempt?.miss()
+            for (n in trialPadding(tried + accountTried) downTo 1) dummyTrial(noise)
+        }
+        return payload
+    }
+
+    /** One trial of message 1 under a held secret. On success the session is bound to that secret's mode and `hs` is set. */
+    @Suppress("SwallowedException")
+    private suspend fun openTrial(t: TrialEntry, noise: ByteArray): ByteArray? {
+        var key: RawNoiseStatic? = null
+        try {
+            val h = if (t.kind == 'c') {
+                newHandshake(PeerMode.c, contacts[t.index].secret)
+            } else {
+                val l = locals[t.index]
+                newHandshake(PeerMode.l, l.secret, RawNoiseStatic(l.ownKey, ports.curves).also { key = it })
+            }
+            val payload = h.readMessage(noise)
+            hs = h
+            if (t.kind == 'c') {
+                contactIdx = t.index
+            } else {
+                localIdx = t.index
+                key?.let { linkKeys += it }
+            }
+            mode = if (t.kind == 'c') PeerMode.c else PeerMode.l
+            asm = RecordAssembler(RecordMode.valueOf(mode.name))
+            return payload
+        } catch (e: NoiseException) {
+            key?.wipe()
+            return null
+        }
+    }
+
+    /** One trial under a random secret, on the default ports (so a host's own ports count only the real trials): it opens nothing. */
+    private suspend fun dummyTrial(noise: ByteArray) {
+        val key = RawNoiseStatic(DEFAULT_PORTS.random(KEY_BYTES))
+        try {
+            NoiseHandshake(
+                NoiseHandshakeOptions(
+                    role = NoiseRole.responder,
+                    protocol = peerNoiseProtocol(PeerMode.l),
+                    prologue = peerPrologue(slug, PeerMode.l),
+                    psk = DEFAULT_PORTS.random(KEY_BYTES),
+                    staticKey = key,
+                ),
+            ).readMessage(noise)
+        } catch (e: NoiseException) {
+            // a dummy secret opens nothing
+        } finally {
+            key.wipe()
+        }
     }
 
     private suspend fun sendHello() {
@@ -715,24 +1081,40 @@ public class PeerChannel(
                 val v = flow.negotiate(caps, peerCaps)
                 if (v is VouchVerdict.Closed) throw Fail(v.close.name)
             }
+            if (mode == PeerMode.q) {
+                // `local/1` is mandatory (section 15.12): without it, close before any consent prompt.
+                negotiateLocalCaps(mode, caps, peerCaps).close?.let { throw Fail(it.name) }
+            }
             caps = capsIntersection(caps, peerCaps)
             asm.xferAllowed = XFER_CAP in caps
             pending = null
             hash = hs!!.handshakeHash
             val acctMode = mode == PeerMode.a
-            val direct = acctMode || mode == PeerMode.c
-            phase = if (direct) "open" else "sas"
+            val direct = acctMode || mode == PeerMode.c || mode == PeerMode.l
+            // Mode q has no code to compare: its person's consent follows ([confirmPairing]).
+            phase = if (direct) {
+                "open"
+            } else if (mode == PeerMode.q) {
+                "sas-shown"
+            } else {
+                "sas"
+            }
             // A contact responder's slot among the connections waiting for message 3 ends here.
             if (direct) settle()
             onEvent(
                 SessionEvent.Established(
-                    caps.toList(), h, acctMode, p.remote, p.peerDeviceId,
+                    caps.toList(),
+                    h,
+                    acctMode,
+                    p.remote,
+                    p.peerDeviceId,
                     contactIndex = if (mode == PeerMode.c) contactIdx else null,
+                    localIndex = if (mode == PeerMode.l) localIdx else null,
                 ),
             )
             if (acctMode) {
                 pushRing()
-            } else if (direct) {
+            } else if (direct || mode == PeerMode.q) {
                 return
             } else if (role == NoiseRole.initiator && !holdSas) {
                 // The device commits first, unless the host holds the code back until it picks this approver.
@@ -751,7 +1133,11 @@ public class PeerChannel(
 
             RecordType.CLOSE -> onPeerClose(body)
 
-            RecordType.CONFIRM, RecordType.CONTACT -> if (xchg != null) {
+            RecordType.CONFIRM, RecordType.CONTACT, RecordType.LOCAL_LINK -> if (lx != null) {
+                // Mode q: the session owns both records. Only after the transport is up.
+                if (phase != "sas-shown" && phase != "open") throw Fail(PeerCloseCode.peer_not_allowed.name)
+                localStep(if (type == RecordType.CONFIRM) LocalExchangeEvent.PeerConfirm else LocalExchangeEvent.PeerLink(body))
+            } else if (xchg != null) {
                 // With the exchange on, the session owns both; only after the code is shown.
                 if (phase != "sas-shown" && phase != "open") throw Fail(PeerCloseCode.peer_not_allowed.name)
                 exchangeStep(if (type == RecordType.CONFIRM) ExchangeEvent.PeerConfirm else ExchangeEvent.PeerContact(body))
@@ -791,6 +1177,31 @@ public class PeerChannel(
         } else {
             onEvent(SessionEvent.Record(type, body))
         }
+    }
+
+    /** Run one event through the pairing exchange (mode q) and act on what it says. */
+    private suspend fun localStep(e: LocalExchangeEvent) {
+        val x = lx!!
+        val p = pair!!
+        val r = x.step(e)
+        if ("CONFIRM" in r.sends) emit(RecordType.CONFIRM, "{}".toByteArray(Charsets.UTF_8))
+        if ("LOCAL_LINK" in r.sends) emit(RecordType.LOCAL_LINK, buildLocalLink(p.label, p.cats))
+        // Both CONFIRMs done: the 120 s deadline ends and the exchange's 30 s begins.
+        if (x.bothConfirmed && !lxTimer) {
+            lxTimer = true
+            settle()
+            contactDue = mono() + CONTACT_EXCHANGE_SECONDS
+        }
+        val stored = r.stored
+        if (stored != null) {
+            val own = ownPub
+            val h = hash
+            val peer = hs?.remoteStatic
+            if (own == null || h == null || peer == null) throw Fail(HANDSHAKE_FAILED)
+            val secret = localLinkSecret(h, p.isk, own, peer)
+            onEvent(SessionEvent.LocalLinked(secret, own.copyOf(), peer, stored.label, stored.cats))
+        }
+        r.close?.let { throw Fail(it.name) }
     }
 
     /** Run one event through the contact exchange and act on what it says. */

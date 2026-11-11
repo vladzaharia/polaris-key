@@ -1,5 +1,5 @@
 // @pkey-feature connect.local
-// CC-29.11: local links through the Swift SDK (WIRE-CONTRACT-V5 §15.12): two clients with no account pair by a typed
+// CC-29.11 and CC-29.15: local links through the Swift SDK (WIRE-CONTRACT-V5 §15.12): two clients with no account pair by a typed
 // code and by a QR over a fake directory and real loopback TCP, the failure accounting and the dial budget, mode `l`
 // sessions on the shared listener with no account, the gate, forget, reachable and the cap, Direct Transfer from a
 // local link, and the store. Mirrors the Node package's `test/connect/localLinks*.test.ts`. The corpus rows run in
@@ -61,6 +61,9 @@ import XCTest
         }
 
         func txts() -> [[String]] { lock.withLock { adverts.values.map(\.found.txt) } }
+        func endpoints(mode: String) -> [BonjourEndpoint] {
+            lock.withLock { adverts.values.filter { $0.found.txt.contains("m=\(mode)") }.map(\.found.endpoint) }
+        }
         func count(mode: String) -> Int { txts().filter { $0.contains("m=\(mode)") }.count }
 
         func browse(up: @escaping @Sendable (BonjourFound) -> Void, down: @escaping @Sendable (String) -> Void)
@@ -83,18 +86,24 @@ import XCTest
 
     private final class FakeNet: ConnectLanNetwork, @unchecked Sendable {
         let dir: Directory
-        let listener = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
+        /// Replaced by `stop()`: a window that closed and one that opens after it may share one network.
+        private var listenerBox = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
+        var listener: BonjourListener { lock.withLock { listenerBox } }
         let dialOptions = BonjourDialOptions(policy: BonjourDialPolicy(allowLoopback: true), timeout: 5)
         private let lock = NSLock()
         private var port: UInt16 = 0
         private var afterDialHook: (@Sendable () -> Void)?
+        private var beforeListenHook: (@Sendable () async -> Void)?
         init(_ dir: Directory) { self.dir = dir }
+        /// Runs (and is awaited) when a window starts listening, before the advert goes up.
+        func beforeListen(_ hook: @escaping @Sendable () async -> Void) { lock.withLock { beforeListenHook = hook } }
         /// Runs once a dial has returned its socket, before the caller sees it.
         func afterDial(_ hook: @escaping @Sendable () -> Void) { lock.withLock { afterDialHook = hook } }
 
         func listen(
             onPipe: @escaping @Sendable (NWPipe) -> Void, onEvent: @escaping @Sendable (BonjourListenerEvent) -> Void
         ) async throws -> UInt16 {
+            await lock.withLock { beforeListenHook }?()
             let p = try await listener.start(advert: nil, onPipe: onPipe, onEvent: onEvent)
             lock.withLock { port = p }
             return p
@@ -119,7 +128,10 @@ import XCTest
         }
         func rescan() { dir.replay() }
         func stop() async {
-            listener.stop()
+            lock.withLock {
+                listenerBox.stop()
+                listenerBox = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
+            }
             dir.set(owner: ObjectIdentifier(self), slot: 0, adverts: [], port: 0)
             dir.set(owner: ObjectIdentifier(self), slot: 1, adverts: [], port: 0)
         }
@@ -140,7 +152,7 @@ import XCTest
         var cloud: CloudConnect { client.cloudConnect }
         var local: LocalLinks { client.cloudConnect.localLinks }
 
-        static func make(gate: Bool = true) async throws -> Device {
+        static func make(gate: Bool = true, discover: Bool = true) async throws -> Device {
             let server = StubServer()
             let store = InMemoryStore(deviceId: String(repeating: "A", count: 32))
             let client = try await PolarisKeyClient.create(
@@ -154,7 +166,7 @@ import XCTest
                         store: ConnectStateStore.inMemory())))
             let d = Device(client: client, server: server)
             await d.serve(gate)
-            await client.discover()
+            if discover { await client.discover() }
             return d
         }
 
@@ -211,6 +223,15 @@ import XCTest
             let offersA = Offers()
             let offersB = Offers()
             let linkedA = Latest<LocalPaired>()
+            // A stored pairing is a change `onChange` tells on both sides.
+            let heardA = LockedValue(0)
+            let heardB = LockedValue(0)
+            let unsubA = a.local.onChange { heardA.with { $0 += 1 } }
+            let unsubB = b.local.onChange { heardB.with { $0 += 1 } }
+            defer {
+                unsubA()
+                unsubB()
+            }
             let handle = try await a.local.pair(
                 LocalPairOptions(
                     categories: cats, label: labelA, onCode: { code.set($0) }, onConfirm: { offersA.add($0) },
@@ -256,6 +277,12 @@ import XCTest
             XCTAssertEqual(listA.first?.label, labelB)
             XCTAssertEqual(listB.first?.label, labelA)
             XCTAssertEqual(listA.first?.reachable, true)
+            XCTAssertGreaterThan(heardA.current, 0)
+            XCTAssertGreaterThan(heardB.current, 0)
+            // The other device's platform, as its HELLO said it: a canonical spelling, here the same OS.
+            XCTAssertEqual(listA.first?.platform, pairingPlatformName)
+            XCTAssertEqual(listB.first?.platform, pairingPlatformName)
+            XCTAssertTrue(PLATFORM_VALUES.contains(pairingPlatformName))
             await until("the window closes after a link") { !handle.isOpen }
             XCTAssertEqual(dir.count(mode: "q"), 0)
             return (listA[0].id, listB[0].id)
@@ -294,6 +321,7 @@ import XCTest
                 XCTFail("joined")
             } catch let e as LocalPairingError {
                 XCTAssertEqual(e.code, ErrorCode.pairingCodeFailed)
+                XCTAssertEqual(e.reason, .otherApp)
                 XCTAssertTrue(e.message.contains("another app"))
             }
             do {
@@ -304,6 +332,7 @@ import XCTest
                 XCTFail("joined")
             } catch let e as LocalPairingError {
                 XCTAssertEqual(e.code, ErrorCode.pairingCodeFailed)
+                XCTAssertEqual(e.reason, .invalid)
             }
         }
 
@@ -317,6 +346,7 @@ import XCTest
                 XCTFail("joined")
             } catch let e as LocalPairingError {
                 XCTAssertEqual(e.code, ErrorCode.pairingNotFound)
+                XCTAssertNil(e.reason)
             }
         }
 
@@ -342,6 +372,7 @@ import XCTest
                 XCTFail("joined with a wrong code")
             } catch let e as LocalPairingError {
                 XCTAssertEqual(e.code, ErrorCode.pairingCodeFailed)
+                XCTAssertEqual(e.reason, .wrong)
             }
             XCTAssertNil(offersA.first, "a wrong code reaches no consent prompt")
             await until("the code rotates") { code.history.count == 2 }
@@ -412,6 +443,7 @@ import XCTest
                 XCTFail("a third join dialled")
             } catch let e as LocalPairingError {
                 XCTAssertEqual(e.code, ErrorCode.pairingCodeFailed)
+                XCTAssertEqual(e.reason, .spent)
                 XCTAssertTrue(e.message.contains("Wait"))
             }
         }
@@ -440,6 +472,7 @@ import XCTest
                 XCTFail("paired after a decline")
             } catch let e as LocalPairingError {
                 XCTAssertEqual(e.code, ErrorCode.peerClosed)
+                XCTAssertEqual(e.reason, .declined)
             }
             let listed = try await a.local.list()
             let listedB = try await b.local.list()
@@ -665,6 +698,7 @@ import XCTest
                 XCTFail("a ninth reachable link")
             } catch let e as LocalPairingError {
                 XCTAssertEqual(e.code, ErrorCode.localLinksFull)
+                XCTAssertEqual(e.cap, .reachable)
             }
             let off = try await a.local.setReachable(listed[0].id, false)
             XCTAssertTrue(off)
@@ -695,6 +729,17 @@ import XCTest
                 XCTFail("paired at the cap")
             } catch let e as LocalPairingError {
                 XCTAssertEqual(e.code, ErrorCode.localLinksFull)
+                XCTAssertEqual(e.cap, .stored)
+            }
+            do {
+                _ = try await a.local.join(
+                    LocalJoinOptions(
+                        categories: [], code: "4812 3456", onConfirm: { _ in }, network: FakeNet(dir),
+                        allowLoopback: true))
+                XCTFail("joined at the cap")
+            } catch let e as LocalPairingError {
+                XCTAssertEqual(e.code, ErrorCode.localLinksFull)
+                XCTAssertEqual(e.cap, .stored)
             }
             XCTAssertEqual(dir.count(mode: "q"), 0)
         }
@@ -1016,6 +1061,628 @@ import XCTest
             XCTAssertEqual(try vault.read(), Data("garbage".utf8))
             let live = await client.connect.liveLocals()
             XCTAssertTrue(live.isEmpty)
+        }
+    }
+
+    // ── The kit API (CC-29.15): reasons, renew, the floor, interruptions, cancel, dialsLeft, onChange ───
+
+    /// A monotonic clock the test drives.
+    private final class Mono: @unchecked Sendable {
+        private let v = LockedValue(1000.0)
+        var now: Double { v.current }
+        func advance(_ s: Double) { v.with { $0 += s } }
+    }
+
+    final class ConnectLocalKitTests: XCTestCase {
+        override func setUp() async throws { LocalDialBudgets.reset() }
+
+        private func pairOptions(
+            _ dir: Directory, code: Latest<LocalCode>, ends: Latest<LocalPairEnd>? = nil,
+            seconds: TimeInterval = 300, mono: Mono? = nil, net: FakeNet? = nil,
+            onInterrupted: (@Sendable (Int) -> Void)? = nil, offers: Offers? = nil
+        ) -> LocalPairOptions {
+            var clock: (@Sendable () -> TimeInterval)?
+            if let mono { clock = { mono.now } }
+            return LocalPairOptions(
+                categories: cats, onCode: { code.set($0) }, onConfirm: { offers?.add($0) },
+                onInterrupted: onInterrupted, onEnd: { ends?.set($0) }, seconds: seconds, network: net ?? FakeNet(dir),
+                allowLoopback: true, mono: clock)
+        }
+
+        /// A join with its own clock (a dial budget that never runs out in a test) and a wrong password.
+        private func wrongGuess(_ b: Device, _ dir: Directory, nameplate: String, clock: Mono) async -> Error? {
+            clock.advance(301)
+            do {
+                _ = try await b.local.join(
+                    LocalJoinOptions(
+                        categories: cats, code: nameplate + "000000", onConfirm: { _ in }, network: FakeNet(dir),
+                        allowLoopback: true, mono: { clock.now }))
+                return nil
+            } catch { return error }
+        }
+
+        func testACodeSaysWhyItIsShownAndWhenTheWindowEnds() async throws {
+            let dir = Directory()
+            let (a, b) = (try await Device.make(), try await Device.make())
+            let code = Latest<LocalCode>()
+            let before = Int(Date().timeIntervalSince1970)
+            _ = try await a.local.pair(pairOptions(dir, code: code, seconds: 120))
+            let first = try XCTUnwrap(code.current)
+            XCTAssertEqual(first.reason, .opened)
+            XCTAssertEqual(first.failures, 0)
+            XCTAssertTrue((before + 119)...(before + 125) ~= first.expiresAt, "the window's own end, unix seconds")
+            let clock = Mono()
+            let err = await wrongGuess(b, dir, nameplate: first.nameplate, clock: clock)
+            XCTAssertEqual((err as? LocalPairingError)?.reason, .wrong)
+            await until("the code rotates") { code.history.count == 2 }
+            let second = try XCTUnwrap(code.current)
+            XCTAssertEqual(second.reason, .wrongCode)
+            XCTAssertEqual(second.failures, 1)
+            XCTAssertEqual(second.expiresAt, first.expiresAt, "the same on every code of a window")
+        }
+
+        func testADeclineMakesTheNextCodeSayDeclined() async throws {
+            let dir = Directory()
+            let (a, b) = (try await Device.make(), try await Device.make())
+            let code = Latest<LocalCode>()
+            let offersA = Offers()
+            let offersB = Offers()
+            _ = try await a.local.pair(pairOptions(dir, code: code, offers: offersA))
+            let joined = Task {
+                try await b.local.join(
+                    LocalJoinOptions(
+                        categories: cats, code: try XCTUnwrap(code.current).code, onConfirm: { offersB.add($0) },
+                        network: FakeNet(dir), allowLoopback: true))
+            }
+            await until("consent") { offersA.first != nil && offersB.first != nil }
+            await offersA.first!.decline()
+            _ = try? await joined.value
+            await until("the code rotates") { code.history.count == 2 }
+            XCTAssertEqual(code.current?.reason, .declined)
+            XCTAssertEqual(code.current?.failures, 0)
+        }
+
+        func testRenewOpensANewWindowWithANewNameplateAndNoEndForTheOldOne() async throws {
+            let dir = Directory()
+            let a = try await Device.make()
+            let code = Latest<LocalCode>()
+            let ends = Latest<LocalPairEnd>()
+            let net = FakeNet(dir)
+            let handle = try await a.local.pair(pairOptions(dir, code: code, ends: ends, net: net))
+            let first = try XCTUnwrap(code.current)
+            let next = try await handle.renew()
+            XCTAssertEqual(next.reason, .opened)
+            XCTAssertEqual(next.failures, 0)
+            XCTAssertNotEqual(next.nameplate, first.nameplate, "the nameplate of the window just closed is never drawn")
+            XCTAssertNotEqual(next.code, first.code)
+            XCTAssertEqual(code.history.count, 2)
+            XCTAssertEqual(handle.code(), next)
+            XCTAssertTrue(handle.isOpen)
+            XCTAssertEqual(dir.count(mode: "q"), 1)
+            XCTAssertNil(ends.current, "a window a renewal replaced tells no one")
+            let advert = try XCTUnwrap(dir.txts().first { $0.contains("m=q") })
+            XCTAssertTrue(advert.contains("n=\(next.nameplate)"))
+            await handle.stop()
+            await until("the end is told") { ends.current != nil }
+            XCTAssertEqual(ends.current?.reason, .person)
+            XCTAssertEqual(dir.count(mode: "q"), 0)
+            // A closed handle can renew too.
+            let again = try await handle.renew()
+            XCTAssertEqual(again.reason, .opened)
+            XCTAssertTrue(handle.isOpen)
+            await handle.stop()
+        }
+
+        func testRenewIsRefusedWhileAnotherWindowIsOpenAndAtTheCap() async throws {
+            let dir = Directory()
+            let a = try await Device.make()
+            let code = Latest<LocalCode>()
+            let handle = try await a.local.pair(pairOptions(dir, code: code))
+            // A second window of the product is refused (one window per device and product).
+            do {
+                _ = try await a.local.pair(pairOptions(dir, code: Latest<LocalCode>()))
+                XCTFail("a second window")
+            } catch let e as ConnectLanError {
+                XCTAssertEqual(e.reason, .badType)
+            }
+            let store = try await a.client.connect.localLinkStore()
+            for i in 0..<32 {
+                _ = try await store.add(
+                    ownKey: rnd(), ownPublic: rnd(), peerKey: Data(repeating: UInt8(i + 1), count: 32), secret: rnd(),
+                    label: nil, cats: [], now: 1)
+            }
+            do {
+                _ = try await handle.renew()
+                XCTFail("renewed at the cap")
+            } catch let e as LocalPairingError {
+                XCTAssertEqual(e.code, ErrorCode.localLinksFull)
+                XCTAssertEqual(e.cap, .stored)
+            }
+            XCTAssertTrue(handle.isOpen, "the old window is left alone at the cap")
+            await handle.stop()
+        }
+
+        func testStopDuringAnInFlightRenewLeavesNoWindow() async throws {
+            let dir = Directory()
+            let a = try await Device.make()
+            let code = Latest<LocalCode>()
+            let ends = Latest<LocalPairEnd>()
+            let net = FakeNet(dir)
+            let handle = try await a.local.pair(pairOptions(dir, code: code, ends: ends, net: net))
+            let opening = LockedValue(false)
+            let release = LockedValue(false)
+            net.beforeListen {
+                opening.set(true)
+                while !release.current { try? await Task.sleep(nanoseconds: 5_000_000) }
+            }
+            let renewing = Task { try await handle.renew() }
+            await until("the new window is opening") { opening.current }
+            let stopping = Task { await handle.stop() }
+            await until("stop was asked") { handle.renewStopRequested }
+            release.set(true)
+            await stopping.value
+            do {
+                _ = try await renewing.value
+                XCTFail("the renewal gave a code")
+            } catch let e as ConnectLanError {
+                XCTAssertEqual(e.reason, .closed)
+            }
+            XCTAssertFalse(handle.isOpen)
+            XCTAssertNil(handle.code())
+            XCTAssertEqual(dir.count(mode: "q"), 0, "no advert is left")
+            XCTAssertEqual(code.history.count, 1, "the new window never showed a code")
+            XCTAssertEqual(ends.current?.reason, .person)
+        }
+
+        func testTheRevealIsDecidedInsideTheWindowSoAStopJustBeforeItShowsNoCode() async throws {
+            let dir = Directory()
+            let a = try await Device.make()
+            let store = try await a.client.connect.localLinkStore()
+            let src = LocalSource(slug: "djdl", now: { 1_700_000_000 }, allowed: { true }, store: store, notify: {})
+            func open(_ code: Latest<LocalCode>) async throws -> LocalShower {
+                try await LocalShower.start(
+                    src, pairOptions(dir, code: code), nameplates: LocalNameplates(), floors: LocalRenewFloors(),
+                    onEnd: {})
+            }
+            // The caller's condition is asked after the stopped check, inside the window: when it holds, nothing shows.
+            let held = Latest<LocalCode>()
+            let one = try await open(held)
+            await one.reveal(unless: { true })
+            XCTAssertTrue(held.history.isEmpty)
+            XCTAssertNil(one.shownCode.current)
+            await one.stop()
+            // A stop that landed first leaves a window that never shows.
+            let stoppedFirst = Latest<LocalCode>()
+            let two = try await open(stoppedFirst)
+            await two.stop()
+            await two.reveal(unless: { false })
+            XCTAssertTrue(stoppedFirst.history.isEmpty)
+            // And a window left alone shows its first code once.
+            let shown = Latest<LocalCode>()
+            let three = try await open(shown)
+            await three.reveal(unless: { false })
+            XCTAssertEqual(shown.history.count, 1)
+            await three.stop()
+        }
+
+        func testAGateClearedWhileTheFirstWindowOpensShowsNoCode() async throws {
+            let dir = Directory()
+            let a = try await Device.make()
+            let code = Latest<LocalCode>()
+            let ends = Latest<LocalPairEnd>()
+            let net = FakeNet(dir)
+            net.beforeListen { await a.setGate(false) }
+            do {
+                _ = try await a.local.pair(pairOptions(dir, code: code, ends: ends, net: net))
+                XCTFail("paired with the gate off")
+            } catch is LocalPairingOff {}
+            XCTAssertTrue(code.history.isEmpty, "no code is shown for a window that closed off")
+            XCTAssertEqual(ends.current?.reason, .off)
+            XCTAssertEqual(dir.count(mode: "q"), 0)
+        }
+
+        func testOnEndSaysHowTheWindowEnded() async throws {
+            let dir = Directory()
+            let a = try await Device.make()
+            // The gate going off.
+            let endsOff = Latest<LocalPairEnd>()
+            let seenInAdverts = LockedValue<Int?>(nil)
+            let handle = try await a.local.pair(
+                LocalPairOptions(
+                    categories: cats, onCode: { _ in }, onConfirm: { _ in },
+                    onEnd: { e in
+                        endsOff.set(e)
+                        seenInAdverts.set(dir.count(mode: "q"))
+                    }, network: FakeNet(dir), allowLoopback: true))
+            await a.setGate(false)
+            await until("the window ends off") { endsOff.current != nil }
+            XCTAssertEqual(endsOff.current?.reason, .off)
+            XCTAssertEqual(seenInAdverts.current, 0, "the advert is withdrawn before the host hears")
+            XCTAssertFalse(handle.isOpen)
+            await a.setGate(true)
+            // The window's own time.
+            let ends = Latest<LocalPairEnd>()
+            let h2 = try await a.local.pair(pairOptions(dir, code: Latest<LocalCode>(), ends: ends, seconds: 0.2))
+            await until("the window expires") { ends.current != nil }
+            XCTAssertEqual(ends.current?.reason, .expired)
+            XCTAssertFalse(h2.isOpen)
+        }
+
+        func testAStoredLinkEndsTheWindowStored() async throws {
+            let dir = Directory()
+            let (a, b) = (try await Device.make(), try await Device.make())
+            let code = Latest<LocalCode>()
+            let ends = Latest<LocalPairEnd>()
+            let offersA = Offers()
+            let offersB = Offers()
+            _ = try await a.local.pair(pairOptions(dir, code: code, ends: ends, offers: offersA))
+            let joined = Task {
+                try await b.local.join(
+                    LocalJoinOptions(
+                        categories: cats, code: try XCTUnwrap(code.current).code, onConfirm: { offersB.add($0) },
+                        network: FakeNet(dir), allowLoopback: true))
+            }
+            await until("consent") { offersA.first != nil && offersB.first != nil }
+            await offersA.first!.confirm()
+            await offersB.first!.confirm()
+            _ = try await joined.value
+            await until("the window ends") { ends.current != nil }
+            XCTAssertEqual(ends.current?.reason, .stored)
+        }
+
+        func testARenewalFromOnFailedMeetsTheFloorAtOnce() async throws {
+            let dir = Directory()
+            let b = try await Device.make()
+            let a = try await Device.make()
+            let code = Latest<LocalCode>()
+            let ends = Latest<LocalPairEnd>()
+            let renewed = Latest<String>()
+            let box = LockedValue<LocalPairHandle?>(nil)
+            let shower = Mono()
+            // The host renews the moment it hears the fifth failed guess closed the window.
+            let handle = try await a.local.pair(
+                LocalPairOptions(
+                    categories: cats, onCode: { code.set($0) }, onConfirm: { _ in },
+                    onFailed: { f in
+                        guard f.reason == .tooManyTries, let h = box.current else { return }
+                        Task {
+                            do {
+                                _ = try await h.renew()
+                                renewed.set("renewed")
+                            } catch let e as LocalPairingError {
+                                renewed.set(e.reason.map { "\($0)" } ?? "other")
+                            } catch { renewed.set("other") }
+                        }
+                    },
+                    onEnd: { ends.set($0) }, network: FakeNet(dir), allowLoopback: true, mono: { shower.now }))
+            box.set(handle)
+            let nameplate = try XCTUnwrap(code.current).nameplate
+            let joiner = Mono()
+            for i in 0..<5 {
+                await until("code \(i) is shown") { code.history.count == i + 1 || !handle.isOpen }
+                if !handle.isOpen { break }
+                _ = await wrongGuess(b, dir, nameplate: nameplate, clock: joiner)
+            }
+            await until("the renewal is answered") { renewed.current != nil }
+            XCTAssertEqual(renewed.current, "cooldown")
+            XCTAssertFalse(handle.isOpen)
+            XCTAssertEqual(dir.count(mode: "q"), 0)
+        }
+
+        func testFiveWrongGuessesEndTheWindowAndStartTheCooldown() async throws {
+            let dir = Directory()
+            let b = try await Device.make()
+            let a = try await Device.make()
+            let code = Latest<LocalCode>()
+            let ends = Latest<LocalPairEnd>()
+            let failed = Latest<LocalPairFailure>()
+            let shower = Mono()
+            let handle = try await a.local.pair(
+                LocalPairOptions(
+                    categories: cats, onCode: { code.set($0) }, onConfirm: { _ in }, onFailed: { failed.set($0) },
+                    onEnd: { ends.set($0) }, network: FakeNet(dir), allowLoopback: true, mono: { shower.now }))
+            let nameplate = try XCTUnwrap(code.current).nameplate
+            let joiner = Mono()
+            for i in 0..<5 {
+                await until("code \(i) is shown") { code.history.count == i + 1 || !handle.isOpen }
+                if !handle.isOpen { break }
+                _ = await wrongGuess(b, dir, nameplate: nameplate, clock: joiner)
+            }
+            await until("the fifth failure ends the window") { ends.current != nil }
+            XCTAssertEqual(ends.current?.reason, .tooManyTries)
+            XCTAssertEqual(failed.current?.reason, .tooManyTries)
+            // For 30 s no window opens, from `pair` or from `renew`.
+            let options = LocalPairOptions(
+                categories: cats, onCode: { _ in }, onConfirm: { _ in }, network: FakeNet(dir), allowLoopback: true,
+                mono: { shower.now })
+            do {
+                _ = try await a.local.pair(options)
+                XCTFail("a window inside the cooldown")
+            } catch let e as LocalPairingError {
+                XCTAssertEqual(e.code, ErrorCode.peerClosed)
+                XCTAssertEqual(e.reason, .cooldown)
+            }
+            do {
+                _ = try await handle.renew()
+                XCTFail("renewed inside the cooldown")
+            } catch let e as LocalPairingError {
+                XCTAssertEqual(e.reason, .cooldown)
+            }
+            XCTAssertEqual(dir.count(mode: "q"), 0, "nothing is advertised while refused")
+            shower.advance(Double(localRenewCooldownSeconds) - 1)
+            do {
+                _ = try await a.local.pair(options)
+                XCTFail("a window one second early")
+            } catch let e as LocalPairingError {
+                XCTAssertEqual(e.reason, .cooldown)
+            }
+            shower.advance(1)
+            let later = try await a.local.pair(options)
+            XCTAssertTrue(later.isOpen)
+            await later.stop()
+        }
+
+        func testASecondWrongCodeWindowWithinTenMinutesRefusesTheRenewal() async throws {
+            let dir = Directory()
+            let (a, b) = (try await Device.make(), try await Device.make())
+            let code = Latest<LocalCode>()
+            let shower = Mono()
+            let handle = try await a.local.pair(pairOptions(dir, code: code, mono: shower))
+            let joiner = Mono()
+            _ = await wrongGuess(b, dir, nameplate: try XCTUnwrap(code.current).nameplate, clock: joiner)
+            await until("the code rotates") { code.history.count == 2 }
+            // The first wrong-code window: the renewal is allowed.
+            let second = try await handle.renew()
+            XCTAssertEqual(second.failures, 0)
+            await until("the new window is shown") { code.history.count == 3 }
+            _ = await wrongGuess(b, dir, nameplate: second.nameplate, clock: joiner)
+            await until("the code rotates again") { code.history.count == 4 }
+            shower.advance(10)
+            do {
+                _ = try await handle.renew()
+                XCTFail("a third window inside the cooldown")
+            } catch let e as LocalPairingError {
+                XCTAssertEqual(e.code, ErrorCode.peerClosed)
+                XCTAssertEqual(e.reason, .cooldown)
+            }
+            XCTAssertFalse(handle.isOpen, "the window the renewal replaced is already closed")
+            shower.advance(Double(localRenewCooldownSeconds))
+            let third = try await handle.renew()
+            XCTAssertEqual(third.reason, .opened)
+            await handle.stop()
+        }
+
+        func testInterruptionsAreCountedAndToldOnceASecond() async throws {
+            let dir = Directory()
+            let a = try await Device.make()
+            let told = Latest<Int>()
+            let clock = Mono()
+            let handle = try await a.local.pair(
+                pairOptions(dir, code: Latest<LocalCode>(), mono: clock, onInterrupted: { told.set($0) }))
+            let endpoint = try XCTUnwrap(dir.endpoints(mode: "q").first)
+            /// A connection whose first frame is no C1: the window closes it and counts no guess.
+            func bad() async throws {
+                let pipe = LanPipe(pipe: try await FakeNet(dir).dial(endpoint))
+                try await pipe.write(PeerFrame.encode(Data([1, 2, 3])))
+                while let c = try? await pipe.read(), !c.isEmpty {}
+            }
+            try await bad()
+            await until("the first is told") { told.history == [1] }
+            try await bad()
+            try await bad()
+            XCTAssertEqual(told.history, [1], "inside one second the host is told no more")
+            clock.advance(1.5)
+            try await bad()
+            await until("the next is told with the running count") { told.history == [1, 4] }
+            XCTAssertTrue(handle.isOpen, "an interruption counts no failure")
+            XCTAssertEqual(handle.code()?.failures, 0)
+            await handle.stop()
+            try? await bad()
+            XCTAssertEqual(told.history, [1, 4], "nothing fires after the window stopped")
+        }
+
+        func testDialsLeftFollowsTheBudgetAndSpendsNothing() async throws {
+            let dir = Directory()
+            let (a, b) = (try await Device.make(), try await Device.make())
+            let code = Latest<LocalCode>()
+            _ = try await a.local.pair(pairOptions(dir, code: code))
+            let np = try XCTUnwrap(code.current).nameplate
+            XCTAssertNil(b.local.dialsLeft("4"))
+            XCTAssertNil(b.local.dialsLeft("x1"))
+            XCTAssertEqual(b.local.dialsLeft(np), 2)
+            XCTAssertEqual(b.local.dialsLeft(np), 2, "reading spends nothing")
+            for left in [1, 0] {
+                _ = try? await b.local.join(
+                    LocalJoinOptions(
+                        categories: cats, code: np + "999999", onConfirm: { _ in }, browseSeconds: 5,
+                        network: FakeNet(dir), allowLoopback: true))
+                XCTAssertEqual(b.local.dialsLeft(np + " 99 99"), left)
+            }
+            let other = np == "00" ? "01" : "00"
+            XCTAssertEqual(b.local.dialsLeft(other), 2, "another nameplate is unaffected")
+        }
+
+        func testACancelledJoinThrowsCancellationAndRefundsNothing() async throws {
+            let dir = Directory()
+            let (a, b) = (try await Device.make(), try await Device.make())
+            let code = Latest<LocalCode>()
+            let offersA = Offers()
+            let offersB = Offers()
+            _ = try await a.local.pair(pairOptions(dir, code: code, offers: offersA))
+            let np = try XCTUnwrap(code.current).nameplate
+            // Cancelled before the call: nothing is browsed, dialled or spent.
+            let early = Task {
+                withUnsafeCurrentTask { $0?.cancel() }
+                return try await b.local.join(
+                    LocalJoinOptions(
+                        categories: cats, code: try XCTUnwrap(code.current).code, onConfirm: { _ in },
+                        network: FakeNet(dir), allowLoopback: true))
+            }
+            do {
+                _ = try await early.value
+                XCTFail("joined")
+            } catch is CancellationError {}
+            XCTAssertEqual(b.local.dialsLeft(np), 2)
+            XCTAssertNil(offersA.first)
+            // Cancelled while it browses: it ends at once, with no dial spent.
+            let quiet = Task {
+                try await b.local.join(
+                    LocalJoinOptions(
+                        categories: cats, code: (np == "00" ? "01" : "00") + "123456", onConfirm: { _ in },
+                        browseSeconds: 15, network: FakeNet(dir), allowLoopback: true))
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+            quiet.cancel()
+            do {
+                _ = try await quiet.value
+                XCTFail("joined")
+            } catch is CancellationError {}
+            // Cancelled at the consent: the dial was spent when it was made and stays spent.
+            let joined = Task {
+                try await b.local.join(
+                    LocalJoinOptions(
+                        categories: cats, code: try XCTUnwrap(code.current).code, onConfirm: { offersB.add($0) },
+                        network: FakeNet(dir), allowLoopback: true))
+            }
+            await until("consent") { offersA.first != nil && offersB.first != nil }
+            joined.cancel()
+            do {
+                _ = try await joined.value
+                XCTFail("joined")
+            } catch is CancellationError {}
+            XCTAssertEqual(b.local.dialsLeft(np), 1, "no refund")
+            let listed = try await b.local.list()
+            XCTAssertTrue(listed.isEmpty)
+        }
+
+        func testACancelledJoinZeroesItsKeyMaterial() async throws {
+            let dir = Directory()
+            let (a, b) = (try await Device.make(), try await Device.make())
+            let code = Latest<LocalCode>()
+            let offersA = Offers()
+            let offersB = Offers()
+            _ = try await a.local.pair(pairOptions(dir, code: code, offers: offersA))
+            let src = LocalSource(
+                slug: "djdl", now: { Int(Date().timeIntervalSince1970) }, allowed: { true },
+                store: try await b.client.connect.localLinkStore(), notify: {})
+            let j = LocalJoiner(
+                src, LocalDialBudgets(),
+                LocalJoinOptions(
+                    categories: cats, code: try XCTUnwrap(code.current).code, onConfirm: { offersB.add($0) },
+                    network: FakeNet(dir), allowLoopback: true))
+            let run = Task { try await j.run() }
+            await until("consent") { offersA.first != nil && offersB.first != nil }
+            let held = await j.heldSecrets
+            XCTAssertGreaterThanOrEqual(held.count, 4, "the scalar, the generator, the ISK and the PSK")
+            XCTAssertFalse(held.contains { $0.isWiped }, "they are held while the join runs")
+            await j.cancel(.cancelled)
+            do {
+                _ = try await run.value
+                XCTFail("joined")
+            } catch is CancellationError {}
+            XCTAssertTrue(held.allSatisfy { $0.isWiped }, "every one reads zero after the cancel")
+            // A QR join cancelled before it starts wipes the QR secret and makes nothing.
+            let q = LocalJoiner(
+                src, LocalDialBudgets(),
+                LocalJoinOptions(
+                    categories: cats, qr: try XCTUnwrap(code.current).qr, onConfirm: { _ in }, network: FakeNet(dir),
+                    allowLoopback: true))
+            await q.cancel(.cancelled)
+            do {
+                _ = try await q.run()
+                XCTFail("joined")
+            } catch is CancellationError {}
+            let qHeld = await q.heldSecrets
+            XCTAssertEqual(qHeld.count, 1)
+            XCTAssertTrue(qHeld.allSatisfy { $0.isWiped })
+            await offersA.first?.decline()
+        }
+
+        func testOnChangeFiresForEveryChangeAndNeverNeedsTheGate() async throws {
+            // No cached discovery document at all: the gate is off, and managing links still works.
+            let a = try await Device.make(gate: false, discover: false)
+            XCTAssertFalse(a.local.localPairing())
+            let store = try await a.client.connect.localLinkStore()
+            let peer = Data(repeating: 5, count: 32)
+            _ = try await store.add(
+                ownKey: rnd(), ownPublic: rnd(), peerKey: peer, secret: rnd(), label: "Ben", cats: cats, now: 1,
+                platform: Platform.macos)
+            let count = LockedValue(0)
+            let off = a.local.onChange { count.with { $0 += 1 } }
+            let rows = try await a.local.list()
+            let id = try XCTUnwrap(rows.first).id
+            XCTAssertEqual(rows.first?.platform, Platform.macos)
+            let renamed = try await a.local.rename(id, "Ben's Phone")
+            XCTAssertTrue(renamed)
+            XCTAssertEqual(count.current, 1)
+            let reachable = try await a.local.setReachable(id, false)
+            XCTAssertTrue(reachable)
+            XCTAssertEqual(count.current, 2)
+            // Pairing is still gated, and nothing is advertised.
+            let dir = Directory()
+            do {
+                _ = try await a.local.pair(
+                    LocalPairOptions(
+                        categories: [], onCode: { _ in }, onConfirm: { _ in }, network: FakeNet(dir),
+                        allowLoopback: true))
+                XCTFail("paired with the gate off")
+            } catch is LocalPairingOff {}
+            XCTAssertEqual(dir.count(mode: "q"), 0)
+            XCTAssertEqual(count.current, 2)
+            // The gate flipping is a change too.
+            await a.setGate(true)
+            XCTAssertEqual(count.current, 3)
+            let removed = try await a.local.remove(id)
+            XCTAssertTrue(removed)
+            XCTAssertEqual(count.current, 4)
+            off()
+            _ = try await store.add(
+                ownKey: rnd(), ownPublic: rnd(), peerKey: Data(repeating: 6, count: 32), secret: rnd(), label: nil,
+                cats: [], now: 1)
+            _ = try await a.local.rename("nope", "x")
+            XCTAssertEqual(count.current, 4, "an unsubscribed listener hears nothing")
+        }
+
+        func testAnUnknownPlatformIsDroppedAndUnknownMembersAreIgnored() throws {
+            let vault = MemoryDeviceKeyVault()
+            let state = LocalLinkStateStore(vault: vault, product: "djdl")
+            let k = Data(repeating: 9, count: 32)
+            let b64 = Base64URL.encode(k)
+            var row = LocalLinkRow(
+                id: PeerLocal.linkId(peerKey: k), ownKey: b64, ownPublic: b64, peerKey: b64, secret: b64, label: nil,
+                cats: [], createdAt: 1, reachable: true, platform: "macos")
+            XCTAssertEqual(row.platform, "macos")
+            XCTAssertNil(
+                LocalLinkRow(
+                    id: row.id, ownKey: b64, ownPublic: b64, peerKey: b64, secret: b64, label: nil, cats: [],
+                    createdAt: 1,
+                    reachable: true, platform: "darwin"
+                ).platform, "only an X-PKey-Platform spelling is kept")
+            row.platform = "darwin"
+            try state.save([row])
+            // A newer record with a member this reader does not know, and a spelling it does not know.
+            var json = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(vault.read())) as? [String: Any])
+            var links = try XCTUnwrap(json["links"] as? [[String: Any]])
+            links[0]["future"] = 1
+            json["links"] = links
+            try vault.upsert(JSONSerialization.data(withJSONObject: json))
+            let loaded = try state.load()
+            XCTAssertEqual(loaded.count, 1)
+            XCTAssertNil(loaded[0].platform)
+        }
+
+        func testWithTheGateOffAJoinAndAPairAreTheTypedNotApplicable() async throws {
+            let a = try await Device.make(gate: false)
+            do {
+                _ = try await a.local.join(
+                    LocalJoinOptions(
+                        categories: [], code: "4812 3456", onConfirm: { _ in }, network: FakeNet(Directory()),
+                        allowLoopback: true))
+                XCTFail("joined")
+            } catch let e as LocalPairingOff {
+                XCTAssertEqual(e.code, ErrorCode.localPairingOff)
+            }
+            XCTAssertNil(a.local.dialsLeft("4"))
         }
     }
 #endif
