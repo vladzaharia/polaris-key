@@ -118,6 +118,14 @@
         "examples/server-"
       ]
     },
+    "connect-live": {
+      "paths": [
+        "packages/sdk-node/",
+        "sdks/python/src/polaris_key/connect/",
+        "sdks/python/src/polaris_key/core/peer_",
+        "tools/live-peer/"
+      ]
+    },
     "swift": {
       "paths": [
         "sdks/swift/",
@@ -550,6 +558,7 @@
     "ui-recipes": ["UI recipes (*"],
     "python": ["Python SDK (*"],
     "e2e-backend": ["End to end (*"],
+    "connect-live": ["Cross-SDK live pairing (*"],
     "swift": ["Swift SDK (macos-26)", "Apple platform hosted tests (*"],
     "apple-plugin": ["Apple platform plugin (*"],
     "swift-sources": ["Swift SDK floor (*"],

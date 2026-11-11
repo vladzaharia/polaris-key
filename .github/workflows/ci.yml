@@ -92,6 +92,7 @@ jobs:
       android: ${{ steps.scope.outputs.android }}
       godot: ${{ steps.scope.outputs.godot }}
       e2e-backend: ${{ steps.scope.outputs.e2e-backend }}
+      connect-live: ${{ steps.scope.outputs.connect-live }}
       docs: ${{ steps.scope.outputs.docs }}
       docs-snippets: ${{ steps.scope.outputs.docs-snippets }}
       python-matrix: ${{ steps.scope.outputs.python-matrix }}
@@ -896,6 +897,37 @@ jobs:
       - name: Stop pkey dev (Python leg)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang python
+
+  # Cross-SDK live pairing (CC-29X; tools/live-peer/README.md): two SDK drivers pair by code and by QR,
+  # open the link both ways, move 4 MiB and forget, over real TCP on 127.0.0.1. The harness brokers
+  # mDNS, so no multicast is needed. Linux drivers: Node and Python (every ordered pair of two
+  # different ones). The packages are the real built ones. Scope: tools/ci-scope.json lane connect-live.
+  connect-live:
+    name: Cross-SDK live pairing (linux)
+    needs: changes
+    if: needs.changes.outputs.connect-live == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+        with:
+          install: "false"
+      - run: pnpm install --frozen-lockfile --filter=@polaris-key/node...
+      - run: pnpm exec turbo run build --filter=@polaris-key/node...
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Python venv (the SDK)
+        working-directory: sdks/python
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --quiet --upgrade pip
+          .venv/bin/pip install --quiet -e . -c constraints/py312.txt
+      - name: Live matrix (node and python)
+        env:
+          PKEY_LIVE_PYTHON: ${{ github.workspace }}/sdks/python/.venv/bin/python
+        run: node tools/live-peer/run.mjs --matrix linux
 
   # The Swift SDK on the OLDEST toolchain it supports: the half of the old `swift` job that `apple`
   # does not repeat (P0-43). sdks/swift/Package.swift is `swift-tools-version: 6.0`, and the Xcode 26+
@@ -1908,6 +1940,7 @@ jobs:
         kotlin-emulator,
         godot,
         e2e-backend,
+        connect-live,
         docs-snippets,
       ]
     runs-on: ubuntu-latest
