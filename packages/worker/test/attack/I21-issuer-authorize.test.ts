@@ -10,7 +10,13 @@ import { type ClientRecord } from "../../src/services/identity/issuer/clientsRep
 import { putClientGrant } from "../../src/services/identity/issuer/grantsRepo.js";
 import { signIssuerJwt } from "../../src/services/identity/issuer/keys.js";
 import { revokeAllAccountSessions } from "../../src/services/identity/portal/accountSessions.js";
-import { PORTAL_COOKIE } from "../../src/services/identity/portal/session.js";
+import { handlePortalApi } from "../../src/services/identity/portal/api.js";
+import {
+  PORTAL_COOKIE,
+  PORTAL_CSRF_HEADER,
+} from "../../src/services/identity/portal/session.js";
+import { SETTINGS } from "../../src/mount.js";
+import { portalHooksFor } from "../portalHarness.js";
 import { NOW, seedProduct } from "../seed.js";
 import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { BASE, SLUG, type World } from "../services/connect/connectFixture.js";
@@ -350,4 +356,90 @@ describe("prompt=none abuse (D4, IS-8)", () => {
     expect(u.hash).toBe("");
     expect(u.href).not.toContain(EVIL);
   });
+});
+
+describe("a registered client's Continue and Cancel need the session, the CSRF header and the binder", () => {
+  const press = async (
+    handle: string,
+    verb: "continue" | "cancel",
+    o: {
+      session?: boolean;
+      csrf?: string | null;
+      binder?: string | null;
+      site?: string;
+    },
+    s: { cookie: string; csrf: string },
+  ) => {
+    const path = `/api/signin/requests/${handle}/${verb}`;
+    const cookies = [
+      ...(o.session === false ? [] : [s.cookie]),
+      ...(o.binder ? [o.binder] : []),
+    ];
+    const csrf = o.csrf === undefined ? s.csrf : o.csrf;
+    return handlePortalApi(
+      new Request(`${BASE}${path}`, {
+        method: "POST",
+        headers: {
+          ...(cookies.length ? { cookie: cookies.join("; ") } : {}),
+          ...(csrf ? { [PORTAL_CSRF_HEADER]: csrf } : {}),
+          ...(o.site ? { "sec-fetch-site": o.site } : {}),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(
+          verb === "continue" ? { consent: { claims: ["name"] } } : {},
+        ),
+      }),
+      w.env,
+      w.db,
+      path,
+      NOW,
+      portalHooksFor(w.env, w.db),
+      SETTINGS,
+    );
+  };
+  const begin = async () => {
+    const res = await authorize(params(victim));
+    expect(res.status).toBe(303);
+    return {
+      handle: /request=(rq_[A-Za-z0-9_-]{22})/.exec(
+        res.headers.get("location")!,
+      )![1]!,
+      binder: res.headers.get("set-cookie")!.split(";")[0]!,
+    };
+  };
+  const signedIn = async () => {
+    const { token, session } = await issuePortalSessionRow(
+      w.env,
+      w.db,
+      { accountId, name: "Ada", email: "ada@example.com" },
+      NOW,
+    );
+    return { cookie: `${PORTAL_COOKIE}=${token}`, csrf: session.csrf };
+  };
+
+  for (const verb of ["continue", "cancel"] as const) {
+    it(`${verb}: each refusal leaves the request, and the right press then succeeds`, async () => {
+      const { handle, binder } = await begin();
+      const other = await begin();
+      const s = await signedIn();
+      const refused = async (o: Parameters<typeof press>[2], status: number) =>
+        expect((await press(handle, verb, o, s)).status).toBe(status);
+      await refused({ session: false, binder }, 401);
+      await refused({ binder, csrf: null }, 403);
+      await refused({ binder, csrf: "x".repeat(20) }, 403);
+      await refused({ binder: null }, 404);
+      await refused({ binder: other.binder }, 404);
+      // Continue names the cross-site press; Cancel answers it as an unknown handle.
+      await refused(
+        { binder, site: "cross-site" },
+        verb === "continue" ? 400 : 404,
+      );
+      const ok = await press(handle, verb, { binder }, s);
+      expect(ok.status).toBe(200);
+      const to = new URL(((await ok.json()) as { redirect: string }).redirect);
+      if (verb === "continue")
+        expect(to.searchParams.get("code")).not.toBeNull();
+      else expect(to.searchParams.get("error")).toBe("access_denied");
+    });
+  }
 });
