@@ -36,6 +36,10 @@
       "types": "./dist/terminal.d.ts",
       "default": "./dist/terminal.js"
     },
+    "./lightCard": {
+      "types": "./dist/lightCard.d.ts",
+      "default": "./dist/lightCard.js"
+    },
     "./browser": {
       "types": "./dist/browser/index.d.ts",
       "default": "./dist/browser/index.js"

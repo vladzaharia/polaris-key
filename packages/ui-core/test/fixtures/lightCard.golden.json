@@ -1,0 +1,795 @@
+{
+  "comment": "Light Card golden frames. Every kit checks its port of the timeline and the QR geometry against this file. Replay `events` from a timeline created at 0 and sample at each time; compare with a tolerance of 1e-6. Particle positions are not goldens.",
+  "payload": "PKP1:DJDL:K7MZ2X4G:6WPA3TFQ9H",
+  "ecLevel": "Q",
+  "rows": [
+    "#######.#..##..###.##.#######",
+    "#.....#.######.....##.#.....#",
+    "#.###.#.##.###.#....#.#.###.#",
+    "#.###.#.##.#.##....#..#.###.#",
+    "#.###.#.#.#..#..##....#.###.#",
+    "#.....#..#.#..##.#.#..#.....#",
+    "#######.#.#.#.#.#.#.#.#######",
+    "........###.#...###..........",
+    ".##.#.##...#.###...#..#.#####",
+    "###..#.######.##.#.###.....#.",
+    "#.##.##...##.#.###..###.##.##",
+    "#####..###.#..##.##.##.#.#.#.",
+    "#....###.#.##.#.#....##.##..#",
+    "##...#..#..#..##.....#...###.",
+    "#..#####.#.##.#.#.#.#.#..#.##",
+    ".#.##...#.#.##.#.#.##..##..#.",
+    ".#.#..##..####..#.###.#######",
+    ".##.....##.#.#.##..##.#..##..",
+    "#.##..#..#...#.##...#..#...##",
+    ".###.#.#...#....#######..#...",
+    "#.#..##.##.#..##....######.#.",
+    "........#####..##.###...##..#",
+    "#######.##.##...##..#.#.#.#.#",
+    "#.....#..##..##.....#...##.#.",
+    "#.###.#.#.....#.....######...",
+    "#.###.#..#######...#....#....",
+    "#.###.#.##...#...####.#.#...#",
+    "#.....#.###.#.##.#...#.....#.",
+    "#######..##..##..#####..#####"
+  ],
+  "geometry": {
+    "n": 29,
+    "cell": 6.666666667,
+    "x0": 110,
+    "y0": 110,
+    "side": 220,
+    "radius": 17.6,
+    "dotRadius": 2.866666667,
+    "half": 120,
+    "finderSide": 46.666666667,
+    "finders": [
+      [123.333333333, 123.333333333],
+      [270, 123.333333333],
+      [123.333333333, 270]
+    ],
+    "star": [
+      [220, 202.666666667],
+      [223.813333333, 216.186666667],
+      [232.48, 220],
+      [223.813333333, 223.813333333],
+      [220, 237.333333333],
+      [216.186666667, 223.813333333],
+      [207.52, 220],
+      [216.186666667, 216.186666667]
+    ],
+    "lightCount": 628,
+    "darkCount": 314,
+    "firstLights": [
+      220, 220, 0, 220, 213.333333333, 0.042680324, 213.333333333, 220,
+      0.042680324, 226.666666667, 220, 0.042680324, 220, 226.666666667,
+      0.042680324, 213.333333333, 213.333333333, 0.060359094
+    ],
+    "lastLights": [
+      326.666666667, 113.333333333, 0.965745497, 113.333333333, 326.666666667,
+      0.965745497, 326.666666667, 326.666666667, 0.965745497
+    ],
+    "lightSums": [140180, 140113.333333333, 347.836871017],
+    "darkSums": [70653.333333333, 70720]
+  },
+  "envelope": {
+    "keys": [
+      "phase",
+      "landed",
+      "cardOpacity",
+      "orbit",
+      "dim",
+      "check",
+      "flare",
+      "ambient",
+      "swapped",
+      "frameRate"
+    ],
+    "scenarios": [
+      {
+        "name": "forming",
+        "events": [],
+        "samples": [
+          {
+            "t": 0,
+            "phase": "forming",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 0.5,
+            "phase": "forming",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 0.65,
+            "phase": "forming",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 1,
+            "phase": "forming",
+            "landed": 0.109708935,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 1.5,
+            "phase": "forming",
+            "landed": 0.5,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 2,
+            "phase": "forming",
+            "landed": 0.890291065,
+            "cardOpacity": 0.427411783,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 2.35,
+            "phase": "forming",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 2.4,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 3,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 12.39,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 12.4,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 30
+          },
+          {
+            "t": 20,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 30
+          }
+        ]
+      },
+      {
+        "name": "new code from ready",
+        "events": [
+          {
+            "at": 5,
+            "event": "newCode"
+          }
+        ],
+        "samples": [
+          {
+            "t": 5,
+            "phase": "refreshing",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 5.1,
+            "phase": "refreshing",
+            "landed": 0.873799726,
+            "cardOpacity": 0.742949148,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 5.2,
+            "phase": "refreshing",
+            "landed": 0.582990398,
+            "cardOpacity": 0.26369252,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 5.3,
+            "phase": "refreshing",
+            "landed": 0.259259259,
+            "cardOpacity": 0.000074009,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 5.45,
+            "phase": "refreshing",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": true,
+            "frameRate": 60
+          },
+          {
+            "t": 5.6,
+            "phase": "refreshing",
+            "landed": 0.00997354,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": true,
+            "frameRate": 60
+          },
+          {
+            "t": 6,
+            "phase": "refreshing",
+            "landed": 0.208630165,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": true,
+            "frameRate": 60
+          },
+          {
+            "t": 6.5,
+            "phase": "refreshing",
+            "landed": 0.630979035,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": true,
+            "frameRate": 60
+          },
+          {
+            "t": 7,
+            "phase": "refreshing",
+            "landed": 0.961734175,
+            "cardOpacity": 0.904187403,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": true,
+            "frameRate": 60
+          },
+          {
+            "t": 7.25,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 7.5,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 9,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          }
+        ]
+      },
+      {
+        "name": "connected from ready",
+        "events": [
+          {
+            "at": 5,
+            "event": "connected"
+          }
+        ],
+        "samples": [
+          {
+            "t": 5,
+            "phase": "connected",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 5.2,
+            "phase": "connected",
+            "landed": 0.5,
+            "cardOpacity": 0.5,
+            "orbit": 1.4224,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 5.4,
+            "phase": "connected",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 2.0752,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 5.6,
+            "phase": "connected",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 2.2,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 5.85,
+            "phase": "connected",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 2.2,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 6,
+            "phase": "connected",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 1.69375,
+            "dim": 1,
+            "check": 0.074074074,
+            "flare": 0.727573976,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 6.3,
+            "phase": "connected",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 0.6,
+            "dim": 1,
+            "check": 0.5,
+            "flare": 0.38515139,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 6.75,
+            "phase": "connected",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 0.6,
+            "dim": 1,
+            "check": 1,
+            "flare": 0.148341594,
+            "ambient": 0.55,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 7,
+            "phase": "connected",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 0.6,
+            "dim": 1,
+            "check": 1,
+            "flare": 0.087308837,
+            "ambient": 0.55,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 8,
+            "phase": "connected",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 0.6,
+            "dim": 1,
+            "check": 1,
+            "flare": 0.010477056,
+            "ambient": 0.55,
+            "swapped": false,
+            "frameRate": 60
+          }
+        ]
+      },
+      {
+        "name": "expired from ready",
+        "events": [
+          {
+            "at": 5,
+            "event": "expired"
+          }
+        ],
+        "samples": [
+          {
+            "t": 5,
+            "phase": "expired",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 30
+          },
+          {
+            "t": 5.5,
+            "phase": "expired",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 0.717881944,
+            "dim": 0.675,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 30
+          },
+          {
+            "t": 6,
+            "phase": "expired",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 0.305555556,
+            "dim": 0.35,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 30
+          },
+          {
+            "t": 6.2,
+            "phase": "expired",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 0.25,
+            "dim": 0.35,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 30
+          },
+          {
+            "t": 7,
+            "phase": "expired",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 0.25,
+            "dim": 0.35,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 30
+          },
+          {
+            "t": 10,
+            "phase": "expired",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 0.25,
+            "dim": 0.35,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 30
+          }
+        ]
+      },
+      {
+        "name": "new code from expired",
+        "events": [
+          {
+            "at": 5,
+            "event": "expired"
+          },
+          {
+            "at": 9,
+            "event": "newCode"
+          }
+        ],
+        "samples": [
+          {
+            "t": 9,
+            "phase": "refreshing",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 0.25,
+            "dim": 0.35,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 9.45,
+            "phase": "refreshing",
+            "landed": 0,
+            "cardOpacity": 0,
+            "orbit": 0.694946289,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 10,
+            "phase": "refreshing",
+            "landed": 0.208630165,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": true,
+            "frameRate": 60
+          },
+          {
+            "t": 11.5,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 12,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          }
+        ]
+      },
+      {
+        "name": "events that do not apply",
+        "events": [
+          {
+            "at": 1,
+            "event": "connected"
+          },
+          {
+            "at": 1.2,
+            "event": "expired"
+          },
+          {
+            "at": 1.4,
+            "event": "newCode"
+          }
+        ],
+        "samples": [
+          {
+            "t": 1.5,
+            "phase": "forming",
+            "landed": 0.5,
+            "cardOpacity": 0,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 2.4,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          },
+          {
+            "t": 3,
+            "phase": "ready",
+            "landed": 1,
+            "cardOpacity": 1,
+            "orbit": 1,
+            "dim": 1,
+            "check": 0,
+            "flare": 0,
+            "ambient": 1,
+            "swapped": false,
+            "frameRate": 60
+          }
+        ]
+      }
+    ]
+  },
+  "check": [
+    [183.04, 221.76],
+    [202.847331297, 241.567331297],
+    [222.207082987, 234.512428531],
+    [241.343541493, 214.056214266],
+    [260.48, 193.6]
+  ]
+}
