@@ -32,8 +32,8 @@ public struct LocalPairingView: View {
     let model: LocalPairingModel
     /// The name each category goes by on screen, by id; an id without one is drawn as words.
     let categoryLabels: [String: String]
-    /// Draws the camera entry first on a device that scans (CC-29K.3 supplies it); nil elsewhere.
     @Environment(\.polarisKeyStrings) private var strings
+    @Environment(\.scenePhase) private var scenePhase
     @AccessibilityFocusState private var focus: PairFocus?
     @State private var window = CGSize.zero
     @State private var last: KitScreen<LocalPairingState>?
@@ -98,6 +98,10 @@ public struct LocalPairingView: View {
                     focus = .heading
                     announce(strings.string("localPairing.showNew"))
                 }
+            }
+            // Back from Settings with the camera allowed there: the camera starts.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await model.cameraChanged() } }
             }
             .interactiveDismissDisabled(state == .confirm || state == .joining)
             .background(escapeCloses(state))
@@ -218,6 +222,10 @@ public struct LocalPairingView: View {
             VStack(alignment: .leading, spacing: style.space(.md)) {
                 switch state {
                 case .choose: choose(screen, style)
+                case .scanPrompt:
+                    if let body = screen.line("localPairing.cameraPrePrompt") { KitText(body, .body) }
+                case .scan: scan(screen, style)
+                case .cameraOff: cameraOff(screen, style)
                 case .opening, .show: show(screen, state, style)
                 case .closed: closed(screen, style)
                 case .enter, .joining: enter(screen, state, style)
@@ -246,17 +254,55 @@ public struct LocalPairingView: View {
             } else if let body = screen.line("localPairing.chooseBody") {
                 KitText(body, .body)
             }
-            // Either device can show the code: neither way is the filled one.
+            // Either device can show the code: neither way is the filled one. Scan a code leads
+            // where the device can scan; typing is reached from the scan screens.
+            if let scan = screen.line("localPairing.scan") {
+                KitButton(line: scan, kind: .secondary) { Task { await model.scan() } }
+                    .opacity(full ? 0.5 : 1)
+            }
             KitButton(line: screen.lineOrKey("localPairing.show"), kind: .secondary) {
                 Task { await model.show() }
             }
             .opacity(full ? 0.5 : 1)
-            KitButton(line: screen.lineOrKey("localPairing.enter"), kind: .secondary) {
-                Task { await model.enter() }
+            if let enter = screen.line("localPairing.enter") {
+                KitButton(line: enter, kind: .secondary) { Task { await model.enter() } }
+                    .opacity(full ? 0.5 : 1)
             }
-            .opacity(full ? 0.5 : 1)
             if let hint = screen.line("localPairing.prePrompt") { KitText(hint, .meta, color: .muted) }
         }
+    }
+
+    // MARK: Scan
+
+    @ViewBuilder private func scan(_ screen: KitScreen<LocalPairingState>, _ style: KitResolvedStyle)
+        -> some View
+    {
+        if let body = screen.line("localPairing.scanBody") { KitText(body, .body) }
+        ScanViewfinder(
+            source: model.scanSource, label: strings.string(screen.lineOrKey("a11y.cameraView"))
+        )
+        .frame(maxWidth: .infinity)
+        // A code read is the person's yes: a short tap, whatever Reduce Motion says.
+        .sensoryFeedback(.success, trigger: model.scanHits)
+        if let other = screen.line("localPairing.otherApp") {
+            HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(style.palette.textMuted).accessibilityHidden(true)
+                KitText(other, .body)
+            }
+            .accessibilityElement(children: .combine)
+        }
+        shares(screen, style)
+    }
+
+    @ViewBuilder private func cameraOff(_ screen: KitScreen<LocalPairingState>, _ style: KitResolvedStyle)
+        -> some View
+    {
+        VStack(alignment: .leading, spacing: style.space(.xxs)) {
+            KitText(screen.lineOrKey("localPairing.cameraOffTitle"), .label, color: .strong)
+            if let body = screen.line("localPairing.cameraOffBody") { KitText(body, .body) }
+        }
+        shares(screen, style)
     }
 
     // MARK: Show
@@ -669,7 +715,11 @@ public struct LocalPairingView: View {
                 }
             case .opening, .show:
                 KitButton(line: CopyLine("common.cancel"), kind: .quiet) { Task { await model.cancel() } }
-                link(screen.lineOrKey("localPairing.toEnter")) { Task { await model.toEnter() } }
+                if let toScan = screen.line("localPairing.toScan") {
+                    link(toScan) { Task { await model.toScan() } }
+                } else {
+                    link(screen.lineOrKey("localPairing.toEnter")) { Task { await model.toEnter() } }
+                }
             case .closed:
                 let cooling = disabled.contains("localPairing.showNewIn")
                 KitButton(
@@ -692,11 +742,31 @@ public struct LocalPairingView: View {
                 if joining {
                     KitButton(line: CopyLine("common.cancel"), kind: .quiet) { Task { await model.cancel() } }
                 } else {
-                    link(screen.lineOrKey("localPairing.toShow")) { Task { await model.toShow() } }
+                    if let instead = screen.line("localPairing.scanInstead") {
+                        link(instead) { Task { await model.scanInstead() } }
+                    } else {
+                        link(screen.lineOrKey("localPairing.toShow")) { Task { await model.toShow() } }
+                    }
                     KitButton(line: CopyLine("common.back"), kind: .quiet) {
                         Task { await model.backToChoose() }
                     }
                 }
+            case .scanPrompt:
+                KitButton(line: screen.lineOrKey("common.continue"), kind: .primary) {
+                    Task { await model.continueToCamera() }
+                }
+                link(screen.lineOrKey("localPairing.enterInstead")) { Task { await model.enterInstead() } }
+            case .scan:
+                link(screen.lineOrKey("localPairing.enterInstead")) { Task { await model.enterInstead() } }
+                KitButton(line: CopyLine("common.cancel"), kind: .quiet) { Task { await model.cancel() } }
+            case .cameraOff:
+                if screen.line("localPairing.openSettings") != nil {
+                    KitButton(line: CopyLine("localPairing.openSettings"), kind: .primary) {
+                        KitSettingsOpener.open()
+                    }
+                }
+                link(screen.lineOrKey("localPairing.enterInstead")) { Task { await model.enterInstead() } }
+                KitButton(line: CopyLine("common.cancel"), kind: .quiet) { Task { await model.cancel() } }
             case .confirm:
                 let busy = model.state.busy
                 KitButton(

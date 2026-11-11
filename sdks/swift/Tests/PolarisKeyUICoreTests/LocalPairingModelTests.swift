@@ -27,6 +27,7 @@ final class FakeLinks: @unchecked Sendable {
     var declines = 0
     var confirms = 0
     var renewCode: KitLocalCode?
+    var joined: [String] = []
 
     var driver: LocalLinksDriver {
         let me = self
@@ -60,7 +61,8 @@ final class FakeLinks: @unchecked Sendable {
                         return me.renewCode ?? code("5000 0000", "opened")
                     })
             },
-            join: { _, _, _, onConfirm in
+            join: { text, _, _, onConfirm in
+                me.joined.append(text)
                 if let o = me.joinOffer { onConfirm(o) }
                 if let e = me.joinError { throw e }
                 try await Task.sleep(nanoseconds: 50_000_000)

@@ -48,6 +48,8 @@ public final class LocalPairingModel {
     public var qr: String? { state.qr }
     /// The person left (Cancel on choose, Close, Done): the host closes the screen.
     public private(set) var left = false
+    /// scan: bumps with each code the kit takes up, for a haptic. Another app's code does not count.
+    public private(set) var scanHits = 0
     /// Told once when the person leaves.
     @ObservationIgnored public var onClose: (@MainActor () -> Void)?
 
@@ -72,6 +74,13 @@ public final class LocalPairingModel {
     @ObservationIgnored private var epoch = 0
     @ObservationIgnored private var typed = ""
     @ObservationIgnored private var blocked: (where: String, entry: String)?
+    @ObservationIgnored private let scanner: KitScanSource?
+    @ObservationIgnored private var scanTask: Task<Void, Never>?
+    @ObservationIgnored private var lastRead: (text: String, at: Double)?
+    /// How long the same text is ignored after it was read: a camera reports each frame.
+    static let rereadSeconds = 2.0
+    /// The join in flight came from a scanned code: Cancel returns to the camera.
+    @ObservationIgnored private var scanned = false
 
     private static let tooManyWrong = 5
 
@@ -79,9 +88,11 @@ public final class LocalPairingModel {
         driver: LocalLinksDriver, categories: [String], label: String? = nil,
         prePrompt: Bool = false, canOpenSettings: Bool = false, inputs: KitInputs = KitInputs(),
         now: @escaping @MainActor () -> Double = { Date().timeIntervalSince1970 },
-        timer: (@MainActor (Double, @escaping @MainActor () -> Void) -> () -> Void)? = nil
+        timer: (@MainActor (Double, @escaping @MainActor () -> Void) -> () -> Void)? = nil,
+        scanner: KitScanSource? = nil
     ) {
         self.driver = driver
+        self.scanner = scanner
         self.categories = categories
         self.label = label
         self.prePrompt = prePrompt
@@ -100,6 +111,7 @@ public final class LocalPairingModel {
         first.categories = categories
         first.max = kitMaxConnectable
         first.prePrompt = prePrompt ? true : nil
+        first.canScan = (scanner?.status ?? .unavailable) == .unavailable ? nil : true
         self.state = first
     }
 
@@ -462,6 +474,131 @@ public final class LocalPairingModel {
     /// Enter a code instead, from a shown code: the window is withdrawn at once.
     public func toEnter() async { await enter() }
 
+    // MARK: Scan
+
+    /// Scan a code: the pre-prompt the first time, the camera when it is allowed, the denied screen
+    /// when it is not. Nothing happens on a device that cannot scan.
+    public func scan() async {
+        guard let scanner, state.full != true else { return }
+        lastRead = nil
+        await close()
+        switch scanner.status {
+        case .notDetermined: go(KitLocalPairing(step: .scanPrompt))
+        case .authorized: await startScanning()
+        case .denied: go(KitLocalPairing(step: .cameraOff, canOpenSettings: canOpenSettings))
+        case .unavailable: break
+        }
+    }
+
+    /// Continue, on the pre-prompt: raises the system's camera prompt.
+    public func continueToCamera() async {
+        guard let scanner, state.step == .scanPrompt else { return }
+        let allowed = await scanner.requestAccess()
+        guard state.step == .scanPrompt else { return }
+        if allowed {
+            await startScanning()
+        } else {
+            go(KitLocalPairing(step: .cameraOff, canOpenSettings: canOpenSettings))
+        }
+    }
+
+    /// The app came back from Settings: a camera that was allowed there starts.
+    public func cameraChanged() async {
+        guard state.step == .cameraOff, scanner?.status == .authorized else { return }
+        await startScanning()
+    }
+
+    /// Enter the code instead, from any scan screen.
+    public func enterInstead() async { await enter() }
+
+    /// Scan the code instead, from the field.
+    public func scanInstead() async { await scan() }
+
+    /// Scan a code instead, from a shown code: the window is withdrawn at once.
+    public func toScan() async { await scan() }
+
+    private func startScanning() async {
+        guard let scanner else { return }
+        await close()
+        go(KitLocalPairing(step: .scan))
+        let stream = scanner.codes()
+        scanTask = Task { @MainActor [weak self] in
+            for await text in stream {
+                guard let self, !Task.isCancelled else { return }
+                await self.read(text)
+            }
+        }
+    }
+
+    /// A code was read. The text goes to join unchanged; another app's code (or text that is no
+    /// pairing code) says so and the camera keeps looking.
+    func read(_ text: String) async {
+        guard state.step == .scan, joinTask == nil, !text.isEmpty else { return }
+        if let last = lastRead, last.text == text, now() - last.at < Self.rereadSeconds { return }
+        lastRead = (text, now())
+        scanned = true
+        epoch += 1
+        let mine = epoch
+        let live: @MainActor () -> Bool = { [weak self] in self?.epoch == mine }
+        let cats = categories
+        let lbl = label
+        let drv = driver
+        let task = Task<KitLocalPaired, Error> { [weak self] in
+            try await drv.join(text, cats, lbl) { offer in
+                Task { @MainActor in
+                    guard let self, live() else { return }
+                    self.offer = offer
+                    self.scanHits += 1
+                    self.state.step = .waiting
+                    self.state.categories = offer.categories
+                    if let l = offer.label { self.state.device = l }
+                    Task { await offer.confirm() }
+                }
+            }
+        }
+        joinTask = task
+        do {
+            let link = try await task.value
+            if live() {
+                scanned = false
+                stored(link)
+            }
+        } catch {
+            if live() { scanFailed(error) }
+        }
+    }
+
+    private func scanFailed(_ e: Error) {
+        joinTask = nil
+        offer = nil
+        let d = Self.detail(e)
+        if d.code == ErrorCode.pairingCodeFailed,
+            d.reason == PairingCodeFailedReason.otherApp || d.reason == PairingCodeFailedReason.invalid
+        {
+            var next = KitLocalPairing(step: .scan)
+            next.otherApp = true
+            go(next)
+            return
+        }
+        scanned = false
+        if d.code == ErrorCode.peerClosed && d.reason == "cancelled" {
+            Task { await startScanning() }
+            return
+        }
+        if d.code == ErrorCode.pairingCodeFailed || d.code == ErrorCode.pairingNotFound {
+            // The scanned code is stale or not on this network: say so on the field.
+            back(entry: "", error: d.code == ErrorCode.pairingNotFound ? .notFound : .wrong)
+            return
+        }
+        if d.code == ErrorCode.peerClosed {
+            var next = KitLocalPairing(step: .failed)
+            next.reason = d.reason == "declined" ? .declined : d.reason == "timeout" ? .timeout : .closed
+            go(next)
+            return
+        }
+        fail(e, where: "enter")
+    }
+
     // MARK: Leaving
 
     /// Cancel: withdraws the code, stops a join or declines a prompt, and returns one step.
@@ -474,13 +611,19 @@ public final class LocalPairingModel {
             joinTask = nil
             offer = nil
             if let o { await o.decline() }
+            if scanned {
+                // Cancel stops the join, not the scanning: the camera comes back.
+                scanned = false
+                await startScanning()
+                return
+            }
             // Cancel stops the join, not the typing: the code is still in the field.
             failedCode = nil
             var next = KitLocalPairing(step: .enter)
             next.entry = typed
             go(next)
             refreshEntry()
-        case .opening, .show, .confirm:
+        case .opening, .show, .confirm, .scanPrompt, .scan, .cameraOff:
             await close()
             go(entryStep())
         default:
@@ -506,6 +649,9 @@ public final class LocalPairingModel {
         let o = offer
         let w = shower
         let j = joinTask
+        scanTask?.cancel()
+        scanTask = nil
+        scanned = false
         offer = nil
         shower = nil
         joinTask = nil
@@ -605,6 +751,7 @@ public final class LocalPairingModel {
     private func go(_ next: KitLocalPairing, changed diff: [Int] = []) {
         var s = next
         if s.categories == nil { s.categories = categories }
+        if canScan, Self.scanSteps.contains(s.step) { s.canScan = true }
         s.max = state.max
         state = s
         changed = diff
@@ -613,6 +760,16 @@ public final class LocalPairingModel {
             pairedID = nil
         }
     }
+
+    private static let scanSteps: [KitLocalPairing.Step] = [
+        .choose, .opening, .show, .enter, .scanPrompt, .scan, .cameraOff,
+    ]
+
+    /// What the camera view draws from (nil when this device cannot scan).
+    public var scanSource: KitScanSource? { canScan ? scanner : nil }
+
+    /// This device has a camera to scan with.
+    private var canScan: Bool { (scanner?.status ?? .unavailable) != .unavailable }
 
     static func digits(_ text: String) -> String { String(text.filter(\.isASCIIDigit).prefix(8)) }
     static func grouped(_ d: String) -> String {
