@@ -713,6 +713,16 @@ func _kit_signed_out(t: PKeyTestContext) -> void:
 	# Neutral, not a fault: the info glyph and the muted tint, an action that is a button of at least 44 px.
 	t.check("signed-out strip: the glyph is info, not the warning triangle", strip._glyph.get_meta(&"pkey_glyph") == "info")
 	t.check("signed-out strip: the glyph is tinted muted", strip._glyph.modulate.is_equal_approx(strip.get_theme_color("font_color", "PKeyMuted")))
+	# Balanced: the body sits in the middle of its card, whatever height the strip is given.
+	var body := strip.find_child("Body", true, false) as Control
+	var card := body.get_parent() as Control
+	card.custom_minimum_size.y = body.size.y + 40.0
+	await _frames()
+	var above := body.position.y
+	var below := card.size.y - (body.position.y + body.size.y)
+	t.check("signed-out strip: the row is centred in the card", absf(above - below) <= 1.0, "%s %s" % [above, below])
+	t.check("signed-out strip: the card had room to spare", below > 10.0, str(below))
+	card.custom_minimum_size.y = 0.0
 	var act: Button = _buttons(strip)["Action"]
 	t.check("signed-out strip: the action is a button at rest, never the game's primary", act.theme_type_variation == &"" and act.get_theme_stylebox("normal") != null)
 	t.check("signed-out strip: the action is at least 44 px tall", act.get_combined_minimum_size().y >= 44.0, str(act.get_combined_minimum_size().y))

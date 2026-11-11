@@ -99,6 +99,8 @@ func _build() -> void:
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_card = columns(card_panel("Card", false), "Body")
 	_card_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Centred in the card, so a strip given more height than its line keeps the row balanced.
+	_card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var row := hbox(_card, "Row")
 	_row = row
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
