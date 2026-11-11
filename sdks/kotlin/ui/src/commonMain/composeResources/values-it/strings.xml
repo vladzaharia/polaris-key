@@ -2501,6 +2501,8 @@
     <string name="pairedDevices_forgetConfirm">Dimenticare %1$s?</string>
     <!-- Pair with a Code: row: the one consequence. -->
     <string name="pairedDevices_forgetBody">Per collegarti di nuovo, associa con un nuovo codice.</string>
+    <!-- Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetFailed">Impossibile dimenticare %1$s. Riprova.</string>
     <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
     <string name="pairedDevices_reachableFullTitle">Possono connettersi fino a %1$s</string>
     <!-- Pair with a Code: list: what to do. -->

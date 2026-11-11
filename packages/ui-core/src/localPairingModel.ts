@@ -114,7 +114,11 @@ export interface LocalLinksLike {
 }
 
 /** Any rejection, read by what a typed error carries: `code`, `reason`, `cap`. */
-function detail(e: unknown): { code?: string; reason?: string; cap?: string } {
+export function detail(e: unknown): {
+  code?: string;
+  reason?: string;
+  cap?: string;
+} {
   const o = (typeof e === "object" && e !== null ? e : {}) as Record<
     string,
     unknown
@@ -182,6 +186,10 @@ export class LocalPairingModel {
   private lastDevice: string | null = null;
   /** Bumped when a screen's session ends, so a late callback from an old one is dropped. */
   private epoch = 0;
+  /** What the person typed when Pair was pressed, so Cancel returns to it. */
+  private typed = "";
+  /** Where the network answer came from, for Try again. */
+  private blocked: { where: "show" | "enter"; entry: string } | null = null;
 
   constructor(options: LocalPairingOptions) {
     this.o = options;
@@ -261,15 +269,27 @@ export class LocalPairingModel {
   }
 
   private async openWindow(renew = false): Promise<void> {
-    const epoch = renew && this.shower ? this.epoch : ++this.epoch;
+    const renewing = renew && this.shower !== null;
+    const epoch = renewing ? this.epoch : ++this.epoch;
     const live = (): boolean => epoch === this.epoch;
     const driver = this.o.driver;
+    if (renewing) {
+      // A second press while the first is answered does nothing.
+      if (this.store.get().busy) return;
+      this.set({ busy: "new-code" });
+    } else {
+      // The code tile is there at once, as a placeholder, while the window opens.
+      this.go({ step: "opening" });
+    }
     try {
-      if (renew && this.shower) {
-        this.rotate(await this.shower.renew());
+      if (renewing && this.shower) {
+        const next = await this.shower.renew();
+        if (live()) this.rotate(next);
         return;
       }
       await this.close(false);
+      // `close` bumped the epoch once; any other change meant Cancel (or a newer press) came first.
+      if (this.epoch !== epoch + 1) return;
       this.epoch = epoch;
       this.shower = await driver.pair({
         categories: this.o.categories,
@@ -296,6 +316,9 @@ export class LocalPairingModel {
     this.expiresAt = c.expiresAt;
     const opened = c.reason === LocalCodeReason.opened;
     const wrongCode = c.reason === LocalCodeReason.wrongCode;
+    // A changed code ends the session that was at the prompt: whatever the reason, its offer is
+    // over, or the next device would be refused as "one at a time" by a prompt that is gone.
+    if (prev.step === "confirm" || (!opened && !wrongCode)) this.offer = null;
     if (wrongCode) this.wrong++;
     const changed =
       !opened && prev.code
@@ -379,20 +402,30 @@ export class LocalPairingModel {
   /** Pair: the person's yes. The link exists once the other person agrees too. */
   async confirm(): Promise<void> {
     const offer = this.offer;
-    if (!offer || this.store.get().step !== "confirm") return;
+    const s = this.store.get();
+    if (!offer || s.step !== "confirm" || s.busy) return;
+    // The press is answered at once: Pair keeps its label with a ring until the window answers.
+    this.set({ busy: "pair" });
     try {
       await offer.confirm();
     } catch {
-      /* the session's end is reported by the window */
+      // The session's end is reported by the window; if it never is, the person may press again.
+      if (this.offer === offer && this.store.get().step === "confirm")
+        this.set({ busy: undefined });
     }
   }
 
   /** Not now: nothing is stored; the shower stays on its changed code. */
   async notNow(): Promise<void> {
     const offer = this.offer;
-    if (!offer || this.store.get().step !== "confirm") return;
-    this.offer = null;
-    await offer.decline().catch(() => {});
+    const s = this.store.get();
+    if (!offer || s.step !== "confirm" || s.busy) return;
+    this.set({ busy: "not-now" });
+    try {
+      await offer.decline();
+    } catch {
+      if (this.offer === offer) this.set({ busy: undefined });
+    }
   }
 
   private linked(link: LocalPairedLike): void {
@@ -430,14 +463,21 @@ export class LocalPairingModel {
   /** The name field of the paired screen. */
   setName(text: string): void {
     if (this.store.get().step === "paired")
-      this.store.set((s) => ({ ...s, name: text }));
+      this.store.set((s) => ({ ...s, name: text, nameError: undefined }));
   }
 
   /** Done: a changed name is saved on this device, then the screen is left. */
   async done(): Promise<void> {
     const s = this.store.get();
-    if (s.step === "paired" && s.id && s.name.trim() && s.name !== s.device)
-      await this.o.driver.rename(s.id, s.name.trim()).catch(() => false);
+    if (s.step === "paired" && s.id && s.name.trim() && s.name !== s.device) {
+      try {
+        await this.o.driver.rename(s.id, s.name.trim());
+      } catch {
+        // The name was not kept: the screen stays and says so, so nothing is lost silently.
+        this.set({ nameError: "failed" });
+        return;
+      }
+    }
     this.leave();
   }
 
@@ -499,6 +539,7 @@ export class LocalPairingModel {
       return;
     }
     const code = digitsOf(s.entry ?? "");
+    this.typed = grouped(code);
     const epoch = ++this.epoch;
     const live = (): boolean => epoch === this.epoch;
     const abort = (this.abort = new AbortController());
@@ -566,7 +607,7 @@ export class LocalPairingModel {
       this.go({ step: "failed", reason: r });
       return;
     }
-    this.fail(e, "enter");
+    this.fail(e, "enter", grouped(code));
   }
 
   /** Back to the field with the answer; Pair's state follows the field. */
@@ -602,11 +643,13 @@ export class LocalPairingModel {
         this.abort = null;
         this.offer = null;
         if (offer) await offer.decline().catch(() => {});
+        // Cancel stops the join, not the typing: the code is still in the field.
         this.failedCode = null;
-        this.go({ step: "enter", entry: "" });
+        this.go({ step: "enter", entry: this.typed });
         this.refreshEntry();
         return;
       }
+      case "opening":
       case "show":
       case "confirm":
         await this.close();
@@ -637,9 +680,21 @@ export class LocalPairingModel {
     if (withLeave) this.leave();
   }
 
-  /** Try again, from a failed pairing. */
+  /** Try again, from a failed pairing, or from the network answer: back to the step it came
+   *  from, with the field kept. */
   async retry(): Promise<void> {
-    await this.enter();
+    if (this.store.get().step !== "network-blocked") {
+      await this.enter();
+      return;
+    }
+    const from = this.blocked;
+    this.blocked = null;
+    if (from?.where === "enter") {
+      await this.enter();
+      this.setEntry(from.entry);
+      return;
+    }
+    await this.openWindow();
   }
 
   /** The person left: the host closes the screen. */
@@ -679,15 +734,19 @@ export class LocalPairingModel {
   // ── Errors ────────────────────────────────────────────────────────────────────────────────────
 
   /** A rejection no screen of the flow names: the gate, the cap, the network, or the shower. */
-  private fail(e: unknown, where: "show" | "enter"): void {
+  private fail(e: unknown, where: "show" | "enter", entry = ""): void {
     const { code, reason, cap } = detail(e);
     if (code === ErrorCode.localPairingOff) this.go({ step: "off" });
-    else if (code === ErrorCode.nearbyPermissionDenied)
+    else if (code === ErrorCode.nearbyPermissionDenied) {
+      this.blocked = { where, entry };
       this.go({
         step: "network-blocked",
         ...(this.o.canOpenSettings ? { canOpenSettings: true } : {}),
       });
-    else if (code === ErrorCode.localLinksFull && cap === LocalLinksCap.stored)
+    } else if (
+      code === ErrorCode.localLinksFull &&
+      cap === LocalLinksCap.stored
+    )
       this.go({
         step: where === "show" ? "choose" : "failed",
         full: true,

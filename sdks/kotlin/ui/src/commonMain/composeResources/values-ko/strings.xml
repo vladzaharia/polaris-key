@@ -2473,6 +2473,8 @@
     <string name="pairedDevices_forgetConfirm">%1$s을(를) 삭제할까요?</string>
     <!-- Pair with a Code: row: the one consequence. -->
     <string name="pairedDevices_forgetBody">다시 연결하려면 새 코드로 페어링하세요.</string>
+    <!-- Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetFailed">%1$s을(를) 삭제하지 못했습니다. 다시 시도하세요.</string>
     <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
     <string name="pairedDevices_reachableFullTitle">최대 %1$s대까지 연결할 수 있습니다</string>
     <!-- Pair with a Code: list: what to do. -->

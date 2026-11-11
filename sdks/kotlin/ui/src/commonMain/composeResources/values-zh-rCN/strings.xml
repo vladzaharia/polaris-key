@@ -2473,6 +2473,8 @@
     <string name="pairedDevices_forgetConfirm">要移除 %1$s 吗？</string>
     <!-- Pair with a Code: row: the one consequence. -->
     <string name="pairedDevices_forgetBody">要再次连接，请用新验证码配对。</string>
+    <!-- Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetFailed">无法移除%1$s。请重试。</string>
     <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
     <string name="pairedDevices_reachableFullTitle">最多 %1$s 台可连接</string>
     <!-- Pair with a Code: list: what to do. -->

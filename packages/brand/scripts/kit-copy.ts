@@ -1213,6 +1213,20 @@ export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
   "common.updateDownload",
   "common.updateTimeMinutes",
   "common.updateTimeLessThanMinute",
+  // Pair with a Code: the list and the entry draw these on first paint (the lazy table may not
+  // load where a host pre-bundles differently), so they stay in the lean table.
+  "core.codes.local-links-full.title",
+  "core.codes.local-links-full.message",
+  "core.codes.local-pairing-off.title",
+  "core.codes.local-pairing-off.message",
+  "core.codes.nearby-permission-denied.title",
+  "core.codes.nearby-permission-denied.message",
+  "core.codes.link-unknown.title",
+  "core.codes.link-unknown.message",
+  "devices.rename",
+  "devices.renameLabel",
+  "devices.renameFailed",
+  "devices.unnamed",
 ]);
 export const isLazyEnKey = (key: string): boolean =>
   LAZY_EN_PREFIXES.some((p) => key.startsWith(p)) && !LAZY_EN_KEEP.has(key);

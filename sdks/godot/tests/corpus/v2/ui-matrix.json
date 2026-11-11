@@ -15344,6 +15344,26 @@
       }
     },
     {
+      "name": "LocalPairing/opening: a placeholder code tile while the window opens",
+      "input": { "localPairing": { "step": "opening" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "opening",
+        "copy": [
+          "a11y.busy",
+          "common.cancel",
+          "localPairing.showBody",
+          "localPairing.title",
+          "localPairing.toEnter"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "A slow start never shows a code or a QR that is not there yet.",
+        "copy": ["a11y.linkCode", "a11y.qrPairing", "localPairing.expires"]
+      }
+    },
+    {
       "name": "LocalPairing/show: the code is the largest text, with its time",
       "input": {
         "localPairing": {
@@ -15406,6 +15426,44 @@
       "mustNot": {
         "invariant": "The shower never says how many tries are left; only the joiner's limit binds.",
         "copy": ["localPairing.triesLeft"]
+      }
+    },
+    {
+      "name": "LocalPairing/show: a new code is being asked for, Show a new code keeps its label",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "notice": "rotated",
+          "busy": "new-code",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show",
+        "copy": [
+          "a11y.busy",
+          "a11y.linkCode",
+          "a11y.newCode",
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.rotatedBody",
+          "localPairing.rotatedTitle",
+          "localPairing.showBody",
+          "localPairing.showNew",
+          "localPairing.title",
+          "localPairing.toEnter",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"],
+        "disabled": ["localPairing.showNew"]
+      },
+      "mustNot": {
+        "invariant": "A second press while the first is answered withdraws nothing and opens nothing.",
+        "copy": ["localPairing.showNewIn"]
       }
     },
     {
@@ -15490,23 +15548,24 @@
         "state": "show",
         "copy": [
           "a11y.linkCode",
+          "a11y.newCode",
           "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
+          "localPairing.rotatedTitle",
           "localPairing.showBody",
           "localPairing.showNew",
           "localPairing.title",
           "localPairing.toEnter",
           "localPairing.tooManyAgainBody",
-          "localPairing.tooManyAgainTitle",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"]
       },
       "mustNot": {
-        "invariant": "Five wrong codes over renewed windows warn but do not start the 30-second wait.",
+        "invariant": "Five wrong codes over renewed windows warn but do not start the 30-second wait, and the warning is not titled as a repeat the person never saw.",
         "states": ["closed"],
-        "copy": ["localPairing.showNewIn"]
+        "copy": ["localPairing.showNewIn", "localPairing.tooManyAgainTitle"]
       }
     },
     {
@@ -15975,13 +16034,73 @@
       }
     },
     {
-      "name": "LocalPairing/waiting: for the other person, named",
-      "input": { "localPairing": { "device": "Studio PC", "step": "waiting" } },
+      "name": "LocalPairing/confirm: Pair was pressed, both controls wait for the answer",
+      "input": {
+        "localPairing": {
+          "device": "LAPTOP-7QH3RX",
+          "categories": ["crates", "cues"],
+          "busy": "pair",
+          "step": "confirm"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "confirm",
+        "copy": [
+          "a11y.busy",
+          "common.notNow",
+          "linkPairing.shares",
+          "localPairing.confirmBody",
+          "localPairing.confirmTitle",
+          "localPairing.pair"
+        ],
+        "disabled": ["common.notNow", "localPairing.pair"]
+      },
+      "mustNot": {
+        "invariant": "A second press never confirms twice, and the screen never says it paired before the window does.",
+        "states": ["paired"],
+        "copy": ["localPairing.pairedTitle"]
+      }
+    },
+    {
+      "name": "LocalPairing/confirm: Not now was pressed, both controls wait for the answer",
+      "input": {
+        "localPairing": {
+          "device": "LAPTOP-7QH3RX",
+          "categories": ["crates", "cues"],
+          "busy": "not-now",
+          "step": "confirm"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "confirm",
+        "copy": [
+          "a11y.busy",
+          "common.notNow",
+          "linkPairing.shares",
+          "localPairing.confirmBody",
+          "localPairing.confirmTitle",
+          "localPairing.pair"
+        ],
+        "disabled": ["common.notNow", "localPairing.pair"]
+      }
+    },
+    {
+      "name": "LocalPairing/waiting: for the other person, named, with what each shares",
+      "input": {
+        "localPairing": {
+          "device": "Studio PC",
+          "categories": ["crates", "cues"],
+          "step": "waiting"
+        }
+      },
       "expect": {
         "component": "LocalPairing",
         "state": "waiting",
         "copy": [
           "common.cancel",
+          "linkPairing.shares",
           "linkPairing.waiting",
           "localPairing.waitingWith"
         ],
@@ -15989,12 +16108,16 @@
       }
     },
     {
-      "name": "LocalPairing/waiting: the shower sent no name",
-      "input": { "localPairing": { "step": "waiting" } },
+      "name": "LocalPairing/waiting: the shower sent no name, nothing is shared",
+      "input": { "localPairing": { "categories": [], "step": "waiting" } },
       "expect": {
         "component": "LocalPairing",
         "state": "waiting",
-        "copy": ["common.cancel", "linkPairing.waiting"],
+        "copy": [
+          "common.cancel",
+          "linkPairing.sharesNone",
+          "linkPairing.waiting"
+        ],
         "actions": ["cancel"]
       }
     },
@@ -16043,6 +16166,32 @@
           "localPairing.pairedDevices",
           "localPairing.pairedTitle"
         ]
+      }
+    },
+    {
+      "name": "LocalPairing/paired: the name could not be kept, the screen stays",
+      "input": {
+        "localPairing": {
+          "device": "LAPTOP-7QH3RX",
+          "nameError": "failed",
+          "step": "paired"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "paired",
+        "copy": [
+          "common.done",
+          "devices.renameFailed",
+          "localPairing.nameHint",
+          "localPairing.nameLabel",
+          "localPairing.pairedBody",
+          "localPairing.pairedTitle"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A name that was not kept is never lost without a word.",
+        "copy": ["pairedDevices.renameEmpty"]
       }
     },
     {
@@ -16135,10 +16284,12 @@
         "state": "network-blocked",
         "copy": [
           "common.close",
+          "common.tryAgain",
           "core.codes.nearby-permission-denied.message",
           "core.codes.nearby-permission-denied.title",
           "localPairing.openSettings"
-        ]
+        ],
+        "actions": ["retry"]
       }
     },
     {
@@ -16149,12 +16300,14 @@
         "state": "network-blocked",
         "copy": [
           "common.close",
+          "common.tryAgain",
           "core.codes.nearby-permission-denied.message",
           "core.codes.nearby-permission-denied.title"
-        ]
+        ],
+        "actions": ["retry"]
       },
       "mustNot": {
-        "invariant": "A platform that cannot open its settings never offers a button that does nothing.",
+        "invariant": "A platform that cannot open its settings never offers a button that does nothing, and Try again returns to where the person was.",
         "copy": ["localPairing.openSettings"]
       }
     },
@@ -16966,6 +17119,125 @@
       }
     },
     {
+      "name": "PairedDevices/renaming: the store could not keep the name",
+      "input": {
+        "pairedDevices": {
+          "step": "renaming",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": false
+            }
+          ],
+          "target": "L1",
+          "renameError": "failed"
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "renaming",
+        "copy": [
+          "a11y.deviceOptions",
+          "a11y.letConnect",
+          "common.cancel",
+          "common.done",
+          "common.save",
+          "devices.rename",
+          "devices.renameFailed",
+          "devices.renameLabel",
+          "localPairing.nameHint",
+          "pairedDevices.canConnect",
+          "pairedDevices.forget",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.pair",
+          "pairedDevices.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "A store failure is never worded as an empty name.",
+        "copy": ["pairedDevices.renameEmpty"]
+      }
+    },
+    {
+      "name": "PairedDevices/forgetting: the store could not forget it, the question stays",
+      "input": {
+        "pairedDevices": {
+          "step": "forgetting",
+          "devices": [
+            {
+              "id": "L1",
+              "label": "Device 1",
+              "lastSeen": 1700000000,
+              "reachable": true
+            },
+            {
+              "id": "L2",
+              "label": "Device 2",
+              "lastSeen": 1699913600,
+              "reachable": true
+            },
+            {
+              "id": "L3",
+              "label": "Device 3",
+              "lastSeen": 1699827200,
+              "reachable": true
+            },
+            {
+              "id": "L4",
+              "label": "Device 4",
+              "lastSeen": 1699740800,
+              "reachable": false
+            }
+          ],
+          "target": "L2",
+          "forgetError": true
+        }
+      },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "forgetting",
+        "copy": [
+          "a11y.deviceOptions",
+          "a11y.letConnect",
+          "common.cancel",
+          "common.done",
+          "devices.rename",
+          "pairedDevices.canConnect",
+          "pairedDevices.forget",
+          "pairedDevices.forgetBody",
+          "pairedDevices.forgetConfirm",
+          "pairedDevices.forgetFailed",
+          "pairedDevices.lastSeen",
+          "pairedDevices.lede",
+          "pairedDevices.pair",
+          "pairedDevices.title"
+        ],
+        "actions": ["cancel"]
+      }
+    },
+    {
       "name": "PairedDevices/forgetting: asks inside the row",
       "input": {
         "pairedDevices": {
@@ -17022,6 +17294,20 @@
       "mustNot": {
         "invariant": "Forget is local: it never reads as Remove, a server action.",
         "copy": ["devices.manage"]
+      }
+    },
+    {
+      "name": "PairedDevices/loading: the first read has not answered",
+      "input": { "pairedDevices": { "step": "loading", "devices": [] } },
+      "expect": {
+        "component": "PairedDevices",
+        "state": "loading",
+        "copy": ["a11y.busy", "common.done", "pairedDevices.title"]
+      },
+      "mustNot": {
+        "invariant": "Nothing is said about what is paired before the list is read.",
+        "states": ["empty", "list"],
+        "copy": ["pairedDevices.empty", "pairedDevices.pair"]
       }
     },
     {

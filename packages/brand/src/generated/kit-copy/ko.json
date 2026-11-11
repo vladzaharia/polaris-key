@@ -1123,6 +1123,7 @@
   "pairedDevices.forget": "삭제",
   "pairedDevices.forgetConfirm": "{device}을(를) 삭제할까요?",
   "pairedDevices.forgetBody": "다시 연결하려면 새 코드로 페어링하세요.",
+  "pairedDevices.forgetFailed": "{device}을(를) 삭제하지 못했습니다. 다시 시도하세요.",
   "pairedDevices.reachableFullTitle": "최대 {max}대까지 연결할 수 있습니다",
   "pairedDevices.reachableFullBody": "다른 기기를 연결하려면 하나를 끄세요.",
   "pairedDevices.fullBody": "다른 기기를 페어링하려면 페어링된 기기를 삭제하세요.",

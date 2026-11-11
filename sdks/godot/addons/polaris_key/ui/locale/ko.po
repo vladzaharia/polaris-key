@@ -6590,6 +6590,11 @@ msgstr "{device}을(를) 삭제할까요?"
 msgid "pairedDevices.forgetBody"
 msgstr "다시 연결하려면 새 코드로 페어링하세요."
 
+#. Couldn’t forget {device}. Try again.
+#. Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}.
+msgid "pairedDevices.forgetFailed"
+msgstr "{device}을(를) 삭제하지 못했습니다. 다시 시도하세요."
+
 #. Up to {max} can connect
 #. Pair with a Code: list: eight switches are on. Arguments: {max} = 8.
 msgid "pairedDevices.reachableFullTitle"

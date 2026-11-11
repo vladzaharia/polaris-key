@@ -7267,6 +7267,22 @@ function localFamily(a: A): Draft[] {
       },
     ),
     row(
+      `${LP}/opening: a placeholder code tile while the window opens`,
+      pair("opening"),
+      LP,
+      "opening",
+      [
+        "localPairing.title",
+        "localPairing.showBody",
+        "a11y.busy",
+        "localPairing.toEnter",
+        "common.cancel",
+      ],
+      inv("A slow start never shows a code or a QR that is not there yet.", {
+        copy: ["a11y.linkCode", "a11y.qrPairing", "localPairing.expires"],
+      }),
+    ),
+    row(
       `${LP}/show: the code is the largest text, with its time`,
       pair("show", WINDOW),
       LP,
@@ -7294,6 +7310,28 @@ function localFamily(a: A): Draft[] {
           copy: ["localPairing.triesLeft"],
         },
       ),
+    ),
+    row(
+      `${LP}/show: a new code is being asked for, Show a new code keeps its label`,
+      pair("show", { ...WINDOW, notice: "rotated", busy: "new-code" }),
+      LP,
+      "show",
+      [
+        ...SHOW,
+        "localPairing.rotatedTitle",
+        "localPairing.rotatedBody",
+        "localPairing.showNew",
+        "a11y.newCode",
+        "a11y.busy",
+      ],
+      {
+        disabled: ["localPairing.showNew"],
+        mustNot: {
+          invariant:
+            "A second press while the first is answered withdraws nothing and opens nothing.",
+          copy: ["localPairing.showNewIn"],
+        },
+      },
     ),
     row(
       `${LP}/show: the other device said Not now`,
@@ -7329,14 +7367,15 @@ function localFamily(a: A): Draft[] {
       "show",
       [
         ...SHOW,
-        "localPairing.tooManyAgainTitle",
+        "localPairing.rotatedTitle",
         "localPairing.tooManyAgainBody",
         "localPairing.showNew",
+        "a11y.newCode",
       ],
       inv(
-        "Five wrong codes over renewed windows warn but do not start the 30-second wait.",
+        "Five wrong codes over renewed windows warn but do not start the 30-second wait, and the warning is not titled as a repeat the person never saw.",
         {
-          copy: ["localPairing.showNewIn"],
+          copy: ["localPairing.showNewIn", "localPairing.tooManyAgainTitle"],
           states: ["closed"],
         },
       ),
@@ -7590,18 +7629,69 @@ function localFamily(a: A): Draft[] {
       ],
     ),
     row(
-      `${LP}/waiting: for the other person, named`,
-      pair("waiting", { device: "Studio PC" }),
+      `${LP}/confirm: Pair was pressed, both controls wait for the answer`,
+      pair("confirm", {
+        device: "LAPTOP-7QH3RX",
+        categories: CATS,
+        busy: "pair",
+      }),
       LP,
-      "waiting",
-      ["linkPairing.waiting", "localPairing.waitingWith", "common.cancel"],
+      "confirm",
+      [
+        "localPairing.confirmTitle",
+        "localPairing.confirmBody",
+        "linkPairing.shares",
+        "localPairing.pair",
+        "common.notNow",
+        "a11y.busy",
+      ],
+      {
+        disabled: ["localPairing.pair", "common.notNow"],
+        mustNot: {
+          invariant:
+            "A second press never confirms twice, and the screen never says it paired before the window does.",
+          copy: ["localPairing.pairedTitle"],
+          states: ["paired"],
+        },
+      },
     ),
     row(
-      `${LP}/waiting: the shower sent no name`,
-      pair("waiting"),
+      `${LP}/confirm: Not now was pressed, both controls wait for the answer`,
+      pair("confirm", {
+        device: "LAPTOP-7QH3RX",
+        categories: CATS,
+        busy: "not-now",
+      }),
+      LP,
+      "confirm",
+      [
+        "localPairing.confirmTitle",
+        "localPairing.confirmBody",
+        "linkPairing.shares",
+        "localPairing.pair",
+        "common.notNow",
+        "a11y.busy",
+      ],
+      { disabled: ["localPairing.pair", "common.notNow"] },
+    ),
+    row(
+      `${LP}/waiting: for the other person, named, with what each shares`,
+      pair("waiting", { device: "Studio PC", categories: CATS }),
       LP,
       "waiting",
-      ["linkPairing.waiting", "common.cancel"],
+      [
+        "linkPairing.waiting",
+        "localPairing.waitingWith",
+        "linkPairing.shares",
+        "common.cancel",
+      ],
+    ),
+    row(
+      `${LP}/waiting: the shower sent no name, nothing is shared`,
+      pair("waiting", { categories: [] }),
+      LP,
+      "waiting",
+      ["linkPairing.waiting", "linkPairing.sharesNone", "common.cancel"],
     ),
     row(
       `${LP}/paired: the name starts as the one the device sent`,
@@ -7636,6 +7726,23 @@ function localFamily(a: A): Draft[] {
         "common.done",
       ],
     ),
+    row(
+      `${LP}/paired: the name could not be kept, the screen stays`,
+      pair("paired", { device: "LAPTOP-7QH3RX", nameError: "failed" }),
+      LP,
+      "paired",
+      [
+        "localPairing.pairedTitle",
+        "localPairing.pairedBody",
+        "localPairing.nameLabel",
+        "localPairing.nameHint",
+        "devices.renameFailed",
+        "common.done",
+      ],
+      inv("A name that was not kept is never lost without a word.", {
+        copy: ["pairedDevices.renameEmpty"],
+      }),
+    ),
     failed("declined", "linkPairing.failedDeclined", "someone said Not now"),
     failed(
       "timeout",
@@ -7653,6 +7760,7 @@ function localFamily(a: A): Draft[] {
         "core.codes.nearby-permission-denied.title",
         "core.codes.nearby-permission-denied.message",
         "localPairing.openSettings",
+        "common.tryAgain",
         "common.close",
       ],
     ),
@@ -7664,10 +7772,11 @@ function localFamily(a: A): Draft[] {
       [
         "core.codes.nearby-permission-denied.title",
         "core.codes.nearby-permission-denied.message",
+        "common.tryAgain",
         "common.close",
       ],
       inv(
-        "A platform that cannot open its settings never offers a button that does nothing.",
+        "A platform that cannot open its settings never offers a button that does nothing, and Try again returns to where the person was.",
         {
           copy: ["localPairing.openSettings"],
         },
@@ -7835,6 +7944,38 @@ function localFamily(a: A): Draft[] {
       ],
     ),
     row(
+      `${PD}/renaming: the store could not keep the name`,
+      list("renaming", { target: "L1", renameError: "failed" }, devs(4, 3)),
+      PD,
+      "renaming",
+      [
+        ...LIST,
+        ...SW,
+        "devices.renameLabel",
+        "localPairing.nameHint",
+        "common.save",
+        "common.cancel",
+        "devices.renameFailed",
+      ],
+      inv("A store failure is never worded as an empty name.", {
+        copy: ["pairedDevices.renameEmpty"],
+      }),
+    ),
+    row(
+      `${PD}/forgetting: the store could not forget it, the question stays`,
+      list("forgetting", { target: "L2", forgetError: true }, devs(4, 3)),
+      PD,
+      "forgetting",
+      [
+        ...LIST,
+        ...SW,
+        "pairedDevices.forgetConfirm",
+        "pairedDevices.forgetBody",
+        "pairedDevices.forgetFailed",
+        "common.cancel",
+      ],
+    ),
+    row(
       `${PD}/forgetting: asks inside the row`,
       list("forgetting", { target: "L2" }, devs(4, 3)),
       PD,
@@ -7848,6 +7989,17 @@ function localFamily(a: A): Draft[] {
       ],
       inv("Forget is local: it never reads as Remove, a server action.", {
         copy: ["devices.manage"],
+      }),
+    ),
+    row(
+      `${PD}/loading: the first read has not answered`,
+      list("loading", {}, []),
+      PD,
+      "loading",
+      ["pairedDevices.title", "a11y.busy", "common.done"],
+      inv("Nothing is said about what is paired before the list is read.", {
+        copy: ["pairedDevices.empty", "pairedDevices.pair"],
+        states: ["empty", "list"],
       }),
     ),
     row(`${PD}/empty: nothing paired yet`, list("list", {}, []), PD, "empty", [

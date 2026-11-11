@@ -1968,6 +1968,7 @@
     "pairedDevices.forget": "削除",
     "pairedDevices.forgetConfirm": "{device} を削除しますか？",
     "pairedDevices.forgetBody": "再接続するには、新しいコードでペアリングしてください。",
+    "pairedDevices.forgetFailed": "{device}を削除できませんでした。もう一度お試しください。",
     "pairedDevices.reachableFullTitle": "最大 {max} 台まで接続できます",
     "pairedDevices.reachableFullBody": "別のデバイスを接続するには、どれかをオフにしてください。",
     "pairedDevices.fullBody": "別のデバイスをペアリングするには、ペアリング済みのデバイスを削除してください。",

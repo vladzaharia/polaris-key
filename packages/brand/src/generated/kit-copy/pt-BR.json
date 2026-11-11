@@ -1123,6 +1123,7 @@
   "pairedDevices.forget": "Esquecer",
   "pairedDevices.forgetConfirm": "Esquecer {device}?",
   "pairedDevices.forgetBody": "Para se conectar de novo, pareie com um novo código.",
+  "pairedDevices.forgetFailed": "Não foi possível esquecer {device}. Tente de novo.",
   "pairedDevices.reachableFullTitle": "Até {max} podem se conectar",
   "pairedDevices.reachableFullBody": "Desative um para permitir que outro se conecte.",
   "pairedDevices.fullBody": "Esqueça um dispositivo pareado para parear outro.",

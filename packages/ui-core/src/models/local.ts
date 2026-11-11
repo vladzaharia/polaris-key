@@ -37,6 +37,7 @@ const FAILED_BODY = {
 
 export type LocalPairingState =
   | "choose"
+  | "opening"
   | "show"
   | "closed"
   | "enter"
@@ -86,8 +87,23 @@ export function localPairingView(
         // Neither way is the primary: either device can show the code.
         focus: "heading",
       });
+    case "opening":
+      // The window is being opened: the code tile is a placeholder until the first code arrives, so
+      // a slow start is never mistaken for nothing happening.
+      return makeView(ctx, C, {
+        state: "opening",
+        copy: [
+          "localPairing.title",
+          "localPairing.showBody",
+          "a11y.busy",
+          "localPairing.toEnter",
+          "common.cancel",
+        ],
+        focus: "heading",
+      });
     case "show": {
       const n = p.notice;
+      const renewing = p.busy === "new-code";
       return makeView(ctx, C, {
         state: "show",
         copy: [
@@ -99,21 +115,24 @@ export function localPairingView(
           "localPairing.waitingDevice",
           "localPairing.toEnter",
           "common.cancel",
-          n === "rotated" && "localPairing.rotatedTitle",
-          (n === "rotated" || n === "declined") && "localPairing.rotatedBody",
+          (n === "rotated" || n === "guessing") && "localPairing.rotatedTitle",
+          n === "rotated" && "localPairing.rotatedBody",
+          n === "declined" && "localPairing.rotatedBody",
           n === "declined" && "localPairing.notPairedWith",
-          (n === "rotated" || n === "declined") && "a11y.newCode",
+          (n === "rotated" || n === "declined" || n === "guessing") &&
+            "a11y.newCode",
           n === "blocked" && "localPairing.blockedTitle",
           n === "blocked" && "localPairing.blockedBody",
-          n === "guessing" && "localPairing.tooManyAgainTitle",
           n === "guessing" && "localPairing.tooManyAgainBody",
           n && n !== "blocked" && "localPairing.showNew",
+          renewing && "a11y.busy",
         ],
         args: {
           code: p.code,
           time: countdown(p.secondsLeft ?? 0),
           device,
         },
+        disabled: [renewing && "localPairing.showNew"],
         tone: n ? "neutral" : null,
         focus: "heading",
       });
@@ -189,8 +208,11 @@ export function localPairingView(
           sharesKey(p.categories),
           "localPairing.pair",
           "common.notNow",
+          p.busy && "a11y.busy",
         ],
         args: { device },
+        // A press is being answered: both controls wait, whichever was pressed.
+        disabled: p.busy ? ["localPairing.pair", "common.notNow"] : [],
         primary: "localPairing.pair",
         // Not now first, behind the 250 ms guard: Enter on arrival never pairs.
         focus: "common.notNow",
@@ -201,6 +223,7 @@ export function localPairingView(
         copy: [
           "linkPairing.waiting",
           device && "localPairing.waitingWith",
+          sharesKey(p.categories),
           "common.cancel",
         ],
         args: { device },
@@ -217,11 +240,13 @@ export function localPairingView(
           p.cantConnect && "localPairing.cantConnectTitle",
           p.cantConnect && "localPairing.cantConnectBody",
           p.cantConnect && "localPairing.pairedDevices",
+          p.nameError && "devices.renameFailed",
           "common.done",
         ],
         args: { device: device ?? "", max: p.max ?? MAX_CONNECTABLE },
         primary: "common.done",
-        tone: p.cantConnect ? "neutral" : null,
+        tone: p.nameError ? "danger" : p.cantConnect ? "neutral" : null,
+        errorSlot: p.nameError ? "localPairing.nameLabel" : null,
         focus: "heading",
       });
     case "failed": {
@@ -247,11 +272,13 @@ export function localPairingView(
           "core.codes.nearby-permission-denied.title",
           "core.codes.nearby-permission-denied.message",
           p.canOpenSettings && "localPairing.openSettings",
+          "common.tryAgain",
           "common.close",
         ],
+        // Try again returns to the step the person was on, with the field kept.
         primary: p.canOpenSettings
           ? "localPairing.openSettings"
-          : "common.close",
+          : "common.tryAgain",
         tone: "neutral",
         focus: "heading",
       });
@@ -263,7 +290,7 @@ export function localPairingView(
           "core.codes.local-pairing-off.message",
           "common.close",
         ],
-        primary: "common.close",
+        // Close is the only way out of a refusal: it is not the filled one.
         tone: "neutral",
         focus: "heading",
       });
@@ -273,6 +300,7 @@ export function localPairingView(
 // ── PairedDevices ──────────────────────────────────────────────────────────────────────────────
 
 export type PairedDevicesState =
+  | "loading"
   | "list"
   | "renaming"
   | "forgetting"
@@ -314,6 +342,13 @@ export function pairedDevicesView(
   const C = "PairedDevices" as const;
   const devices = p.devices ?? [];
   const full = devices.length >= MAX_PAIRED;
+  // Until the first read answers nothing is said about what is paired, not even "none yet".
+  if (p.step === "loading")
+    return makeView(ctx, C, {
+      state: "loading",
+      copy: ["pairedDevices.title", "a11y.busy", "common.done"],
+      focus: "heading",
+    });
   if (p.step === "load-failed")
     return makeView(ctx, C, {
       state: "load-failed",
@@ -397,8 +432,12 @@ export function pairedDevicesView(
       state === "renaming" &&
         p.renameError === "empty" &&
         "pairedDevices.renameEmpty",
+      state === "renaming" &&
+        p.renameError === "failed" &&
+        "devices.renameFailed",
       state === "forgetting" && "pairedDevices.forgetConfirm",
       state === "forgetting" && "pairedDevices.forgetBody",
+      state === "forgetting" && p.forgetError && "pairedDevices.forgetFailed",
       state === "forgetting" && "common.cancel",
       "pairedDevices.pair",
       "common.done",

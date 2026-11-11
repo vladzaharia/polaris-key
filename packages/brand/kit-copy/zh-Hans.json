@@ -1968,6 +1968,7 @@
     "pairedDevices.forget": "移除",
     "pairedDevices.forgetConfirm": "要移除 {device} 吗？",
     "pairedDevices.forgetBody": "要再次连接，请用新验证码配对。",
+    "pairedDevices.forgetFailed": "无法移除{device}。请重试。",
     "pairedDevices.reachableFullTitle": "最多 {max} 台可连接",
     "pairedDevices.reachableFullBody": "关闭一台，才能让另一台连接。",
     "pairedDevices.fullBody": "移除一台已配对的设备，才能配对另一台。",

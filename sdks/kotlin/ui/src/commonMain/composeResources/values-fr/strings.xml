@@ -476,7 +476,7 @@
     <!-- Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="devices_renameFailed">Impossible de renommer %1$s. Réessayez.</string>
     <!-- Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
-    <string name="devices_removeFailed">Impossible de retirer %1$s. Réessayez.</string>
+    <string name="devices_removeFailed">Impossible d’oublier %1$s. Réessayez.</string>
     <!-- Devices: the list of devices using the license. Browser mode. -->
     <string name="devices_browser">Gérez vos appareils dans votre navigateur.</string>
     <!-- Devices: the list of devices using the license. Browser mode; opens the account in the browser. -->
@@ -2501,6 +2501,8 @@
     <string name="pairedDevices_forgetConfirm">Oublier %1$s ?</string>
     <!-- Pair with a Code: row: the one consequence. -->
     <string name="pairedDevices_forgetBody">Pour vous reconnecter, associez-vous avec un nouveau code.</string>
+    <!-- Pair with a Code: row: the paired device could not be forgotten; the question stays. Arguments: {device}. Arguments: 1=device. -->
+    <string name="pairedDevices_forgetFailed">Impossible d’oublier %1$s. Réessayez.</string>
     <!-- Pair with a Code: list: eight switches are on. Arguments: {max} = 8. Arguments: 1=max. -->
     <string name="pairedDevices_reachableFullTitle">Jusqu’à %1$s peuvent se connecter</string>
     <!-- Pair with a Code: list: what to do. -->

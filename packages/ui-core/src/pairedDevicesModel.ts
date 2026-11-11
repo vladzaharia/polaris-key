@@ -11,7 +11,11 @@
 //     held (`entryVisible`).
 
 import { contextOf, type PairedDevicesInput, type UiInput } from "./input.js";
-import type { LocalLinkLike, LocalLinksLike } from "./localPairingModel.js";
+import {
+  detail,
+  type LocalLinkLike,
+  type LocalLinksLike,
+} from "./localPairingModel.js";
 import { MAX_NAME, pairedDevicesView } from "./models/local.js";
 import { createStore, type Deliver, type Store } from "./store.js";
 import type { View } from "./view.js";
@@ -37,6 +41,9 @@ export interface PairedDevicesSnapshot extends PairedDevicesInput {
   pairAnother: boolean;
 }
 
+/** The SDK's reason for a label it cannot keep (`LanError.reason`; not a registry constant). */
+const BAD_INPUT = "bad_input";
+
 export interface PairedDevicesOptions {
   driver: LocalLinksLike;
   base?: UiInput;
@@ -48,6 +55,8 @@ export class PairedDevicesModel {
   base: UiInput;
   private readonly driver: LocalLinksLike;
   private unsubscribe: (() => void) | null = null;
+  /** An answer the host gave about a device (its own connection's), shown with the list. */
+  hostNotice: PairedDevicesInput["notice"];
   /** Bumped by each read, so a slow older read never overwrites a newer one. */
   private reads = 0;
 
@@ -56,7 +65,8 @@ export class PairedDevicesModel {
     this.base = options.base ?? {};
     this.store = createStore<PairedDevicesSnapshot>(
       {
-        step: "list",
+        // Nothing is said about what is paired until the first read answers.
+        step: "loading",
         devices: [],
         draft: "",
         focus: null,
@@ -83,7 +93,12 @@ export class PairedDevicesModel {
       pairAnother: _pair,
       ...list
     } = this.store.get();
-    return { ...this.base, pairedDevices: list };
+    const notice =
+      list.notice ?? this.hostNotice ?? this.base.pairedDevices?.notice;
+    return {
+      ...this.base,
+      pairedDevices: { ...list, ...(notice ? { notice } : {}) },
+    };
   }
 
   view(): View<"PairedDevices"> {
@@ -104,6 +119,9 @@ export class PairedDevicesModel {
   /** Read `list()` and the gate again (also Try again). */
   async refresh(): Promise<void> {
     const read = ++this.reads;
+    // Try again from a failed read shows the loading treatment, not the stale failure.
+    if (this.store.get().step === "load-failed")
+      this.store.set((s) => ({ ...s, step: "loading" }));
     const on = this.driver.localPairing();
     let rows: readonly LocalLinkLike[];
     try {
@@ -178,12 +196,16 @@ export class PairedDevicesModel {
     }
     try {
       await this.driver.rename(s.target, name);
-    } catch {
-      // The SDK refused what the screen could not tell (a name that cleans to nothing).
-      this.store.set((x) => ({ ...x, renameError: "empty" }));
+    } catch (e) {
+      // `bad_input` is a name the SDK cleans to nothing; any other rejection is the store's. The
+      // text and the focus stay either way.
+      this.store.set((x) => ({
+        ...x,
+        renameError: detail(e).reason === BAD_INPUT ? "empty" : "failed",
+      }));
       return;
     }
-    this.endEdit();
+    this.endEdit(s.target);
     await this.refresh();
   }
 
@@ -195,6 +217,7 @@ export class PairedDevicesModel {
       step: "forgetting",
       target: id,
       renameError: undefined,
+      forgetError: undefined,
       focus: null,
     }));
   }
@@ -206,7 +229,13 @@ export class PairedDevicesModel {
     const rows = s.devices ?? [];
     const at = rows.findIndex((d) => d.id === s.target);
     const next = rows[at + 1] ?? rows[at - 1];
-    await this.driver.remove(s.target).catch(() => false);
+    try {
+      await this.driver.remove(s.target);
+    } catch {
+      // Not forgotten: the question stays, with the reason, so Forget can be pressed again.
+      this.store.set((x) => ({ ...x, forgetError: true }));
+      return;
+    }
     this.endEdit();
     await this.refresh();
     const left = this.store.get().devices ?? [];
@@ -221,16 +250,20 @@ export class PairedDevicesModel {
 
   /** Cancel an edit: the row is as it was. */
   cancelEdit(): void {
-    this.endEdit();
+    this.endEdit(this.store.get().target);
   }
 
-  private endEdit(): void {
+  /** The edit is over: the list again, with focus back on the row's menu button (`row`) unless the
+   *  row is gone. */
+  private endEdit(row?: string): void {
     this.store.set((s) => ({
       ...s,
       step: this.driver.localPairing() ? "list" : "off",
       target: undefined,
       renameError: undefined,
+      forgetError: undefined,
       draft: "",
+      focus: row ? { kind: "row", id: row } : null,
     }));
   }
 
@@ -246,7 +279,7 @@ export class PairedDevicesModel {
     const d = this.store.get().devices?.find((x) => x.id === id);
     this.store.set((s) => ({
       ...s,
-      notice: kind && d ? { device: d.label ?? "", kind } : undefined,
+      notice: kind && d ? { device: d.label ?? "", kind, id } : undefined,
     }));
   }
 

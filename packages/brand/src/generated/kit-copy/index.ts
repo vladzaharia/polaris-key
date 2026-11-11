@@ -1137,6 +1137,7 @@ export type KitCopyKey =
   | "pairedDevices.forget"
   | "pairedDevices.forgetConfirm"
   | "pairedDevices.forgetBody"
+  | "pairedDevices.forgetFailed"
   | "pairedDevices.reachableFullTitle"
   | "pairedDevices.reachableFullBody"
   | "pairedDevices.fullBody"
