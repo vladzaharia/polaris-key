@@ -14,7 +14,7 @@
 
 ## Goal
 
-Passes LP1-LP3, and LP6 over the kit API of CC-29.15 (after its Node slice), over the local-links contract, client-core, the Node SDK and the other SDKs, and the cryptographer packet part P5 (CPace and the Elligator2 map), with the `launch.localPairing` gate column in the sign-off plan.
+Security passes over the kit API of CC-29.15 (after its Node slice), over the local-links contract, client-core, the Node SDK and the other SDKs, and the cryptographer packet part P5 (CPace and the Elligator2 map), with the `launch.localPairing` gate column in the sign-off plan.
 
 ## Why
 

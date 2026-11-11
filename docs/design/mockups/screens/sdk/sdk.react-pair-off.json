@@ -94,7 +94,7 @@
     "round": 1,
     "reviewer": "pkey-ux-reviewer (mockup mode)",
     "date": "2026-11-10",
-    "verdict": "Pass (good), with three wording fixes taken in the fix round.",
+    "verdict": "Pass (good), with three wording fixes taken in the follow-up.",
     "findings": [
       {
         "severity": "minor",

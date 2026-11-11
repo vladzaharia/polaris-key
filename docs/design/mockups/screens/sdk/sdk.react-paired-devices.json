@@ -9,7 +9,7 @@
   "summary": "The devices this one is paired with (PairedDevicesModel): each name over when it was last seen, on one line each, and a menu with Rename and Forget; the Can connect switch only when one is off or more than 8 are paired; renaming and forgetting inside the row; a refused name; the 8-can-connect and 32-paired caps; none yet; couldn't load; and what a connection the app makes can answer.",
   "compare": [
     "1: 'They connect only on the same network.' is said once, in the lede. Each row is the name (the rename, or the label the device sent) over 'Last seen today', 'yesterday', '3 days ago' (the shipped relative formatter, since()/days(), from the hour-coarse stored time), each on one line with an ellipsis, then ⋯ (Rename, Forget). No 'Not reachable now': the SDK cannot tell away from forgotten. No platform icon unless R12 lands.",
-    "2: the Can connect column appears only when a device is off or more than 8 are paired (with every device on and 8 or fewer, the switch does nothing useful). A switch is the link's reachable flag (on: the other device can find and connect to this one), on for a new pairing (LP3-D2), named 'Let {device} connect to this device', drawn quiet (a tint with the knob in the product's colour), and its target is 44 x 24. From 480px of window the label 'Can connect' sits once above the switches, its end on theirs; under 480 it goes and the switch sits 8px before ⋯. ui-core owns this disclosure rule.",
+    "2: the Can connect column appears only when a device is off or more than 8 are paired (with every device on and 8 or fewer, the switch does nothing useful). A switch is the link's reachable flag (on: the other device can find and connect to this one), on for a new pairing, named 'Let {device} connect to this device', drawn quiet (a tint with the knob in the product's colour), and its target is 44 x 24. From 480px of window the label 'Can connect' sits once above the switches, its end on theirs; under 480 it goes and the switch sits 8px before ⋯. ui-core owns this disclosure rule.",
     "3: Rename edits inside the row (as the shipped Devices list, rows.tsx data-editing='rename'): 'Device name', 'Shown on this device only.', Save and Cancel; Enter saves, Escape cancels; nothing is sent.",
     "3b: a name is refused inside the row: 'Use 64 characters or fewer.' for a longer one, 'Enter a name.' when nothing is left once it is cleaned; the field keeps the text and focus.",
     "4: Forget confirms inside the row: 'Forget Riverside booth?' / 'To connect again, pair with a new code.' with a danger Forget and Cancel. Forgetting deletes it here only, and the other device is not told (Forget is local; the license Devices list keeps Remove, a server action). After Forget, focus moves to the next row, or the title when none is left (UI-KITS 4.3).",
@@ -258,7 +258,7 @@
     "round": 1,
     "reviewer": "pkey-ux-reviewer (mockup mode)",
     "date": "2026-11-10",
-    "verdict": "Fix (mediocre): names squeezed at phone width, 'Not reachable now' beside an on switch, edits away from their row, and the most common connect answer missing. Fixed in the one fix round, every recommendation taken.",
+    "verdict": "Fix (mediocre): names squeezed at phone width, 'Not reachable now' beside an on switch, edits away from their row, and the most common connect answer missing. Fixed in one follow-up, every recommendation taken.",
     "findings": [
       {
         "severity": "major",

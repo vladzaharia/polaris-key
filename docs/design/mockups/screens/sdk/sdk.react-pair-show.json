@@ -150,14 +150,14 @@
       "value": "Pairing is being blocked",
       "role": "label",
       "revised": "new",
-      "note": "LP1 F7 (R4)."
+      "note": "Being-blocked cue (R4)."
     },
     {
       "key": "localPairing.blockedBody",
       "value": "Something on this network keeps interrupting. Try another network.",
       "role": "body",
       "revised": "new",
-      "note": "LP1 F7."
+      "note": "Being-blocked cue."
     },
     {
       "key": "linkPairing.failedTitle",
@@ -177,14 +177,14 @@
       "value": "Too many tries again",
       "role": "label",
       "revised": "new",
-      "note": "LP1 F9: the second Too many tries in a row (R2)."
+      "note": "The second Too many tries in a row (R2)."
     },
     {
       "key": "localPairing.tooManyAgainBody",
       "value": "Someone nearby may be guessing codes.",
       "role": "body",
       "revised": "new",
-      "note": "LP1 F9."
+      "note": "Cooldown after Too many tries."
     },
     {
       "key": "localPairing.failedExpired",
@@ -249,7 +249,7 @@
     },
     {
       "id": "R4",
-      "need": "Shower: a being-blocked signal (LP1 F7), a counter or event for C1s refused as busy or limited while no attempt completes.",
+      "need": "Shower: a being-blocked signal, a counter or event for C1s refused as busy or limited while no attempt completes.",
       "states": ["4"]
     },
     {
@@ -270,7 +270,7 @@
     "round": 1,
     "reviewer": "pkey-ux-reviewer (mockup mode)",
     "date": "2026-11-10",
-    "verdict": "Fix (mediocre): the code was not the hero, the two devices disagreed about the tries left, and the shower had no way to make a code the joiner could still use. Fixed in the one fix round, every recommendation taken.",
+    "verdict": "Fix (mediocre): the code was not the hero, the two devices disagreed about the tries left, and the shower had no way to make a code the joiner could still use. Fixed in one follow-up, every recommendation taken.",
     "findings": [
       {
         "severity": "blocking",
@@ -286,7 +286,7 @@
       },
       {
         "severity": "major",
-        "issue": "The LP1 F9 cooldown and second-time warning, and the F7 'pairing is being blocked' cue, were missing.",
+        "issue": "The cooldown and second-time warning, and the 'pairing is being blocked' cue, were missing.",
         "resolution": "5: 'Show a new code in 0:24', aria-disabled through a 30-second cooldown. 5b: 'Too many tries again' / 'Someone nearby may be guessing codes.' 4: 'Pairing is being blocked' / 'Something on this network keeps interrupting. Try another network.' ui-core owns the cooldown and the warning (R2); the blocked cue needs R4.",
         "ref": "M5"
       },

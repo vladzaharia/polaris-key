@@ -229,7 +229,7 @@
     "round": 1,
     "reviewer": "pkey-ux-reviewer (mockup mode)",
     "date": "2026-11-10",
-    "verdict": "Fix (mediocre): after a wrong code Pair stayed live on a code that could no longer work, and after Too many tries the screen offered a wait that could never succeed and locked the field the escape needed. Fixed in the one fix round, every recommendation taken.",
+    "verdict": "Fix (mediocre): after a wrong code Pair stayed live on a code that could no longer work, and after Too many tries the screen offered a wait that could never succeed and locked the field the escape needed. Fixed in one follow-up, every recommendation taken.",
     "findings": [
       {
         "severity": "blocking",

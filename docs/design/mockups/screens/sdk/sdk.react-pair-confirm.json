@@ -99,7 +99,7 @@
       "role": "label",
       "revised": "changed",
       "was": "{device} can’t connect yet",
-      "note": "Kept with reachable false because 8 already are (LP3-D2). Arguments: {device}."
+      "note": "Kept with reachable false because 8 already are. Arguments: {device}."
     },
     {
       "key": "localPairing.cantConnectBody",
@@ -207,7 +207,7 @@
     "round": 1,
     "reviewer": "pkey-ux-reviewer (mockup mode)",
     "date": "2026-11-10",
-    "verdict": "Fix (good): clean and well judged; the shower's state after Not now, a timeout or a closed connection contradicted the SDK, which keeps the window open with a new code. Fixed in the one fix round.",
+    "verdict": "Fix (good): clean and well judged; the shower's state after Not now, a timeout or a closed connection contradicted the SDK, which keeps the window open with a new code. Fixed in one follow-up.",
     "findings": [
       {
         "severity": "major",

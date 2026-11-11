@@ -236,7 +236,7 @@
     "round": 1,
     "reviewer": "pkey-ux-reviewer (mockup mode)",
     "date": "2026-11-10",
-    "verdict": "New in the fix round: the iPhone frames moved here from sdk.react-pair-enter (M11, Q10), so the React board's compare list covers only what K.1 builds.",
+    "verdict": "New in the follow-up: the iPhone frames moved here from sdk.react-pair-enter (M11, Q10), so the React board's compare list covers only what K.1 builds.",
     "findings": [
       {
         "severity": "major",
