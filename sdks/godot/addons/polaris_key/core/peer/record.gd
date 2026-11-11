@@ -35,6 +35,7 @@ const VOUCH_REQ := 0x8010
 const VOUCH_RESULT := 0x8011
 const CONFIRM := 0x8012
 const CONTACT := 0x0013
+const LOCAL_LINK := 0x0014
 const SAS_COMMIT := 0x8014
 const SAS_NONCE := 0x8015
 const SAS_REVEAL := 0x8016
@@ -42,8 +43,18 @@ const KEYRING_WRAP := 0x0030
 const REKEY := 0x80fe
 const CLOSE := 0x80ff
 
+## Section 15.12: the modes `q` and `l` allowed beside the table's own, by type name.
+const LOCAL_MODES := {
+	"HELLO": "ql", "PING": "ql", "PONG": "ql", "CONFIRM": "q", "XFER": "l", "APP": "l", "APP_CRITICAL": "l",
+	"REKEY": "ql", "CLOSE": "ql",
+}
+## Types only the local modes have, in the shape of `TYPES`.
+const LOCAL_TYPES := [[0x0014, 0x0014, "LOCAL_LINK", "q", -1]]
+const NEEDS := {"LOCAL_LINK": "local/1", "XFER": "xfer/1", "APP": "app/1", "APP_CRITICAL": "app/1"}
+
 ## The type table: [from, to, name, modes, body length (-1: any)]. A mode is `a` (account), `v`
-## (vouch), `p` (pairing) or `c` (contact).
+## (vouch), `p` (pairing) or `c` (contact). The local modes `q` (pairing by code) and `l` (local link) are
+## `LOCAL_MODES` and `LOCAL_TYPES`, beside the table.
 const TYPES := [
 	[0x8001, 0x8001, "HELLO", "avpc", -1],
 	[0x0002, 0x0002, "RING", "a", -1],
@@ -104,12 +115,29 @@ static func split_message(type: int, body: PackedByteArray) -> Array[PackedByteA
 	return out
 
 
+## The capability a session must hold for a type (sections 15.6, 15.11 and 15.12): `xfer/1` is enforced by the
+## session, `local/1` by the mode-q handshake and `app/1` by the host. "" for a type that needs none.
+static func needs_of(type: int) -> String:
+	var row := row_of(type)
+	if row.is_empty():
+		return ""
+	return String(NEEDS.get(row[2], ""))
+
+
 ## The type-table row of a type, or an empty array when the type is outside the table.
 static func row_of(type: int) -> Array:
 	for row in TYPES:
 		if type >= row[0] and type <= row[1]:
 			return row
+	for row in LOCAL_TYPES:
+		if type == row[0]:
+			return row
 	return []
+
+
+## Whether a session of `mode` may carry the type of `row` (a row of `row_of`).
+static func mode_allows(row: Array, mode: String) -> bool:
+	return mode.length() == 1 and ((row[3] as String) + String(LOCAL_MODES.get(row[2], ""))).contains(mode)
 
 
 ## Reads records in order, in a session of one mode (the checks run in the order section 15.6 lists:
@@ -155,7 +183,7 @@ class Assembler extends RefCounted:
 	## record count. The corpus (`more-empty-parts`) accepts an empty MORE record, so the record
 	## count is what bounds the work.
 	func _late_refusal(row: Array, body_size: int, more: bool) -> StringName:
-		if _mode.length() != 1 or not (row[3] as String).contains(_mode):
+		if not PKeyPeerRecord.mode_allows(row, _mode):
 			return PKeyPeerRecord.CLOSE_NOT_ALLOWED
 		if _size + body_size > PKeyPeerRecord.MAX_MESSAGE or _parts.size() >= PKeyPeerRecord.MAX_CHAIN_RECORDS:
 			return PKeyPeerRecord.CLOSE_BAD_FRAME

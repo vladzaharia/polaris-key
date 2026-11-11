@@ -1,76 +1,58 @@
 @tool
 class_name PKeyPeerSession
 extends RefCounted
-## WIRE-CONTRACT-V5 sections 15.5 and 15.6: one `pkey-peer/1` session in mode `a` (account), `v`
-## (approver), `p` (pair) or `c` (contact) (CC-14.8 and .9, CC-19b.G2), ported from `packages/client-core/src/peer/session.ts`.
-## It owns no socket: de-framed Noise messages come in through `receive` and go out through the
-## `send` callback, so one machine runs over TCP, the relay or memory.
+## WIRE-CONTRACT-V5 sections 15.5 and 15.6: one `pkey-peer/1` session in mode `a` (account), `v` (approver), `p` (pair) or `c` (contact) (CC-14.8 and .9, CC-19b.G2),
+## ported from `packages/client-core/src/peer/session.ts`. It owns no socket: de-framed Noise messages come in through `receive` and go out through the `send` callback,
+## so one machine runs over TCP, the relay or memory.
 ##
-## Order: Noise XX (XXpsk0 in mode a) with the payload rules of section 15.5; in mode a each side
-## verifies the other's certificate against the remote static key and the held ring; then HELLO each
-## way, which must be the first record; then, in modes v and p, the commit-reveal SAS. Nothing is
-## delivered to the host (`record` events) before that. Every failure ends the session; before the
-## transport exists nothing is sent, after it a CLOSE record names the code.
+## Order: Noise XX (XXpsk0 in mode a) with the payload rules of section 15.5; in mode a each side verifies the other's certificate against the remote static key and the
+## held ring; then HELLO each way, which must be the first record; then, in modes v and p, the commit-reveal SAS. Nothing is delivered to the host (`record` events)
+## before that. Every failure ends the session; before the transport exists nothing is sent, after it a CLOSE record names the code.
 ##
 ## Options (a Dictionary given to `create`):
-##   mode, role, slug   "a" | "v" | "p" | "c"; "initiator" | "responder"; the product slug
-##   static_key         the X25519 private key (32 bytes): the device's agreement key in mode a, a
-##                      one-time key in v and p. Or a key port with `public_key()` and `dh(remote)`
-##                      (G1): the private key then never leaves the port. `dh` answers the 32-byte
-##                      secret, or null when it refuses
-##   account            mode a only: {trust, expected_aud, cert_jws, own_sub, own_device_id,
-##                      held_ring: Callable() -> {jws, epoch} or null, disc_keys: [bytes or null]
-##                      newest first}. The initiator uses the first key, the responder tries the
-##                      first two (G2)
-##   contacts           mode c, and a mode a responder that also serves contacts (the shared listener,
-##                      section 15.10): Array of {secret: 32 bytes, agree_key: 43 characters} in
-##                      `PKeyPeerContact.trial_order`. A mode c initiator names exactly one; a responder up
-##                      to 72 and needs `admission`. The static key is the device's agreeKey (or a port)
-##   exchange           mode p only: take part in the contact exchange, {agree_key, label?, cats, held?}.
-##                      The session then owns CONFIRM and CONTACT and ends with a `contact` event; without it the host sees both as records
-##   caps               the capabilities this side offers. Mode v adds `vouch/1` itself and requires
-##                      it of the peer (section 15.6.1 rule 1)
-##   hold_sas           the mode v initiator only: send no SAS_COMMIT at HELLO; the host starts the
-##                      code with `start_sas()` once the person chose this approver (CC-15 N9)
+##   mode, role, slug   "a" | "v" | "p" | "c" | "q" | "l"; "initiator" | "responder"; the product slug
+##   static_key         the X25519 private key (32 bytes): the device's agreement key in mode a, a one-time key in v and p. Or a key port with `public_key()` and `dh(remote)` (G1): the
+##                      private key then never leaves the port. `dh` answers the 32-byte secret, or null when it refuses
+##   account            mode a only: {trust, expected_aud, cert_jws, own_sub, own_device_id, held_ring: Callable() -> {jws, epoch} or null, disc_keys: [bytes or null] newest first}. The
+##                      initiator uses the first key, the responder tries the first two (G2)
+##   contacts           mode c, and a mode a responder that also serves contacts (the shared listener, section 15.10): Array of {secret: 32 bytes, agree_key: 43 characters} in
+##                      `PKeyPeerContact.trial_order`. A mode c initiator names exactly one; a responder up to 72 and needs `admission`. The static key is the device's agreeKey (or a port)
+##   exchange           mode p only: take part in the contact exchange, {agree_key, label?, cats, held?}. The session then owns CONFIRM and CONTACT and ends with a `contact` event; without
+##                      it the host sees both as records
+##   caps               the capabilities this side offers. Mode v adds `vouch/1` itself and requires it of the peer (section 15.6.1 rule 1)
+##   hold_sas           the mode v initiator only: send no SAS_COMMIT at HELLO; the host starts the code with `start_sas()` once the person chose this approver (CC-15 N9)
 ##   hello              {label?, platform, app, max_message?}
 ##   send               Callable(noise: PackedByteArray), one Noise message to the peer
 ##   on_event           Callable(event: Dictionary), see below
 ##   crypto, now, mono  a PKeyPeerCrypto; Callable() -> epoch seconds; Callable() -> monotonic seconds
-##   offload            Callable(work: Callable) -> Variant, a coroutine: runs `work` off the main
-##                      thread and answers its result (PKeyPeerPump.offload). Empty: inline
+##   offload            Callable(work: Callable) -> Variant, a coroutine: runs `work` off the main thread and answers its result (PKeyPeerPump.offload). Empty: inline
 ##   admission          a PKeyPeerLimiter, required of a responder in modes v and p
 ##   rekey_messages, rekey_seconds   rekey after this many sent messages (2^20) or seconds (3600)
 ##
-## Events (`type`): `established` {caps, hello {label?, platform, app, max_message},
-## hello_authenticated (mode a only), remote_static, peer_device_id ("" outside mode a), contact_index
-## (mode c: the index in `contacts`)}, `sas` {code, display},
-## `record` {record_type, body}, `contact` {secret, agree_key, label?, cats, pending} (mode p with
-## `exchange`; the secret is key material: store it, never log it), `ring` {jws, epoch}, `trust_unverified` {jws}, `ring_wanted`,
-## `closed` {code, by_peer}.
+## Events (`type`): `established` {caps, hello {label?, platform, app, max_message}, hello_authenticated (mode a only), remote_static, peer_device_id ("" outside mode a),
+## contact_index (mode c: the index in `contacts`)}, `sas` {code, display}, `record` {record_type, body}, `contact` {secret, agree_key, label?, cats, pending} (mode p
+## with `exchange`; the secret is key material: store it, never log it), `ring` {jws, epoch}, `trust_unverified` {jws}, `ring_wanted`, `closed` {code, by_peer}.
 ##
-## Threads (CC-14 D-2). `start` and `receive` are coroutines. A handshake step runs its Noise work
-## (the X25519 ladders) through `offload`; while that task runs the session is busy and the main
-## thread touches nothing the task uses: `close` is deferred to the end of the step, `tick` does
-## nothing and later messages wait in a queue. The task closure only reads and writes the Noise
-## handshake and the crypto port; every callback, event and JWS check runs on the calling thread.
-## Everything after the transport exists runs inline. A secret is held in a PackedByteArray and
-## filled with zeros when it is replaced or the session ends (best effort).
+## Local links (section 15.12): mode `q` is the pairing (option `pair`, `PKeyPeerLocalPairing`; `confirm_pairing` and `decline_pairing`; events `guess` {opens} and
+## `local_link` {secret, own_key, peer_key, label?, cats}); mode `l` a dial under a stored link (option `locals`: {secret, own_key, peer_key} each, `admission_group`;
+## `established` carries `local_index`). Details in `local_flow.gd` and `local_pairing.gd`.
 ##
-## Mode v (CC-15b.G1): one `PKeyPeerVouch.Flow` per session judges every vouch and Sync
-## record in both directions (rule 7 and 12: what arrives, and what `send_record` is about to send), so
-## a record in the wrong direction or order closes the session and nothing reaches the host. The host
-## drives it through `vouch()`; a record the flow hands over is delivered as a `record` event (held first
-## while the person's own code is unconfirmed). The code deadline restarts once: D's at `start_sas()`,
-## M's when SAS_COMMIT arrives. A MORE chain over 16 KiB closes `peer_bad_frame` in modes v and p.
+## Threads (CC-14 D-2). `start` and `receive` are coroutines. A handshake step runs its Noise work (the X25519 ladders) through `offload`; while that task runs the
+## session is busy and the main thread touches nothing the task uses: `close` is deferred to the end of the step, `tick` does nothing and later messages wait in a queue.
+## The task closure only reads and writes the Noise handshake and the crypto port; every callback, event and JWS check runs on the calling thread. Everything after the
+## transport exists runs inline. A secret is held in a PackedByteArray and filled with zeros when it is replaced or the session ends (best effort).
 ##
-## Bounds on unauthenticated or hostile input: a responder reads a first message of at most
-## FIRST_MESSAGE_MAX bytes (a longer one closes `peer_bad_frame`, silently, with no AEAD run); an
-## admitted peer's RING is worked on at most once in RING_GAP_SECONDS, and RING_DROP_LIMIT dropped ones
-## close the session `peer_busy`. `abort()` ends a session with no CLOSE and no event.
+## Mode v (CC-15b.G1): one `PKeyPeerVouch.Flow` per session judges every vouch and Sync record in both directions (rule 7 and 12: what arrives, and what `send_record` is
+## about to send), so a record in the wrong direction or order closes the session and nothing reaches the host. The host drives it through `vouch()`; a record the flow
+## hands over is delivered as a `record` event (held first while the person's own code is unconfirmed). The code deadline restarts once: D's at `start_sas()`, M's when
+## SAS_COMMIT arrives. A MORE chain over 16 KiB closes `peer_bad_frame` in modes v and p.
 ##
-## Errors are values: `create` and `send_record` answer a PKeyResult; a session failure is a
-## `closed` event whose `code` is one of the `peer_*` close codes or `handshake_failed` (nothing is
-## sent for that one). No key, nonce, ticket or certificate is put in `str()`.
+## Bounds on unauthenticated or hostile input: a responder reads a first message of at most FIRST_MESSAGE_MAX bytes (a longer one closes `peer_bad_frame`, silently, with
+## no AEAD run); an admitted peer's RING is worked on at most once in RING_GAP_SECONDS, and RING_DROP_LIMIT dropped ones close the session `peer_busy`. `abort()` ends a
+## session with no CLOSE and no event.
+##
+## Errors are values: `create` and `send_record` answer a PKeyResult; a session failure is a `closed` event whose `code` is one of the `peer_*` close codes or
+## `handshake_failed` (nothing is sent for that one). No key, nonce, ticket or certificate is put in `str()`.
 
 const CLOSE_CODES := [&"peer_revoked", &"peer_expired", &"peer_bad_frame", &"peer_unknown_critical", &"peer_not_allowed", &"peer_busy", &"peer_timeout", &"peer_bye"]
 const HANDSHAKE_FAILED := &"handshake_failed"
@@ -99,7 +81,6 @@ const RING_DROP_LIMIT := 8
 const DEFAULT_REKEY_MESSAGES := 1 << 20
 const DEFAULT_REKEY_SECONDS := 3600.0
 const VOUCH_CAP := "vouch/1"
-const MODES := ["a", "v", "p", "c"]
 
 var _mode: String
 var _role: String
@@ -149,63 +130,19 @@ var _acct: PKeyPeerAccountFlow
 var _aborted := false
 var _wipe_pending := false
 var _sas: PKeyPeerSasFlow
+var _locals: Array = []
+var _local_idx := -1
+var _group := ""
+var _pairing: PKeyPeerLocalPairing
+var _lx_deadline := INF
 
 
 ## A session from `options`, or `invalid-options` naming the problem. ok with the session.
 static func create(options: Dictionary) -> PKeyResult:
-	var mode: Variant = options.get("mode")
-	var role: Variant = options.get("role")
-	if not (mode is String and MODES.has(mode)) or not (role is String and ["initiator", "responder"].has(role)):
-		return _invalid("mode and role")
-	if not options.get("slug") is String or options["slug"] == "":
-		return _invalid("slug")
-	if not options.get("send") is Callable or not (options["send"] as Callable).is_valid():
-		return _invalid("send")
-	if not options.get("on_event") is Callable or not (options["on_event"] as Callable).is_valid():
-		return _invalid("on_event")
-	var port := _static_port(options.get("static_key"))
-	if port == null:
-		return _invalid("static_key")
-	if (mode == "a") != options.has("account"):
-		return _invalid("account")
-	if mode == "a" and not _account_ok(options["account"]):
-		return _invalid("account")
-	if mode != "a" and role == "responder" and not options.get("admission") is PKeyPeerLimiter:
-		return _invalid("an approver needs an admission limiter")
-	var contacts_bad := PKeyPeerContactFlow.options_problem(mode, role, options)
-	if contacts_bad != "":
-		return _invalid(contacts_bad)
-	if options.get("hold_sas", false) != false and not (options["hold_sas"] == true and mode == "v" and role == "initiator"):
-		return _invalid("hold_sas is for the mode v initiator")
-	var hello: Variant = options.get("hello")
-	if not hello is Dictionary or not (hello as Dictionary).get("platform") is String or not (hello as Dictionary).get("app") is String:
-		return _invalid("hello")
-	return PKeyResult.success(PKeyPeerSession.new(options, port))
-
-
-static func _invalid(what: String) -> PKeyResult:
-	return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_OPTIONS, "Peer session: bad option: %s." % what)
-
-
-static func _account_ok(a: Variant) -> bool:
-	if not a is Dictionary:
-		return false
-	var d: Dictionary = a
-	for k in ["expected_aud", "cert_jws", "own_sub", "own_device_id"]:
-		if not d.get(k) is String or d[k] == "":
-			return false
-	return d.get("trust") is Dictionary and d.get("held_ring") is Callable and (d["held_ring"] as Callable).is_valid() and d.get("disc_keys") is Array
-
-
-## The static key as a port whose public half is read once, here, on the calling thread.
-static func _static_port(key: Variant) -> Variant:
-	if key is PackedByteArray:
-		return (key as PackedByteArray).duplicate() if (key as PackedByteArray).size() == 32 else null
-	if key is Object and (key as Object).has_method("public_key") and (key as Object).has_method("dh"):
-		var pub: Variant = (key as Object).call("public_key")
-		if pub is PackedByteArray and (pub as PackedByteArray).size() == 32:
-			return StaticPort.new(key, pub)
-	return null
+	var bad := PKeyPeerSessionOptions.problem(options)
+	if bad != "":
+		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_OPTIONS, "Peer session: bad option: %s." % bad)
+	return PKeyResult.success(PKeyPeerSession.new(options, PKeyPeerSessionOptions.static_port(options.get("static_key"))))
 
 
 func _init(options: Dictionary, port: Variant) -> void:
@@ -224,6 +161,12 @@ func _init(options: Dictionary, port: Variant) -> void:
 		_hold_sas = options.get("hold_sas", false) == true
 	for c: Dictionary in options.get("contacts", []):
 		_contacts.append({"secret": (c["secret"] as PackedByteArray).duplicate(), "agree_key": c["agree_key"]})
+	_locals = PKeyPeerLocalFlow.hold(options.get("locals", []))
+	_group = String(options.get("admission_group", ""))
+	if _mode == "q":
+		_pairing = PKeyPeerLocalPairing.new(options["pair"])
+		if not _caps.has(PKeyPeerLocal.LOCAL_CAP):
+			_caps.append(PKeyPeerLocal.LOCAL_CAP)
 	if options.get("exchange") is Dictionary:
 		_xchg_offer = (options["exchange"] as Dictionary).duplicate(true)
 		_xchg = PKeyPeerContact.Exchange.new(_xchg_offer["agree_key"], _xchg_offer.get("held", []))
@@ -383,6 +326,28 @@ func confirm_sas() -> void:
 		_emit({"type": &"record", "record_type": m["type"], "body": m["body"]})
 
 
+## Mode q: the person agreed to pair. Sends CONFIRM, and LOCAL_LINK once the peer's CONFIRM was read. Only
+## once and only after `established`; any other call closes the session `peer_not_allowed`.
+func confirm_pairing() -> void:
+	if _pairing == null or _phase != &"sas_shown":
+		close(PEER_NOT_ALLOWED)
+		return
+	_phase = &"open"
+	var failed := _local_step({"event": "own-confirm"})
+	if failed != &"":
+		_fail(failed, false)
+
+
+## Mode q: the person declined. Closes `peer_bye`; a decline after the person agreed is ignored.
+func decline_pairing() -> void:
+	if _pairing == null:
+		close(PEER_NOT_ALLOWED)
+		return
+	var failed := _local_step({"event": "own-decline"})
+	if failed != &"":
+		_fail(failed, false)
+
+
 ## Mode v, a `hold_sas` initiator: the person chose this approver. Sends SAS_COMMIT now and starts the
 ## code deadline over. Only once and only after `established`; any other call closes the session
 ## `peer_not_allowed`.
@@ -411,9 +376,14 @@ func tick() -> void:
 	var t := _mono()
 	if t >= _transport_deadline or t >= _sas_deadline:
 		_fail(PEER_TIMEOUT, false)
+	elif t >= _lx_deadline:
+		_lx_deadline = INF
+		var slow := _local_step({"event": "timeout-confirm"})
+		if slow != &"":
+			_fail(slow, false)
 	elif t >= _xchg_deadline:
 		_xchg_deadline = INF
-		var late := _exchange_step(PKeyPeerContact.Exchange.TIMEOUT)
+		var late := _local_step({"event": "timeout-exchange"}) if _pairing != null else _exchange_step(PKeyPeerContact.Exchange.TIMEOUT)
 		if late != &"":
 			_fail(late, false)
 	elif _acct.expires_at > 0 and _now() >= _acct.expires_at:
@@ -450,6 +420,7 @@ func _drain() -> void:
 
 func _start_step() -> StringName:
 	var key: Variant = null
+	var static_key: Variant = _static
 	if _mode == "a":
 		key = _disc_key(0)
 		if key == null:
@@ -457,8 +428,16 @@ func _start_step() -> StringName:
 	elif _mode == "c":
 		_contact_idx = 0
 		key = _contacts[0]["secret"]
+	elif _mode == "l":
+		_local_idx = 0
+		key = _locals[0]["secret"]
+		static_key = _locals[0]["own"]
+	elif _mode == "q":
+		if _pairing.spent():
+			return HANDSHAKE_FAILED
+		key = _pairing.psk
 	_start_clock()
-	var hs := _new_handshake(_mode, PKeyPeerContactFlow.psk_for(_slug, _mode, key))
+	var hs := _new_handshake(_mode, PKeyPeerContactFlow.psk_for(_slug, _mode, key), static_key)
 	if hs == null:
 		return HANDSHAKE_FAILED
 	var first := await _noise(func() -> PKeyResult: return hs.write_message(PKeyPeerPayload.payload1()))
@@ -492,10 +471,10 @@ func _disc_key(i: int) -> Variant:
 	return keys[i]
 
 
-func _new_handshake(mode: String, psk: Variant) -> PKeyPeerNoise.Handshake:
+func _new_handshake(mode: String, psk: Variant, static_key: Variant = null) -> PKeyPeerNoise.Handshake:
 	if psk is PackedByteArray and (psk as PackedByteArray).is_empty():
 		return null
-	var r := PKeyPeerNoise.start(_role, PKeyPeerNoise.protocol_name(mode), PKeyPeerNoise.prologue(_slug, mode), _static, psk, null, _crypto)
+	var r := PKeyPeerNoise.start(_role, PKeyPeerNoise.protocol_name(mode), PKeyPeerNoise.prologue(_slug, mode), static_key if static_key != null else _static, psk, null, _crypto)
 	return r.detail if r.ok else null
 
 
@@ -541,6 +520,10 @@ func _remote_refusal(verdict: Dictionary, remote: PackedByteArray) -> StringName
 		return HANDSHAKE_FAILED
 	if _mode == "c" and not PKeyPeerContact.pin(_contacts[_contact_idx]["agree_key"], remote):
 		return PEER_REVOKED
+	if _mode == "l" and not PKeyPeerLocal.local_pin(_locals[_local_idx]["peer_key"], remote):
+		return PEER_REVOKED
+	if _mode == "q" and not _pairing.remote_ok(_static, _crypto, remote):
+		return HANDSHAKE_FAILED
 	return &""
 
 
@@ -563,12 +546,7 @@ func _on_first_message(noise: PackedByteArray) -> StringName:
 	if noise.size() > FIRST_MESSAGE_MAX:
 		# Nothing is sent and no HKDF or AEAD runs over a frame nobody has authenticated.
 		return PEER_BAD_FRAME
-	var ctx := {
-		"mode": _mode, "slug": _slug, "static_key": _static, "crypto": _crypto, "admission": _admission,
-		"account": [_disc_key(0), _disc_key(1)] if _mode == "a" else null,
-		"secrets": _contacts.map(func(c: Dictionary) -> PackedByteArray: return c["secret"]),
-	}
-	var res := await PKeyPeerContactFlow.first_message(noise, ctx, _offload)
+	var res := await _first_trial(noise)
 	if res["ticket"] != null:
 		# Held until the transport opens (a contact hit) or the session ends.
 		_ticket = res["ticket"]
@@ -579,6 +557,10 @@ func _on_first_message(noise: PackedByteArray) -> StringName:
 		_contact_idx = int(hit.substr(2))
 		_mode = "c"
 		_asm = PKeyPeerRecord.Assembler.new("c")
+	elif hit.begins_with("l:"):
+		_local_idx = int(hit.substr(2))
+		_mode = "l"
+		_asm = PKeyPeerRecord.Assembler.new("l")
 	if _aborted or not PKeyPeerPayload.parse_handshake_payload(_mode, 1, res["payload"])["ok"]:
 		return HANDSHAKE_FAILED
 	var own := _own_payload()
@@ -592,6 +574,16 @@ func _on_first_message(noise: PackedByteArray) -> StringName:
 	_send_cb.call(second.detail)
 	_hs_step = 2
 	return &""
+
+
+## The key trial of message 1 for this listener (`PKeyPeerLocalFlow.first_trial` picks the one that applies).
+func _first_trial(noise: PackedByteArray) -> Dictionary:
+	var ctx := {
+		"mode": _mode, "slug": _slug, "static_key": _static, "crypto": _crypto, "admission": _admission, "group": _group,
+		"account": [_disc_key(0), _disc_key(1)] if _mode == "a" else null, "locals": _locals,
+		"secrets": _contacts.map(func(c: Dictionary) -> PackedByteArray: return c["secret"]),
+	}
+	return await PKeyPeerLocalFlow.first_trial(noise, ctx, _pairing, _offload, Callable(self, "_emit"))
 
 
 func _own_payload() -> PackedByteArray:
@@ -615,6 +607,9 @@ func _open_transport(hs: PKeyPeerNoise.Handshake, remote: PackedByteArray, peer_
 	# The one-time static key is not needed past the handshake (V5 15.6.1 rule 10): zero our copy.
 	_wipe_static()
 	_static = null
+	PKeyPeerLocalFlow.wipe(_locals)
+	if _pairing != null:
+		_pairing.wipe_psk()
 	_transport_deadline = INF
 	_keyed_at = _mono()
 	_phase = &"hello"
@@ -672,10 +667,36 @@ func _on_control(type: int, body: PackedByteArray) -> Variant:
 			code = _on_sas(type, body)
 		PKeyPeerRecord.RING:
 			code = _on_ring(body) if _mode == "a" else PEER_NOT_ALLOWED
-		PKeyPeerRecord.CONFIRM, PKeyPeerRecord.CONTACT:
-			if _xchg != null:
+		PKeyPeerRecord.CONFIRM, PKeyPeerRecord.CONTACT, PKeyPeerRecord.LOCAL_LINK:
+			if _pairing != null:
+				code = _on_pairing_record(type, body)
+			elif _xchg != null:
 				code = _on_exchange_record(type, body)
 	return code
+
+
+## Mode q: the session owns CONFIRM and LOCAL_LINK, and only once the transport is up.
+func _on_pairing_record(type: int, body: PackedByteArray) -> StringName:
+	if _phase != &"sas_shown" and _phase != &"open":
+		return PEER_NOT_ALLOWED
+	return _local_step({"event": "peer-confirm"} if type == PKeyPeerRecord.CONFIRM else {"event": "peer-link", "body": body})
+
+
+## One event through the pairing exchange (mode q): sends what it says, starts the 30 s exchange clock once both
+## CONFIRMs are done, raises the `local_link` event for a stored link. The failure code, or "".
+func _local_step(e: Dictionary) -> StringName:
+	var r := _pairing.step(e, _hash, _peer_remote)
+	for rec: Array in r["sends"]:
+		var code := _emit_records(rec[0], rec[1])
+		if code != &"":
+			return code
+	if _pairing.confirmed() and not _pairing.timer_started:
+		_pairing.timer_started = true
+		_lx_deadline = INF
+		_xchg_deadline = _mono() + PKeyPeerContact.CONTACT_EXCHANGE_SECONDS
+	if not (r["link"] as Dictionary).is_empty():
+		_emit(r["link"])
+	return r["close"]
 
 
 ## With the exchange on, the session owns CONFIRM and CONTACT, and only once the code is shown.
@@ -690,23 +711,14 @@ func _on_exchange_record(type: int, body: PackedByteArray) -> StringName:
 ## One event through the contact exchange: the failure code, or "". CONFIRM is sent by `confirm_sas`
 ## itself; only CONTACT is the exchange's to send. The peer's valid CONTACT becomes a `contact` event.
 func _exchange_step(event: String, body := PackedByteArray()) -> StringName:
-	var r := _xchg.step(event, body)
-	if r.has("close"):
-		return r["close"]
-	if (r["sends"] as Array).has("CONTACT"):
-		var built := PKeyPeerContact.build_contact(_xchg_offer)
-		if not built.ok:
-			return PEER_BAD_FRAME
-		var code := _emit_records(PKeyPeerRecord.CONTACT, built.detail)
-		if code != &"":
-			return code
-	if r.has("stored"):
-		var event_out := PKeyPeerContactFlow.contact_event(r["stored"], _xchg_offer["agree_key"], _hash, _sas.n_d, _sas.n_m)
-		if event_out.is_empty():
-			return PEER_BAD_FRAME
+	var r := PKeyPeerContactFlow.exchange_step(_xchg, event, body, _xchg_offer, _hash, _sas)
+	if r["code"] != &"":
+		return r["code"]
+	var code := _emit_records(PKeyPeerRecord.CONTACT, r["send"]) if not (r["send"] as PackedByteArray).is_empty() else &""
+	if code == &"" and not (r["event"] as Dictionary).is_empty():
 		_sas.wipe()
-		_emit(event_out)
-	return &""
+		_emit(r["event"])
+	return code
 
 
 func _on_trust(body: PackedByteArray) -> StringName:
@@ -766,9 +778,12 @@ func _on_hello(type: int, body: PackedByteArray) -> StringName:
 		var negotiated := _flow.negotiate(_caps, _peer_caps)
 		if not negotiated["ok"]:
 			return negotiated["close"]
+	if _mode == "q" and not caps.has(PKeyPeerLocal.LOCAL_CAP):
+		return PEER_NOT_ALLOWED
 	_caps = caps
-	var direct := _mode == "a" or _mode == "c"
-	_phase = &"open" if direct else &"sas"
+	var direct := _mode == "a" or _mode == "c" or _mode == "l"
+	# Mode q has no code to compare: the person's consent follows (`confirm_pairing`).
+	_phase = &"open" if direct else (&"sas_shown" if _mode == "q" else &"sas")
 	if direct:
 		# A contact responder's slot among the connections waiting for message 3 ends here.
 		_settle()
@@ -778,14 +793,14 @@ func _on_hello(type: int, body: PackedByteArray) -> StringName:
 	_emit({
 		"type": &"established", "caps": caps.duplicate(), "hello": shown, "hello_authenticated": _mode == "a",
 		"remote_static": _peer_remote.duplicate(), "peer_device_id": _peer_device_id,
-		"contact_index": _contact_idx if _mode == "c" else -1,
+		"contact_index": _contact_idx if _mode == "c" else -1, "local_index": _local_idx if _mode == "l" else -1,
 	})
 	if _phase == &"closed":
 		return &""
 	if direct:
 		return _push_ring() if _mode == "a" else &""
 	# D commits first, unless the host holds the code back until the person chose this approver.
-	return _commit_sas() if _role == "initiator" and not _hold_sas else &""
+	return _commit_sas() if _role == "initiator" and not _hold_sas and _mode != "q" else &""
 
 
 func _on_peer_close(body: PackedByteArray) -> StringName:
@@ -920,6 +935,9 @@ func _wipe() -> void:
 	_sas.wipe()
 	_acct.account = {}
 	_wipe_static()
+	PKeyPeerLocalFlow.wipe(_locals)
+	if _pairing != null:
+		_pairing.wipe()
 
 
 ## Zero a raw static key in place (the buffer the session holds, not a copy of it).
@@ -943,6 +961,10 @@ func _start_clock() -> void:
 	_transport_deadline = t + TRANSPORT_DEADLINE_SECONDS
 	if _mode == "v" or _mode == "p":
 		_sas_deadline = t + SAS_DEADLINE_SECONDS
+	elif _mode == "q":
+		# C1 and C2 ran before this session, so their time counts against both deadlines.
+		_transport_deadline = t + maxf(0.0, TRANSPORT_DEADLINE_SECONDS - _pairing.elapsed)
+		_lx_deadline = t + maxf(0.0, SAS_DEADLINE_SECONDS - _pairing.elapsed)
 
 
 ## Modes v and p: the person confirmed. The deadline and the limiter slot end.
@@ -955,6 +977,7 @@ func _settle() -> void:
 
 func _stop_clock() -> void:
 	_xchg_deadline = INF
+	_lx_deadline = INF
 	_transport_deadline = INF
 	_acct.expires_at = 0
 	_settle()
@@ -973,28 +996,5 @@ func _owned(type: int) -> bool:
 	return [
 		PKeyPeerRecord.HELLO, PKeyPeerRecord.CLOSE, PKeyPeerRecord.REKEY, PKeyPeerRecord.SAS_COMMIT,
 		PKeyPeerRecord.SAS_NONCE, PKeyPeerRecord.SAS_REVEAL,
-	].has(type) or (type == PKeyPeerRecord.CONFIRM and _mode == "p") or (type == PKeyPeerRecord.CONTACT and _xchg != null)
+	].has(type) or _mode == "q" or (type == PKeyPeerRecord.CONFIRM and _mode == "p") or (type == PKeyPeerRecord.CONTACT and _xchg != null)
 
-
-## A key port whose public half was read at `create`, on the calling thread: the Noise task may run
-## on another, and the port's `dh` is the only call it makes (the device key store locks inside it).
-class StaticPort extends RefCounted:
-	var _inner: Object
-	var _pub: PackedByteArray
-
-
-	func _init(inner: Object, pub: PackedByteArray) -> void:
-		_inner = inner
-		_pub = pub.duplicate()
-
-
-	func _to_string() -> String:
-		return "PKeyPeerSession.StaticPort()"
-
-
-	func public_key() -> PackedByteArray:
-		return _pub.duplicate()
-
-
-	func dh(remote: PackedByteArray) -> Variant:
-		return _inner.call("dh", remote)

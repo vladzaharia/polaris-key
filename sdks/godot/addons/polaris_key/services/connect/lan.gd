@@ -598,7 +598,7 @@ func _push_accepted() -> void:
 	var idr := _identity(false)
 	if idr.ok:
 		_refresh_names(idr.detail)
-		_mdns.call("set_accepted", _names.keys() + _cx.names.keys())
+		(_browse if _browse != null and _browse.has_method("set_accepted") else _mdns).call("set_accepted", _names.keys() + _cx.names.keys())
 
 
 ## K_disc or the roster was stored (a pushed RING, or a refresh): the next read reloads, and the

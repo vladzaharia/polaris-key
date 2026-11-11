@@ -96,6 +96,7 @@ class NsdCommandsTest {
         assertEquals("denied", r.getString("permission"))
         assertTrue(op("capabilities").getBoolean("nsd"))
         assertTrue(r.getBoolean("slots"))
+        assertTrue(r.getBoolean("local"))
     }
 
     @Test
@@ -165,9 +166,10 @@ class NsdCommandsTest {
     private val h1 = "0123456789abcdef"
     private val h2 = "fedcba9876543210"
 
-    private fun tags(v: List<String> = emptyList(), p: List<String> = emptyList()) = JSONObject().apply {
+    private fun tags(v: List<String> = emptyList(), p: List<String> = emptyList(), q: List<String> = emptyList()) = JSONObject().apply {
         if (v.isNotEmpty()) put("v", JSONArray(v))
         if (p.isNotEmpty()) put("p", JSONArray(p))
+        if (q.isNotEmpty()) put("q", JSONArray(q))
     }
 
     private fun attrs(m: String, h: String) = mapOf<String, ByteArray?>("v" to "1".toByteArray(), "m" to m.toByteArray(), "h" to h.toByteArray())
@@ -180,10 +182,10 @@ class NsdCommandsTest {
 
     @Test
     fun slotsAreIndependentRegistrations() {
-        for (slot in listOf("a", "v", "p", "c0", "c7")) {
+        for (slot in listOf("a", "v", "p", "q", "c0", "c7", "l0", "l7")) {
             assertTrue(op("nsd_advertise") { put("slot", slot).put("instance", a).put("port", 4100) }.getBoolean("ok"))
         }
-        assertEquals(5, fake.advertised.size)
+        assertEquals(8, fake.advertised.size)
         assertEquals(0, fake.advertStops)
         // A second call on a slot replaces that slot only.
         assertTrue(op("nsd_advertise") { put("slot", "v").put("instance", b).put("port", 4100) }.getBoolean("ok"))
@@ -192,17 +194,17 @@ class NsdCommandsTest {
         fake.advertResults[1](NsdAdvertResult.Refused("renamed"))
         assertTrue(poll().isEmpty())
         fake.advertResults[0](NsdAdvertResult.Registered)
-        fake.advertResults[5](NsdAdvertResult.Refused("renamed"))
+        fake.advertResults[8](NsdAdvertResult.Refused("renamed"))
         val ev = poll()
         assertEquals(listOf("a", "v"), ev.map { it.getString("slot") })
         assertEquals(listOf(true, false), ev.map { it.getBoolean("ok") })
         // A refusal withdraws that slot alone.
-        assertEquals(listOf(1, 5), fake.advertStopped)
+        assertEquals(listOf(1, 8), fake.advertStopped)
     }
 
     @Test
-    fun aSlotOutsideTheElevenIsRefusedAndNothingStarts() {
-        for (slot in listOf("x", "c", "c8", "c10", "A", "", "ap")) {
+    fun aSlotOutsideTheTwentyIsRefusedAndNothingStarts() {
+        for (slot in listOf("x", "c", "c8", "c10", "l", "l8", "q0", "A", "", "ap")) {
             assertEquals("bad_input", op("nsd_advertise") { put("slot", slot).put("instance", a).put("port", 4100) }.getString("error"))
             assertEquals("bad_input", op("nsd_advertise_stop") { put("slot", slot) }.getString("error"))
         }
@@ -313,6 +315,21 @@ class NsdCommandsTest {
         assertFalse(fake.browseAccept!!(nameOf(100)))
         fake.browseListener!!.onLost(nameOf(0))
         assertTrue(fake.browseAccept!!(nameOf(100)))
+    }
+
+    @Test
+    fun theLocalPairingKindIsATagKindOfItsOwn() {
+        assertTrue(op("nsd_accept") { put("names", names(a)).put("tags", tags(q = listOf(h1))) }.getBoolean("ok"))
+        op("nsd_browse_start")
+        assertTrue(fake.browseAccept!!(b))
+        fake.browseListener!!.onFound(b)
+        fake.watchListeners[b]!!.onResolved(NsdResolved(b, listOf("192.168.1.8"), 4100, attrs("q", h1), null))
+        assertEquals(b, poll().single().getString("instance"))
+        val c = nameOf(2)
+        assertTrue(fake.browseAccept!!(c))
+        fake.browseListener!!.onFound(c)
+        fake.watchListeners[c]!!.onResolved(NsdResolved(c, listOf("192.168.1.9"), 4100, attrs("l", h1), null))
+        assertTrue("an m=l name is judged by the roster, not a tag", poll().isEmpty())
     }
 
     @Test

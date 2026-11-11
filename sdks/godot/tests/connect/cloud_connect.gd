@@ -265,13 +265,19 @@ func _relay_off(t: PKeyTestContext) -> void:
 func _lan_lanes(t: PKeyTestContext) -> void:
 	var core := _core()
 	core.discovery_manifest = _manifest({"enabled": true, "relay": false})
-	for tag in ["android", "ios", "mobile", "web"]:
+	# With the real Apple or Android binding loaded in this process (a run with the native plugin installed) the
+	# mobile tags find a native lane and the LAN is on: the "no native lane" expectations hold only without it.
+	var bridged := PKeyCloudConnect._native_lane() != null
+	for tag in ["web"] if bridged else ["android", "ios", "mobile", "web"]:
 		var n := _node(_pair["a"], core, func(f: String) -> bool: return f == tag)
 		var r: PKeyResult = await n.api.start(_opts(n))
 		var st := n.api.status()
 		t.check("D-8: %s: the LAN is off with reason unsupported, nothing opened" % tag, r.ok and st["lan"] == "off" and st["lan_reason"] == "unsupported", str(st))
 		n.api.stop()
-	t.check("CC-14b: with no native bridge in this process there is no native lane", PKeyCloudConnect._native_lane() == null)
+	if bridged:
+		t.info("CC-14b: a native bridge is loaded in this process; the no-native-lane check is skipped")
+	else:
+		t.check("CC-14b: with no native bridge in this process there is no native lane", PKeyCloudConnect._native_lane() == null)
 	for tag in ["ios", "android"]:
 		var m := _node(_pair["a"], core, func(f: String) -> bool: return f == tag or f == "mobile")
 		var lane := LAN_TEST.FakeMdns.new()

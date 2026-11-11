@@ -8067,7 +8067,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.pair"
+        }
       },
       "layer": "client",
       "args": [
@@ -8085,7 +8088,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.join"
+        }
       },
       "layer": "client",
       "args": [
@@ -8103,7 +8109,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.list"
+        }
       },
       "layer": "client"
     },
@@ -8115,7 +8124,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.rename"
+        }
       },
       "layer": "client",
       "args": [
@@ -8137,7 +8149,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.remove"
+        }
       },
       "layer": "client",
       "args": [
@@ -8155,7 +8170,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.set_reachable"
+        }
       },
       "layer": "client",
       "args": [
@@ -8177,7 +8195,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.open"
+        }
       },
       "layer": "client",
       "args": [
@@ -8195,7 +8216,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.on_link"
+        }
       },
       "layer": "client",
       "args": [
@@ -8213,7 +8237,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.local_pairing"
+        }
       },
       "layer": "client"
     },
@@ -8225,7 +8252,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.dials_left"
+        }
       },
       "layer": "client",
       "args": [
@@ -8243,7 +8273,12 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.changed",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        }
       },
       "layer": "client",
       "args": [

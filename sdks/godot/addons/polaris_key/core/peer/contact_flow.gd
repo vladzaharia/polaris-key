@@ -26,7 +26,7 @@ static func options_problem(mode: String, role: String, options: Dictionary) -> 
 
 
 static func _contacts_problem(mode: String, role: String, contacts: Variant) -> String:
-	if not contacts is Array or not (mode == "c" or (mode == "a" and role == "responder")):
+	if not contacts is Array or not (mode == "c" or (mode in ["a", "l"] and role == "responder")):
 		return "contacts"
 	var n: int = (contacts as Array).size()
 	if n < 1 or n > PKeyPeerContact.MAX_CONTACT_SECRETS or (mode == "c" and role == "initiator" and n != 1):
@@ -44,12 +44,12 @@ static func _contact_ok(c: Variant) -> bool:
 	return d.get("secret") is PackedByteArray and (d["secret"] as PackedByteArray).size() == 32 and d.get("agree_key") is String and (d["agree_key"] as String).length() == 43
 
 
-## The PSK of a mode: the discovery key's in mode a, the contact secret itself in mode c, null in v and p.
+## The PSK of a mode: the discovery key's in mode a, the secret itself in modes c, l and q, null in v and p.
 ## Empty when the key is unusable.
 static func psk_for(slug: String, mode: String, key: Variant) -> Variant:
 	if mode == "a":
 		return PKeyPeerNoise.psk(key if key is PackedByteArray else PackedByteArray(), slug)
-	if mode == "c":
+	if mode in ["c", "l", "q"]:
 		return key if key is PackedByteArray else PackedByteArray()
 	return null
 
@@ -68,7 +68,7 @@ static func first_message(noise: PackedByteArray, ctx: Dictionary, offload: Call
 		if ctx["mode"] == "v" or ctx["mode"] == "p":
 			return _plain_open(noise, ctx, box)
 		var admit := func() -> bool: return _admit(ctx, box)
-		var try_open := func(kind: String, index: int) -> bool: return _try(kind, index, noise, ctx, box)
+		var try_open := func(kind: String, index: int) -> bool: return open_with(kind, index, noise, ctx, box)
 		return PKeyPeerContact.listener_trial(ctx["account"], (ctx["secrets"] as Array).size(), admit, try_open)
 	var out: Variant = work.call() if not offload.is_valid() else await offload.call(work)
 	var res := {"hit": "", "close": &"", "hs": box["hs"], "payload": box["payload"], "ticket": box["ticket"]}
@@ -95,7 +95,7 @@ static func _plain_open(noise: PackedByteArray, ctx: Dictionary, box: Dictionary
 
 
 ## Whether message 1 opens under the account key (`kind` "a") or contact secret (`kind` "c") `index`.
-static func _try(kind: String, index: int, noise: PackedByteArray, ctx: Dictionary, box: Dictionary) -> bool:
+static func open_with(kind: String, index: int, noise: PackedByteArray, ctx: Dictionary, box: Dictionary) -> bool:
 	var m := "a" if kind == "a" else "c"
 	var key: Variant = (ctx["account"] as Array)[index] if kind == "a" else (ctx["secrets"] as Array)[index]
 	var psk: Variant = psk_for(ctx["slug"], m, key)
@@ -126,4 +126,26 @@ static func contact_event(stored: Dictionary, own_agree_key: String, h: PackedBy
 	var out := {"type": &"contact", "secret": secret, "agree_key": stored["agree_key"], "cats": stored["cats"], "pending": stored["pending"]}
 	if stored.has("label"):
 		out["label"] = stored["label"]
+	return out
+
+
+## One event through the contact exchange `xchg` (a `PKeyPeerContact.Exchange`): {code (a close code or &""), send (the
+## CONTACT body to send, or empty), event (the `contact` event for the peer's stored CONTACT, or empty)}.
+## `offer` is this side's {agree_key, ...}; `h` the handshake hash and `sas` the SAS flow whose nonces make the secret.
+static func exchange_step(xchg: PKeyPeerContact.Exchange, event: String, body: PackedByteArray, offer: Dictionary, h: PackedByteArray, sas: PKeyPeerSasFlow) -> Dictionary:
+	var out := {"code": &"", "send": PackedByteArray(), "event": {}}
+	var r := xchg.step(event, body)
+	if r.has("close"):
+		out["code"] = r["close"]
+		return out
+	if (r["sends"] as Array).has("CONTACT"):
+		var built := PKeyPeerContact.build_contact(offer)
+		if not built.ok:
+			out["code"] = &"peer_bad_frame"
+			return out
+		out["send"] = built.detail
+	if r.has("stored"):
+		out["event"] = contact_event(r["stored"], offer["agree_key"], h, sas.n_d, sas.n_m)
+		if (out["event"] as Dictionary).is_empty():
+			out["code"] = &"peer_bad_frame"
 	return out

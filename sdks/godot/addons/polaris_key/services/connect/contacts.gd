@@ -53,6 +53,12 @@ static func tag_of(secret: PackedByteArray) -> String:
 	return PKeyB64Url.encode(PKeySyncHkdf.sha256(data).slice(0, 12))
 
 
+## The local-link store (`pkey.connect.local.v1`): a record of its own beside the Connect record, in the same store and
+## sealed the same way. It is not account data.
+func local_state() -> PKeyConnectLocalState:
+	return PKeyConnectLocalState.new(_state)
+
+
 # -- reads ----------------------------------------------------------------------------------------
 
 ## What the host sees of each held link, in the order they are held: Array of {id, label (String or

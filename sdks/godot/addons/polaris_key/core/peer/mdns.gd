@@ -144,7 +144,7 @@ func set_tags(_tags: Dictionary) -> bool:
 	return true
 
 
-## Advertise `advert` {instance, port, txt, slot? (a, v, p or c)}. ok with a Handle (`stop()` sends the goodbye and
+## Advertise `advert` {instance, port, txt, slot? (a, v, p, c, l or q)}. ok with a Handle (`stop()` sends the goodbye and
 ## closes), or a connect-unavailable failure (reason `mdns_unavailable`) when no socket can be
 ## opened. A querier-only device returns a handle that says nothing: see `status()`.
 func advertise(advert: Dictionary) -> PKeyResult:
@@ -154,7 +154,7 @@ func advertise(advert: Dictionary) -> PKeyResult:
 		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "Bad instance name.", {"reason": "instance_name"})
 	if port < 1 or port > 65535:
 		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "Bad port.", {"reason": "port"})
-	if not ["a", "v", "p", "c"].has(str(advert.get("slot", "a"))):
+	if not ["a", "v", "p", "c", "l", "q"].has(str(advert.get("slot", "a"))):
 		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "Bad slot.", {"reason": "slot"})
 	var opened := _acquire()
 	if not opened.ok:

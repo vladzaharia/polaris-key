@@ -205,6 +205,8 @@ func _binary_real(t: PKeyTestContext, all: PackedByteArray) -> void:
 	t.check("real: an over-long op is empty", m.cmd_bin("x".repeat(65), all).is_empty())
 	t.check("real: a JSON op is not a binary op", m.cmd_bin("ping", all).is_empty())
 	t.check("real: empty data with an unknown op is empty", m.cmd_bin("no_such_op", PackedByteArray()).is_empty())
+	# Earlier suites of the same process may have driven the shared binding and left events: drain them first.
+	m.poll_bin()
 	t.check("real: poll_bin is an empty Array at rest", m.poll_bin().is_empty())
 	var raw = ClassDB.class_call_static(PKeyApple.NATIVE_CLASS, "poll_bin")
 	t.check("real: poll_bin through ClassDB is an Array", raw is Array and raw.is_empty())

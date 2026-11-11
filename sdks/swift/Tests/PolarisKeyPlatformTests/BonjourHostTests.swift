@@ -181,7 +181,7 @@ import XCTest
             let ops = PlatformBinaryOps.system(sink: PlatformEventSink(), environment: [:])
             for op in [
                 "bj_browse_start", "bj_browse_stop", "bj_accept", "bj_advertise_start", "bj_advertise_update",
-                "bj_advertise_stop", "bj_contacts", "bj_accept_tags", "bj_caps", "bj_stop_all", "bj_dial", "bj_send",
+                "bj_advertise_stop", "bj_contacts", "bj_locals", "bj_accept_tags", "bj_caps", "bj_stop_all", "bj_dial", "bj_send",
                 "bj_credit", "bj_admit", "bj_close",
             ] {
                 XCTAssertNotNil(ops[op], op)
@@ -437,7 +437,7 @@ import XCTest
 
         func testCapsAnswerOneSlotPerKind() {
             let m = make()
-            XCTAssertEqual(String(decoding: run(m.ops, "bj_caps", []), as: UTF8.self), #"{"slots":1}"#)
+            XCTAssertEqual(String(decoding: run(m.ops, "bj_caps", []), as: UTF8.self), #"{"slots":1,"local":1}"#)
         }
 
         func testSlotsAreValidatedAndEachHasItsOwnListener() {
@@ -500,6 +500,44 @@ import XCTest
             XCTAssertTrue(contacts.names.isEmpty)
             host.learnPort("a", 40_204)
             XCTAssertTrue(contacts.names.isEmpty)
+        }
+
+        func testLocalSlotsAndTheirExtraNamesFollowSlotLPort() {
+            let locals = BonjourContactAdverts()
+            let sink = PlatformEventSink()
+            let host = BonjourHost(
+                sink: sink, makeDriver: { Driver() }, configurationCheck: { nil }, locals: locals)
+            var ops: [String: PlatformBinaryOp] = [:]
+            host.register(into: &ops)
+            defer { _ = run(ops, "bj_stop_all", []) }
+            let caps = try? JSONSerialization.jsonObject(with: Data(run(ops, "bj_caps", []))) as? [String: Int]
+            XCTAssertEqual(caps?["local"], 1)
+            let base = Int(UInt32.random(in: 1000...1_000_000))
+            func advert(_ i: Int) -> [String: Any] { ["instance": inst(base + i), "txt": ["v=1", "m=l"]] }
+            func set(_ n: Int) -> [UInt8] { run(ops, "bj_locals", json(["adverts": (0..<n).map(advert)])) }
+            XCTAssertEqual(run(ops, "bj_locals", []), [3])
+            XCTAssertEqual(set(8), [3], "at most 7 beside slot l's own name")
+            XCTAssertEqual(run(ops, "bj_locals", json(["adverts": [advert(1), advert(1)]])), [3], "no repeats")
+            XCTAssertEqual(set(3), [1])
+            XCTAssertTrue(locals.names.isEmpty, "no slot-l port yet")
+            host.learnPort("l", 40_301)
+            XCTAssertEqual(locals.names.count, 3)
+            XCTAssertEqual(Set(locals.ports.values), [40_301])
+            host.learnPort("a", 40_302)
+            XCTAssertEqual(Set(locals.ports.values), [40_301], "slot a's port does not move them")
+            XCTAssertEqual(run(ops, "bj_advertise_stop", json(["slot": "l"])), [0])
+            XCTAssertTrue(locals.names.isEmpty)
+            XCTAssertEqual(run(ops, "bj_advertise_stop", json(["slot": "q"])), [0], "slot q is a known slot")
+            XCTAssertEqual(run(ops, "bj_advertise_stop", json(["slot": "x"])), [3])
+            host.learnPort("l", 40_303)
+            XCTAssertEqual(Set(locals.ports.values), [40_303])
+            XCTAssertEqual(run(ops, "bj_stop_all", []), [1])
+            XCTAssertTrue(locals.names.isEmpty)
+            host.learnPort("l", 40_304)
+            XCTAssertTrue(locals.names.isEmpty)
+            let tag = "0123456789abcdef"
+            XCTAssertEqual(run(ops, "bj_accept_tags", json(["q": [tag]])), [1])
+            XCTAssertEqual(run(ops, "bj_accept_tags", json(["l": [tag]])), [3], "l has no tag kind")
         }
 
         func testTagsAdmitAResultByItsTxtAndAreBounded() {
