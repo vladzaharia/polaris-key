@@ -23,6 +23,7 @@ private const val BYTE_MASK = 0xff
 private val DEVICE_ID = Regex("[A-Za-z0-9_-]{$DEVICE_ID_CHARS}")
 private val INSTANCE = Regex("p1-[a-z2-7]{$INSTANCE_CHARS}")
 private val TAG = Regex("[0-9a-f]{$TAG_CHARS}")
+private val NAMEPLATE = Regex("[0-9]{2}")
 
 private fun utf8(s: String): ByteArray = s.toByteArray(Charsets.UTF_8)
 
@@ -84,36 +85,50 @@ public fun productTag(slug: String, epoch: Long): String {
 public fun isInstanceName(name: String): Boolean = INSTANCE.matches(name)
 
 /** Why a TXT record was refused. The names are the corpus's. */
-public enum class TxtRefusal { duplicate, version, mode, tag }
+@Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
+public enum class TxtRefusal { duplicate, version, mode, tag, nameplate }
 
 /** The outcome of [parseTxt]. */
 public sealed class TxtResult {
-    /** A usable record: the [mode] and, for modes v and p, the product tag [h]. */
-    public data class Ok(val mode: PeerMode, val h: String? = null) : TxtResult()
+    /** A usable record: the [mode], the product tag [h] for modes v, p and q, and the nameplate [n] for mode q. */
+    public data class Ok(val mode: PeerMode, val h: String? = null, val n: String? = null) : TxtResult()
 
     /** A refused record. */
     public data class Refused(val reason: TxtRefusal) : TxtResult()
 }
 
-/**
- * An entry splits at its first `=`; one without `=` or with an empty key is ignored; a repeated
- * key refuses.
- */
-public fun parseTxt(entries: List<String>): TxtResult {
+/** Entries split at the first `=`; one without `=` or with an empty key is ignored; a repeated key makes the table null. */
+internal fun txtEntries(entries: List<String>): Map<String, String>? {
     val kv = HashMap<String, String>()
     for (e in entries) {
         val at = e.indexOf('=')
         if (at < 1) continue
         val k = e.substring(0, at)
-        if (kv.containsKey(k)) return TxtResult.Refused(TxtRefusal.duplicate)
+        if (kv.containsKey(k)) return null
         kv[k] = e.substring(at + 1)
     }
+    return kv
+}
+
+/**
+ * An entry splits at its first `=`; one without `=` or with an empty key is ignored; a repeated key
+ * refuses. `n` is read for `q` only: exactly two ASCII digits (section 15.12).
+ */
+public fun parseTxt(entries: List<String>): TxtResult {
+    val kv = txtEntries(entries) ?: return TxtResult.Refused(TxtRefusal.duplicate)
     if (kv["v"] != "1") return TxtResult.Refused(TxtRefusal.version)
-    // `m=c` is judged by parseContactTxt and by no other path (section 15.4): here it is an unknown mode.
-    val mode = PeerMode.values().firstOrNull { it.wire == kv["m"] && it != PeerMode.c } ?: return TxtResult.Refused(TxtRefusal.mode)
+    // `m=c` is judged by parseContactTxt and `m=l` by parseLocalTxt, and by no other path (section 15.4): here
+    // they are unknown modes.
+    val mode = PeerMode.values().firstOrNull { it.wire == kv["m"] && it != PeerMode.c && it != PeerMode.l }
+        ?: return TxtResult.Refused(TxtRefusal.mode)
     if (mode == PeerMode.a) return TxtResult.Ok(mode)
     val h = kv["h"]
     if (h == null || !TAG.matches(h)) return TxtResult.Refused(TxtRefusal.tag)
+    if (mode == PeerMode.q) {
+        val n = kv["n"]
+        if (n == null || !NAMEPLATE.matches(n)) return TxtResult.Refused(TxtRefusal.nameplate)
+        return TxtResult.Ok(mode, h, n)
+    }
     return TxtResult.Ok(mode, h)
 }
 

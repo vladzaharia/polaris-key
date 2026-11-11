@@ -10,6 +10,7 @@ import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.PolarisException
 
 /** Why a LAN call failed. */
+@Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
 public enum class LanErrorReason(public val code: String) {
     no_identity(ErrorCode.notConfigured),
     no_keys(ErrorCode.notConfigured),
@@ -22,6 +23,9 @@ public enum class LanErrorReason(public val code: String) {
     closed(ErrorCode.networkError),
     too_large(ErrorCode.invalidArgument),
     bad_type(ErrorCode.invalidArgument),
+
+    /** A dial to the same device was made a moment ago and failed: try again shortly (section 15.12). */
+    busy(ErrorCode.peerBusy),
 
     /** The OS refused local network access (D-8); hosts show the permission hint. */
     permission_denied(ErrorCode.nearbyPermissionDenied),

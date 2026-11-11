@@ -19,6 +19,7 @@ import im.plrs.key.release.ReleaseClient
 import im.plrs.key.sdk.BackendClient
 import im.plrs.key.sdk.CloudConnect
 import im.plrs.key.sdk.CloudLinks
+import im.plrs.key.sdk.CloudLocalLinks
 import im.plrs.key.sdk.CloudNearby
 import im.plrs.key.sdk.CloudSyncClient
 import im.plrs.key.sdk.CloudSyncHostOptions
@@ -211,6 +212,17 @@ internal suspend fun apiSurface() {
     CloudLinks::open  // cloudConnect.links.open
     CloudLinks::onLink  // cloudConnect.links.onLink
     CloudLinks::interAccount  // cloudConnect.links.interAccount
+    CloudLocalLinks::pair  // cloudConnect.localLinks.pair
+    CloudLocalLinks::join  // cloudConnect.localLinks.join
+    CloudLocalLinks::list  // cloudConnect.localLinks.list
+    CloudLocalLinks::rename  // cloudConnect.localLinks.rename
+    CloudLocalLinks::remove  // cloudConnect.localLinks.remove
+    CloudLocalLinks::setReachable  // cloudConnect.localLinks.setReachable
+    CloudLocalLinks::open  // cloudConnect.localLinks.open
+    CloudLocalLinks::onLink  // cloudConnect.localLinks.onLink
+    CloudLocalLinks::localPairing  // cloudConnect.localLinks.localPairing
+    CloudLocalLinks::dialsLeft  // cloudConnect.localLinks.dialsLeft
+    CloudLocalLinks::onChange  // cloudConnect.localLinks.onChange
     CloudTransfer::send  // cloudConnect.transfer.send
     CloudTransfer::onOffer  // cloudConnect.transfer.onOffer
     CloudTransfer::onResult  // cloudConnect.transfer.onResult

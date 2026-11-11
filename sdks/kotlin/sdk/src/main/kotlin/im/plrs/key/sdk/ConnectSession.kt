@@ -65,6 +65,24 @@ public class SessionMessage(public val type: Int, public val body: ByteArray) {
     override fun toString(): String = "SessionMessage(type=$type, ${body.size} bytes)"
 }
 
+/**
+ * Who a session is with: a device of the person's, a contact (section 15.10) or a local link (section 15.12). A link is named
+ * by its id on this device, never by a key.
+ */
+public sealed class TransferOrigin {
+    public class Device(public val deviceId: String) : TransferOrigin() {
+        override fun toString(): String = "Device($deviceId)"
+    }
+
+    public class Contact(public val linkId: String, public val label: String?) : TransferOrigin() {
+        override fun toString(): String = "Contact($linkId)"
+    }
+
+    public class Local(public val linkId: String, public val label: String?) : TransferOrigin() {
+        override fun toString(): String = "Local($linkId)"
+    }
+}
+
 /** Why a session ended: a close code (`peer_bye`, `peer_revoked`, ...), or `connection_lost` when the pipe went away. */
 public data class SessionClosed(val code: String, val byPeer: Boolean)
 
@@ -114,6 +132,8 @@ public class ConnectSession internal constructor(
     public val contact: ContactRef? = null,
     /** The peer's static key (32 raw bytes, a public key): what a partially received transfer is kept under. */
     internal val peerKey: ByteArray? = null,
+    /** The local link a mode-`l` session runs over (section 15.12); null for the person's own devices and for contacts. */
+    public val local: LocalRef? = null,
 ) {
     private val lock = Any()
     private val inbox = Channel<SessionMessage>(Channel.UNLIMITED)
@@ -186,8 +206,19 @@ public class ConnectSession internal constructor(
         return w
     }
 
-    override fun toString(): String =
-        contact?.let { "ConnectSession(contact=${it.id}, path=$path, role=$role)" } ?: "ConnectSession(peer=$peerDeviceId, path=$path, role=$role)"
+    override fun toString(): String = when {
+        contact != null -> "ConnectSession(contact=${contact.id}, path=$path, role=$role)"
+        local != null -> "ConnectSession(local=${local.id}, path=$path, role=$role)"
+        else -> "ConnectSession(peer=$peerDeviceId, path=$path, role=$role)"
+    }
+
+    /** Who the session is with: a device of the person's, a contact or a local link (with the link's id, not an empty device id). */
+    public val origin: TransferOrigin
+        get() = when {
+            contact != null -> TransferOrigin.Contact(contact.id, contact.label)
+            local != null -> TransferOrigin.Local(local.id, local.label)
+            else -> TransferOrigin.Device(peerDeviceId)
+        }
 
     /** Why the session ended, or null while it is open. */
     public val closed: SessionClosed? get() = synchronized(lock) { ended }
@@ -365,14 +396,18 @@ internal fun sessionHandlers(
     path: String = "lan",
     /** The contacts the channel was given (same order): a mode-`c` session names the one that opened it by index. */
     contacts: List<ContactRef> = emptyList(),
+    /** The local links the channel was given (same order): a mode-`l` session names the one that opened it by index. */
+    locals: List<LocalRef> = emptyList(),
 ): LinkHandlers<ConnectSession> {
     var box: ConnectSession? = null
     return LinkHandlers(
         onEstablished = { link: PeerLinkPort, e: SessionEvent.Established ->
             // Mode c has no device id: the contact that opened the session names the peer.
             val ref = e.contactIndex?.let { contacts.getOrNull(it) }
+            val local = e.localIndex?.let { locals.getOrNull(it) }
             val s = ConnectSession(
                 link, e.peerDeviceId ?: "", e.caps, e.hello, role, link.remoteAddress, path, budget ?: sharedBudget, ref, e.remoteStatic.copyOf(),
+                local,
             )
             box = s
             onEstablished(s)

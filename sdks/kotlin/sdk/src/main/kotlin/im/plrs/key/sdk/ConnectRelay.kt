@@ -1173,6 +1173,9 @@ internal class RelayLink(
 
             is SessionEvent.Contact -> Unit
 
+            // The relay carries no local-link sessions (section 15.12): a pairing and a link are LAN only.
+            is SessionEvent.Guess, is SessionEvent.LocalLinked -> Unit
+
             is SessionEvent.Closed -> finish(if (lostAlready && !e.byPeer) SessionEvent.Closed("connection_lost", false) else e)
         }
     }

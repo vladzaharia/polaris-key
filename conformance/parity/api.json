@@ -7997,7 +7997,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8014,7 +8015,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8031,7 +8033,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -8042,7 +8045,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8063,7 +8067,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8080,7 +8085,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8101,7 +8107,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8118,7 +8125,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8135,7 +8143,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -8152,7 +8161,8 @@
         "swift": {
           "planned": "CC-29.15",
           "reason": "the Swift port lands in slice .15f"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8175,7 +8185,8 @@
         "swift": {
           "planned": "CC-29.15",
           "reason": "the Swift port lands in slice .15f"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
