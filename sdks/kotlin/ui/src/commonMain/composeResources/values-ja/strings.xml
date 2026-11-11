@@ -2363,7 +2363,7 @@
     <string name="localPairing_pairedDevices__macos">ペアリング済みのデバイス</string>
     <!-- Pair with a Code: show: what to do with the code. -->
     <string name="localPairing_showBody">もう一方のデバイスでこのコードを入力してください。</string>
-    <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
+    <!-- Pair with a Code: Screen reader label; never shown. Names the QR in the QR view. -->
     <string name="a11y_qrPairing">ペアリングコードを含む QR コード</string>
     <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
     <string name="localPairing_expires">有効期限まで %1$s</string>

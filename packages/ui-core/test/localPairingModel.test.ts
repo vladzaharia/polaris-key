@@ -244,6 +244,7 @@ describe("LocalPairingModel: show", () => {
     const { m } = make(f);
     await m.show();
     f.seen.pair!.onEnd({ reason: "expired" });
+    // No code was ever shown, so there is nothing to keep on screen: the closed answer.
     expect(m.snapshot).toMatchObject({ step: "closed", closedBy: "expired" });
     expect(m.snapshot.cooldownLeft).toBeUndefined();
     expect(m.view().disabled).toBeUndefined();
@@ -517,19 +518,78 @@ describe("LocalPairingModel: the code and the QR are two views of one window", (
     expect(m.snapshot).toMatchObject({ step: "choose", switches: 0 });
   });
 
-  it("keeps the view the person is on through a new code, and starts a new window on the code", async () => {
+  it("keeps the view the person is on through a new code", async () => {
     const f = fake();
     const m = await opened(f);
     m.showQr();
+    expect(m.snapshot.qrReveals).toBe(1);
     f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
     expect(m.snapshot).toMatchObject({ view: "qr", code: "4873 0691" });
     expect(m.view().state).toBe("show-qr");
     expect(m.snapshot.rotation).toBe(2);
+    // A rotation is not a new reveal: the card breaks and re-forms, it does not start over.
+    expect(m.snapshot.qrReveals).toBe(1);
+    m.showCode();
+    m.showQr();
+    expect(m.snapshot.qrReveals).toBe(2);
+  });
+
+  it("an expired window stays in the view it was in, dimmed, with a new code one press away", async () => {
+    const f = fake();
+    const m = await opened(f);
+    m.showQr();
     f.seen.pair!.onEnd({ reason: "expired" });
+    expect(m.snapshot).toMatchObject({
+      step: "show",
+      view: "qr",
+      expired: true,
+      secondsLeft: 0,
+    });
+    const v = m.view();
+    expect(v.state).toBe("show-qr");
+    expect(v.copy).toContain("localPairing.failedExpired");
+    expect(v.copy).toContain("localPairing.showNew");
+    expect(v.copy).not.toContain("localPairing.waitingDevice");
+    // The next window opens in place, on the view the person chose, and the card forms again.
     await m.showNew();
+    expect(m.snapshot).toMatchObject({
+      step: "show",
+      expired: true,
+      busy: "new-code",
+    });
+    f.seen.pair!.onCode(code("1111 2222"));
+    expect(m.snapshot).toMatchObject({
+      view: "qr",
+      code: "1111 2222",
+      qrReveals: 1,
+    });
+    expect(m.snapshot.expired).toBeUndefined();
+    expect(m.view().state).toBe("show-qr");
+  });
+
+  it("the code view expires in place too, and leaving the flow forgets the view", async () => {
+    const f = fake();
+    const m = await opened(f);
+    f.seen.pair!.onEnd({ reason: "expired" });
+    expect(m.view().state).toBe("show");
+    expect(m.view().copy).toContain("localPairing.showNew");
+    m.showQr();
+    await m.cancel();
+    expect(m.snapshot.step).toBe("choose");
+    await m.show();
     f.seen.pair!.onCode(code("1111 2222"));
     expect(m.snapshot.view).toBeUndefined();
-    expect(m.view().state).toBe("show");
+  });
+
+  it("says a changed code in the QR view, without the digits", async () => {
+    const f = fake();
+    const m = await opened(f);
+    m.showQr();
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    const copy = m.view().copy;
+    expect(copy).toContain("localPairing.rotatedTitle");
+    expect(copy).toContain("localPairing.rotatedBody");
+    expect(copy).not.toContain("a11y.newCode");
   });
 });
 

@@ -15,6 +15,8 @@ import {
   LIGHT_CARD,
   advance,
   cardGeometry,
+  cardShareFor,
+  lightCardColors,
   connect,
   createLightCardSim,
   expire,
@@ -31,8 +33,8 @@ import {
   type QrMatrix,
 } from "@polaris-key/ui-core/lightCard";
 
-import { encodeQrLevelQ } from "./lazy.js";
-import { plain, qrCode, type KitCtx } from "./parts.js";
+import { encodeQrLevelQ, qrLoaded } from "./lazy.js";
+import { lightCardStage, plain, qrCode, type KitCtx } from "./parts.js";
 
 const TAU = Math.PI * 2;
 const COLORS = LIGHT_CARD.colors;
@@ -44,6 +46,9 @@ interface PaintProbe {
   /** The injected clock's reading, in seconds. */
   now: number;
   phase: string;
+  /** The glow's lead colour and whether the product's mark is in the clearing. */
+  tint: string;
+  mark: boolean;
 }
 
 /**
@@ -72,14 +77,32 @@ interface LightCardQrProps {
   expired?: boolean;
   /** The other device connected: a vortex collapses into a check of light. */
   connected?: boolean;
+  /** The product's accent (`#rrggbb`) when the theme has one: the glow takes it. Violet otherwise. */
+  accent?: string | null;
+  /** The product's mark (an image address) for the centre; the Polaris star when absent. */
+  mark?: string | null;
+  /** The card was formed before in this window: show it formed, with the light already orbiting. */
+  settled?: boolean;
+}
+
+/** The glow colours of one run and the mark that stands in the clearing. */
+interface Look {
+  tints: readonly string[];
+  cardGlow: string;
+  mark: HTMLImageElement | null;
+  /** A mark was asked for and has not loaded: the clearing stays empty, not the star. */
+  markPending: boolean;
 }
 
 // ── Drawing ─────────────────────────────────────────────────────────────────────────────────────
 
-let sprites: HTMLCanvasElement[] | null = null;
+const sprites = new Map<string, HTMLCanvasElement[]>();
 /** One soft glow per tint: white core, the tint, then nothing. */
-function spritesOf(): HTMLCanvasElement[] {
-  sprites ??= COLORS.tints.map((hex) => {
+function spritesOf(tints: readonly string[]): HTMLCanvasElement[] {
+  const key = tints.join();
+  const have = sprites.get(key);
+  if (have) return have;
+  const made = tints.map((hex) => {
     const cv = document.createElement("canvas");
     cv.width = cv.height = 48;
     const g2 = cv.getContext("2d")!;
@@ -92,7 +115,8 @@ function spritesOf(): HTMLCanvasElement[] {
     g2.fillRect(0, 0, 48, 48);
     return cv;
   });
-  return sprites;
+  sprites.set(key, made);
+  return made;
 }
 
 function roundRect(
@@ -117,12 +141,13 @@ function drawCard(
   ctx: CanvasRenderingContext2D,
   g: CardGeometry,
   alpha: number,
+  look: Look,
 ): void {
   if (alpha <= 0.01) return;
   const { x0, y0, side, cell } = g;
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.shadowColor = COLORS.cardGlow;
+  ctx.shadowColor = look.cardGlow;
   ctx.shadowBlur = side * 0.22;
   const paper = ctx.createLinearGradient(0, y0, 0, y0 + side);
   paper.addColorStop(0, COLORS.paperTop);
@@ -151,21 +176,52 @@ function drawCard(
     roundRect(ctx, fx + 2 * cell, fy + 2 * cell, 3 * cell, 3 * cell, cell);
     ctx.fill();
   }
-  ctx.fillStyle = COLORS.ink;
-  ctx.beginPath();
-  g.star.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-  ctx.closePath();
-  ctx.fill();
+  if (look.mark) {
+    // The product's mark in the clearing, on the paper.
+    const m = cell * 5.2;
+    const mid = LIGHT_CARD.stage / 2;
+    roundRect(ctx, mid - m / 2, mid - m / 2, m, m, cell);
+    ctx.save();
+    ctx.clip();
+    ctx.drawImage(look.mark, mid - m / 2, mid - m / 2, m, m);
+    ctx.restore();
+  } else if (!look.markPending) {
+    ctx.fillStyle = COLORS.ink;
+    ctx.beginPath();
+    g.star.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fill();
+  }
   ctx.restore();
 }
 
+/** The light fades out over the outer 8 % of the stage instead of being cut at its edge. */
+function fadeEdges(ctx: CanvasRenderingContext2D): void {
+  const S = LIGHT_CARD.stage;
+  const w = S * 0.08;
+  const night = (a: number): string => rgbaOf(COLORS.night, a);
+  const sides: [number, number, number, number][] = [
+    [0, 0, 0, w],
+    [0, S, 0, S - w],
+    [0, 0, w, 0],
+    [S, 0, S - w, 0],
+  ];
+  for (const [x0, y0, x1, y1] of sides) {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, night(1));
+    g.addColorStop(1, night(0));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, S, S);
+  }
+}
+
 /** The check of light, once, for the still frame of a connection. */
-function drawCheck(ctx: CanvasRenderingContext2D): void {
+function drawCheck(ctx: CanvasRenderingContext2D, look: Look): void {
   const [a, b, d] = LIGHT_CARD.check.path;
   const R = LIGHT_CARD.stage * LIGHT_CARD.check.radius;
   const mid = LIGHT_CARD.stage / 2;
   ctx.save();
-  ctx.strokeStyle = COLORS.tints[3]!;
+  ctx.strokeStyle = look.tints[3]!;
   ctx.lineWidth = 6;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -177,15 +233,15 @@ function drawCheck(ctx: CanvasRenderingContext2D): void {
   ctx.restore();
 }
 
-function drawFlare(ctx: CanvasRenderingContext2D, a: number): void {
+function drawFlare(ctx: CanvasRenderingContext2D, a: number, look: Look): void {
   if (a <= 0.01) return;
   const mid = LIGHT_CARD.stage / 2;
   const r = LIGHT_CARD.stage * 0.32 * (1.4 - a * 0.4);
   ctx.globalCompositeOperation = "lighter";
   const gr = ctx.createRadialGradient(mid, mid, 0, mid, mid, r);
   gr.addColorStop(0, rgbaOf(COLORS.flareCore, a * 0.9));
-  gr.addColorStop(0.25, rgbaOf(COLORS.tints[1]!, a * 0.54));
-  gr.addColorStop(1, rgbaOf(COLORS.tints[0]!, 0));
+  gr.addColorStop(0.25, rgbaOf(look.tints[1]!, a * 0.54));
+  gr.addColorStop(1, rgbaOf(look.tints[0]!, 0));
   ctx.fillStyle = gr;
   ctx.beginPath();
   ctx.arc(mid, mid, r, 0, TAU);
@@ -198,6 +254,7 @@ function paint(
   ctx: CanvasRenderingContext2D,
   sim: LightCardSim,
   env: Envelope,
+  look: Look,
 ): void {
   const S = LIGHT_CARD.stage;
   ctx.globalCompositeOperation = "source-over";
@@ -205,8 +262,8 @@ function paint(
   ctx.fillStyle = rgbaOf(COLORS.night, 0.24);
   ctx.fillRect(0, 0, S, S);
   const geometry = shownGeometry(sim, env);
-  drawCard(ctx, geometry, env.cardOpacity * env.dim);
-  const sp = spritesOf();
+  drawCard(ctx, geometry, env.cardOpacity * env.dim, look);
+  const sp = spritesOf(look.tints);
   const p = sim.particles;
   ctx.globalCompositeOperation = "lighter";
   for (let i = 0; i < p.count; i++) {
@@ -218,7 +275,8 @@ function paint(
   }
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
-  drawFlare(ctx, env.flare);
+  drawFlare(ctx, env.flare, look);
+  fadeEdges(ctx);
 }
 
 /** The finished card, once: no trails, no swirl, no orbit. */
@@ -226,14 +284,15 @@ function paintStill(
   ctx: CanvasRenderingContext2D,
   g: CardGeometry,
   env: Envelope,
+  look: Look,
 ): void {
   const S = LIGHT_CARD.stage;
   ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
   ctx.fillStyle = rgbaOf(COLORS.night);
   ctx.fillRect(0, 0, S, S);
-  drawCard(ctx, g, env.cardOpacity * env.dim);
-  if (env.check > 0) drawCheck(ctx);
+  drawCard(ctx, g, env.cardOpacity * env.dim, look);
+  if (env.check > 0) drawCheck(ctx, look);
 }
 
 // ── Reading the motion setting ──────────────────────────────────────────────────────────────────
@@ -286,9 +345,20 @@ function Canvas(props: {
   labelKey: LightCardQrProps["labelKey"];
   expired: boolean;
   connected: boolean;
+  accent: string | null;
+  mark: string | null;
+  settled: boolean;
   onFail: () => void;
 }): ReactNode {
   const { c, qr, labelKey } = props;
+  // The card's share of the stage: half, or more where half would be under 192 px (12 rem).
+  const [shareKey, setShareKey] = useState(50);
+  const redraw = useRef<(() => void) | null>(null);
+  const look = useRef<Look>({
+    ...lightCardColors(props.accent),
+    mark: null,
+    markPending: props.mark !== null,
+  });
   const cv = useRef<HTMLCanvasElement | null>(null);
   const live = useRef<{
     sim: LightCardSim;
@@ -314,11 +384,27 @@ function Canvas(props: {
     if (!ctx) return props.onFail();
     // Read now, not from the state: the root's setting is known before the state catches up.
     const still = reduced || motionReduced(canvas);
+    const rootPx =
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const shareOf = (w: number): number =>
+      Math.round(cardShareFor(w, 12 * rootPx) * 100);
+    const wanted = shareOf(canvas.clientWidth || LIGHT_CARD.stage);
+    if (wanted !== shareKey) {
+      setShareKey(wanted);
+      return;
+    }
+    const share = shareKey / 100;
+    look.current = {
+      ...lightCardColors(props.accent),
+      mark: look.current.mark,
+      markPending: props.mark !== null && look.current.mark === null,
+    };
     let side = 0;
     const fit = (): void => {
       const w = Math.max(1, Math.round(canvas.clientWidth || LIGHT_CARD.stage));
       if (w === side) return;
       side = w;
+      if (shareOf(w) !== shareKey) setShareKey(shareOf(w));
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = canvas.height = Math.round(w * dpr);
       const k = (w * dpr) / LIGHT_CARD.stage;
@@ -333,15 +419,19 @@ function Canvas(props: {
           const env = reducedEnvelope(
             p.connected ? "connected" : p.expired ? "expired" : "ready",
           );
-          paintStill(ctx, cardGeometry(p.qr), env);
+          paintStill(ctx, cardGeometry(p.qr, share), env, look.current);
         };
         draw();
+        redraw.current = draw;
         const ro = new ResizeObserver(() => {
           side = 0;
           draw();
         });
         ro.observe(canvas);
-        return () => ro.disconnect();
+        return () => {
+          redraw.current = null;
+          ro.disconnect();
+        };
       }
 
       const sim = createLightCardSim({
@@ -349,7 +439,10 @@ function Canvas(props: {
         seed: seam().seed ?? 7,
         now: clockOf(),
         side: canvas.clientWidth || LIGHT_CARD.stage,
+        share,
+        settled: props.settled || props.expired,
       });
+      if (props.expired) expire(sim);
       const state = { sim, data: props.data, draw: () => undefined };
       live.current = state;
       ctx.fillStyle = rgbaOf(COLORS.night);
@@ -366,12 +459,17 @@ function Canvas(props: {
         if (now - lastPaint < (0.9 * 1) / env0.frameRate) return;
         lastPaint = now;
         advance(sim, now);
+        // A window that ran out while the card was still forming dims it once it is ready.
+        if (latest.current.expired && simEnvelope(sim).phase === "ready")
+          expire(sim);
         const env = simEnvelope(sim);
-        paint(ctx, sim, env);
+        paint(ctx, sim, env, look.current);
         seam().onPaint?.({
           rate: env0.frameRate,
           now,
           phase: env.phase,
+          tint: look.current.tints[0]!,
+          mark: look.current.mark !== null,
         });
       };
       const sync = (): void => {
@@ -417,7 +515,29 @@ function Canvas(props: {
     } catch {
       props.onFail();
     }
-  }, [reduced]);
+  }, [reduced, shareKey]);
+
+  // The product's mark: loaded once, drawn in place of the star when it is there.
+  useEffect(() => {
+    const src = props.mark;
+    if (!src) return;
+    const img = new Image();
+    let gone = false;
+    img.onload = () => {
+      if (gone) return;
+      look.current.mark = img;
+      redraw.current?.();
+    };
+    img.onerror = () => {
+      if (gone) return;
+      look.current.markPending = false;
+      redraw.current?.();
+    };
+    img.src = src;
+    return () => {
+      gone = true;
+    };
+  }, [props.mark]);
 
   // A new code, a connection, an expiry: the run takes each as an event.
   useEffect(() => {
@@ -426,7 +546,10 @@ function Canvas(props: {
     s.data = props.data;
     if (!newCode(s.sim, qr)) {
       // Still forming: start the new code's run over.
-      s.sim.codes = [cardGeometry(qr), cardGeometry(qr)];
+      s.sim.codes = [
+        cardGeometry(qr, s.sim.share),
+        cardGeometry(qr, s.sim.share),
+      ];
     }
   }, [props.data]);
   useEffect(() => {
@@ -486,7 +609,9 @@ export default function LightCardQr(props: LightCardQrProps): ReactNode {
   const qr = cache.current.qr;
   const plainQr = qrCode(c, data, labelKey);
   const short = useShortWindow();
-  if (short || failed || !qr || !c.view.copy.includes(labelKey)) return plainQr;
+  if (short || failed || !c.view.copy.includes(labelKey)) return plainQr;
+  // The encoder is on its way: an empty stage of the final size, never the plain QR.
+  if (!qr) return qrLoaded() ? plainQr : lightCardStage(c, "a11y.qrPairing");
   return (
     <Guard fallback={plainQr}>
       <Canvas
@@ -496,6 +621,9 @@ export default function LightCardQr(props: LightCardQrProps): ReactNode {
         labelKey={labelKey}
         expired={props.expired ?? false}
         connected={props.connected ?? false}
+        accent={props.accent ?? null}
+        mark={props.mark ?? null}
+        settled={props.settled ?? false}
         onFail={() => setFailed(true)}
       />
     </Guard>

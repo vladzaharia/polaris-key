@@ -2363,7 +2363,7 @@
     <string name="localPairing_pairedDevices__macos">페어링된 기기</string>
     <!-- Pair with a Code: show: what to do with the code. -->
     <string name="localPairing_showBody">다른 기기에서 이 코드를 입력하세요.</string>
-    <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
+    <!-- Pair with a Code: Screen reader label; never shown. Names the QR in the QR view. -->
     <string name="a11y_qrPairing">페어링 코드가 담긴 QR 코드</string>
     <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
     <string name="localPairing_expires">%1$s 후 만료</string>

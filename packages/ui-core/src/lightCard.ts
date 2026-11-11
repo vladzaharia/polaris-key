@@ -73,6 +73,11 @@ export const LIGHT_CARD = {
   dim: { expired: 0.35 },
   /** The glow multiplier of the ambient light after a connect. */
   ambientConnected: 0.55,
+  /** The card is never smaller than this many px on screen (12 rem at the root size), however small
+   *  the stage: a share of the stage above `cardShare` where the stage is narrow. */
+  cardFloorPx: 192,
+  /** After the idle drop the ambient light thins to this share of its particles. */
+  idleDensity: 0.5,
   /** After this long waiting the orbit drops to `idleFps`. */
   idleDropSeconds: 10,
   fullFps: 60,
@@ -169,6 +174,8 @@ export interface Envelope {
   flare: number;
   /** The glow multiplier of the ambient light. */
   ambient: number;
+  /** The share of the ambient particles drawn: 1, thinning to `idleDensity` after the idle drop. */
+  density: number;
   /** After a new code's break the paper shows the new code. */
   swapped: boolean;
   /** 60, or 30 once the orbit has been waiting 10 s (and while expired). */
@@ -257,6 +264,7 @@ export function envelopeAt(timeline: Timeline, now: number): Envelope {
     check: 0,
     flare: 0,
     ambient: 1,
+    density: 1,
     swapped: false,
     frameRate: LIGHT_CARD.fullFps,
   };
@@ -309,6 +317,12 @@ export function envelopeAt(timeline: Timeline, now: number): Envelope {
     e.dim = mix(f.dim, 1, smooth(tau / d.break));
     e.orbit = mix(f.orbit, o.normal, smooth(tau / 0.8));
     if (idle) e.frameRate = LIGHT_CARD.idleFps;
+    if (tl.waitingSince !== null)
+      e.density = mix(
+        1,
+        LIGHT_CARD.idleDensity,
+        smooth((now - tl.waitingSince - LIGHT_CARD.idleDropSeconds) / 1.5),
+      );
   }
   return e;
 }
@@ -412,11 +426,14 @@ const finderCell = (n: number, r: number, c: number): boolean =>
   (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
 
 /** The card for `qr`, centred on the stage. The same input always gives the same geometry. */
-export function cardGeometry(qr: QrMatrix): CardGeometry {
+export function cardGeometry(
+  qr: QrMatrix,
+  share: number = LIGHT_CARD.cardShare,
+): CardGeometry {
   const n = qr.size;
   const stage = LIGHT_CARD.stage;
   const quiet = LIGHT_CARD.quietModules;
-  const side = stage * LIGHT_CARD.cardShare;
+  const side = stage * share;
   const cell = side / (n + quiet * 2);
   const cx = stage / 2;
   const x0 = cx - side / 2;
@@ -476,6 +493,50 @@ export function cardGeometry(qr: QrMatrix): CardGeometry {
     star,
     half: side / 2 + cell * LIGHT_CARD.margin.cells,
   };
+}
+
+/** The card's share of the stage for a stage `stagePx` wide: half, or more where half would be
+ *  under `cardFloorPx` (never over 0.8, so the light keeps room to orbit). */
+export function cardShareFor(
+  stagePx: number,
+  floorPx: number = LIGHT_CARD.cardFloorPx,
+): number {
+  if (!(stagePx > 0)) return LIGHT_CARD.cardShare;
+  return Math.min(0.8, Math.max(LIGHT_CARD.cardShare, floorPx / stagePx));
+}
+
+/** The glow colours: Polaris violet by default, the product's accent (`#rrggbb`) when the theme has
+ *  one. The ink and the paper never change, so the code stays dark on light whatever the accent. */
+export function lightCardColors(accent?: string | null): {
+  tints: readonly string[];
+  cardGlow: string;
+} {
+  if (!accent || !/^#[0-9a-fA-F]{6}$/.test(accent))
+    return {
+      tints: LIGHT_CARD.colors.tints,
+      cardGlow: LIGHT_CARD.colors.cardGlow,
+    };
+  const a = accent.toLowerCase();
+  return {
+    tints: [
+      a,
+      mixHex(a, "#ffffff", 0.45),
+      mixHex(a, LIGHT_CARD.colors.tints[2]!, 0.5),
+      LIGHT_CARD.colors.tints[3]!,
+    ],
+    cardGlow: rgbaOf(a, 0.55),
+  };
+}
+
+/** `a` toward `b` by `k`, per channel, as `#rrggbb`. */
+export function mixHex(a: string, b: string, k: number): string {
+  const ch = (h: string, i: number): number => parseInt(h.slice(i, i + 2), 16);
+  const out = [1, 3, 5].map((i) =>
+    Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * k)
+      .toString(16)
+      .padStart(2, "0"),
+  );
+  return `#${out.join("")}`;
 }
 
 /** The check of light: `count` points along the tick, centred on the stage. */
@@ -700,6 +761,8 @@ export interface LightCardSim {
   t: number;
   timeline: Timeline;
   codes: [CardGeometry, CardGeometry];
+  /** The card's share of the stage, for every code this run shows. */
+  share: number;
   pending: Pending;
 }
 
@@ -741,9 +804,15 @@ export function createLightCardSim(o: {
   side?: number;
   /** The particle count, when a test fixes it. */
   count?: number;
+  /** The card's share of the stage (`cardShareFor`); half when absent. */
+  share?: number;
+  /** Start ready: the card is formed and the light already orbits (a view the person comes back
+   *  to in the same window shows its card at once). */
+  settled?: boolean;
 }): LightCardSim {
   const rng = createRng(o.seed);
-  const g = cardGeometry(o.qr);
+  const share = o.share ?? LIGHT_CARD.cardShare;
+  const g = cardGeometry(o.qr, share);
   const sim: LightCardSim = {
     particles: spawnParticles(
       o.count ?? particleCount(o.side ?? LIGHT_CARD.stage, g.lights.length / 3),
@@ -754,9 +823,29 @@ export function createLightCardSim(o: {
     t: 0,
     timeline: createTimeline(0),
     codes: [g, g],
+    share,
     pending: null,
   };
   condense(sim, g, LIGHT_CARD.durations.formDelay, 0.15);
+  if (o.settled) {
+    // Land every mote on its cell and begin in ready.
+    const p = sim.particles;
+    for (let i = 0; i < p.count; i++)
+      if (p.role[i] === ROLE.card) {
+        p.x[i] = p.tx[i]!;
+        p.y[i] = p.ty[i]!;
+        p.free[i] = 0;
+        p.freeTo[i] = 0;
+        p.at[i] = 0;
+      }
+    sim.timeline = {
+      phase: "ready",
+      since: 0,
+      from: REST,
+      code: 0,
+      waitingSince: 0,
+    };
+  }
   return sim;
 }
 
@@ -817,7 +906,7 @@ export function newCode(sim: LightCardSim, qr: QrMatrix): boolean {
   const tl = dispatchTimeline(sim.timeline, "newCode", sim.t);
   if (tl === sim.timeline) return false;
   sim.timeline = tl;
-  sim.codes[tl.code] = cardGeometry(qr);
+  sim.codes[tl.code] = cardGeometry(qr, sim.share);
   const p = sim.particles;
   const mid = LIGHT_CARD.stage / 2;
   for (let i = 0; i < p.count; i++)
@@ -889,6 +978,13 @@ export function expire(sim: LightCardSim): boolean {
   return true;
 }
 
+/** One ambient particle's share of the thinning: each has a fixed rank in [0, 0.85) and drops out
+ *  as the density falls below it. */
+export function rankFade(i: number, density: number): number {
+  const rank = ((i * 0.6180339887498949) % 1) * 0.85;
+  return clamp01((density - rank) / 0.15);
+}
+
 /** How bright particle `i` is drawn now (0 when it is not drawn): its own alpha, the phase's glow
  *  multiplier and, for the light outside the card, the margin fade. */
 export function glowAlpha(
@@ -908,6 +1004,7 @@ export function glowAlpha(
         base *
           env.dim *
           env.ambient *
+          rankFade(i, env.density) *
           wispVisibility(p.x[i]!, p.y[i]!, geometry, env.cardOpacity),
       );
     default:

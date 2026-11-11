@@ -82,6 +82,7 @@
       "check",
       "flare",
       "ambient",
+      "density",
       "swapped",
       "frameRate"
     ],
@@ -100,6 +101,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -113,6 +115,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -126,6 +129,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -139,6 +143,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -152,6 +157,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -165,6 +171,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -178,6 +185,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -191,6 +199,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -204,6 +213,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -217,6 +227,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -230,6 +241,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 30
           },
@@ -243,6 +255,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 0.5,
             "swapped": false,
             "frameRate": 30
           }
@@ -267,6 +280,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -280,6 +294,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -293,6 +308,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -306,6 +322,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -319,6 +336,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": true,
             "frameRate": 60
           },
@@ -332,6 +350,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": true,
             "frameRate": 60
           },
@@ -345,6 +364,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": true,
             "frameRate": 60
           },
@@ -358,6 +378,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": true,
             "frameRate": 60
           },
@@ -371,6 +392,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": true,
             "frameRate": 60
           },
@@ -384,6 +406,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -397,6 +420,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -410,6 +434,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           }
@@ -434,6 +459,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -447,6 +473,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -460,6 +487,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -473,6 +501,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -486,6 +515,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -499,6 +529,7 @@
             "check": 0.074074074,
             "flare": 0.727573976,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -512,6 +543,7 @@
             "check": 0.5,
             "flare": 0.38515139,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -525,6 +557,7 @@
             "check": 1,
             "flare": 0.148341594,
             "ambient": 0.55,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -538,6 +571,7 @@
             "check": 1,
             "flare": 0.087308837,
             "ambient": 0.55,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -551,6 +585,7 @@
             "check": 1,
             "flare": 0.010477056,
             "ambient": 0.55,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           }
@@ -575,6 +610,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 30
           },
@@ -588,6 +624,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 30
           },
@@ -601,6 +638,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 30
           },
@@ -614,6 +652,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 30
           },
@@ -627,6 +666,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 30
           },
@@ -640,6 +680,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 30
           }
@@ -668,6 +709,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -681,6 +723,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -694,6 +737,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": true,
             "frameRate": 60
           },
@@ -707,6 +751,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -720,6 +765,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           }
@@ -752,6 +798,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -765,6 +812,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           },
@@ -778,6 +826,7 @@
             "check": 0,
             "flare": 0,
             "ambient": 1,
+            "density": 1,
             "swapped": false,
             "frameRate": 60
           }

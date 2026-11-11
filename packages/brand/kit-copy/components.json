@@ -1773,6 +1773,7 @@
             "a11y.linkCode",
             "localPairing.expires",
             "localPairing.waitingDevice",
+            "localPairing.failedExpired",
             "localPairing.toQr",
             "localPairing.rotatedTitle",
             "localPairing.rotatedBody",
@@ -1795,10 +1796,15 @@
             "localPairing.waitingDevice",
             "localPairing.toCode",
             "localPairing.rotatedTitle",
+            "localPairing.rotatedBody",
+            "localPairing.notPairedWith",
+            "localPairing.failedExpired",
+            "localPairing.showNew",
             "localPairing.blockedTitle",
             "localPairing.blockedBody",
             "localPairing.tooManyAgainBody",
-            "common.cancel"
+            "common.cancel",
+            "a11y.busy"
           ]
         },
         "closed": {

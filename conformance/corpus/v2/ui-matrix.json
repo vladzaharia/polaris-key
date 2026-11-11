@@ -15479,6 +15479,184 @@
       }
     },
     {
+      "name": "LocalPairing/show-qr: a wrong code changed it, said without the digits",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "notice": "rotated",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.rotatedBody",
+          "localPairing.rotatedTitle",
+          "localPairing.toCode",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "The QR view says a changed code without saying the digits.",
+        "copy": ["a11y.linkCode", "a11y.newCode", "localPairing.showNew"]
+      },
+      "notApplicable": {
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI, Compose and Godot kits take the split in a later slice and check the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: the code expired, the QR stays dimmed with a new code one press away",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 0,
+          "view": "qr",
+          "expired": true,
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.failedExpired",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.showNew",
+          "localPairing.toCode"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "An expired window is never waiting: no time left, no waiting row.",
+        "copy": ["localPairing.expires", "localPairing.waitingDevice"]
+      },
+      "notApplicable": {
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI, Compose and Godot kits take the split in a later slice and check the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show: the code expired, the digits stay dimmed with a new code one press away",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 0,
+          "expired": true,
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show",
+        "copy": [
+          "a11y.linkCode",
+          "common.cancel",
+          "localPairing.failedExpired",
+          "localPairing.showBody",
+          "localPairing.showNew",
+          "localPairing.title",
+          "localPairing.toQr"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "An expired window is never waiting: no time left, no waiting row.",
+        "copy": ["localPairing.expires", "localPairing.waitingDevice"]
+      },
+      "notApplicable": {
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI, Compose and Godot kits take the split in a later slice and check the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: a prompt was declined, said without the digits",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "notice": "declined",
+          "device": "LAPTOP-7QH3RX",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.notPairedWith",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.rotatedBody",
+          "localPairing.toCode",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "The QR view says a declined prompt without the digits.",
+        "copy": ["a11y.linkCode", "a11y.newCode"]
+      },
+      "notApplicable": {
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI, Compose and Godot kits take the split in a later slice and check the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: a new code is being opened in place after the code expired",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 0,
+          "view": "qr",
+          "expired": true,
+          "busy": "new-code",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.busy",
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.failedExpired",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.showNew",
+          "localPairing.toCode"
+        ],
+        "actions": ["cancel"],
+        "disabled": ["localPairing.showNew"]
+      },
+      "notApplicable": {
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI, Compose and Godot kits take the split in a later slice and check the shared view until then."
+      }
+    },
+    {
       "name": "LocalPairing/show-qr: pairing is being blocked",
       "input": {
         "localPairing": {

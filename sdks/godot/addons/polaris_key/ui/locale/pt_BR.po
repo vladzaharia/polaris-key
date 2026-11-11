@@ -6335,7 +6335,7 @@ msgid "localPairing.showBody"
 msgstr "Insira este código no outro dispositivo."
 
 #. QR code with the pairing code
-#. Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code.
+#. Pair with a Code: Screen reader label; never shown. Names the QR in the QR view.
 msgid "a11y.qrPairing"
 msgstr "Código QR com o código de pareamento"
 
