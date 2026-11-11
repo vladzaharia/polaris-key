@@ -6,17 +6,10 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { dispatchWith } from "../../../../src/dispatch.js";
-import { SETTINGS } from "../../../../src/mount.js";
 import type { ClientRecord } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import { putClientGrant } from "../../../../src/services/identity/issuer/grantsRepo.js";
-import { handlePortalApi } from "../../../../src/services/identity/portal/api.js";
-import {
-  PORTAL_COOKIE,
-  PORTAL_CSRF_HEADER,
-} from "../../../../src/services/identity/portal/session.js";
 import { NOW } from "../../../seed.js";
-import { issuePortalSessionRow } from "../../../portalSessionRow.js";
-import { portalHooksFor } from "../../../portalHarness.js";
+import { cardPress, portalLogin, redirectOf } from "../../../cardPress.js";
 import { BASE, SLUG, type World } from "../../connect/connectFixture.js";
 import { issuerFlow } from "./issuerFlow.js";
 import { issuerWorld, mkClient } from "./issuerWorld.js";
@@ -47,16 +40,6 @@ async function discoveredIssuer(): Promise<string> {
   return ((await res.json()) as { issuer: string }).issuer;
 }
 
-async function session() {
-  const { token, session: row } = await issuePortalSessionRow(
-    w.env,
-    w.db,
-    { accountId, name: "Ada", email: "ada@example.com" },
-    NOW,
-  );
-  return { cookie: `${PORTAL_COOKIE}=${token}`, csrf: row.csrf };
-}
-
 /** `authorize` on the API host, then the bind hop on the customer host. */
 async function begin(extra: Record<string, string> = {}) {
   const p = new URLSearchParams({
@@ -81,40 +64,33 @@ async function begin(extra: Record<string, string> = {}) {
   };
 }
 
-/** A card press on the customer host: its redirect's `iss` and `code`. */
+/** A card press on the customer host: its redirect. */
 async function press(
   handle: string,
   verb: "continue" | "cancel",
   binder: string,
 ) {
-  const path = `/api/signin/requests/${handle}/${verb}`;
-  const s = await session();
-  const res = await handlePortalApi(
-    new Request(`${CARD}${path}`, {
-      method: "POST",
-      headers: {
-        cookie: `${s.cookie}; ${binder}`,
-        [PORTAL_CSRF_HEADER]: s.csrf,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(
+  return redirectOf(
+    await cardPress(w.env, w.db, {
+      origin: CARD,
+      handle,
+      verb,
+      binder,
+      session: await portalLogin(w.env, w.db, accountId),
+      body:
         verb === "continue" ? { consent: { claims: ["name", "email"] } } : {},
-      ),
     }),
-    w.env,
-    w.db,
-    path,
-    NOW,
-    portalHooksFor(w.env, w.db),
-    SETTINGS,
   );
-  expect(res.status).toBe(200);
-  return new URL(((await res.json()) as { redirect: string }).redirect);
 }
 
 /** The card's entry on the customer host, with the binder and (optionally) a session. */
 async function entry(handle: string, binder: string, withSession: boolean) {
-  const cookies = [binder, ...(withSession ? [(await session()).cookie] : [])];
+  const cookies = [
+    binder,
+    ...(withSession
+      ? [(await portalLogin(w.env, w.db, accountId)).cookie]
+      : []),
+  ];
   return send(`${CARD}/signin?request=${handle}`, {
     cookie: cookies.join("; "),
   });

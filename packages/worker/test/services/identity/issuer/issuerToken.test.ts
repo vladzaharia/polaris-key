@@ -35,6 +35,7 @@ import { SETTINGS } from "../../../../src/mount.js";
 import { NOW, seedLicenseWithKey, seedProduct } from "../../../seed.js";
 import { BASE, SLUG } from "../../connect/connectFixture.js";
 import { issuerSuite } from "./issuerFlow.js";
+import { redirectOf } from "../../../cardPress.js";
 import { enableIssuer } from "./issuerHelpers.js";
 import { mkClient } from "./issuerWorld.js";
 
@@ -680,9 +681,7 @@ describe("the pairwise subject on the token path", () => {
       NOW,
     );
     expect(res.status).toBe(200);
-    const code = new URL(
-      ((await res.json()) as { redirect: string }).redirect,
-    ).searchParams.get("code")!;
+    const code = (await redirectOf(res)).searchParams.get("code")!;
     const form = new URLSearchParams({
       grant_type: "authorization_code",
       client_id: client.clientId,
