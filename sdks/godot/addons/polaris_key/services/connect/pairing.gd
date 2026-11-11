@@ -436,7 +436,8 @@ func _refresh_tags() -> void:
 	_epoch = epoch
 	_tags = [PKeyPeerAdvert.product_tag(_src.slug, epoch), PKeyPeerAdvert.product_tag(_src.slug, epoch - 1)]
 	if not first and _mdns.has_method("set_tags"):
-		_mdns.call("set_tags", {"p": _tags})
+		var target: Object = _browse if _browse != null and _browse.has_method("set_tags") else _mdns
+		target.call("set_tags", {"p": _tags})
 
 
 # -- clocks and frames --------------------------------------------------------------------------------

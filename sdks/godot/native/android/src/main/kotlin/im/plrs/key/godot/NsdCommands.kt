@@ -17,16 +17,17 @@ import java.util.concurrent.Executors
  * only: the pipes are GDScript sockets, and the advert names the port of the GDScript listener. No
  * bytes of a session cross the plugin.
  *
- * - `nsd_status`: `{supported, permission, slots}` where permission is `not_required`, `granted` or `denied`,
- *   and `slots` is true when the ops below take a slot (an older plugin has no such field).
+ * - `nsd_status`: `{supported, permission, slots, local}` where permission is `not_required`, `granted` or `denied`,
+ *   `slots` is true when the ops below take a slot (an older plugin has no such field) and `local` is true when they
+ *   take the local pairing slots (`q`, `l0` to `l7`) and the tag kind `q`.
  * - `nsd_advertise {slot?, instance, port, txt}`: publish (or move the running advert of that slot to a new
- *   name). `slot` is `a` (the default), `v`, `p` or `c0` to `c7`: at most 11 registrations over [PeerNsd],
- *   all on the caller's port. The outcome arrives as the event `nsd_advert {slot, ok, reason?}`. A second
+ *   name). `slot` is `a` (the default), `v`, `p`, `q`, `c0` to `c7` or `l0` to `l7` (the local pairing window and
+ *   the `m=l` adverts of the held links): at most 20 registrations over [PeerNsd], all on the caller's ports. The outcome arrives as the event `nsd_advert {slot, ok, reason?}`. A second
  *   call on a slot replaces that slot's advert only.
  * - `nsd_advertise_stop {slot?}` (no slot: `a`), `nsd_browse_start`, `nsd_browse_stop`, `nsd_stop_all`.
  * - `nsd_accept {names, tags?}`: the instance names this device would accept. Until the first call nothing is
  *   accepted. A name outside the set is dropped before it takes a table slot, a watch or an event, so a
- *   forged name costs nothing. `tags` is `{v: [h, h], p: [h, h]}` (at most 2 per kind, each 16 of `0-9a-f`):
+ *   forged name costs nothing. `tags` is `{v: [h, h], p: [h, h], q: [h, h]}` (at most 2 per kind, each 16 of `0-9a-f`):
  *   while it is not empty, a well-formed name outside `names` is watched (at most [MAX_CANDIDATES] such
  *   names) and kept only when its TXT has `m=<kind>` and an `h` in `tags[kind]`. A bad list of either
  *   kind clears both sets (nothing accepted) and answers `bad_input`.
@@ -83,7 +84,7 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
     private class Advert(val stop: Stopper, val gen: Int)
 
     fun handle(op: String, q: JSONObject): JSONObject = when (op) {
-        "nsd_status" -> JSONObject().put("ok", true).put("supported", backend.supported()).put("permission", backend.permission().word).put("slots", true)
+        "nsd_status" -> JSONObject().put("ok", true).put("supported", backend.supported()).put("permission", backend.permission().word).put("slots", true).put("local", true)
         "nsd_advertise" -> guarded { advertise(q) }
         "nsd_advertise_stop" -> {
             val slot = q.optString("slot", "a")
@@ -400,18 +401,18 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
         const val LOCAL_NETWORK_API = 37
 
         private val INSTANCE = Regex("p1-[a-z2-7]{16}")
-        private val SLOT = Regex("[avp]|c[0-7]")
+        private val SLOT = Regex("[avpq]|c[0-7]|l[0-7]")
         private val TAG = Regex("[0-9a-f]{16}")
 
         fun isSlot(slot: String): Boolean = SLOT.matches(slot)
 
-        /** `{v: [h…], p: [h…]}` as sets, or null when it is anything else. An absent value is no tags. */
+        /** `{v: [h…], p: [h…], q: [h…]}` as sets, or null when it is anything else. An absent value is no tags. */
         fun parseTags(value: Any?): Map<String, Set<String>>? {
             if (value == null || value == JSONObject.NULL) return emptyMap()
             val o = value as? JSONObject ?: return null
             val out = HashMap<String, Set<String>>()
             for (k in o.keys()) {
-                if (k != "v" && k != "p") return null
+                if (k != "v" && k != "p" && k != "q") return null
                 val list = o.optJSONArray(k) ?: return null
                 if (list.length() > MAX_TAGS) return null
                 val set = HashSet<String>()

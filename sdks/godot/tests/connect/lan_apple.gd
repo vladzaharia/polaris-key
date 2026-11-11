@@ -65,6 +65,8 @@ func run(t: PKeyTestContext) -> void:
 	_pipes(t)
 	_fix_round(t)
 	_export(t)
+	_local(t)
+	_consumers(t)
 	for a in _apples:
 		a.free()
 
@@ -93,7 +95,9 @@ func _browse(t: PKeyTestContext) -> void:
 	var seen := Seen.new()
 	var b := lane.browse(seen.on_up, seen.on_down, func(n: String) -> bool: return n != C)
 	t.check("browse: starts", b.ok and fake.ops() == ["bj_browse_start"] and fake.json_of("bj_browse_start") == {"p2p": false})
-	t.check("browse: a second browse is refused", not lane.browse(seen.on_up).ok)
+	var extra := lane.browse(Seen.new().on_up)
+	t.check("browse: a second browse shares the native one", extra.ok and fake.ops().count("bj_browse_start") == 1)
+	extra.detail.stop()
 	t.check("browse: nothing is accepted until the names are pushed (the bytes are the concatenated names)", lane.set_accepted([A, B])
 			and fake.calls[-1][0] == "bj_accept" and (fake.calls[-1][1] as PackedByteArray).get_string_from_ascii() == A + B)
 	fake.event("bj_found", {"instance": A, "txt": ["v=1", "m=a"]})
@@ -330,6 +334,9 @@ func _export(t: PKeyTestContext) -> void:
 	t.check("export: a custom sentence is XML-escaped, an empty one falls back", escaped.contains("A &amp; B") and blank.contains(apple_export.DEFAULT_LOCAL_NETWORK_USAGE))
 	var other := apple_export.bonjour_warning("<key>NSBonjourServices</key><string>_x._tcp</string>")
 	var ours := apple_export.bonjour_warning("<key>NSBonjourServices</key><string>_pkeypeer._tcp</string>")
+	# Local pairing (CC-29b.G4): slots q and l are listeners of the one `_pkeypeer._tcp` service, so the one entry covers them.
+	t.check("export: the one Bonjour entry and usage sentence cover the local slots too", apple_export.BONJOUR_SERVICE == "_pkeypeer._tcp"
+			and apple_export.bonjour_warning("<key>NSBonjourServices</key><string>_pkeypeer._tcp</string>") == "")
 	t.check("export: a preset list without the peer service warns", other != "" and ours == "" and apple_export.bonjour_warning("") == "")
 
 
@@ -345,7 +352,7 @@ func _slots(t: PKeyTestContext) -> void:
 	var old := _caps_lane(false)
 	var of: FakeBin = old[0]
 	var ol: PKeyAppleMdns = old[1]
-	t.check("slots: an older binding answers no slots and no tags", ol.capabilities() == {"slots": false, "tags": false})
+	t.check("slots: an older binding answers no slots and no tags", ol.capabilities() == {"slots": false, "tags": false, "local": false})
 	var refused := ol.advertise({"instance": A, "slot": "v", "txt": []})
 	t.check("slots: slot v on an older binding is nearby-unsupported and never reaches slot a", not refused.ok and refused.code == PKeyConstants.ErrorCode.NEARBY_UNSUPPORTED
 			and not of.ops().has("bj_advertise_start") and not ol.advertise({"instance": A, "slot": "c", "txt": []}).ok)
@@ -357,7 +364,7 @@ func _slots(t: PKeyTestContext) -> void:
 	var pair := _caps_lane(true)
 	var fake: FakeBin = pair[0]
 	var lane: PKeyAppleMdns = pair[1]
-	t.check("slots: caps are read from bj_caps", lane.capabilities() == {"slots": true, "tags": true} and fake.ops().count("bj_caps") == 1)
+	t.check("slots: caps are read from bj_caps", lane.capabilities() == {"slots": true, "tags": true, "local": false} and fake.ops().count("bj_caps") == 1)
 	lane.capabilities()
 	t.check("slots: and asked once", fake.ops().count("bj_caps") == 1)
 	t.check("slots: a bad slot is invalid-argument", lane.advertise({"instance": A, "slot": "x", "txt": []}).code == PKeyConstants.ErrorCode.INVALID_ARGUMENT)
@@ -446,3 +453,124 @@ func _tags(t: PKeyTestContext) -> void:
 	var bad: PKeyAppleMdns = refuse[1]
 	bad.browse(Callable(), Callable(), Callable(), {"v": [h]})
 	t.check("tags: a refused set leaves none in force", bad._tags.is_empty() and (refuse[0] as FakeBin).ops().count("bj_accept_tags") == 2)
+
+
+func _local_lane() -> Array:
+	var fake := FakeBin.new()
+	fake.raw["bj_caps"] = '{"slots":1,"local":1}'.to_utf8_buffer()
+	return [fake, _lane(fake)]
+
+
+func _body(fake: FakeBin, op: String, nth := -1) -> Dictionary:
+	var hits: Array = fake.calls.filter(func(c): return c[0] == op)
+	if hits.is_empty():
+		return {}
+	var c: Array = hits[nth]
+	return JSON.parse_string((c[1] as PackedByteArray).get_string_from_utf8())
+
+
+# Local pairing (CC-29b.G4): slots q and l, the q tag kind, and the m=l set on slot l.
+func _local(t: PKeyTestContext) -> void:
+	var old := _caps_lane(true)
+	var refused: PKeyResult = (old[1] as PKeyAppleMdns).advertise({"instance": A, "slot": "q", "txt": ["v=1", "m=q"]})
+	t.check("local: a binding without the local ops refuses q and l", not refused.ok and refused.detail.get("reason") == "local"
+			and not (old[1] as PKeyAppleMdns).advertise({"instance": A, "slot": "l", "txt": []}).ok
+			and not (old[1] as PKeyAppleMdns).browse(Callable(), Callable(), Callable(), {"q": ["0123456789abcdef"]}).ok)
+	var pair := _local_lane()
+	var fake: FakeBin = pair[0]
+	var lane: PKeyAppleMdns = pair[1]
+	t.check("local: capabilities say so", lane.capabilities()["local"] and not (old[1] as PKeyAppleMdns).capabilities()["local"])
+	var q := lane.advertise({"instance": A, "slot": "q", "txt": ["v=1", "m=q", "n=12"]})
+	t.check("local: slot q is a listener of its own", q.ok and _body(fake, "bj_advertise_start") == {"slot": "q", "instance": A, "txt": ["v=1", "m=q", "n=12"]})
+	t.check("local: and it rotates like the others", q.detail.update(B, ["v=1", "m=q"]) and _body(fake, "bj_advertise_update")["slot"] == "q")
+	q.detail.stop()
+	t.check("local: and stops by slot", _body(fake, "bj_advertise_stop") == {"slot": "q"})
+
+	# Slot l: the first name is the listener's own advert, the rest ride bj_locals.
+	var handles: Array = []
+	for i in PKeyAppleMdns.MAX_LOCALS:
+		var r := lane.advertise({"instance": "p1-%s" % _name16(500 + i), "slot": "l", "txt": ["v=1", "m=l"]})
+		handles.append(r.detail)
+	var starts := fake.calls.filter(func(c): return c[0] == "bj_advertise_start" and JSON.parse_string((c[1] as PackedByteArray).get_string_from_utf8())["slot"] == "l")
+	t.check("local: slot l starts once, with the first name", starts.size() == 1 and _body(fake, "bj_advertise_start", -1)["slot"] == "l"
+			and handles.all(func(h): return h != null))
+	t.check("local: the other seven ride bj_locals", (_body(fake, "bj_locals", 0)["adverts"] as Array).size() == 0 and (_body(fake, "bj_locals", -1)["adverts"] as Array).size() == 7)
+	t.check("local: a ninth is refused", not lane.advertise({"instance": "p1-%s" % _name16(600), "slot": "l", "txt": []}).ok and lane._locals.size() == 8)
+	t.check("local: a repeat of a running name is refused", not lane.advertise({"instance": "p1-%s" % _name16(500), "slot": "l", "txt": []}).ok)
+	(handles[0] as Object).stop()
+	t.check("local: stopping the first moves the listener's advert to the next name", _body(fake, "bj_advertise_update", -1) == {"slot": "l", "instance": "p1-%s" % _name16(501), "txt": ["v=1", "m=l"]}
+			and (_body(fake, "bj_locals", -1)["adverts"] as Array).size() == 6)
+	t.check("local: a name moves by update", (handles[1] as Object).update("p1-%s" % _name16(700), ["v=1", "m=l"]) and _body(fake, "bj_advertise_update", -1)["instance"] == "p1-%s" % _name16(700))
+	fake.event("bj_withdrawn", {"slot": "l", "requested": "p1-%s" % _name16(502), "got": ""})
+	lane.poll()
+	t.check("local: a name the daemon withdrew leaves the wanted set", lane._locals.size() == 6)
+	for i in range(2, 8):
+		(handles[i] as Object).stop()
+	t.check("local: the last name takes the listener down", (handles[1] as Object).update("p1-%s" % _name16(701), []) and lane._locals.size() == 1)
+	(handles[1] as Object).stop()
+	t.check("local: no names, no listener", _body(fake, "bj_advertise_stop", -1) == {"slot": "l"} and lane._locals.is_empty() and not lane.advertising("l"))
+	fake.reply["bj_advertise_start"] = 3
+	t.check("local: a refused start keeps no name", not lane.advertise({"instance": A, "slot": "l", "txt": []}).ok and lane._locals.is_empty())
+	fake.reply.erase("bj_advertise_start")
+
+	# Accepted sockets go to the slot's acceptor.
+	var got: Dictionary = {"q": [], "l": []}
+	for slot in ["q", "l"]:
+		lane.set_acceptor(slot, func(pp: PKeyApplePipe) -> void: got[slot].append(pp))
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 61, "remote": "10.0.0.2", "slot": "q"}).to_utf8_buffer()])
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 62, "remote": "10.0.0.2", "slot": "l"}).to_utf8_buffer()])
+	lane.poll()
+	t.check("local: accepted pipes of q and l reach their own acceptor", got["q"].size() == 1 and got["q"][0].id() == 61 and got["l"].size() == 1 and got["l"][0].id() == 62)
+	lane.stop()
+	t.check("local: stop forgets the local set", lane._locals.is_empty() and lane._acceptors.is_empty())
+
+	# The q tag kind: a joiner finds the window by its tag.
+	var tag := "0123456789abcdef"
+	var seen := Seen.new()
+	var b := lane.browse(seen.on_up, seen.on_down, func(_n: String) -> bool: return false, {"q": [tag], "x": [tag]})
+	t.check("local: q is a tag kind", b.ok and _body(fake, "bj_accept_tags", -1) == {"q": [tag]})
+	fake.event("bj_found", {"instance": B, "txt": ["v=1", "m=q", "h=" + tag, "n=12"]})
+	fake.event("bj_found", {"instance": C, "txt": ["v=1", "m=q", "h=ffffffffffffffff"]})
+	lane.poll()
+	t.check("local: a q advert with the tag enters, another does not", seen.up.size() == 1 and seen.up[0]["instance"] == B and seen.up[0]["native"])
+
+
+# Several browses share the native one: each gets what its own filter admits.
+func _consumers(t: PKeyTestContext) -> void:
+	var pair := _local_lane()
+	var fake: FakeBin = pair[0]
+	var lane: PKeyAppleMdns = pair[1]
+	var tag := "0123456789abcdef"
+	var account := Seen.new()
+	var locals := Seen.new()
+	var a := lane.browse(account.on_up, account.on_down, func(n: String) -> bool: return n == A)
+	var want_l := [B]
+	fake.event("bj_found", {"instance": A, "txt": ["v=1", "m=a"]})
+	fake.event("bj_found", {"instance": B, "txt": ["v=1", "m=l"]})
+	lane.poll()
+	t.check("share: the first browse sees its own roster only", account.up.size() == 1 and account.up[0]["instance"] == A)
+	var l := lane.browse(locals.on_up, locals.on_down, func(n: String) -> bool: return want_l.has(n))
+	t.check("share: a second browse starts nothing natively", l.ok and fake.ops().count("bj_browse_start") == 1)
+	t.check("share: and is told what is already up that it accepts", locals.up.size() == 1 and locals.up[0]["instance"] == B)
+	t.check("share: names are the union of both browses", a.detail.set_accepted([A]) and l.detail.set_accepted([B])
+			and (fake.calls[-1][1] as PackedByteArray).get_string_from_ascii() == A + B)
+	want_l.append(C)
+	t.check("share: a browse replaces only its own names", l.detail.set_accepted([C]) and (fake.calls[-1][1] as PackedByteArray).get_string_from_ascii() == A + C)
+	fake.event("bj_found", {"instance": C, "txt": ["v=1", "m=l"]})
+	lane.poll()
+	t.check("share: a name goes to the browse that accepts it", locals.up.size() == 2 and account.up.size() == 1)
+	fake.event("bj_lost", {"instance": A})
+	lane.poll()
+	t.check("share: a loss reaches the browse that had the name", account.down == [A] and locals.down.is_empty())
+	var pairs := Seen.new()
+	var p := lane.browse(pairs.on_up, pairs.on_down, func(_n: String) -> bool: return false, {"q": [tag]})
+	t.check("share: tags of a third browse are sent as the union", p.ok and fake.json_of("bj_accept_tags") != {} and lane._tags == {"q": [tag]})
+	fake.event("bj_found", {"instance": B, "txt": ["v=1", "m=q", "h=" + tag]})
+	lane.poll()
+	t.check("share: a tag admits a row for the browse that holds it only", pairs.up.size() == 1 and locals.up.size() == 2 and account.up.size() == 1)
+	p.detail.stop()
+	t.check("share: ending it takes its tags back", _body(fake, "bj_accept_tags", -1) == {} and lane._tags.is_empty() and not fake.ops().has("bj_browse_stop"))
+	a.detail.stop()
+	t.check("share: the native browse runs while one is left", not fake.ops().has("bj_browse_stop") and (fake.calls[-1][1] as PackedByteArray).get_string_from_ascii() == C)
+	l.detail.stop()
+	t.check("share: the last one stops it", fake.ops().count("bj_browse_stop") == 1 and not lane.status()["active"])

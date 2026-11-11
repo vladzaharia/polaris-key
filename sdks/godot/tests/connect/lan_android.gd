@@ -16,6 +16,8 @@ class FakePlugin:
 	var reply := {}
 	## Whether the plugin reports `slots` (false: an older plugin).
 	var slots := true
+	## Whether the plugin reports `local` (the q and l slots and the q tag kind).
+	var local := false
 
 	func cmd(json: String) -> String:
 		var q: Dictionary = JSON.parse_string(json)
@@ -30,6 +32,8 @@ class FakePlugin:
 		var out := {"ok": true, "supported": true, "permission": "not_required"}
 		if slots:
 			out["slots"] = true
+			if local:
+				out["local"] = true
 		return JSON.stringify(out)
 
 	func event(body: Dictionary) -> void:
@@ -76,6 +80,8 @@ func run(t: PKeyTestContext) -> void:
 	_bounds(t)
 	_slots(t)
 	_tags(t)
+	_local(t)
+	_consumers(t)
 	_older(t)
 	_export(t)
 	for a in _androids:
@@ -112,7 +118,9 @@ func _browse(t: PKeyTestContext) -> void:
 	var seen := Seen.new()
 	var b := lane.browse(seen.on_up, seen.on_down, func(n: String) -> bool: return n != C)
 	t.check("browse: starts", b.ok and fake.ops().has("nsd_browse_start"))
-	t.check("browse: a second browse is refused", not lane.browse(seen.on_up).ok)
+	var extra := lane.browse(Seen.new().on_up)
+	t.check("browse: a second browse shares the native one", extra.ok and fake.ops().count("nsd_browse_start") == 1)
+	extra.detail.stop()
 	t.check("browse: the accepted names go native as a list", lane.set_accepted([A, B]) and fake.last("nsd_accept")["names"] == [A, B])
 	var row := {"ev": "nsd_found", "instance": A, "hosts": ["192.168.1.9", "fd00::2", "fe80::1%12"], "port": 4100, "txt": ["v=1", "m=a"]}
 	fake.event(row)
@@ -232,7 +240,7 @@ func _calls_of(fake: FakePlugin, op: String) -> Array:
 func _slots(t: PKeyTestContext) -> void:
 	var fake := FakePlugin.new()
 	var lane := _lane(fake)
-	t.check("slots: the plugin's status makes capabilities", lane.capabilities() == {"slots": true, "tags": true})
+	t.check("slots: the plugin's status makes capabilities", lane.capabilities() == {"slots": true, "tags": true, "local": false})
 	var a := lane.advertise({"instance": A, "port": 4100, "txt": ["v=1", "m=a"]})
 	var v := lane.advertise({"instance": B, "port": 4101, "txt": ["v=1", "m=v"], "slot": "v"})
 	var p := lane.advertise({"instance": C, "port": 4102, "txt": ["v=1", "m=p"], "slot": "p"})
@@ -281,7 +289,7 @@ func _tags(t: PKeyTestContext) -> void:
 	var h2 := "fedcba9876543210"
 	var b := lane.browse(seen.on_up, seen.on_down, func(n: String) -> bool: return n == A, {"v": [h1, h2, "extra"], "p": [h2], "z": [h1]})
 	var acc := fake.last("nsd_accept")
-	t.check("tags: a browse pushes at most 2 per kind and only v and p", b.ok and acc["tags"] == {"v": [h1, h2], "p": [h2]} and acc["names"] == [])
+	t.check("tags: a browse pushes at most 2 per kind and only v, p and q", b.ok and acc["tags"] == {"v": [h1, h2], "p": [h2]} and acc["names"] == [])
 	t.check("tags: the names keep the tags in force", lane.set_accepted([A]) and fake.last("nsd_accept")["tags"] == {"v": [h1, h2], "p": [h2]} and fake.last("nsd_accept")["names"] == [A])
 	t.check("tags: new tags keep the names", lane.set_tags({"v": [h2]}) and fake.last("nsd_accept")["names"] == [A] and fake.last("nsd_accept")["tags"] == {"v": [h2]})
 	fake.event({"ev": "nsd_found", "instance": B, "hosts": ["192.168.1.8"], "port": 4100, "txt": ["v=1", "m=v", "h=" + h2]})
@@ -308,7 +316,7 @@ func _older(t: PKeyTestContext) -> void:
 	var fake := FakePlugin.new()
 	fake.slots = false
 	var lane := _lane(fake)
-	t.check("older: no slots, no tags", lane != null and lane.capabilities() == {"slots": false, "tags": false})
+	t.check("older: no slots, no tags", lane != null and lane.capabilities() == {"slots": false, "tags": false, "local": false})
 	t.check("older: slot a works as it always did, without a slot field", lane.advertise({"instance": A, "port": 4100}).ok and not fake.last("nsd_advertise").has("slot"))
 	for slot in ["v", "p", "c"]:
 		var r := lane.advertise({"instance": B, "port": 4100, "slot": slot})
@@ -324,6 +332,12 @@ func _older(t: PKeyTestContext) -> void:
 
 func _export(t: PKeyTestContext) -> void:
 	t.check("export: the permission constant is the OS name", PKeyAndroidExport.LOCAL_NETWORK_PERMISSION == "android.permission.ACCESS_LOCAL_NETWORK")
+	# Local pairing (CC-29b.G4) advertises and browses through the same NsdManager registrations: the manifest of the
+	# account lane is all it needs, and the camera belongs to the kit's scanner, not to this export.
+	for flavor in ["play", "direct"]:
+		var manifest := PKeyAndroidExport.manifest_elements(flavor)
+		t.check("export: %s carries the local-network and network-state permissions local pairing shares with the account lane" % flavor,
+				manifest.contains(PKeyAndroidExport.LOCAL_NETWORK_PERMISSION) and manifest.contains(PKeyAndroidExport.NETWORK_STATE_PERMISSION) and not manifest.contains("CAMERA"))
 
 
 static func _name16(i: int) -> String:
@@ -334,3 +348,77 @@ static func _name16(i: int) -> String:
 		s += ALPHA[n % 32]
 		n /= 32
 	return s
+
+
+func _local_lane() -> Array:
+	var fake := FakePlugin.new()
+	fake.local = true
+	return [fake, _lane(fake)]
+
+
+# Local pairing (CC-29b.G4): slots q and l0 to l7, the q tag kind.
+func _local(t: PKeyTestContext) -> void:
+	var older := FakePlugin.new()
+	var old := _lane(older)
+	t.check("local: a plugin without the local ops refuses q and l", not old.advertise({"instance": A, "port": 4100, "txt": [], "slot": "q"}).ok
+			and not old.advertise({"instance": A, "port": 4100, "txt": [], "slot": "l"}).ok and _calls_of(older, "nsd_advertise").is_empty()
+			and not old.browse(Callable(), Callable(), Callable(), {"q": ["0123456789abcdef"]}).ok)
+	var pair := _local_lane()
+	var fake: FakePlugin = pair[0]
+	var lane: PKeyAndroidMdns = pair[1]
+	t.check("local: capabilities say so", lane.capabilities() == {"slots": true, "tags": true, "local": true})
+	var q := lane.advertise({"instance": A, "port": 4200, "txt": ["v=1", "m=q", "n=12"], "slot": "q"})
+	t.check("local: slot q is its own registration on the window's port", q.ok and fake.last("nsd_advertise")["slot"] == "q" and int(fake.last("nsd_advertise")["port"]) == 4200 and lane.advertising("q"))
+	var ls: Array = []
+	for i in 8:
+		ls.append(lane.advertise({"instance": "p1-" + _name16(500 + i), "port": 4300, "txt": ["v=1", "m=l"], "slot": "l"}))
+	var slots: Array = _calls_of(fake, "nsd_advertise").slice(1).map(func(c): return c["slot"])
+	t.check("local: the m=l adverts take l0 to l7 on the service's port", ls.all(func(r): return r.ok) and slots == ["l0", "l1", "l2", "l3", "l4", "l5", "l6", "l7"]
+			and _calls_of(fake, "nsd_advertise").slice(1).all(func(c): return int(c["port"]) == 4300))
+	var ninth := lane.advertise({"instance": "p1-" + _name16(600), "port": 4300, "txt": [], "slot": "l"})
+	t.check("local: a ninth is refused before the plugin", not ninth.ok and _calls_of(fake, "nsd_advertise").size() == 9)
+	t.check("local: a name that runs is refused", not lane.advertise({"instance": "p1-" + _name16(500), "port": 4300, "txt": [], "slot": "l"}).ok)
+	(ls[2].detail as Object).stop()
+	t.check("local: a stopped name frees its place", fake.last("nsd_advertise_stop")["slot"] == "l2"
+			and lane.advertise({"instance": "p1-" + _name16(700), "port": 4300, "txt": [], "slot": "l"}).ok and fake.last("nsd_advertise")["slot"] == "l2")
+	t.check("local: a name moves by update", (ls[0].detail as Object).update(B, ["v=1", "m=l"]) and fake.last("nsd_advertise")["slot"] == "l0" and fake.last("nsd_advertise")["instance"] == B)
+	lane.stop()
+	t.check("local: stop ends them all", not lane.advertising("q") and not lane.status()["active"])
+
+
+# Several browses share the plugin's one: each gets what its own filter admits.
+func _consumers(t: PKeyTestContext) -> void:
+	var pair := _local_lane()
+	var fake: FakePlugin = pair[0]
+	var lane: PKeyAndroidMdns = pair[1]
+	var tag := "0123456789abcdef"
+	var account := Seen.new()
+	var locals := Seen.new()
+	var a := lane.browse(account.on_up, account.on_down, func(n: String) -> bool: return n == A)
+	t.check("share: the first browse sets the names", a.ok and a.detail.set_accepted([A]) and fake.last("nsd_accept")["names"] == [A])
+	var l := lane.browse(locals.on_up, locals.on_down, func(n: String) -> bool: return n == B)
+	t.check("share: a second browse starts nothing natively", l.ok and fake.ops().count("nsd_browse_start") == 1)
+	t.check("share: names are the union of both browses", l.detail.set_accepted([B]) and fake.last("nsd_accept")["names"] == [A, B])
+	fake.event({"ev": "nsd_found", "instance": A, "hosts": ["192.168.1.9"], "port": 4100, "txt": ["v=1", "m=a"]})
+	fake.event({"ev": "nsd_found", "instance": B, "hosts": ["192.168.1.8"], "port": 4300, "txt": ["v=1", "m=l"]})
+	lane.poll()
+	t.check("share: a row goes to the browse that accepts it", account.up.map(func(p): return p["instance"]) == [A] and locals.up.map(func(p): return p["instance"]) == [B])
+	var late := Seen.new()
+	var third := lane.browse(late.on_up, late.on_down, func(n: String) -> bool: return n == B)
+	t.check("share: a browse that opens later is told what is up", late.up.map(func(p): return p["instance"]) == [B])
+	third.detail.stop()
+	var pairing := Seen.new()
+	var p := lane.browse(pairing.on_up, pairing.on_down, func(_n: String) -> bool: return false, {"q": [tag]})
+	t.check("share: tags are sent with everyone's names", p.ok and fake.last("nsd_accept")["tags"] == {"q": [tag]} and fake.last("nsd_accept")["names"] == [A, B])
+	fake.event({"ev": "nsd_found", "instance": C, "hosts": ["192.168.1.7"], "port": 4400, "txt": ["v=1", "m=q", "h=" + tag, "n=12"]})
+	lane.poll()
+	t.check("share: a tagged row goes to the browse that holds the tag only", pairing.up.map(func(x): return x["instance"]) == [C] and locals.up.size() == 1 and account.up.size() == 1)
+	fake.event({"ev": "nsd_lost", "instance": A})
+	lane.poll()
+	t.check("share: a loss reaches the browse that had the name", account.down == [A] and locals.down.is_empty())
+	p.detail.stop()
+	t.check("share: ending the pairing browse takes its tags back", not fake.last("nsd_accept").has("tags") and fake.last("nsd_accept")["names"] == [A, B] and not fake.ops().has("nsd_browse_stop"))
+	a.detail.stop()
+	t.check("share: and its names", fake.last("nsd_accept")["names"] == [B])
+	l.detail.stop()
+	t.check("share: the last one stops the browse", fake.ops().count("nsd_browse_stop") == 1)

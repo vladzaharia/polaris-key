@@ -1719,7 +1719,7 @@ static func capabilities() -> Dictionary:
 		"connect.relay": {"status": "implemented", "service": "connect", "na": []},
 		"connect.links": {"status": "implemented", "service": "connect", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"connect.transfer": {"status": "implemented", "service": "connect", "na": []},
-		"connect.local": {"status": "planned", "service": "connect", "na": [{"runtime": "web", "reason": "runtime"}]},
+		"connect.local": {"status": "implemented", "service": "connect", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"connect.app": {"status": "implemented", "service": "connect", "na": []},
 		"devices.fingerprint": {"status": "implemented", "service": "core", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"devices.facts": {"status": "implemented", "service": "core", "na": []},
@@ -1816,4 +1816,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "e2e91f798bf895aa89a998d79522b987bb2fc2030b49004966faead75c3b353c"
+const CAPABILITY_DIGEST := "a1a644ec3578bbfb0525efc937b74a76d10bba80895ae4cd0072242fdbcdd97d"

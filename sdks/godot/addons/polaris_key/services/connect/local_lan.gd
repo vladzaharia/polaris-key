@@ -44,6 +44,7 @@ var _budget: PKeyConnectSession.Budget
 var _gate: PKeyPeerLanGate
 var _limiter: PKeyPeerLimiter
 var _server: TCPServer
+var _native := false
 var _port := 0
 var _stopped := false
 var _framed := false
@@ -226,6 +227,8 @@ func stop() -> void:
 	if _server != null:
 		_server.stop()
 		_server = null
+	if _native and _mdns != null:
+		_mdns.call("set_acceptor", "l", Callable())
 	_peers = {}
 	_names = {}
 	_wipe(_locals)
@@ -237,11 +240,16 @@ func stop() -> void:
 
 func _start() -> PKeyResult:
 	_load()
-	var listened := PKeyPeerLanGate.listen(str(_o.get("host", "")), int(_o.get("port", 0)))
-	if not listened.ok:
-		return listened
-	_server = listened.detail
-	_port = _server.get_local_port()
+	# An OS lane (the Apple one) listens itself and hands over the accepted sockets (slot l); otherwise this does.
+	_native = _mdns.has_method("set_acceptor")
+	if _native:
+		_mdns.call("set_acceptor", "l", Callable(self, "_accept_native"))
+	else:
+		var listened := PKeyPeerLanGate.listen(str(_o.get("host", "")), int(_o.get("port", 0)))
+		if not listened.ok:
+			return listened
+		_server = listened.detail
+		_port = _server.get_local_port()
 	_frames(true)
 	var epoch := PKeyPeerAdvert.advert_epoch(_now())
 	if bool(_o.get("advertise", true)):
@@ -394,7 +402,8 @@ func _accepts(instance: String) -> bool:
 
 func _push_accepted() -> void:
 	if _mdns != null and _mdns.has_method("set_accepted") and _browse != null:
-		_mdns.call("set_accepted", _names.keys())
+		var target: Object = _browse if _browse.has_method("set_accepted") else _mdns
+		target.call("set_accepted", _names.keys())
 
 
 func _found(f: Dictionary) -> void:
@@ -480,6 +489,15 @@ func _admit(peer: StreamPeerTCP) -> void:
 	_accept(pipe, Callable(slot, "settle"), PKeyLanAddress.group_key(slot.address))
 
 
+## An inbound socket of the OS lane (slot l): the OS side judged the source and holds the unadmitted limits. With no
+## link to try (or the gate off) it is closed before a byte is read.
+func _accept_native(pipe: PKeyPeerPipe) -> void:
+	if _stopped or _sessions.size() >= MAX_SESSIONS or _locals.is_empty() or not _allowed():
+		pipe.abort()
+		return
+	_accept(pipe, Callable(), PKeyLanAddress.group_key(pipe.remote_address()))
+
+
 func _accept(pipe: PKeyPeerPipe, release: Callable, group: Variant) -> void:
 	var made := _make_link(pipe, "responder", {}, group if group is String else "")
 	if made.is_empty():
@@ -491,6 +509,7 @@ func _accept(pipe: PKeyPeerPipe, release: Callable, group: Variant) -> void:
 	p.link = made["link"]
 	p.attachment = made["attachment"]
 	p.release = release
+	p.pipe = pipe
 	p.at = _mono()
 	_pending[p.get_instance_id()] = p
 	p.attachment.opened.connect(_on_inbound.bind(p.get_instance_id()))
