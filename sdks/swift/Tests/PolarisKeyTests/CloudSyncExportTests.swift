@@ -216,6 +216,33 @@ final class CloudSyncExportTests: XCTestCase {
         XCTAssertTrue(file.data.count < fileA.count)
     }
 
+    func testAWorkerServingOneByteRangesEndsTheFileShortAndTheExportGoesOn() async throws {
+        let w = worker([recordJSON("slot1", version: 3, file: (7, fileA))], files: ["saves/slot1@7": fileA])
+        w.rangeBytes = 1
+        let got = try await exporter(w).run(to: destination, options: CloudSyncExportOptions())
+        // ceil(size / 64 KiB) + 8 requests at most: the file is short, listed, and the record is written.
+        let cap = (fileA.count + 65_535) / 65_536 + 8
+        XCTAssertLessThanOrEqual(w.requests.filter { $0.headers["range"] != nil }.count, cap)
+        XCTAssertEqual(got.records, 1)
+        XCTAssertEqual(got.skipped.map(\.code), ["sync-file-invalid"])
+        XCTAssertEqual(got.skipped.map(\.partial), [true])
+    }
+
+    func testRowsWithANameNoStringCanHoldAreListedInvalidNotSkippedQuietly() async throws {
+        // A lone surrogate escape in a setting name, a collection and an id: each row is listed, the rest written.
+        let w = worker([
+            setting, #"{"setting":"bad\ud800","scope":"user","value":1,"version":2}"#,
+            #"{"record":["sa\udc00ves","x"],"value":{"n":1},"version":1}"#,
+            #"{"record":["saves","x\ud83d"],"value":{"n":1},"version":1}"#, recordJSON("ok", version: 4),
+        ])
+        let got = try await exporter(w).run(to: destination, options: CloudSyncExportOptions())
+        XCTAssertEqual(got.settings, 1)
+        XCTAssertEqual(got.records, 1)
+        XCTAssertEqual(
+            got.skipped.map { "\($0.kind):\($0.code)" }.sorted(),
+            ["record:invalid", "record:invalid", "setting:invalid"])
+    }
+
     func testAFileTheWorkerNoLongerHasIsListedPartial() async throws {
         let w = worker([recordJSON("slot1", version: 3, file: (7, fileA))])
         let got = try await exporter(w).run(to: destination, options: CloudSyncExportOptions())

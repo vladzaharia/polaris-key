@@ -244,6 +244,17 @@ private func serialisable(_ v: JSONValue) -> Bool {
     withinDepth(v) && (try? CanonicalJSON.encode(v)) != nil
 }
 
+/// A name the lenient parse turned into NaN: its string held a lone surrogate.
+func isUnspellable(_ v: JSONValue) -> Bool {
+    if case .double(let d) = v { return d.isNaN }
+    return false
+}
+
+private func isNameOrUnspellable(_ v: JSONValue) -> Bool {
+    if case .string = v { return true }
+    return isUnspellable(v)
+}
+
 private func canon(_ v: JSONValue) throws -> String { try CanonicalJSON.encode(v) + "\n" }
 
 private func entryNames(records: Int, files: Int) -> [String] {
@@ -423,6 +434,9 @@ private func settingsLine(_ pairs: [(name: String, value: JSONValue)]) throws ->
     return "{" + parts.joined(separator: ",") + "}\n"
 }
 
+/// A file may take ceil(planned / this) + 8 requests of its source.
+let exportPieceFloorBytes = 64 * 1024
+
 private func readBounded(_ files: any ExportFileSource, _ ref: ExportFileRef, limit: Int) async throws -> (
     data: Data, over: Bool
 ) {
@@ -472,6 +486,18 @@ func exportToSink(_ inp: ExportInput, _ sink: any ExportSink) async throws -> Ex
         if case .string(let wire)? = c["setting"] { settingChanges.append((wire, c)) }
     }
     settingChanges.sort { lessBytes($0.wire, $1.wire) }
+    // A name no Swift string can hold (a lone surrogate, read leniently as NaN) is a row no runtime
+    // can write: it is listed, never dropped quietly. The same for a record whose collection or id is one.
+    for c in changes {
+        if let name = c["setting"], isUnspellable(name) {
+            settingSkips.append(CloudSyncExportSkipped(kind: "setting", code: "invalid"))
+        } else if case .array(let r)? = c["record"], r.count >= 2, isUnspellable(r[0]) || isUnspellable(r[1]),
+            isNameOrUnspellable(r[0]), isNameOrUnspellable(r[1])
+        {
+            let collection = r[0].stringValue
+            recordSkips.append(CloudSyncExportSkipped(kind: "record", code: "invalid", collection: collection))
+        }
+    }
     var settings: [(name: String, value: JSONValue)] = []
     var settingIndex: [[UInt8]: Int] = [:]
     var settingCount = 0
@@ -809,11 +835,16 @@ private func readFile(
     // The opener (end-to-end) sees at most `stored` bytes; the rest of what a source serves is not read.
     let opener: (any FileOpener)? = e2e ? try codec.makePlannedOpener(plainSize: p.planned) : nil
     if stored > 0 {
+        // A source is asked for at most `ceil(stored / 64 KiB) + 8` pieces: a Worker serving one-byte
+        // ranges ends the file short (partial) and the export goes on.
+        var pieces = 0
+        let pieceCap = (stored + exportPieceFloorBytes - 1) / exportPieceFloorBytes + 8
         try await files.stored(p.ref) { got in
             try checkCancelled()
+            pieces += 1
             let room = stored - read
             let part = got.count > room ? got.prefix(room) : got
-            if part.isEmpty { return read < stored }
+            if part.isEmpty { return read < stored && pieces < pieceCap }
             read += part.count
             hash.update(data: part)
             if let opener {
@@ -831,7 +862,7 @@ private func readFile(
                     at = end
                 }
             }
-            return read < stored
+            return read < stored && pieces < pieceCap
         }
     }
     if let opener, !partial {

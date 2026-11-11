@@ -546,6 +546,8 @@ final class CloudSyncExporter: Sendable {
             }
             return (a, b)
         }
+        // Rows whose name held a lone surrogate (NaN after the lenient parse): the export lists them.
+        var unspellable: [JSONValue] = []
         var cursor = 0
         for _ in 0..<SYNC_EXPORT_MAX_PULLS {
             let body = try await getJSON("/\(deps.product)/sync?cursor=\(cursor)&clientId=\(clientId)", budget)
@@ -555,6 +557,8 @@ final class CloudSyncExporter: Sendable {
                     settings[Array(name.utf8)] = c
                 } else if let (collection, id) = ref(o["record"]) {
                     records[key(collection, id)] = c
+                } else if o["setting"].map(isUnspellable) == true || isUnspellableRef(o["record"]) {
+                    unspellable.append(c)
                 }
             }
             for t in body["tombstones"]?.arrayValue ?? [] {
@@ -569,10 +573,15 @@ final class CloudSyncExporter: Sendable {
                 cursor = next
                 continue
             }
-            return Array(settings.values) + Array(records.values)
+            return Array(settings.values) + Array(records.values) + unspellable
         }
         // More pages than the bound allows: the export does not wait for ever on a Worker that never ends.
         throw syncExportFailed("network")
+    }
+
+    private func isUnspellableRef(_ v: JSONValue?) -> Bool {
+        guard case .array(let r)? = v, r.count >= 2 else { return false }
+        return isUnspellable(r[0]) || isUnspellable(r[1])
     }
 
     private func isNumber(_ v: JSONValue?) -> Bool {
