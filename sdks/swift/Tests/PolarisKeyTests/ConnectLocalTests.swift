@@ -1234,6 +1234,37 @@ import XCTest
             XCTAssertEqual(ends.current?.reason, .person)
         }
 
+        func testTheRevealIsDecidedInsideTheWindowSoAStopJustBeforeItShowsNoCode() async throws {
+            let dir = Directory()
+            let a = try await Device.make()
+            let store = try await a.client.connect.localLinkStore()
+            let src = LocalSource(slug: "djdl", now: { 1_700_000_000 }, allowed: { true }, store: store, notify: {})
+            func open(_ code: Latest<LocalCode>) async throws -> LocalShower {
+                try await LocalShower.start(
+                    src, pairOptions(dir, code: code), nameplates: LocalNameplates(), floors: LocalRenewFloors(),
+                    onEnd: {})
+            }
+            // The caller's condition is asked after the stopped check, inside the window: when it holds, nothing shows.
+            let held = Latest<LocalCode>()
+            let one = try await open(held)
+            await one.reveal(unless: { true })
+            XCTAssertTrue(held.history.isEmpty)
+            XCTAssertNil(one.shownCode.current)
+            await one.stop()
+            // A stop that landed first leaves a window that never shows.
+            let stoppedFirst = Latest<LocalCode>()
+            let two = try await open(stoppedFirst)
+            await two.stop()
+            await two.reveal(unless: { false })
+            XCTAssertTrue(stoppedFirst.history.isEmpty)
+            // And a window left alone shows its first code once.
+            let shown = Latest<LocalCode>()
+            let three = try await open(shown)
+            await three.reveal(unless: { false })
+            XCTAssertEqual(shown.history.count, 1)
+            await three.stop()
+        }
+
         func testAGateClearedWhileTheFirstWindowOpensShowsNoCode() async throws {
             let dir = Directory()
             let a = try await Device.make()
