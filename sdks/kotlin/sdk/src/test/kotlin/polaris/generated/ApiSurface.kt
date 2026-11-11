@@ -226,6 +226,8 @@ internal suspend fun apiSurface() {
     CloudLocalLinks::open  // cloudConnect.localLinks.open
     CloudLocalLinks::onLink  // cloudConnect.localLinks.onLink
     CloudLocalLinks::localPairing  // cloudConnect.localLinks.localPairing
+    CloudLocalLinks::dialsLeft  // cloudConnect.localLinks.dialsLeft
+    CloudLocalLinks::onChange  // cloudConnect.localLinks.onChange
     CloudTransfer::send  // cloudConnect.transfer.send
     CloudTransfer::onOffer  // cloudConnect.transfer.onOffer
     CloudTransfer::onResult  // cloudConnect.transfer.onResult

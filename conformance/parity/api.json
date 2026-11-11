@@ -8230,7 +8230,8 @@
         "swift": {
           "planned": "CC-29.15",
           "reason": "the Swift port lands in slice .15f"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8253,7 +8254,8 @@
         "swift": {
           "planned": "CC-29.15",
           "reason": "the Swift port lands in slice .15f"
-        }
+        },
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
