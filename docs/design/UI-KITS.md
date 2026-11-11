@@ -1634,6 +1634,9 @@ port checks itself against it. Particle positions are decorative (they depend on
   `motion`; the others: their platform's setting (§4.8).
 - **Battery.** After 10 s of waiting the orbit drops to 30 frames a second. Nothing runs while the
   page or window is hidden or the stage is off-screen; the run resumes where it stopped.
+- **Fit.** The stage is square: 20 rem in one column, 17 rem in two panes from 600 wide, 23 rem from
+  768 wide (a card of 160, 136 and 184 px). A window under 480 tall has no room for it beside the
+  code and draws the plain QR, which is what the layout was built around.
 - **Accessibility.** The canvas is one image with the accessible name the plain QR had
   (`a11y.qrPairing`). The plain QR stays as the fallback where the renderer cannot draw.
 
