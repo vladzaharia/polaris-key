@@ -1810,18 +1810,13 @@ jobs:
       - run: >-
           sdks/godot/tools/fetch_godot.sh "${{ matrix.godot }}"
           "$HOME/.cache/pkey-godot/${{ matrix.godot }}" ${{ matrix.template }}
-      # SP-41, the Godot lane (the Linux legs): the default `ci` selection includes the `dev_live`
-      # suite, which needs a fresh `pkey dev` (the `js-rest` job says what `start` and `check` do). Every
-      # leg is its own runner, so no server is shared; the Windows and macOS smoke legs select
-      # `platform,devices` and need none. The generated config goes under $RUNNER_TEMP, never
-      # sdks/godot: the step after the run requires that tree to be as committed, and run_tests.sh
-      # empties sdks/godot/build. The editor run and the exported-pack run use the one server; the
-      # suite is written for that.
-      # Only the legs that run `dev_live` start the server: the `matrix` part runs only the UI matrix
-      # (run_tests.sh), so it skips the dev steps: `stop` fails a leg whose lane never ran. The editor
-      # and template legs run `dev_live` in one of their parallel processes (`ci_p4`), which reaches
-      # the server through the exported variables. tools/godotCiSplit.test.ts holds this condition to
-      # the suite sets.
+      # SP-41, the Godot lane: the `dev_live` suite (in no `ci` set) runs on one leg only, the 4.7.2
+      # editor leg (PKEY_TEST_DEV_LIVE=1 below), and needs a fresh `pkey dev` (the `js-rest` job says
+      # what `start` and `check` do). The generated config goes under $RUNNER_TEMP, never sdks/godot:
+      # the step after the run requires that tree to be as committed, and run_tests.sh empties
+      # sdks/godot/build. Only that leg starts the server (`stop` fails a leg whose lane never ran);
+      # it runs `dev_live` in its last parallel process (`ci_p4`), which reaches the server through
+      # the exported variables. tools/godotCiSplit.test.ts pins the one leg.
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: runner.os == 'Linux'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -1830,15 +1825,15 @@ jobs:
           node-version: 22.23.4
           cache: pnpm
       - name: Build the pkey dev server (the CLI and the Worker's dependencies)
-        if: runner.os == 'Linux' && matrix.part != 'matrix'
+        if: runner.os == 'Linux' && matrix.godot == '4.7.2' && matrix.part == 'editor'
         run: |
           pnpm install --frozen-lockfile --filter=@polaris-key/worker...
           pnpm exec turbo run build --filter=@polaris-key/worker^...
       - name: Start pkey dev (Godot live lane)
-        if: runner.os == 'Linux' && matrix.part != 'matrix'
+        if: runner.os == 'Linux' && matrix.godot == '4.7.2' && matrix.part == 'editor'
         run: node packages/cli/scripts/start-dev-ci.mjs start --lang godot
       - name: Check the pkey dev lane (variables, config, server)
-        if: runner.os == 'Linux' && matrix.part != 'matrix'
+        if: runner.os == 'Linux' && matrix.godot == '4.7.2' && matrix.part == 'editor'
         run: node packages/cli/scripts/start-dev-ci.mjs check
       - run: |
           D="$HOME/.cache/pkey-godot/${{ matrix.godot }}"
@@ -1856,12 +1851,13 @@ jobs:
           # matrix, the release template run where the engine has one), and the editor and template
           # run the `ci` selection as four parallel processes; the Windows and macOS smoke legs
           # run it all (PKEY_TEST_PART unset).
+          if [ "${{ matrix.godot }}" = 4.7.2 ] && [ "${{ matrix.part }}" = editor ]; then export PKEY_TEST_DEV_LIVE=1; fi
           if [ -n "${{ matrix.part }}" ]; then export PKEY_TEST_PART="${{ matrix.part }}"; export PKEY_TEST_PARALLEL=1; fi
           tools/ci-measure.sh "godot ${{ matrix.godot }} ${{ matrix.part || 'smoke' }} ${{ matrix.ui_paths }} ${{ matrix.ui_range }}" sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
       - name: Stop pkey dev (Godot live lane)
-        if: always() && runner.os == 'Linux' && matrix.part != 'matrix'
+        if: always() && runner.os == 'Linux' && matrix.godot == '4.7.2' && matrix.part == 'editor'
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang godot --job-status "${{ job.status }}"
       # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
       - name: Fail the job when lint failed
