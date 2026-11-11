@@ -1,3 +1,5 @@
+# pnpm writes the lockfile in its own format; a changed lockfile must not fail the changed-files check.
+pnpm-lock.yaml
 # Generated artifacts — byte-compared against their emitters (docsCspParity, the docs
 # freshness suite), so prettier must never rewrite them.
 packages/worker/src/docsCsp.generated.ts

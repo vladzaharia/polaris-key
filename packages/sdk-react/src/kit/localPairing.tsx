@@ -16,7 +16,9 @@
 
 import {
   Fragment,
+  Suspense,
   forwardRef,
+  lazy,
   useEffect,
   useId,
   useLayoutEffect,
@@ -52,6 +54,10 @@ import {
   type Chrome,
   type KitCtx,
 } from "./parts.js";
+
+// The Light Card is a canvas renderer with its own physics: it loads with the QR, apart from this
+// screen's first paint, and the plain QR shows until it has (and stays when it cannot draw).
+const LightCardQr = lazy(() => import("./lightCardQr.js"));
 
 // ── Rules ────────────────────────────────────────────────────────────────────────────────────
 
@@ -131,14 +137,9 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
   visibility: hidden;
 }
 .pk-root .pair-show .qr[data-ghost] {
-  inline-size: 11.5rem;
+  inline-size: min(100%, var(--pair-stage));
   aspect-ratio: 1;
   margin: 0;
-}
-@container pk (max-height: 30rem) {
-  .pk-root .pair-show .qr[data-ghost] {
-    inline-size: 10rem;
-  }
 }
 .pk-root .pair-skel {
   display: block;
@@ -197,6 +198,24 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 }
 .pk-root .pair-show .qr svg {
   inline-size: 11.5rem;
+}
+/* The Light Card: a night stage in both themes; the card is half its width. */
+.pk-root .pair-show {
+  --pair-stage: 20rem;
+}
+@container pk (min-width: 37.5rem) {
+  .pk-root .pair-show {
+    --pair-stage: 23rem;
+  }
+}
+.pk-root .pair-show .qr[data-lightcard] {
+  inline-size: min(100%, var(--pair-stage));
+}
+.pk-root .pair-show .qr[data-lightcard] canvas {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 1;
+  border-radius: 1.25rem;
 }
 .pk-root .pair-live {
   display: contents;
@@ -373,6 +392,9 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
     }
     .pk-root .pair-show .qr svg {
       inline-size: 10rem;
+    }
+    .pk-root .pair-show {
+      --pair-stage: 17rem;
     }
     /* A notice is one line: its words side by side and its action at the end, and the waiting
        row is as tall as its text, so Cancel stays in the first view. */
@@ -978,7 +1000,16 @@ function ShowBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
         <Code ref={tile} c={c} changed={x.changed} rotation={x.rotation} />
         <TimeRow c={c} />
       </div>
-      {qrCode(c, p.qr ?? null, "a11y.qrPairing")}
+      {p.qr ? (
+        <Suspense fallback={qrCode(c, p.qr, "a11y.qrPairing")}>
+          <LightCardQr
+            c={c}
+            data={p.qr}
+            labelKey="a11y.qrPairing"
+            expired={(p.secondsLeft ?? 1) <= 0}
+          />
+        </Suspense>
+      ) : null}
       <div className="pair-live">
         {n === "rotated" || n === "declined" || n === "guessing" ? (
           <Notice
