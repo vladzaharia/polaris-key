@@ -43,6 +43,8 @@ public enum KitStates {
         case .addToAccount: return addToAccount(inputs).erased
         case .linkPairing: return linkPairing(inputs).erased
         case .transferOffer: return transferOffer(inputs).erased
+        case .localPairing: return localPairing(inputs).erased
+        case .pairedDevices: return pairedDevices(inputs).erased
         }
     }
 }

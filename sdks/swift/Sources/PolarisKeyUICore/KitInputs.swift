@@ -1115,6 +1115,132 @@ public struct KitTransferOffer: Sendable, Codable, Equatable, Hashable {
     }
 }
 
+// MARK: - Pair with a Code (LocalPairing, PairedDevices)
+
+/// One paired device of Pair with a Code (`LocalLinkInfo` of `cloudConnect.localLinks.list`).
+public struct KitPairedDevice: Sendable, Codable, Equatable, Hashable {
+    public var id: String
+    /// The name this device holds for it (the label it sent, or the person's rename).
+    public var label: String?
+    /// Unix seconds, or nil when it has never been seen.
+    public var lastSeen: Int?
+    /// True when the other device may find and connect to this one.
+    public var reachable: Bool
+    /// The other device's platform as it reported it. Display only.
+    public var platform: String?
+
+    public init(
+        id: String, label: String? = nil, lastSeen: Int? = nil, reachable: Bool = true,
+        platform: String? = nil
+    ) {
+        self.id = id
+        self.label = label
+        self.lastSeen = lastSeen
+        self.reachable = reachable
+        self.platform = platform
+    }
+}
+
+/// LocalPairing (ui-matrix `local`): two devices of one app on one network pair by an 8-digit code
+/// or a QR, with no account. Every member is data a model computed.
+public struct KitLocalPairing: Sendable, Codable, Equatable, Hashable {
+    public enum Step: String, Sendable, Codable, CaseIterable {
+        case choose
+        case opening
+        case show
+        case closed
+        case enter
+        case joining
+        case confirm
+        case waiting
+        case paired
+        case failed
+        case networkBlocked = "network-blocked"
+        case off
+    }
+    public enum Notice: String, Sendable, Codable { case rotated, declined, blocked, guessing }
+    public enum Busy: String, Sendable, Codable {
+        case pair
+        case newCode = "new-code"
+        case notNow = "not-now"
+    }
+    public enum ClosedBy: String, Sendable, Codable {
+        case tooManyTries = "too-many-tries"
+        case expired
+    }
+    public enum EntryError: String, Sendable, Codable {
+        case wrong, spent
+        case tooMany = "too-many"
+        case notFound = "not-found"
+        case notACode = "not-a-code"
+    }
+    public enum Reason: String, Sendable, Codable { case declined, timeout, full, closed }
+
+    public var step: Step
+    public var prePrompt: Bool?
+    public var full: Bool?
+    public var code: String?
+    public var qr: String?
+    public var secondsLeft: Int?
+    public var notice: Notice?
+    public var busy: Busy?
+    public var closedBy: ClosedBy?
+    public var cooldownLeft: Int?
+    public var warn: Bool?
+    public var entry: String?
+    public var error: EntryError?
+    public var triesLeft: Int?
+    public var pairDisabled: Bool?
+    public var categories: [String]?
+    public var device: String?
+    public var reason: Reason?
+    public var canOpenSettings: Bool?
+    public var cantConnect: Bool?
+    public var nameError: String?
+    public var max: Int?
+
+    public init(step: Step) { self.step = step }
+}
+
+/// PairedDevices (ui-matrix `local`): the list of what the person paired, and the row being edited.
+public struct KitPairedDevices: Sendable, Codable, Equatable, Hashable {
+    public enum Step: String, Sendable, Codable, CaseIterable {
+        case loading
+        case list
+        case renaming
+        case forgetting
+        case loadFailed = "load-failed"
+        case off
+    }
+    public enum RenameError: String, Sendable, Codable { case long, empty, failed }
+    public struct Notice: Sendable, Codable, Equatable, Hashable {
+        public enum Kind: String, Sendable, Codable {
+            case notFound = "not-found"
+            case busy, unknown
+        }
+        public var device: String
+        public var kind: Kind
+        public var id: String?
+        public init(device: String, kind: Kind, id: String? = nil) {
+            self.device = device
+            self.kind = kind
+            self.id = id
+        }
+    }
+
+    public var step: Step
+    public var devices: [KitPairedDevice]?
+    public var target: String?
+    public var renameError: RenameError?
+    public var forgetError: Bool?
+    public var notice: Notice?
+
+    public init(step: Step, devices: [KitPairedDevice]? = nil) {
+        self.step = step
+        self.devices = devices
+    }
+}
+
 // MARK: - Save conflict
 
 /// SaveConflict (ui-matrix `saveConflict`): the same save changed on two devices. `remote` is nil
@@ -1397,6 +1523,8 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
     public var addToAccount: KitAddToAccount?
     public var linkPairing: KitLinkPairing?
     public var transferOffer: KitTransferOffer?
+    public var localPairing: KitLocalPairing?
+    public var pairedDevices: KitPairedDevices?
 
     public init(
         integrator: KitIntegrator? = nil, presentation: KitPresentation? = nil,
@@ -1418,7 +1546,8 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         recoveryCode: KitRecoveryCode? = nil, ringChange: KitRingChange? = nil,
         saveConflict: KitSaveConflict? = nil, licenseHolder: KitLicenseHolder? = nil,
         activateDone: KitActivateDone? = nil, addToAccount: KitAddToAccount? = nil,
-        linkPairing: KitLinkPairing? = nil, transferOffer: KitTransferOffer? = nil
+        linkPairing: KitLinkPairing? = nil, transferOffer: KitTransferOffer? = nil,
+        localPairing: KitLocalPairing? = nil, pairedDevices: KitPairedDevices? = nil
     ) {
         self.integrator = integrator
         self.presentation = presentation
@@ -1466,6 +1595,8 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         self.addToAccount = addToAccount
         self.linkPairing = linkPairing
         self.transferOffer = transferOffer
+        self.localPairing = localPairing
+        self.pairedDevices = pairedDevices
     }
 
     /// Whether `service` is on (an absent list means all are).

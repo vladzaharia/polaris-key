@@ -186,6 +186,12 @@ public struct PolarisKeyPreview: View {
                 categoryLabels: ["contacts": "Contacts", "photos": "Photos"])
         case .transferOffer:
             TransferOfferView(model: TransferOfferModel(inputs: model.inputs))
+        case .localPairing:
+            LocalPairingView(
+                model: LocalPairingModel(inputs: model.inputs),
+                categoryLabels: ["crates": "Crates", "cues": "Cues"])
+        case .pairedDevices:
+            PairedDevicesView(model: PairedDevicesModel(inputs: model.inputs))
         case .cloudSyncStatus:
             // A still: the buttons draw as the settings host (U-07) will wire them.
             PreviewSettingsHost {

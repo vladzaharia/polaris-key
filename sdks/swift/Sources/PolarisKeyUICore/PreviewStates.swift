@@ -141,7 +141,7 @@ extension PolarisKeyPreviewState {
     public static let all: [PolarisKeyPreviewState] =
         gate + welcome + signIn + nearby + activate + offlineActivation + deviceLimit + statusAndGrace + update
         + settings
-        + devicesAndPaywall + cloudSync + saveConflict + connect + holders
+        + devicesAndPaywall + cloudSync + saveConflict + connect + local + holders
 
     /// The previews of one component.
     public static func of(_ component: KitComponent) -> [PolarisKeyPreviewState] {
@@ -985,6 +985,73 @@ extension PolarisKeyPreviewState {
                 $0.saveConflict = KitSaveConflict(
                     step: .failed, local: thisCopy, remote: otherCopy, keep: .local)
             }),
+    ]
+
+    // MARK: Pair with a Code (LocalPairing, PairedDevices): the states the iOS baselines pin
+    // (the whole `local` family is drawn by LocalPairingRenderTests and replayed by UIMatrixTests).
+
+    private static func localPairing(
+        _ step: KitLocalPairing.Step, variant: String? = nil,
+        _ build: (inout KitLocalPairing) -> Void = { _ in }
+    ) -> PolarisKeyPreviewState {
+        var p = KitLocalPairing(step: step)
+        p.categories = ["crates", "cues"]
+        build(&p)
+        return .init(.localPairing, step.rawValue, variant: variant, base { $0.localPairing = p })
+    }
+
+    private static func pairedDevices(
+        _ step: KitPairedDevices.Step, variant: String? = nil, devices: Int = 3,
+        _ build: (inout KitPairedDevices) -> Void = { _ in }
+    ) -> PolarisKeyPreviewState {
+        var p = KitPairedDevices(
+            step: step,
+            devices: (1...max(devices, 1)).prefix(devices).map {
+                KitPairedDevice(
+                    id: "L\($0)", label: "Device \($0)", lastSeen: 1_700_000_000 - $0 * 86_400,
+                    reachable: true)
+            })
+        build(&p)
+        return .init(.pairedDevices, step.rawValue, variant: variant, base { $0.pairedDevices = p })
+    }
+
+    static let local: [PolarisKeyPreviewState] = [
+        localPairing(.choose),
+        localPairing(.show) {
+            $0.code = "4812 3456"
+            $0.qr = "PKP1:TIDEWATER:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+            $0.secondsLeft = 291
+        },
+        localPairing(.show, variant: "rotated") {
+            $0.code = "4812 9999"
+            $0.qr = "PKP1:TIDEWATER:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+            $0.secondsLeft = 262
+            $0.notice = .rotated
+        },
+        localPairing(.closed, variant: "cooldown") {
+            $0.closedBy = .tooManyTries
+            $0.cooldownLeft = 24
+        },
+        localPairing(.enter) { $0.entry = "4812 3456" },
+        localPairing(.enter, variant: "wrong") {
+            $0.entry = "48"
+            $0.error = .wrong
+            $0.triesLeft = 1
+            $0.pairDisabled = true
+        },
+        localPairing(.joining) { $0.entry = "4812 3456" },
+        localPairing(.confirm) { $0.device = "Maya's laptop" },
+        localPairing(.waiting) { $0.device = "Maya's laptop" },
+        localPairing(.paired) { $0.device = "Maya's laptop" },
+        localPairing(.failed, variant: "declined") { $0.reason = .declined },
+        localPairing(.networkBlocked) { $0.canOpenSettings = true },
+        localPairing(.off),
+        pairedDevices(.list),
+        pairedDevices(.renaming) {
+            $0.target = "L1"
+        },
+        pairedDevices(.forgetting) { $0.target = "L1" },
+        pairedDevices(.loading),
     ]
 
     // MARK: Connect (LinkPairing, TransferOffer): one preview per ui-matrix `connect` row

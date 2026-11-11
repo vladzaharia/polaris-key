@@ -61,6 +61,12 @@ public enum class KitComponent(public val id: String) {
 
     @Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
     transferOffer("TransferOffer"),
+
+    @Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
+    localPairing("LocalPairing"),
+
+    @Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
+    pairedDevices("PairedDevices"),
     ;
 
     public companion object {
@@ -169,6 +175,8 @@ public data class KitScreen(
     public val actions: List<KitAction>,
     /** Controls drawn but not available (Keep both with every save slot in use); never in [actions]. */
     public val disabledActions: List<KitAction> = emptyList(),
+    /** Copy keys of controls drawn but unavailable now (ui-core `View.disabled`): they keep their label and the reason is on screen. */
+    public val disabledKeys: List<String> = emptyList(),
 ) {
     /** The catalog keys in stable comparison order. */
     public val copyKeys: List<String>
@@ -416,6 +424,8 @@ public object KitStates {
         KitComponent.addToAccount -> addToAccountScreen(inputs)
         KitComponent.linkPairing -> linkPairingScreen(inputs)
         KitComponent.transferOffer -> transferOfferScreen(inputs)
+        KitComponent.localPairing -> localPairingScreen(inputs)
+        KitComponent.pairedDevices -> pairedDevicesScreen(inputs)
     }
 }
 

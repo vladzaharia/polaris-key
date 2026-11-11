@@ -37,6 +37,8 @@ public enum KitComponent: String, Sendable, CaseIterable, Codable {
     case addToAccount = "AddToAccount"
     case linkPairing = "LinkPairing"
     case transferOffer = "TransferOffer"
+    case localPairing = "LocalPairing"
+    case pairedDevices = "PairedDevices"
 }
 
 /// What a control does, in the matrix's closed vocabulary (`vocabulary.actions`).
@@ -141,10 +143,15 @@ public struct KitScreen<State: KitStateID>: Sendable, Equatable {
     /// draws, with its reason, and takes no action.
     public let disabledActions: [KitAction]
 
+    /// Copy keys of controls drawn but unavailable now (ui-core `View.disabled`): they keep their
+    /// label and the reason is on screen, and a press answers the reason instead of acting.
+    public let disabledKeys: [String]
+
     public init(
         _ state: State?, _ copy: [CopyLine], extraActions: [KitAction] = [],
-        withheld: [KitAction] = []
+        withheld: [KitAction] = [], disabled: [String] = []
     ) {
+        self.disabledKeys = state == nil ? [] : Array(Set(disabled)).sorted()
         self.state = state
         self.copy = state == nil ? [] : copy
         var actions = Set(self.copy.compactMap { KitAction.forCopyKey($0.key) })
@@ -174,7 +181,8 @@ public struct KitScreen<State: KitStateID>: Sendable, Equatable {
     /// The type-erased answer (the conformance runner's comparison).
     public var erased: AnyKitScreen {
         AnyKitScreen(
-            component: component, state: stateName, copy: copy, actions: actions)
+            component: component, state: stateName, copy: copy, actions: actions,
+            disabledKeys: disabledKeys)
     }
 }
 
@@ -184,6 +192,7 @@ public struct AnyKitScreen: Sendable, Equatable {
     public let state: String
     public let copy: [CopyLine]
     public let actions: [KitAction]
+    public let disabledKeys: [String]
 
     public var copyKeys: [String] { copy.map(\.key).sorted() }
 }

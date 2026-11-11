@@ -2771,9 +2771,7 @@
       "ktlint:standard:statement-wrapping": 3
     },
     "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/UIMatrixPresentationTest.kt": {
-      "detekt:complexity.NestedBlockDepth": 1,
-      "ktlint:standard:import-ordering": 1,
-      "ktlint:standard:string-template": 1
+      "detekt:complexity.NestedBlockDepth": 1
     },
     "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBack.kt": {
       "detekt:exceptions.RethrowCaughtException": 1,

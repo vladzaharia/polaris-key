@@ -23,7 +23,7 @@ import SwiftUI
 private enum ConnectFocus: Hashable { case heading }
 
 /// Says `text` once, after the heading read has finished.
-@MainActor private func announce(_ text: String) {
+@MainActor func announce(_ text: String) {
     Task { @MainActor in
         try? await Task.sleep(nanoseconds: 400_000_000)
         var said = AttributedString(text)
@@ -33,7 +33,7 @@ private enum ConnectFocus: Hashable { case heading }
 }
 
 /// A row of pills that wraps onto further rows (the categories).
-private struct KitWrap: Layout {
+struct KitWrap: Layout {
     var spacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -74,7 +74,7 @@ private struct KitWrap: Layout {
 }
 
 /// The glyph beside a result title: never colour alone.
-private struct ResultMark: View {
+struct ResultMark: View {
     enum Kind { case success, danger }
     let kind: Kind
 
