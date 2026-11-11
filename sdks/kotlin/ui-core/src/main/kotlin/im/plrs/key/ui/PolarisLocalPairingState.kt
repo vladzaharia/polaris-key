@@ -118,7 +118,7 @@ public class PolarisLocalPairingState(
     private val prePrompt: Boolean = false,
     private val canOpenSettings: Boolean = false,
     /** Seconds since the epoch. */
-    private val now: () -> Double = { System.currentTimeMillis() / 1000.0 },
+    private val now: () -> Double = { System.currentTimeMillis() / MILLIS_PER_SECOND },
     /** Wait [ms], then run the one-second tick; tests replace it with a manual one. */
     private val sleep: suspend (Long) -> Unit = { delay(it) },
 ) {
@@ -183,36 +183,38 @@ public class PolarisLocalPairingState(
         if (!renewing) epoch++
         val mine = epoch
         fun live() = mine == epoch
-        if (renewing) {
-            if (_ui.value.busy != null) return
-            ui { copy(busy = "new-code") }
-        } else {
-            go(PolarisLocalPairingUi(step = "opening"))
-        }
+        // A second press while the first is answered does nothing.
+        if (renewing && _ui.value.busy != null) return
+        if (renewing) ui { copy(busy = "new-code") } else go(PolarisLocalPairingUi(step = "opening"))
         try {
             val current = shower
             if (renewing && current != null) {
                 val next = current.renew()
                 if (live()) rotate(next)
-                return
+            } else {
+                close(bump = false)
+                if (live()) startWindow(::live)
             }
-            close(bump = false)
-            if (!live()) return
-            val events = PolarisLocalEvents(
-                onCode = { c -> scope.launch { if (live()) rotate(c) } },
-                onConfirm = { o -> scope.launch { if (live()) confirmPrompt(o) } },
-                onLinked = { l -> scope.launch { if (live()) linked(l) } },
-                onInterrupted = { n -> scope.launch { if (live() && n >= 3 && _ui.value.step == "show") ui { copy(notice = "blocked") } } },
-                onEnd = { r -> scope.launch { if (live()) ended(r) } },
-            )
-            val window = driver.pair(categories, label, events)
-            if (live()) shower = window else window.stop()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
             if (live()) fail(e, "show")
         }
     }
+
+    private suspend fun startWindow(live: () -> Boolean) {
+        val events = PolarisLocalEvents(
+            onCode = { c -> scope.launch { if (live()) rotate(c) } },
+            onConfirm = { o -> scope.launch { if (live()) confirmPrompt(o) } },
+            onLinked = { l -> scope.launch { if (live()) linked(l) } },
+            onInterrupted = { n -> scope.launch { if (live() && interrupted(n)) ui { copy(notice = "blocked") } } },
+            onEnd = { r -> scope.launch { if (live()) ended(r) } },
+        )
+        val window = driver.pair(categories, label, events)
+        if (live()) shower = window else window.stop()
+    }
+
+    private fun interrupted(n: Int): Boolean = n >= BLOCKED_AFTER && _ui.value.step == "show"
 
     private fun rotate(c: PolarisLocalCode) {
         val prev = _ui.value
@@ -264,7 +266,9 @@ public class PolarisLocalPairingState(
 
             "off" -> go(PolarisLocalPairingUi(step = "off"))
 
-            "stored" -> Unit // `onLinked` took the screen to paired
+            "stored" -> Unit
+
+            // `onLinked` took the screen to paired
 
             else -> go(entryStep()) // the person's own stop: back to the entry, nothing kept
         }
@@ -334,11 +338,13 @@ public class PolarisLocalPairingState(
         if (_ui.value.step == "paired") ui { copy(name = text, nameError = false) }
     }
 
+    private fun renamed(s: PolarisLocalPairingUi, name: String): Boolean = name.isNotEmpty() && s.name != s.device
+
     /** Done: a changed name is saved on this device, then the screen is left. */
     public suspend fun done() {
         val s = _ui.value
         val name = s.name.trim()
-        if (s.step == "paired" && s.id != null && name.isNotEmpty() && s.name != s.device) {
+        if (s.step == "paired" && s.id != null && renamed(s, name)) {
             try {
                 driver.rename(s.id, name)
             } catch (e: CancellationException) {
@@ -390,7 +396,13 @@ public class PolarisLocalPairingState(
         if (s.step != "enter") return
         val d = digits(s.entry.orEmpty())
         if (s.pairDisabled) {
-            val reason = if (failedCode != null && d == failedCode) "wrong" else if (s.triesLeft == 0) "spent" else "not-a-code"
+            val reason = if (failedCode != null && d == failedCode) {
+                "wrong"
+            } else if (s.triesLeft == 0) {
+                "spent"
+            } else {
+                "not-a-code"
+            }
             ui { copy(error = reason) }
             return
         }
@@ -617,9 +629,12 @@ public class PolarisLocalPairingState(
         const val TOO_MANY_WRONG = 5
         const val CODE_DIGITS = 8
         const val TICK_MS = 1000L
+        const val MILLIS_PER_SECOND = 1000.0
+        const val BLOCKED_AFTER = 3
+        const val GROUP = 4
 
         fun digits(text: String): String = text.filter { it in '0'..'9' }.take(CODE_DIGITS)
 
-        fun grouped(d: String): String = if (d.length > 4) "${d.take(4)} ${d.drop(4)}" else d
+        fun grouped(d: String): String = if (d.length > GROUP) "${d.take(GROUP)} ${d.drop(GROUP)}" else d
     }
 }

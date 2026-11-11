@@ -65,33 +65,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-/** What the paired devices screen's controls do. Every callback defaults to nothing, so a still draws without a state holder. */
-public class PolarisPairedDevicesActions(
-    public val retry: () -> Unit = {},
-    public val done: () -> Unit = {},
-    public val pair: () -> Unit = {},
-    public val startRename: (String) -> Unit = {},
-    public val setDraft: (String) -> Unit = {},
-    public val saveRename: () -> Unit = {},
-    public val askForget: (String) -> Unit = {},
-    public val confirmForget: () -> Unit = {},
-    public val cancelEdit: () -> Unit = {},
-    public val setReachable: (String, Boolean) -> Unit = { _, _ -> },
-    public val focusHandled: () -> Unit = {},
-)
-
 /**
  * Paired devices over [state]: it reads the list when this enters the composition and follows the SDK's changes until it leaves.
  * [onClose] runs for Done and Back; [onPair] opens Pair with a Code (the host's). [notice] is what the app's own connection to a device
  * answered; Try again on it runs [onRetryNotice].
  */
 @Composable
-public fun PolarisPairedDevices(
-    state: PolarisPairedDevicesState,
-    modifier: Modifier = Modifier,
-    onClose: () -> Unit = {},
-    onPair: () -> Unit = {},
-) {
+public fun PolarisPairedDevices(state: PolarisPairedDevicesState, modifier: Modifier = Modifier, onClose: () -> Unit = {}, onPair: () -> Unit = {}) {
     val ui by state.ui.collectAsState()
     val scope = rememberCoroutineScope()
     LaunchedEffect(state) { state.start { reload -> scope.launch { reload() } } }
@@ -204,7 +184,7 @@ public fun PolarisPairedDevicesScreen(
                     ListNotices(ui, lines, actions)
                 }
                 Spacer(Modifier.height(PolarisSpace.medium))
-                Rows(ui, lines, actions, rowFocus, announce, nowMillis)
+                Rows(ui, lines, actions, rowFocus, nowMillis)
                 Spacer(Modifier.height(polarisWindow.section))
                 val dim = full
                 val primary = ConnectButton(button("pairedDevices.pair"), { if (!dim) actions.pair() }, primary = true)
@@ -247,7 +227,6 @@ private fun Rows(
     lines: KitLines,
     actions: PolarisPairedDevicesActions,
     rowFocus: MutableMap<String, FocusRequester>,
-    announce: (String) -> Unit,
     nowMillis: Long,
 ) {
     val switches = KitLocal.showSwitchColumn(ui.devices.map { it.reachable })
@@ -262,7 +241,7 @@ private fun Rows(
             )
         }
         ui.devices.forEachIndexed { index, device ->
-            Row(device, ui, lines, actions, switches, rowFocus.getOrPut(device.id) { FocusRequester() }, announce, nowMillis)
+            Row(device, ui, lines, actions, switches, rowFocus.getOrPut(device.id) { FocusRequester() }, nowMillis)
             if (index < ui.devices.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
@@ -276,7 +255,6 @@ private fun Row(
     actions: PolarisPairedDevicesActions,
     switches: Boolean,
     focus: FocusRequester,
-    announce: (String) -> Unit,
     nowMillis: Long,
 ) {
     val editing = ui.target == device.id
@@ -298,8 +276,8 @@ private fun Row(
                 Column(Modifier.weight(1f).padding(horizontal = PolarisSpace.controls)) {
                     Text(isolated, style = MaterialTheme.typography.bodyLarge, maxLines = 2)
                     device.lastSeen?.let { seen ->
-                        val when_ = PolarisTheme.copy.ago(((nowMillis - seen * 1000) / 1000).coerceAtLeast(0))
-                        val line = lines.format("pairedDevices.lastSeen", mapOf("when" to CopyArgument.Text(when_)))
+                        val ago = PolarisTheme.copy.ago(((nowMillis - seen * 1000) / 1000).coerceAtLeast(0))
+                        val line = lines.format("pairedDevices.lastSeen", mapOf("when" to CopyArgument.Text(ago)))
                         Text(line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

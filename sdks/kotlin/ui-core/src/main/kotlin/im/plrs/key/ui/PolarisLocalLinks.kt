@@ -57,13 +57,7 @@ public class PolarisLocalEvents(
 )
 
 /** One paired device (`LocalLinkInfo`). */
-public data class PolarisPairedDevice(
-    val id: String,
-    val label: String?,
-    val lastSeen: Long?,
-    val reachable: Boolean,
-    val platform: String? = null,
-)
+public data class PolarisPairedDevice(val id: String, val label: String?, val lastSeen: Long?, val reachable: Boolean, val platform: String? = null)
 
 /** `client.cloudConnect.localLinks` as far as the two state holders need it. Calls throw [PolarisLocalFailure] or a cancellation. */
 public interface PolarisLocalLinks {
@@ -124,11 +118,20 @@ public fun PolarisKeyClient.localLinksDriver(): PolarisLocalLinks {
             links.list().map { PolarisPairedDevice(it.id, it.label, it.lastSeen, it.reachable, it.platform) }
         }
 
-        override suspend fun rename(id: String, label: String) = mapped { links.rename(id, label); Unit }
+        override suspend fun rename(id: String, label: String) = mapped {
+            links.rename(id, label)
+            Unit
+        }
 
-        override suspend fun remove(id: String) = mapped { links.remove(id); Unit }
+        override suspend fun remove(id: String) = mapped {
+            links.remove(id)
+            Unit
+        }
 
-        override suspend fun setReachable(id: String, reachable: Boolean) = mapped { links.setReachable(id, reachable); Unit }
+        override suspend fun setReachable(id: String, reachable: Boolean) = mapped {
+            links.setReachable(id, reachable)
+            Unit
+        }
 
         override fun onChange(fn: () -> Unit): () -> Unit = links.onChange(fn)
 

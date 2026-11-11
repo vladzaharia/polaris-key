@@ -24,7 +24,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import java.io.File
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -42,6 +41,7 @@ import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.File
 
 /** One drawn row of the matrix's `local` family: its inputs as the kit's state holders carry them. */
 internal class LocalCase(
@@ -129,7 +129,13 @@ internal object LocalCases {
             if (state == "hidden") return@mapIndexedNotNull null
             val component = KitComponent.fromId(expect.str("component")!!)!!
             val about = (row["name"] as JsonPrimitive).content.substringAfter(": ").split(' ').take(4)
-            val id = (listOf("%02d".format(index), component.id, state) + about).joinToString("-").lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+            val id = (
+                listOf(
+                    "%02d".format(index),
+                    component.id,
+                    state,
+                ) + about
+                ).joinToString("-").lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
             LocalCase(
                 id,
                 component,
@@ -226,7 +232,14 @@ class LocalResponsiveSnapshotTest(private val variant: SnapshotVariant) {
 
     @Test
     fun theKeyStates() {
-        for (prefix in listOf("localpairing-show-a-wrong-code-changed", "localpairing-enter-a-wrong", "localpairing-confirm-the", "paireddevices-list-five", "localpairing-show-the-code-is", "paireddevices-renaming-in-the")) {
+        for (prefix in listOf(
+            "localpairing-show-a-wrong-code-changed",
+            "localpairing-enter-a-wrong",
+            "localpairing-confirm-the",
+            "paireddevices-list-five",
+            "localpairing-show-the-code-is",
+            "paireddevices-renaming-in-the",
+        )) {
             val case = LocalCases.all.firstOrNull { it.id.substringAfter('-').startsWith(prefix) } ?: continue
             rule.capture("local/${case.id}/${variant.name}", variant) {
                 CompositionLocalProvider(LocalPolarisReduceMotion provides true) { case.Draw() }
@@ -264,7 +277,14 @@ class LocalScreensTest {
     @Test
     fun pairAnswersWhileUnavailableAndSendsNothingElse() {
         var pressed = 0
-        show { PolarisLocalPairingScreen(pairing("enter") { copy(entry = "4873", pairDisabled = true) }, actions = PolarisLocalPairingActions(pair = { pressed++ })) }
+        show {
+            PolarisLocalPairingScreen(
+                pairing("enter") {
+                    copy(entry = "4873", pairDisabled = true)
+                },
+                actions = PolarisLocalPairingActions(pair = { pressed++ }),
+            )
+        }
         rule.onNodeWithText("Pair").performClick()
         assertEquals("a press on an unavailable Pair reaches the state holder, which answers its reason", 1, pressed)
     }

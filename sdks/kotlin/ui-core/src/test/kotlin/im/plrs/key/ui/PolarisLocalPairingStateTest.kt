@@ -98,7 +98,10 @@ private class FakeLinks : PolarisLocalLinks {
 @OptIn(ExperimentalCoroutinesApi::class)
 class PolarisLocalPairingStateTest {
     private fun TestScope.make(links: FakeLinks = FakeLinks(), canOpenSettings: Boolean = false) =
-        PolarisLocalPairingState(links, listOf("crates"), backgroundScope, "Studio PC", canOpenSettings = canOpenSettings, now = { 1000.0 + currentTime / 1000.0 })
+        PolarisLocalPairingState(links, listOf("crates"), backgroundScope, "Studio PC", canOpenSettings = canOpenSettings, now = {
+            1000.0 +
+                currentTime / 1000.0
+        })
 
     private suspend fun TestScope.shown(state: PolarisLocalPairingState, links: FakeLinks, text: String = "4812 3456") {
         state.start()

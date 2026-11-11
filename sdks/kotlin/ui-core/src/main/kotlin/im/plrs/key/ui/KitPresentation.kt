@@ -484,14 +484,13 @@ internal fun screen(
     lines: List<CopyLine> = emptyList(),
     extraActions: List<KitAction> = emptyList(),
     disabled: List<KitAction> = emptyList(),
-    disabledKeys: List<String> = emptyList(),
 ): KitScreen {
     if (state == "hidden") return KitScreen(component, state, emptyList(), emptyList())
     val actions = (lines.mapNotNull { KitAction.forCopyKey(it.key) } + extraActions)
         .distinct()
         .filterNot { it in disabled }
         .sortedBy(KitAction::id)
-    return KitScreen(component, state, lines, actions, disabled, disabledKeys.distinct().sorted())
+    return KitScreen(component, state, lines, actions, disabled)
 }
 
 internal fun hidden(component: KitComponent): KitScreen = screen(component, "hidden")

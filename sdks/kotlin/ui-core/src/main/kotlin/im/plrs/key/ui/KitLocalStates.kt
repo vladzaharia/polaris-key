@@ -30,18 +30,21 @@ public object KitLocal {
     /** Seconds a new code waits after Too many tries (LP1 F9). */
     public const val COOLDOWN_SECONDS: Int = 30
 
+    private const val SECONDS_PER_MINUTE: Int = 60
+    private const val TWO_PANE_MIN_WIDTH: Int = 600
+    private const val SHORT_WINDOW_HEIGHT: Int = 480
+
     /** `m:ss` for a countdown. */
     public fun countdown(seconds: Int): String {
         val s = maxOf(0, seconds)
-        return "${s / 60}:${(s % 60).toString().padStart(2, '0')}"
+        return "${s / SECONDS_PER_MINUTE}:${(s % SECONDS_PER_MINUTE).toString().padStart(2, '0')}"
     }
 
     /** The Can connect column rule: more than 8 paired, or one off. */
     public fun showSwitchColumn(reachable: List<Boolean>): Boolean = reachable.size > MAX_CONNECTABLE || reachable.any { !it }
 
     /** True when the eight that can connect are all on and more are paired. */
-    public fun reachableFull(reachable: List<Boolean>): Boolean =
-        reachable.size > MAX_CONNECTABLE && reachable.count { it } >= MAX_CONNECTABLE
+    public fun reachableFull(reachable: List<Boolean>): Boolean = reachable.size > MAX_CONNECTABLE && reachable.count { it } >= MAX_CONNECTABLE
 
     /**
      * How the show screen lays out for a window size (UI-KITS 4.3, LocalPairing): two panes from 600 dp of window at the root text
@@ -50,8 +53,8 @@ public object KitLocal {
      */
     public fun layout(width: Double, height: Double, textScale: Double = 1.0, tv: Boolean = false): Layout {
         val scale = if (textScale > 0) textScale else 1.0
-        val panes = if (tv || width / scale >= 600) 2 else 1
-        val short = height < 480 && !tv
+        val panes = if (tv || width / scale >= TWO_PANE_MIN_WIDTH) 2 else 1
+        val short = height < SHORT_WINDOW_HEIGHT && !tv
         return Layout(panes, !short, panes == 1 && short, panes == 1 && short)
     }
 
@@ -81,8 +84,7 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
         KitComponent.localPairing,
         state,
         keys.filterNotNull().distinct().map { context.line(it, args) },
-        disabledKeys = disabled.filterNotNull(),
-    )
+    ).copy(disabledKeys = disabled.filterNotNull().distinct().sorted())
     val notice = p.string("notice")
     val busy = p.string("busy")
     val entry = p.string("entry").orEmpty()
@@ -170,7 +172,7 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                     if (joining) "a11y.busy" else "localPairing.toShow",
                     if (joining) "common.cancel" else "common.back",
                     if (!joining && e == "wrong") "localPairing.wrongCode" else null,
-                    if (!joining && (e == "wrong" || e == null) && triesLeft == 1) "localPairing.triesLeft" else null,
+                    if (!joining && triesLeft == 1 && e in setOf("wrong", null)) "localPairing.triesLeft" else null,
                     if (!joining && (e == "spent" || spent)) "localPairing.spentCode" else null,
                     if (!joining && e == "too-many") "localPairing.cooldownTitle" else null,
                     if (!joining && e == "too-many") "localPairing.cooldownBody" else null,
@@ -263,8 +265,7 @@ internal fun pairedDevicesScreen(inputs: KitInputs): KitScreen {
         KitComponent.pairedDevices,
         state,
         keys.filterNotNull().distinct().map { context.line(it, args) },
-        disabledKeys = disabled.filterNotNull(),
-    )
+    ).copy(disabledKeys = disabled.filterNotNull().distinct().sorted())
     val step = p.string("step")
     when (step) {
         "loading" -> return view("loading", listOf("pairedDevices.title", "a11y.busy", "common.done"))

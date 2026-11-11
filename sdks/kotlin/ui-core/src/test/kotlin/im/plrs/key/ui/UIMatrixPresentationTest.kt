@@ -11,7 +11,6 @@
 package im.plrs.key.ui
 
 import im.plrs.key.core.UI_MATRIX_VERSION
-import java.io.File
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -19,6 +18,7 @@ import kotlinx.serialization.json.intOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class UIMatrixPresentationTest {
     private val matrix = UIMatrix.load()
@@ -167,7 +167,7 @@ class UIMatrixPresentationTest {
     }
 
     private fun List<String>.assertNone(family: String) {
-        assertTrue("$family: ${size} row mismatches\n${joinToString("\n")}", isEmpty())
+        assertTrue("$family: $size row mismatches\n${joinToString("\n")}", isEmpty())
     }
 }
 

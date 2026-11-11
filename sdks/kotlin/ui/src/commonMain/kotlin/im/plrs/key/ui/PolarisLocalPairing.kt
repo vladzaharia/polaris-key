@@ -77,27 +77,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
-/** What the pairing screen's controls do. Every callback defaults to nothing, so a still draws without a state holder. */
-public class PolarisLocalPairingActions(
-    public val show: () -> Unit = {},
-    public val enter: () -> Unit = {},
-    public val showNew: () -> Unit = {},
-    public val toShow: () -> Unit = {},
-    public val toEnter: () -> Unit = {},
-    public val back: () -> Unit = {},
-    public val cancel: () -> Unit = {},
-    public val close: () -> Unit = {},
-    public val pair: () -> Unit = {},
-    public val confirm: () -> Unit = {},
-    public val notNow: () -> Unit = {},
-    public val done: () -> Unit = {},
-    public val retry: () -> Unit = {},
-    public val openSettings: () -> Unit = {},
-    public val openPairedDevices: () -> Unit = {},
-    public val setEntry: (String) -> Unit = {},
-    public val setName: (String) -> Unit = {},
-)
-
 /**
  * Pair with a Code over [state]: it reads the gate and the cap when this enters the composition and withdraws the code, stops a join and
  * declines a prompt when it leaves. [categoryLabels] names each data category by its id (an id without a name is drawn as words);
@@ -171,7 +150,7 @@ public fun PolarisLocalPairingScreen(
     // The state is said once, by the heading's focus; a new code is told apart from the action that asked for it and takes focus.
     val spokenCode = KitConnect.spellOut(ui.code.orEmpty())
     LaunchedEffect(ui.rotation) {
-        if (ui.step == "show" && ui.rotation > 1 && ui.notice != null && ui.code != null) {
+        if (ui.newCodeShown()) {
             announce(lines.format("a11y.newCode", mapOf("code" to CopyArgument.Text(spokenCode))))
             runCatching { tile.requestFocus() }
         }
@@ -196,10 +175,15 @@ public fun PolarisLocalPairingScreen(
         }
         when (screen.state) {
             "choose" -> Choose(ui, lines, ::button, actions, disabled)
+
             "opening", "show" -> Show(ui, lines, layout, tile, ::button, actions, disabled)
+
             "closed" -> Closed(ui, lines, ::button, actions, disabled)
+
             "enter", "joining" -> Enter(ui, lines, ::button, actions, disabled, categoryLabels)
+
             "confirm" -> Confirm(ui, lines, ::button, actions, armed, categoryLabels)
+
             "waiting" -> {
                 Spacer(Modifier.height(PolarisSpace.medium))
                 WaitRow(lines.text("localPairing.waitingWith") ?: text("linkPairing.waiting"))
@@ -208,7 +192,9 @@ public fun PolarisLocalPairingScreen(
                 Spacer(Modifier.height(polarisWindow.section))
                 ConnectActions(listOf(ConnectButton(button("common.cancel"), actions.cancel, focus = true)))
             }
+
             "paired" -> Paired(ui, lines, ::button, actions)
+
             "failed" -> {
                 val full = ui.reason == "full"
                 val body = screen.copy.getOrNull(1)?.let { lines.format(it) }.orEmpty()
@@ -219,6 +205,7 @@ public fun PolarisLocalPairingScreen(
                 val close = ConnectButton(button("common.close"), actions.close, primary = full, focus = full)
                 ConnectActions(if (full) listOf(close, retry) else listOf(retry, close))
             }
+
             "network-blocked" -> {
                 Spacer(Modifier.height(polarisWindow.section))
                 val settings = ui.canOpenSettings
@@ -229,6 +216,7 @@ public fun PolarisLocalPairingScreen(
                 }
                 ConnectActions(buttons)
             }
+
             else -> {
                 // Close is the only way out of a refusal: it is not the filled one.
                 Spacer(Modifier.height(polarisWindow.section))
@@ -349,7 +337,13 @@ private fun ColumnScope.Show(
 @Composable
 private fun CodeTile(ui: PolarisLocalPairingUi, lines: KitLines, opening: Boolean, tile: FocusRequester) {
     val window = polarisWindow
-    val size = if (window.wide || window.tv) 40.sp else if (window.compactHeight) 32.sp else 36.sp
+    val size = if (window.wide || window.tv) {
+        40.sp
+    } else if (window.compactHeight) {
+        32.sp
+    } else {
+        36.sp
+    }
     val lit = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
     val spoken = lines.text("a11y.linkCode") ?: KitConnect.spellOut(ui.code.orEmpty())
     val edge = MaterialTheme.colorScheme.outlineVariant
@@ -435,11 +429,25 @@ private fun ShowNotice(ui: PolarisLocalPairingUi, lines: KitLines, actions: Pola
     val action = lines.text("localPairing.showNew")?.let { it to { if (!renewing) actions.showNew() } }
     when (n) {
         "rotated" -> PairNotice(lines.text("localPairing.rotatedTitle").orEmpty(), lines.text("localPairing.rotatedBody"), action, renewing)
+
         "declined" -> {
             val who = lines.text("localPairing.notPairedWith")
-            PairNotice(who ?: lines.text("localPairing.rotatedBody").orEmpty(), if (who != null) lines.text("localPairing.rotatedBody") else null, action, renewing)
+            PairNotice(
+                who ?: lines.text("localPairing.rotatedBody").orEmpty(),
+                if (who !=
+                    null
+                ) {
+                    lines.text("localPairing.rotatedBody")
+                } else {
+                    null
+                },
+                action,
+                renewing,
+            )
         }
+
         "guessing" -> PairNotice(lines.text("localPairing.rotatedTitle").orEmpty(), lines.text("localPairing.tooManyAgainBody"), action, renewing)
+
         else -> PairNotice(lines.text("localPairing.blockedTitle").orEmpty(), lines.text("localPairing.blockedBody"))
     }
 }
@@ -459,7 +467,13 @@ internal fun PairNotice(title: String, body: String?, action: Pair<String, () ->
                 Text(title, style = MaterialTheme.typography.titleSmall)
                 if (body != null) Text(body, style = MaterialTheme.typography.bodyLarge)
                 if (action != null) {
-                    PolarisTextButton(action.first, action.second, Modifier.semantics { if (busy) stateDescription = "…" }.alpha(if (busy) 0.6f else 1f))
+                    PolarisTextButton(
+                        action.first,
+                        action.second,
+                        Modifier.semantics {
+                            if (busy) stateDescription = "…"
+                        }.alpha(if (busy) 0.6f else 1f),
+                    )
                 }
             }
         }
@@ -615,3 +629,6 @@ private fun ColumnScope.Paired(ui: PolarisLocalPairingUi, lines: KitLines, butto
     Spacer(Modifier.height(polarisWindow.section))
     ConnectActions(listOf(ConnectButton(button("common.done"), actions.done, primary = true, focus = true)))
 }
+
+/** A rotation of a code the person was looking at: the new code is announced and takes focus. */
+private fun PolarisLocalPairingUi.newCodeShown(): Boolean = step == "show" && rotation > 1 && code != null && notice != null

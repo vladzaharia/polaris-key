@@ -75,7 +75,13 @@ public data class PolarisPairedDevicesUi(
             notice?.let {
                 put(
                     "notice",
-                    JsonObject(buildMap { put("device", JsonPrimitive(it.device)); put("kind", JsonPrimitive(it.kind)); it.id?.let { id -> put("id", JsonPrimitive(id)) } }),
+                    JsonObject(
+                        buildMap {
+                            put("device", JsonPrimitive(it.device))
+                            put("kind", JsonPrimitive(it.kind))
+                            it.id?.let { id -> put("id", JsonPrimitive(id)) }
+                        },
+                    ),
                 )
             }
         }
@@ -126,23 +132,32 @@ public class PolarisPairedDevicesState(private val driver: PolarisLocalLinks) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
-            if (read != reads) return
-            ui { copy(step = "load-failed", devices = emptyList(), loaded = true, entryVisible = false) }
-            return
+            null
         }
         if (read != reads) return
-        ui {
-            val editing = step == "renaming" || step == "forgetting"
-            val stillThere = editing && rows.any { it.id == target }
-            copy(
-                devices = rows,
-                loaded = true,
-                entryVisible = on || rows.isNotEmpty(),
-                step = if (!on) "off" else if (stillThere) step else "list",
-                target = if (!on || !stillThere) null else target,
-                renameError = if (!on || !stillThere) null else renameError,
-            )
+        if (rows == null) {
+            ui { copy(step = "load-failed", devices = emptyList(), loaded = true, entryVisible = false) }
+        } else {
+            ui { withRows(rows, on) }
         }
+    }
+
+    private fun PolarisPairedDevicesUi.withRows(rows: List<PolarisPairedDevice>, on: Boolean): PolarisPairedDevicesUi {
+        val stillThere = (step == "renaming" || step == "forgetting") && rows.any { it.id == target }
+        return copy(
+            devices = rows,
+            loaded = true,
+            entryVisible = on || rows.isNotEmpty(),
+            step = if (!on) {
+                "off"
+            } else if (stillThere) {
+                step
+            } else {
+                "list"
+            },
+            target = if (on && stillThere) target else null,
+            renameError = if (on && stillThere) renameError else null,
+        )
     }
 
     // ── Rows ─────────────────────────────────────────────────────────────────────────────────────
@@ -163,25 +178,28 @@ public class PolarisPairedDevicesState(private val driver: PolarisLocalLinks) {
         val target = s.target
         if (s.step != "renaming" || target == null) return
         val name = s.draft.trim()
-        if (name.isEmpty()) {
-            ui { copy(renameError = "empty") }
-            return
+        val refused = when {
+            name.isEmpty() -> "empty"
+            name.codePointCount(0, name.length) > KitLocal.MAX_NAME -> "long"
+            else -> null
         }
-        if (name.codePointCount(0, name.length) > KitLocal.MAX_NAME) {
-            ui { copy(renameError = "long") }
-            return
+        val failure = if (refused == null) tryRename(target, name) else refused
+        if (failure != null) {
+            ui { copy(renameError = failure) }
+        } else {
+            endEdit(target)
+            refresh()
         }
-        try {
-            driver.rename(target, name)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            // `bad_input` is a name the SDK cleans to nothing; any other rejection is the store's. The text and the focus stay either way.
-            ui { copy(renameError = if ((e as? PolarisLocalFailure)?.reason == "bad_input") "empty" else "failed") }
-            return
-        }
-        endEdit(target)
-        refresh()
+    }
+
+    /** The SDK's answer to a rename: null when kept, else why not (`bad_input`: a name it cleans to nothing; else the store's). */
+    private suspend fun tryRename(target: String, name: String): String? = try {
+        driver.rename(target, name)
+        null
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        if ((e as? PolarisLocalFailure)?.reason == "bad_input") "empty" else "failed"
     }
 
     /** Forget, from the row's menu: asks inside the row. */
