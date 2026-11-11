@@ -320,8 +320,10 @@ func attach(session: PKeyConnectSession) -> void:
 	var categories: Array = []
 	if not session.contact.is_empty():
 		categories = _link_record(String(session.contact.get("id", ""))).get("categories", [])
+	elif not session.local.is_empty():
+		categories = (session.local["categories"] as Array).duplicate()
 	var machine := PKeyPeerXfer.Machine.new({
-		"mode": "c" if not session.contact.is_empty() else "a",
+		"mode": "c" if not session.contact.is_empty() else ("l" if not session.local.is_empty() else "a"),
 		"caps": session.caps,
 		"max_message": PKeyPeerPayload.DEFAULT_MAX_MESSAGE,
 		"peer_key": wire.peer_key,
@@ -438,6 +440,8 @@ func _on_ask(wire: Wire, ask: Dictionary) -> void:
 	if not s.contact.is_empty():
 		var rec := _link_record(String(s.contact.get("id", "")))
 		offer.from = {"kind": "link", "id": String(s.contact.get("id", "")), "label": String(rec.get("label", "") if rec.get("label") != null else "")}
+	if not s.local.is_empty():
+		offer.from = {"kind": "local", "id": String(s.local.get("id", "")), "label": String(s.local.get("label", "") if s.local.get("label") != null else "")}
 	wire.pending[id] = offer
 	if not _handler.is_valid():
 		offer.decline()

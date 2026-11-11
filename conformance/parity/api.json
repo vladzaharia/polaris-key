@@ -8195,7 +8195,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.open"
+        }
       },
       "layer": "client",
       "args": [
@@ -8213,7 +8216,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLocalLinks.on_link"
+        }
       },
       "layer": "client",
       "args": [

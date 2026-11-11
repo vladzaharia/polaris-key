@@ -153,17 +153,13 @@ func _pairing(t: PKeyTestContext) -> void:
 		PKeyPeerCrypto.for_platform().x25519_public(own_a["own_key"]) == own_a["own_public"]
 	)
 	PKeyConnectLocalState.wipe_live([own_a, own_b])
+	var window_adverts := bus.adverts.filter(
+		func(e: Dictionary) -> bool:
+			return e["handle"].stops == 0 and (e["advert"]["txt"] as Array).has("m=q")
+	)
 	t.check(
-		"pair: the window left no advert, listener or session behind",
-		(
-			a.links._shower == null
-			and (
-				bus
-				. adverts
-				. filter(func(e: Dictionary) -> bool: return e["handle"].stops == 0)
-				. is_empty()
-			)
-		)
+		"pair: the window left no m=q advert, listener or session behind",
+		a.links._shower == null and window_adverts.is_empty()
 	)
 	t.check(
 		"pair: the dial was spent on the code's nameplate",
@@ -209,7 +205,12 @@ func _wrong_code(t: PKeyTestContext) -> void:
 	)
 	t.check(
 		"wrong code: nothing was offered to either person or stored",
-		a.offers.is_empty() and b.offers.is_empty() and _b._held(a).is_empty() and _b._held(b).is_empty()
+		(
+			a.offers.is_empty()
+			and b.offers.is_empty()
+			and _b._held(a).is_empty()
+			and _b._held(b).is_empty()
+		)
 	)
 	# Four more guesses close the window: the fifth failed guess is too-many-tries.
 	for i in 4:
@@ -274,7 +275,9 @@ func _decline(t: PKeyTestContext) -> void:
 			and joined["r"].detail["reason"] == "declined"
 		)
 	)
-	var rotated := await _b._until(func() -> bool: return a.codes.size() == 2 and a.failed.size() == 1)
+	var rotated := await _b._until(
+		func() -> bool: return a.codes.size() == 2 and a.failed.size() == 1
+	)
 	t.check(
 		"decline: the other side hears it failed and shows a new code",
 		rotated and a.failed[0]["reason"] == "closed" and a.codes[1]["reason"] == "closed"
@@ -384,7 +387,9 @@ func _renew(t: PKeyTestContext) -> void:
 	# The second wrong-code end within 600 s trips the floor.
 	var floor := a.links._floor()
 	floor.ended("wrong-code", _b._mono())
-	t.check("renew: one wrong-code end alone does not", a.links._floor().check(_b._mono())["allowed"])
+	t.check(
+		"renew: one wrong-code end alone does not", a.links._floor().check(_b._mono())["allowed"]
+	)
 	floor.ended("wrong-code", _b._mono())
 	var cooled: PKeyResult = await win.renew()
 	t.check(

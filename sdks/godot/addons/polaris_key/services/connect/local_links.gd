@@ -31,6 +31,15 @@ extends RefCounted
 ##   set_reachable(id, bool)    advertise the link's `m=l` name on the LAN (at most 8), or stop
 ##   on_change(fn)              called after a pairing is stored, a rename, a remove, a set_reachable, a sighting and
 ##                              when the gate flips. Returns the Callable that unsubscribes
+##   open(id)                   a session to the other device of a link: mode l over the LAN, found by its `m=l` advert (no
+##                              relay). One dial per link at a time (a second caller gets the same session) and a cooldown
+##                              after a failed dial. ok with a PKeyConnectSession whose `local` names the link, or
+##                              `local-pairing-off`, `link-unknown`, `connect-unavailable` (web) or a LAN failure
+##                              (`unknown_peer` when the device is not seen, `handshake_failed`, `busy` in the cooldown).
+##                              A coroutine
+##   on_link(fn)                called with each session a local link opened to this device. Returns the Callable that
+##                              unsubscribes. Registering one starts the listener
+##   serve()                    start the listener now when the gate is on and a link is held (it also follows every change)
 ##   local_pairing()            the cached discovery answer; false before discovery. Never fetches
 ##
 ## Rules this file keeps:
@@ -42,6 +51,9 @@ extends RefCounted
 ##  - the joiner's dials are counted per typed nameplate across joins, the nameplates the windows closed with in the last
 ##    300 s are remembered (a renewed window skips them) and the renewal floor (30 s after a hard end) is kept, each per
 ##    product for the life of the process, in memory;
+##  - the listener (`local_lan.gd`) serves local links with no account: it runs only while the gate is on and a link is held,
+##    binds nothing otherwise, advertises at most 8 `m=l` names and ends every session `peer_bye` when the gate goes off and
+##    `peer_revoked` for a link that is removed;
 ##  - web has no LAN and no pairing: `pair` and `join` answer `connect-unavailable` (reason `runtime`), `list` is empty.
 ## Words for the person: "pair" and "Paired".
 
@@ -53,6 +65,11 @@ signal changed
 const REREAD_MIN_SECONDS := 3600.0
 const REREAD_SPAN_SECONDS := 10800.0
 
+## A failed dial is not repeated at once: 3 s plus up to 2 s of jitter, doubled for each failure in a row, at most 60 s.
+const DIAL_COOLDOWN_SECONDS := 3.0
+const DIAL_COOLDOWN_JITTER_SECONDS := 2.0
+const DIAL_BACKOFF_CAP_SECONDS := 60.0
+
 ## One per product for the life of the process, so a client made per screen meets the same budget.
 static var _budgets: Dictionary = {}
 static var _memories: Dictionary = {}
@@ -60,6 +77,8 @@ static var _floors: Dictionary = {}
 
 ## Links were forgotten: Callable(peer_keys: Array of PackedByteArray), so Direct Transfer can purge what the peers sent.
 var removed: Callable
+## A session opened under a link: Callable(session), so Direct Transfer can take it. Empty for none.
+var adopt: Callable
 
 var _core_ref: WeakRef
 var _client: PKeyConnectClient
@@ -73,6 +92,10 @@ var _joins: Array = []
 var _was_on := false
 var _reread_gen := 0
 var _own_pump: PKeyPeerPump = null
+var _lan: PKeyConnectLocalLan = null
+var _on_link: Array = []
+var _dials: Dictionary = {}
+var _cool: Dictionary = {}
 
 
 ## `core` and `client` are the SDK's own. `options` (wiring and test seams): `tree`, `lane` (Callable() -> the process's
@@ -137,6 +160,7 @@ func _on_discovery() -> void:
 		close_all()
 	if on != _was_on:
 		_was_on = on
+		_sync()
 		changed.emit()
 	_arm_reread()
 
@@ -210,6 +234,10 @@ func remove(id: String) -> PKeyResult:
 	var r := _src.store.remove(id)
 	if not r.ok:
 		return r
+	# The listener drops the link before this answers: an open session under it hears `peer_revoked`.
+	if _lan != null:
+		_lan.end_sessions(PKeyPeerSession.PEER_REVOKED, id)
+	_cool.erase(id)
 	_notify()
 	if removed.is_valid():
 		removed.call([r.detail])
@@ -238,6 +266,7 @@ func _unsubscribe(fn: Callable) -> void:
 
 
 func _notify() -> void:
+	_sync()
 	changed.emit()
 
 
@@ -370,6 +399,170 @@ func cancel_join() -> void:
 		j.cancel("cancelled")
 
 
+## A session to the other device of link `id`: mode l over the LAN, found by its `m=l` advert. The relay is never used. One
+## dial per link at a time (a caller that comes while one runs gets its session); a failed dial that reached the network
+## holds the link off for a while (`busy`), longer with each failure in a row. ok with a PKeyConnectSession whose `local`
+## names the link, else `local-pairing-off`, `link-unknown`, `connect-unavailable` (web), `not_listening` (no lane) or the
+## LAN failure. A coroutine.
+func open(id: String) -> PKeyResult:
+	if _on_web():
+		return _runtime("open")
+	var live: Dial = _dials.get(id)
+	if live != null:
+		while not live.done:
+			await _tree.process_frame
+		return live.result
+	var dial := Dial.new()
+	_dials[id] = dial
+	dial.result = await _dial(id)
+	dial.done = true
+	_dials.erase(id)
+	return dial.result
+
+
+func _dial(id: String) -> PKeyResult:
+	if not local_pairing():
+		return PKeyConnectLocalCommon.off("Pairing with a code is off for this product (open).")
+	var held := _src.store.count()
+	var known := false
+	if held.ok:
+		for row: Dictionary in _src.store.info().detail:
+			known = known or row["id"] == id
+	if not known:
+		return PKeyResult.failure(PKeyConstants.ErrorCode.LINK_UNKNOWN, "No such link.")
+	_sync()
+	if _lan == null:
+		return PKeyConnectErrors.lan(
+			"not_listening", "Local links are not listening on this runtime."
+		)
+	var cool: Dictionary = _cool.get(id, {})
+	if not cool.is_empty() and _mono() < float(cool["until"]):
+		return PKeyConnectErrors.relay(
+			"busy", "That device did not answer a moment ago; try again shortly."
+		)
+	var r: PKeyResult = await _lan.connect_local(id)
+	if not r.ok:
+		return _dial_failed(id, r, cool)
+	_cool.erase(id)
+	_adopt(r.detail)
+	return r
+
+
+## A dial failed: the gate may have gone off meanwhile; a dial that reached the network holds the link off.
+func _dial_failed(id: String, r: PKeyResult, cool: Dictionary) -> PKeyResult:
+	if not local_pairing():
+		return PKeyConnectLocalCommon.off("Pairing with a code was turned off (open).")
+	var reason := PKeyConnectErrors.reason_of(r)
+	if reason == "unknown_peer" or reason == "not_listening":
+		return r
+	var fails := int(cool.get("fails", 0)) + 1
+	var base := DIAL_COOLDOWN_SECONDS + DIAL_COOLDOWN_JITTER_SECONDS * float(_random01())
+	_cool[id] = {
+		"fails": fails,
+		"until": _mono() + minf(DIAL_BACKOFF_CAP_SECONDS, base * pow(2.0, fails - 1))
+	}
+	return r
+
+
+## Called with each session a local link opened to this device. Returns the Callable that unsubscribes. The listener runs
+## from now on while the gate is on and a link is held.
+func on_link(fn: Callable) -> Callable:
+	if not _on_link.has(fn):
+		_on_link.append(fn)
+	_sync()
+	return Callable(self, "_off_link").bind(fn)
+
+
+func _off_link(fn: Callable) -> void:
+	_on_link.erase(fn)
+
+
+## Start the listener now when the gate is on and a link is held, or stop it when neither holds. It follows every change
+## of the links and of the gate by itself.
+func serve() -> void:
+	_sync()
+
+
+## Bring the listener to what is wanted: running while the gate is on, a link is held and the runtime has a lane; stopped
+## otherwise (it then binds nothing). A running one reads the links again.
+func _sync() -> void:
+	var held := _src.store.count() if not _on_web() and local_pairing() else null
+	var wanted: bool = held != null and held.ok and int(held.detail) > 0 and _lane() != null
+	if not wanted:
+		_stop_lan()
+		return
+	if _lan != null:
+		_lan.refresh()
+		return
+	var lo := {
+		"slug": _src.slug,
+		"now": _src.now,
+		"locals": Callable(self, "_live"),
+		"allowed": Callable(self, "local_pairing"),
+		"mdns": _lane(),
+		"pump": _pump(),
+		"tree": _tree,
+		"mono": Callable(self, "_mono"),
+		"caps": ["app/1", PKeyPeerXfer.CAP] if adopt.is_valid() else ["app/1"],
+	}
+	for k in [
+		"allow_loopback",
+		"host",
+		"port",
+		"label",
+		"dial_stagger",
+		"dial_seconds",
+		"handshake_seconds",
+		"connector"
+	]:
+		if _o.has(k):
+			lo[k] = _o[k]
+	var made := PKeyConnectLocalLan.start(lo)
+	if not made.ok:
+		return
+	_lan = made.detail
+	_lan.session_opened.connect(_inbound)
+	_lan.sighted.connect(_sighted)
+	# A link seen while the listener was starting.
+	for id: String in _lan.seen():
+		_sighted(id)
+
+
+func _stop_lan() -> void:
+	if _lan == null:
+		return
+	var lan := _lan
+	_lan = null
+	lan.stop()
+
+
+## The live links for the listener: keys and secrets decoded; it wipes them.
+func _live() -> Array:
+	var r := _src.store.live_all()
+	return r.detail if r.ok else []
+
+
+func _sighted(id: String) -> void:
+	_src.store.seen(id, int(_src.now.call()))
+	changed.emit()
+
+
+## A session opened by a link to this device: Direct Transfer takes it, then the host hears of it.
+func _inbound(session: PKeyConnectSession) -> void:
+	_adopt(session)
+	for fn: Callable in _on_link.duplicate():
+		if fn.is_valid():
+			fn.call(session)
+	# A local session nobody is listening for is ended, not left open and untracked: the peer dials again.
+	if _on_link.is_empty():
+		session.close(PKeyPeerSession.PEER_BYE)
+
+
+func _adopt(session: PKeyConnectSession) -> void:
+	if adopt.is_valid():
+		adopt.call(session)
+
+
 ## The gate was cleared: close the window and every join (section 15.12, "Gates").
 func close_all() -> void:
 	_epoch += 1
@@ -377,11 +570,16 @@ func close_all() -> void:
 		j.cancel("closed")
 	if _shower != null:
 		_shower.close("off")
+	# The gate went off: every mode-l session ends `peer_bye` and the `m=l` adverts are withdrawn.
+	if _lan != null:
+		_lan.end_sessions(PKeyPeerSession.PEER_BYE)
+		_sync()
 
 
-## End the window and the joins (a sign-out or a stop of the host).
+## End the window, the joins and the listener (a sign-out or a stop of the host).
 func stop_all() -> void:
 	close_all()
+	_stop_lan()
 
 
 ## The options with the discovery lane and the pump a window or a join needs, or a failure when this build has no lane.
@@ -557,3 +755,10 @@ static func _runtime(what: String) -> PKeyResult:
 			}
 		)
 	)
+
+
+## One dial of `open` in flight: later callers wait for its result.
+class Dial:
+	extends RefCounted
+	var done := false
+	var result: PKeyResult = null

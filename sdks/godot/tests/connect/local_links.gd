@@ -136,7 +136,7 @@ func _mono() -> float:
 	return _clock[0]
 
 
-func _device(bus: Pairing.Bus, gate: Variant = true, web := false) -> Dev:
+func _device(bus: Pairing.Bus, gate: Variant = true, web := false, extra := {}) -> Dev:
 	var d := Dev.new()
 	var clock := [PKeyTestPeers.NOW]
 	var opts := PKeyTestFixtures.options(
@@ -160,7 +160,8 @@ func _device(bus: Pairing.Bus, gate: Variant = true, web := false) -> Dev:
 			"lane": func() -> Object: return lane,
 			"mono": Callable(self, "_mono"),
 			"timer": func(_s: float, _f: Callable) -> void: pass,
-		}
+			"allow_loopback": true,
+		}.merged(extra, true)
 	)
 	d.links.on_change(Callable(d, "changed"))
 	return d

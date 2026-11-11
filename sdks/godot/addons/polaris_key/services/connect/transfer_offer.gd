@@ -4,7 +4,7 @@ extends RefCounted
 ## What a peer offers (WIRE-CONTRACT-V5 section 15.11): the argument of the handler `on_offer` sets. Answer
 ## with `accept(path)` or `decline()`, at once or later; unanswered, the offer ends after 120 s (`withdrawn`
 ## is then true). `name` is already cleaned display data and never reaches a path: the file goes where
-## `accept` says. `from` is {kind, id, label}: `device` and its id, `link` and the link's id in mode c;
+## `accept` says. `from` is {kind, id, label}: `device` and its id, `link` and the link's id in mode c, `local` and the local link's id in mode l;
 ## the label is the certified HELLO label (a device) or the stored contact label (a link).
 
 var id := ""

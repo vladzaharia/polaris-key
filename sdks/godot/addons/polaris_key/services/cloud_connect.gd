@@ -130,6 +130,7 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 		"tree": _tree, "lane": Callable(self, "_links_lane"), "pump": Callable(self, "_links_pump"), "web": Callable(self, "_on_web"),
 	})
 	local_links.removed = Callable(self, "_forget_left")
+	local_links.adopt = Callable(transfer, "attach")
 
 
 func _to_string() -> String:
@@ -294,21 +295,29 @@ func _offload(work: Callable) -> Variant:
 
 
 func _open_link(id: String) -> PKeyResult:
+	if _local_records().any(func(rec: Dictionary) -> bool: return str(rec["id"]) == id):
+		return await local_links.open(id)
 	return await links.open_link(id)
 
 
+## The ids of the links held: the inter-account links and the local links.
 func _link_ids() -> Array:
 	var ids: Array = []
-	for rec: Dictionary in _link_records():
+	for rec: Dictionary in _link_records() + _local_records():
 		ids.append(str(rec["id"]))
 	return ids
 
 
 func _link_record(id: String) -> Dictionary:
-	for rec: Dictionary in _link_records():
+	for rec: Dictionary in _link_records() + _local_records():
 		if str(rec["id"]) == id:
 			return rec
 	return {}
+
+
+func _local_records() -> Array:
+	var l := local_links.list()
+	return l.detail if l.ok and l.detail is Array else []
 
 
 func _transfer_dir(root: String) -> String:
