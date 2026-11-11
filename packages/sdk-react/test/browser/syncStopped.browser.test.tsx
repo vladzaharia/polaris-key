@@ -69,6 +69,7 @@ async function draw(node: React.ReactNode, w: number, scale: number) {
 
 async function until(ok: () => boolean): Promise<void> {
   for (let i = 0; i < 100 && !ok(); i++)
+    // brittle-ok: polls a condition, bounded to 100 tries
     await new Promise((r) => setTimeout(r, 20));
 }
 

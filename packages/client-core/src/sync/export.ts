@@ -193,7 +193,7 @@ const own = (o: object, k: string): boolean =>
   Object.prototype.hasOwnProperty.call(o, k);
 
 const LONE =
-  /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+  /[\ud800-\udbff](?![\udc00-\udfff])|(?:^|[^\ud800-\udbff])[\udc00-\udfff]/;
 
 class Unserialisable extends Error {}
 
