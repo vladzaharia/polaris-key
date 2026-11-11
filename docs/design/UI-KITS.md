@@ -1499,16 +1499,20 @@ Mockups: [web](ui-kits/shots/web-settings-light.png),
   state. A window that ends or is withdrawn opens its next one on the view the person last chose, and
   Cancel forgets the choice.
 - **Expired.** A window that runs out keeps the open view on screen: the QR view keeps the card,
-  dimmed with the orbit slowed, the code view keeps the digits, muted. The time row says "The code
-  expired.", the waiting row is gone and Show a new code is the one filled control, opening the next
-  window in place and in the same view (the card breaks into light and forms again). The closed
-  step's "Couldn't pair" answers only a window that never showed a code, or Too many tries.
+  dimmed, its dark modules faded toward the paper so the dead code does not scan, and the orbit
+  slowed to a stop (one still frame, no animation); the code view keeps the digits, muted. The
+  title becomes "Code expired" (`core.codes.sign-in-expired.title`) and says it once: no
+  instruction line, no time row, no switch link; a screen reader hears "The code expired." once.
+  Show a new code is the one filled control, with Cancel, centred in a column. It opens the next
+  window in place and in the same view (the card breaks into light and forms again), moves focus to
+  the stage and says "The code changed." The closed step's "Couldn't pair" answers only a window
+  that never showed a code, or Too many tries.
 - **Focus and announcements.** After a switch focus moves to the new view's heading (the link is
   never the default action), and the new view's line is announced politely.
 - **Layout.** One centred column, sized to its content, with the same reading and focus order. The
   QR view is two columns in a window at least 45 rem (720 dp at the root size, so 200 % text keeps
-  one column) wide and under 900 tall: the stage beside the title, line, time row, waiting row and
-  buttons, top-aligned, the stage `clamp(15rem, 100% of the height less 9rem, 24rem)`. That is still
+  one column) wide and 900 tall or less: the stage beside the title, line, time row, waiting row and
+  buttons, top-aligned, the stage `clamp(240px, the window height less 176px, 384px)`. That is still
   one method per screen. Cancel and the switch link are in the first view at 1366 by 657, 1280 by
   720, 1024 by 600, 960 by 540, 1440 by 900, 844 by 390 and 390 by 420. A window under 480 tall drops
   the kit's logo, tightens its spacing and scrolls where it must, with a notice before the QR. TV
@@ -1662,7 +1666,7 @@ port checks itself against it. Particle positions are decorative (they depend on
   `motion`; the others: their platform's setting (§4.8).
 - **Battery.** After 10 s of waiting the orbit drops to 30 frames a second. Nothing runs while the
   page or window is hidden or the stage is off-screen; the run resumes where it stopped.
-- **Fit.** The stage is square, `min(100%, 24rem)` at every width, with the kit's group radius
+- **Fit.** The stage is square, `min(100%, 384px)` at every width (in px, not rem: an image does not grow with the text size), with the kit's group radius
   (16 px) and, in dark, a 1 px inner edge. The card is half the stage and never under 12 rem
   (192 px): where half of the stage is smaller, the card's share grows (to at most 0.8). The light
   fades out over the outer 8 % of the stage rather than being cut at its edge. In a laptop window
@@ -1685,10 +1689,10 @@ its stage's side over 440. Seconds unless noted.
 | Landing order        | `at = start + 0.15 + 0.55 d + 0.1 r`; `d` is the cell's distance to the centre, 0 to 1                                              |
 | New code             | break 0.45, then re-condense with 0.6 of the forming curve already elapsed                                                          |
 | Connected            | vortex 0.85, check forms over 0.9, card dissolves over 0.4, done at 1.75                                                            |
-| Expired              | orbit 1 to 0.25 over 1.2, dim 1 to 0.35 over 1                                                                                      |
+| Expired              | orbit 1 to 0.25 over 1.2, dim 1 to 0.35 and ink 1 to 0.15 over 1                                                                    |
 | Orbit (swirl) factor | 1 normal, 2.2 in the vortex, 0.6 after a connect, 0.25 expired                                                                      |
 | Margin               | card plus 1.5 cells; wisps fade over 12 units                                                                                       |
-| Idle drop            | after 10 s of waiting, 30 fps (60 otherwise; 30 while expired)                                                                      |
+| Idle drop            | after 10 s of waiting, 30 fps (60 otherwise); an expired card settles to one still frame                                            |
 | Card floor           | 192 px (12 rem); the card's share is max(0.5, 192 over the stage), at most 0.8                                                      |
 | Ambient thinning     | after the idle drop the ambient light thins to 0.5 of its particles over 1.5 s                                                      |
 | Roles of colour      | ground `#05060d`; ink `#160c30`; paper `#ffffff` to `#f3eeff`; finder gap `#fbf9ff`; glow from the product accent when there is one |

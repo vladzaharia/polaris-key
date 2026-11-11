@@ -71,6 +71,8 @@ export const LIGHT_CARD = {
   /** Orbit (swirl) multipliers. */
   orbit: { normal: 1, vortex: 2.2, settled: 0.6, expired: 0.25 },
   dim: { expired: 0.35 },
+  /** An expired code fades its dark modules toward the paper so the dead code does not scan. */
+  inkExpired: 0.15,
   /** The glow multiplier of the ambient light after a connect. */
   ambientConnected: 0.55,
   /** The card is never smaller than this many px on screen (12 rem at the root size), however small
@@ -168,6 +170,8 @@ export interface Envelope {
   orbit: number;
   /** The dim level of the card and the light: 1 normally, 0.35 expired. */
   dim: number;
+  /** The opacity of the dark modules on the paper: 1, fading to `inkExpired` when expired. */
+  ink: number;
   /** The share of the check of light formed. */
   check: number;
   /** The centre flare. */
@@ -184,7 +188,7 @@ export interface Envelope {
 
 type Base = Pick<
   Envelope,
-  "landed" | "cardOpacity" | "orbit" | "dim" | "ambient"
+  "landed" | "cardOpacity" | "orbit" | "dim" | "ambient" | "ink"
 >;
 
 export interface Timeline {
@@ -199,8 +203,22 @@ export interface Timeline {
   readonly waitingSince: number | null;
 }
 
-const REST: Base = { landed: 1, cardOpacity: 1, orbit: 1, dim: 1, ambient: 1 };
-const NONE: Base = { landed: 0, cardOpacity: 0, orbit: 1, dim: 1, ambient: 1 };
+const REST: Base = {
+  landed: 1,
+  cardOpacity: 1,
+  orbit: 1,
+  dim: 1,
+  ambient: 1,
+  ink: 1,
+};
+const NONE: Base = {
+  landed: 0,
+  cardOpacity: 0,
+  orbit: 1,
+  dim: 1,
+  ambient: 1,
+  ink: 1,
+};
 
 export function createTimeline(now: number): Timeline {
   return {
@@ -261,6 +279,7 @@ export function envelopeAt(timeline: Timeline, now: number): Envelope {
     cardOpacity: 1,
     orbit: 1,
     dim: 1,
+    ink: 1,
     check: 0,
     flare: 0,
     ambient: 1,
@@ -287,6 +306,7 @@ export function envelopeAt(timeline: Timeline, now: number): Envelope {
         Object.assign(e, forming(tau - d.break + d.refreshSkip));
       }
       e.dim = mix(f.dim, 1, smooth(tau / d.break));
+      e.ink = mix(f.ink, 1, smooth(tau / d.break));
       e.orbit = mix(f.orbit, o.normal, smooth(tau / 0.8));
       break;
     }
@@ -305,6 +325,7 @@ export function envelopeAt(timeline: Timeline, now: number): Envelope {
     }
     case "expired": {
       e.dim = mix(f.dim, LIGHT_CARD.dim.expired, smooth(tau / d.expireDim));
+      e.ink = mix(f.ink, LIGHT_CARD.inkExpired, smooth(tau / d.expireDim));
       e.orbit = mix(f.orbit, o.expired, smooth(tau / d.expireOrbit));
       e.frameRate = LIGHT_CARD.idleFps;
       break;
@@ -342,6 +363,7 @@ export function dispatchTimeline(
     orbit: e.orbit,
     dim: e.dim,
     ambient: e.ambient,
+    ink: e.ink,
   };
   if (event === "newCode" && (tl.phase === "ready" || tl.phase === "expired"))
     return {
@@ -377,7 +399,10 @@ export function reducedEnvelope(phase: Phase): Envelope {
     0,
   );
   e.phase = phase;
-  if (phase === "expired") e.dim = LIGHT_CARD.dim.expired;
+  if (phase === "expired") {
+    e.dim = LIGHT_CARD.dim.expired;
+    e.ink = LIGHT_CARD.inkExpired;
+  }
   if (phase === "connected") {
     e.landed = 0;
     e.cardOpacity = 0;

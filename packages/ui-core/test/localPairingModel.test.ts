@@ -547,7 +547,10 @@ describe("LocalPairingModel: the code and the QR are two views of one window", (
     });
     const v = m.view();
     expect(v.state).toBe("show-qr");
-    expect(v.copy).toContain("localPairing.failedExpired");
+    // Said once, in the title: no instruction, no time, no switch.
+    expect(v.copy).toContain("core.codes.sign-in-expired.title");
+    expect(v.copy).not.toContain("localPairing.qrBody");
+    expect(v.copy).not.toContain("localPairing.toCode");
     expect(v.copy).toContain("localPairing.showNew");
     expect(v.copy).not.toContain("localPairing.waitingDevice");
     // The next window opens in place, on the view the person chose, and the card forms again.

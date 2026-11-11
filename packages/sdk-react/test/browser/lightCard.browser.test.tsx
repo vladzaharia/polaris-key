@@ -45,6 +45,18 @@ const inputFor = (qr: string): UiInput =>
     },
   }) as unknown as UiInput;
 const input = inputFor(PAYLOAD);
+const expiredInput = (): UiInput =>
+  ({
+    ...inputFor(PAYLOAD),
+    localPairing: {
+      step: "show",
+      code: "4812 3456",
+      qr: PAYLOAD,
+      view: "qr",
+      secondsLeft: 0,
+      expired: true,
+    },
+  }) as unknown as UiInput;
 
 const SEAM = Symbol.for("polaris-key.lightCard.seam");
 interface Paint {
@@ -233,6 +245,46 @@ describe("the level Q encoder", () => {
 
 const SLUG =
   "PKP1:driftkart-mobile-companion-beta-channel:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y";
+
+describe("an expired card", () => {
+  it("no longer decodes once it has dimmed, and the live frame still does", async () => {
+    useClock();
+    clock.t = 0;
+    const live = await mount();
+    clock.t = 3;
+    for (let i = 0; i < 120 && paints.at(-1)?.phase !== "ready"; i++)
+      await frame();
+    await frames(2);
+    expect(decode(live)).toBe(PAYLOAD);
+    root?.unmount();
+    host?.remove();
+
+    paints = [];
+    clock.t = 0;
+    host = document.body.appendChild(document.createElement("div"));
+    root = createRoot(host);
+    root.render(
+      <Kit.LocalPairing
+        input={expiredInput()}
+        fill
+        theme={{ colorScheme: "dark" }}
+      />,
+    );
+    let canvas: HTMLCanvasElement | null = null;
+    for (let i = 0; i < 400 && !canvas; i++) {
+      await frame();
+      canvas = host.querySelector("figure[data-lightcard] canvas");
+    }
+    await frames(3);
+    // Over the same second the card dims, the dark modules fade toward the paper.
+    for (let i = 0; i < 240; i++) {
+      clock.t += 1 / 60;
+      await frame();
+    }
+    expect(paints.at(-1)?.phase).toBe("expired");
+    expect(decode(canvas!)).toBeNull();
+  });
+});
 
 describe("size and look", () => {
   it("keeps the card at 12 rem or more on a 390 phone, and reads a long product slug", async () => {

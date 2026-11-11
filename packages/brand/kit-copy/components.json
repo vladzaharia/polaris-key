@@ -1768,12 +1768,12 @@
         },
         "show": {
           "copy": [
+            "core.codes.sign-in-expired.title",
             "localPairing.title",
             "localPairing.showBody",
             "a11y.linkCode",
             "localPairing.expires",
             "localPairing.waitingDevice",
-            "localPairing.failedExpired",
             "localPairing.toQr",
             "localPairing.rotatedTitle",
             "localPairing.rotatedBody",
@@ -1789,6 +1789,7 @@
         },
         "show-qr": {
           "copy": [
+            "core.codes.sign-in-expired.title",
             "localPairing.qrTitle",
             "localPairing.qrBody",
             "a11y.qrPairing",
@@ -1798,7 +1799,6 @@
             "localPairing.rotatedTitle",
             "localPairing.rotatedBody",
             "localPairing.notPairedWith",
-            "localPairing.failedExpired",
             "localPairing.showNew",
             "localPairing.blockedTitle",
             "localPairing.blockedBody",

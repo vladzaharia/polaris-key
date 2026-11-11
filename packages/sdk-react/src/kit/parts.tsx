@@ -954,6 +954,7 @@ export function lightCardStage(c: KitCtx, key: "a11y.qrPairing"): ReactNode {
       data-key={key}
       data-lightcard=""
       data-pending=""
+      tabIndex={-1}
       role="img"
       aria-label={plain(c, key)}
     >
