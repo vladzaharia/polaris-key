@@ -476,19 +476,22 @@ state file is `cloud-sync.json` in the store's state directory (`noBackupFilesDi
 On Android the person picks the place, and the SDK writes to the stream the app holds. The SDK writes and flushes it and never closes or keeps it; close it yourself, and delete the document when the export fails (the SDK cannot):
 
 ```kotlin android
-val create = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
-    if (uri == null) return@registerForActivityResult
-    lifecycleScope.launch {
-        try {
-            contentResolver.openOutputStream(uri)!!.use { out -> client.cloudSync.export(out) }
-        } catch (e: Exception) {
-            // Failed or cancelled: do not leave a half-written document behind.
-            DocumentsContract.deleteDocument(contentResolver, uri)
-            if (e is CancellationException) throw e
-        }
+import android.content.ContentResolver
+import android.net.Uri
+import android.provider.DocumentsContract
+import im.plrs.key.sdk.PolarisKeyClient
+
+// uri comes from ActivityResultContracts.CreateDocument("application/zip") (ACTION_CREATE_DOCUMENT)
+suspend fun exportToDocument(client: PolarisKeyClient, resolver: ContentResolver, uri: Uri) {
+    try {
+        val out = resolver.openOutputStream(uri) ?: error("no stream")
+        out.use { client.cloudSync.export(it) }
+    } catch (e: Exception) {
+        // Failed or canceled: do not leave a half-written document behind.
+        DocumentsContract.deleteDocument(resolver, uri)
+        throw e
     }
 }
-create.launch("my-saves.zip") // ACTION_CREATE_DOCUMENT
 ```
 
 ## JVM desktop

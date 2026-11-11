@@ -106,7 +106,7 @@ def export_data(client: PolarisKeyClient, path: str) -> None:
     try:
         result = client.cloud_sync.export(path)
     except PolarisError as error:
-        print(error.code, error.detail)
+        print(error.code, error)
         return
     print(result["entries"], "entries", result["unsynced"], "unsynced")
     for item in result["skipped"]:
@@ -116,7 +116,7 @@ def export_data(client: PolarisKeyClient, path: str) -> None:
   </TabItem>
   <TabItem label="Swift">
 
-`export(to:options:)` takes a file URL. Cancel the task to cancel the export. On iOS, tvOS, visionOS and watchOS the partial has file protection `completeUnlessOpen`. Put the file in your app's container, then offer it with `ShareLink` or the document picker, and delete it after the sheet closes.
+`export(to:options:)` takes a file URL. Cancel the task to cancel the export. On iOS, tvOS, visionOS and watchOS the partial has file protection `completeUnlessOpen`. Put the file in your app's container, then offer it through the system share sheet or the document picker, and delete it after the sheet closes.
 
 ```swift
 import Foundation
@@ -130,7 +130,7 @@ func exportData(_ client: PolarisKeyClient, to url: URL) async {
         for item in result.skipped { print(item.kind, item.code) }
     } catch let error as PolarisError {
         // sync-export-failed carries "destination", "network" or "busy".
-        print(error.code.rawValue, error.exportFailureReason ?? "")
+        print(error.code, error.exportFailureReason ?? "")
     } catch {
         print(error)
     }
@@ -184,7 +184,8 @@ extends Node
 
 
 func export_data(path: String) -> void:
-	var result: PKeyResult = await PolarisKey.cloud_sync.export(path)
+	var sync: PKeyCloudSync = PolarisKey.cloud_sync
+	var result: PKeyResult = await sync.export(path)
 	if not result.ok:
 		# "sync-export-failed" carries detail.reason: "destination", "network" or "busy".
 		print(result.code, " ", result.detail)
