@@ -91,6 +91,7 @@ internal fun pairingUiOf(p: JsonObject) = PolarisLocalPairingUi(
     // The matrix does not carry the lit digits; the first rotation of a wrong code lights the last four.
     changed = if (p.str("notice") == "rotated" || p.str("notice") == "guessing") listOf(5, 6, 7, 8) else emptyList(),
     rotation = if (p.str("notice") != null) 2 else 1,
+    replaced = p.str("notice") != null,
 )
 
 internal fun devicesUiOf(p: JsonObject): PolarisPairedDevicesUi {
@@ -282,7 +283,11 @@ class LocalScreensTest {
                 pairing("enter") {
                     copy(entry = "4873", pairDisabled = true)
                 },
-                actions = PolarisLocalPairingActions(pair = { pressed++ }),
+                actions = object : PolarisLocalPairingActions {
+                    override fun pair() {
+                        pressed++
+                    }
+                },
             )
         }
         rule.onNodeWithText("Pair").performClick()
@@ -296,7 +301,15 @@ class LocalScreensTest {
         show {
             PolarisLocalPairingScreen(
                 pairing("confirm") { copy(device = "Maya's laptop") },
-                actions = PolarisLocalPairingActions(confirm = { paired++ }, notNow = { declined++ }),
+                actions = object : PolarisLocalPairingActions {
+                    override fun confirm() {
+                        paired++
+                    }
+
+                    override fun notNow() {
+                        declined++
+                    }
+                },
             )
         }
         rule.onNodeWithText("Not now").performClick()
@@ -309,6 +322,32 @@ class LocalScreensTest {
     fun theCategoriesComeBeforePairOnTheFieldsScreen() {
         show { PolarisLocalPairingScreen(pairing("enter") { copy(entry = "4812 3456") }) }
         assertTrue("the categories come before Pair", top("Each of you shares") < top("Pair"))
+    }
+
+    @Test
+    fun theCooldownButtonSaysTheWaitAndIsDimmedNeverARawPlaceholder() {
+        show { PolarisLocalPairingScreen(pairing("closed") { copy(closedBy = "too-many-tries", cooldownLeft = 24) }) }
+        rule.onNodeWithText("Show a new code in 0:24").assertIsDisplayed()
+        rule.onNodeWithText("{time}", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun aBusyNoticeShowsItsTryAgainAndReportsTheDevice() {
+        val tried = mutableListOf<String>()
+        val devices = listOf(PolarisPairedDevice("L1", "Device 1", 1_700_000_000, true))
+        show {
+            PolarisPairedDevicesScreen(
+                PolarisPairedDevicesUi(step = "list", devices = devices, loaded = true, notice = PolarisPairedNotice("Device 1", "busy", "L1")),
+                actions = object : PolarisPairedDevicesActions {
+                    override fun retryNotice(id: String) {
+                        tried += id
+                    }
+                },
+                nowMillis = FIXED_NOW,
+            )
+        }
+        rule.onNodeWithText("Try again").performClick()
+        assertEquals(listOf("L1"), tried)
     }
 
     @Test
@@ -343,7 +382,15 @@ class LocalScreensTest {
         show {
             PolarisPairedDevicesScreen(
                 PolarisPairedDevicesUi(step = "list", devices = devices, loaded = true),
-                actions = PolarisPairedDevicesActions(startRename = { started += "rename:$it" }, askForget = { started += "forget:$it" }),
+                actions = object : PolarisPairedDevicesActions {
+                    override fun startRename(id: String) {
+                        started += "rename:$id"
+                    }
+
+                    override fun askForget(id: String) {
+                        started += "forget:$id"
+                    }
+                },
                 nowMillis = FIXED_NOW,
             )
         }

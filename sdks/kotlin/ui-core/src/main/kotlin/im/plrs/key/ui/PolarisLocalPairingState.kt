@@ -70,6 +70,8 @@ public data class PolarisLocalPairingUi(
     val name: String = "",
     /** paired: the pairing's id. */
     val id: String? = null,
+    /** show: this code replaced one the person was looking at (a wrong guess, a Not now, Show a new code). */
+    val replaced: Boolean = false,
     /** The person left (Cancel on choose, Close, Done): the host closes the screen. */
     val left: Boolean = false,
 ) {
@@ -245,6 +247,7 @@ public class PolarisLocalPairingState(
                 device = if (notice == "declined") lastDevice else null,
                 changed = diff,
                 rotation = prev.rotation + 1,
+                replaced = prev.step == "show",
             ),
         )
         tick()
@@ -293,14 +296,19 @@ public class PolarisLocalPairingState(
     public suspend fun confirm() {
         val o = idleOffer() ?: return
         ui { copy(busy = "pair") }
-        runCatching { o.confirm() }
+        runCatching { o.confirm() }.onFailure { clearBusy(o) }
     }
 
     /** Not now: nothing is stored; the shower stays on its changed code. */
     public suspend fun notNow() {
         val o = idleOffer() ?: return
         ui { copy(busy = "not-now") }
-        runCatching { o.decline() }
+        runCatching { o.decline() }.onFailure { clearBusy(o) }
+    }
+
+    /** The press could not be answered: the controls are available again, if the prompt is still the one pressed. */
+    private fun clearBusy(o: PolarisLocalOffer) {
+        if (offer === o && _ui.value.step == "confirm") ui { copy(busy = null) }
     }
 
     private fun linked(l: PolarisLocalPaired) {

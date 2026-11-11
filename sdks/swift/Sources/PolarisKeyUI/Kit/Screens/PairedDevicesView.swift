@@ -17,6 +17,7 @@ private enum PairedFocus: Hashable {
     case title
     case row(String)
     case field
+    case cancel(String)
 }
 
 public struct PairedDevicesView: View {
@@ -45,24 +46,16 @@ public struct PairedDevicesView: View {
             .task { await model.start() }
             .onAppear { focus = .title }
             .onDisappear { model.stop() }
-            .onChange(of: model.focus) { _, new in
-                switch new {
-                case .row(let id): focus = .row(id)
-                case .title: focus = .title
-                case nil: break
-                }
-            }
-            .onChange(of: model.state.step) { _, step in
-                if step == .renaming { fieldFocus = true }
-                if step == .forgetting { focus = .title }
-            }
-            .onChange(of: model.state.notice?.kind) { _, kind in
-                if kind != nil, let l = screen.copy.first(where: { $0.key.hasSuffix("Title") }) {
-                    announce(strings.string(l))
-                }
-            }
+            .modifier(announcements(screen))
             .background(escapeCloses(state))
         }
+    }
+
+    /// Focus after an edit and what is told once: the app's own answers, a refused name, a failed Forget.
+    private func announcements(_ screen: KitScreen<PairedDevicesState>) -> some ViewModifier {
+        PairedAnnouncements(
+            model: model, strings: strings, screen: screen,
+            focus: { focus = $0 }, fieldFocus: { fieldFocus = $0 })
     }
 
     @ViewBuilder private func escapeCloses(_ state: PairedDevicesState) -> some View {
@@ -154,14 +147,16 @@ public struct PairedDevicesView: View {
         case .busy:
             banner(screen.lineOrKey("pairedDevices.busyTitle"), body: nil, style) {
                 Button {
-                    Task { await model.refresh() }
+                    if !model.noticeBusy, let id = n.id { model.retryNotice(id) }
                 } label: {
                     Text(strings.string("common.tryAgain")).underline()
                         .font(style.font(.body).weight(.medium))
                         .foregroundStyle(style.palette.accentFg)
                         .frame(minHeight: 44, alignment: .leading)
+                        .opacity(model.noticeBusy ? 0.6 : 1)
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(model.noticeBusy ? .updatesFrequently : [])
             }
         case .unknown:
             banner(
@@ -239,6 +234,7 @@ public struct PairedDevicesView: View {
         _ style: KitResolvedStyle
     ) -> some View {
         let editing = model.state.target == d.id
+        let atLimit = kitReachableFull(model.state.devices ?? [])
         let renaming = editing && model.state.step == .renaming
         let forgetting = editing && model.state.step == .forgetting
         let name = d.label?.isEmpty == false ? d.label! : strings.string("devices.unnamed")
@@ -271,6 +267,7 @@ public struct PairedDevicesView: View {
                                 set: { on in Task { await model.setReachable(d.id, on) } })
                         )
                         .labelsHidden()
+                        .disabled(!d.reachable && atLimit)
                         #if os(macOS)
                             .toggleStyle(.switch)
                         #endif
@@ -293,7 +290,7 @@ public struct PairedDevicesView: View {
         case "android": return "smartphone"
         case "macos": return "laptopcomputer"
         case "windows", "linux": return "desktopcomputer"
-        default: return "circle.dashed"
+        default: return "desktopcomputer"
         }
     }
 
@@ -332,12 +329,23 @@ public struct PairedDevicesView: View {
                 strings.string("devices.renameLabel"),
                 text: Binding(get: { model.draft }, set: { model.setDraft($0) })
             )
-            .textFieldStyle(.roundedBorder)
+            .textFieldStyle(.plain)
+            .font(style.font(.body))
             .autocorrectionDisabled()
+            .accessibilityLabel(strings.string("devices.renameLabel"))
             .submitLabel(.done)
             .focused($fieldFocus)
             .onSubmit { Task { await model.saveRename() } }
+            .padding(.horizontal, style.space(.md))
             .frame(minHeight: 44)
+            .background(
+                RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
+                    .fill(style.palette.sunken)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
+                    .strokeBorder(message != nil ? style.palette.danger : .clear, lineWidth: 2)
+            )
             .accessibilityValue(message.map { Text(strings.string($0)) } ?? Text(""))
             if let message {
                 errorLine(message, style)
@@ -348,7 +356,8 @@ public struct PairedDevicesView: View {
                 Button {
                     model.cancelEdit()
                 } label: {
-                    Text(strings.string("common.cancel")).frame(minWidth: 44, minHeight: 44)
+                    Text(strings.string("common.cancel")).foregroundStyle(style.palette.textStrong)
+                        .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 Spacer()
@@ -356,6 +365,7 @@ public struct PairedDevicesView: View {
                     Task { await model.saveRename() }
                 } label: {
                     Text(strings.string("common.save")).fontWeight(.semibold)
+                        .foregroundStyle(style.palette.textStrong)
                         .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                 }
             }
@@ -377,14 +387,17 @@ public struct PairedDevicesView: View {
                 Button {
                     model.cancelEdit()
                 } label: {
-                    Text(strings.string("common.cancel")).frame(minWidth: 44, minHeight: 44)
+                    Text(strings.string("common.cancel")).foregroundStyle(style.palette.textStrong)
+                        .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
                 }
+                .accessibilityFocused($focus, equals: .cancel(d.id))
                 Spacer()
                 Button(role: .destructive) {
                     Task { await model.confirmForget() }
                 } label: {
                     Text(strings.string("pairedDevices.forget")).fontWeight(.semibold)
+                        .foregroundStyle(style.palette.danger)
                         .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                 }
             }
@@ -421,6 +434,77 @@ public struct PairedDevicesView: View {
             case .renaming, .forgetting:
                 // The row being edited owns the filled control; Done waits for the edit to end.
                 KitButton(line: CopyLine("common.done"), kind: .quiet) { model.done() }
+            }
+        }
+    }
+}
+
+/// The announcements and focus moves of PairedDevicesView, apart from its body so each stays quick to type-check.
+private struct PairedAnnouncements: ViewModifier {
+    let model: PairedDevicesModel
+    let strings: KitStrings
+    let screen: KitScreen<PairedDevicesState>
+    let focus: (PairedFocus?) -> Void
+    let fieldFocus: (Bool) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: model.focus) { _, new in
+                switch new {
+                case .row(let id): focus(.row(id))
+                case .title: focus(.title)
+                case nil: break
+                }
+            }
+            .onChange(of: model.state.step) { _, step in
+                if step == .renaming { fieldFocus(true) }
+                // Forget asks inside the row and lands on its safe verb, Cancel.
+                if step == .forgetting, let id = model.state.target { focus(.cancel(id)) }
+            }
+            .modifier(Told(model: model, strings: strings, screen: screen))
+    }
+
+    /// What is told once: the app's own answers arrive as the host's notice (`report`), not in the row state.
+    private struct Told: ViewModifier {
+        let model: PairedDevicesModel
+        let strings: KitStrings
+        let screen: KitScreen<PairedDevicesState>
+
+        func body(content: Content) -> some View {
+            content
+                .onChange(of: model.inputs.pairedDevices?.notice?.kind) { _, kind in
+                    if let kind { say(title(kind, screen)) }
+                }
+                .onChange(of: model.state.renameError) { _, new in
+                    if let new, let line = Self.rename(new, screen) { say(line) }
+                }
+                .onChange(of: model.state.forgetError) { _, new in
+                    if new == true, let line = screen.line("pairedDevices.forgetFailed") { say(line) }
+                }
+        }
+
+        private func say(_ line: CopyLine) { announce(strings.string(line)) }
+        private func say(_ text: String) { announce(text) }
+
+        func title(_ kind: KitPairedDevices.Notice.Kind, _ screen: KitScreen<PairedDevicesState>)
+            -> String
+        {
+            let key: String
+            switch kind {
+            case .notFound: key = "pairedDevices.notFoundTitle"
+            case .busy: key = "pairedDevices.busyTitle"
+            case .unknown: key = "core.codes.link-unknown.title"
+            }
+            return screen.line(key).map { strings.string($0) } ?? ""
+        }
+
+        static func rename(_ e: KitPairedDevices.RenameError, _ screen: KitScreen<PairedDevicesState>)
+            -> CopyLine?
+        {
+            switch e {
+            case .long: return screen.line("pairedDevices.renameLong")
+            case .empty: return screen.line("pairedDevices.renameEmpty")
+            case .failed: return screen.line("devices.renameFailed")
             }
         }
     }

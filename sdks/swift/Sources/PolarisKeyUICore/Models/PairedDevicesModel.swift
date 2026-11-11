@@ -45,6 +45,9 @@ public final class PairedDevicesModel {
     public private(set) var pairAnother = false
     /// An answer the host gave about a device (its own connection's), shown with the list.
     public private(set) var hostNotice: KitPairedDevices.Notice?
+    /// The app was asked to try the notice's device again: the notice shows busy until the host reports the next answer.
+    public private(set) var noticeBusy = false
+    @ObservationIgnored public var onRetry: (@MainActor (String) -> Void)?
     @ObservationIgnored public var onClose: (@MainActor () -> Void)?
     @ObservationIgnored public var onPairAnother: (@MainActor () -> Void)?
 
@@ -229,6 +232,14 @@ public final class PairedDevicesModel {
             hostNotice = nil
         }
         state.notice = nil
+        noticeBusy = false
+    }
+
+    /// Try again on the app's answer for `id`: the notice shows busy, the host's `onRetry` runs, and its next `report` replaces it.
+    public func retryNotice(_ id: String) {
+        guard inputs.pairedDevices?.notice?.id == id else { return }
+        noticeBusy = true
+        onRetry?(id)
     }
 
     /// Pair with a Code, the one primary.

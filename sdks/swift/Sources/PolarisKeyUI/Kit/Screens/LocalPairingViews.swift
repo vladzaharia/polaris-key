@@ -61,6 +61,7 @@ public struct LocalPairingView: View {
             .background(
                 GeometryReader { geo in
                     Color.clear.preference(key: PairWindowKey.self, value: geo.size)
+                        .accessibilityHidden(true)
                 }
             )
             .onPreferenceChange(PairWindowKey.self) { window = $0 }
@@ -73,11 +74,15 @@ public struct LocalPairingView: View {
                 if let line = announcement(screen, state) { announce(strings.string(line)) }
             }
             .onChange(of: model.rotation) { _, _ in
-                // A new code is told apart from the action that asked for it, and the tile takes focus.
-                if let code = model.state.code, state == .show {
-                    announce(strings.string("a11y.newCode", ["code": .text(spelled(code))]))
+                // A code that replaced the one being looked at: the notice and the new code are told in one go, apart from
+                // the action that asked for it, and the tile takes focus. The first code of a window is told with its state.
+                if let code = model.state.code, state == .show, model.replaced {
+                    announce(newCodeAnnouncement(screen, code))
                     focus = .tile
                 }
+            }
+            .onChange(of: model.state.nameError) { _, new in
+                if new != nil, let line = screen.line("devices.renameFailed") { announce(strings.string(line)) }
             }
             .onChange(of: model.state.error) { _, new in
                 if let new, let line = errorLine(new, screen) { announce(strings.string(line)) }
@@ -88,7 +93,11 @@ public struct LocalPairingView: View {
                 }
             }
             .onChange(of: model.state.cooldownLeft) { old, new in
-                if state == .closed, old != 0, new == 0 { focus = .heading }
+                // The wait is over: the person is told, and focus rests on the heading above the control that woke up.
+                if state == .closed, old != 0, new == 0 {
+                    focus = .heading
+                    announce(strings.string("localPairing.showNew"))
+                }
             }
             .interactiveDismissDisabled(state == .confirm || state == .joining)
             .background(escapeCloses(state))
@@ -109,7 +118,7 @@ public struct LocalPairingView: View {
     }
 
     @ViewBuilder private func escapeCloses(_ state: LocalPairingState) -> some View {
-        if [.paired, .failed, .off, .networkBlocked, .closed].contains(state) {
+        if [.paired, .failed, .off, .networkBlocked, .closed, .enter, .confirm].contains(state) {
             Button("") { Task { await close(state) } }
                 .keyboardShortcut(.cancelAction)
                 .focusable(false)
@@ -119,7 +128,25 @@ public struct LocalPairingView: View {
     }
 
     private func close(_ state: LocalPairingState) async {
-        if state == .paired { await model.done() } else { await model.closeScreen() }
+        switch state {
+        case .paired: await model.done()
+        case .enter: await model.backToChoose()
+        case .confirm: await model.notNow()
+        default: await model.closeScreen()
+        }
+    }
+
+    /// The notice's words, then the new code: "Wrong code entered. The code changed. New code 4 8 1 2 ...".
+    private func newCodeAnnouncement(_ screen: KitScreen<LocalPairingState>, _ code: String) -> String {
+        var parts: [String] = []
+        for key in [
+            "localPairing.rotatedTitle", "localPairing.notPairedWith", "localPairing.rotatedBody",
+            "localPairing.tooManyAgainBody",
+        ] {
+            if let line = screen.line(key) { parts.append(strings.string(line)) }
+        }
+        parts.append(strings.string("a11y.newCode", ["code": .text(spelled(code))]))
+        return parts.map { $0.hasSuffix(".") ? $0 : $0 + "." }.joined(separator: " ")
     }
 
     private func spelled(_ code: String) -> String { code.map(String.init).joined(separator: " ") }
@@ -339,7 +366,6 @@ public struct LocalPairingView: View {
         }
         .frame(maxWidth: .infinity)
         .opacity(opening ? 0 : 1)
-        .accessibilityHidden(opening)
     }
 
     private func qr(_ screen: KitScreen<LocalPairingState>, _ opening: Bool, size: CGFloat) -> some View {
@@ -474,12 +500,14 @@ public struct LocalPairingView: View {
         let binding = Binding(
             get: { model.state.entry ?? "" }, set: { model.setEntry($0) })
         let placeholder = screen.line("localPairing.codePlaceholder").map { strings.string($0) } ?? ""
+        // The placeholder is a non-value at 40 %, so it never reads as masked digits.
+        let prompt = Text(placeholder).foregroundStyle(style.palette.textMuted.opacity(0.4))
         return Group {
             #if os(macOS)
-                TextField(placeholder, text: binding)
+                TextField("", text: binding, prompt: prompt)
                     .focused($fieldFocus)
             #else
-                TextField(placeholder, text: binding)
+                TextField("", text: binding, prompt: prompt)
                     .keyboardType(.numberPad)
                     .textContentType(.oneTimeCode)
             #endif
@@ -646,16 +674,21 @@ public struct LocalPairingView: View {
                 let cooling = disabled.contains("localPairing.showNewIn")
                 KitButton(
                     line: screen.lineOrKey(cooling ? "localPairing.showNewIn" : "localPairing.showNew"),
-                    kind: .primary
+                    // Unavailable, it is the outlined secondary at full contrast, never a faded primary.
+                    kind: cooling ? .secondary : .primary
                 ) { Task { await model.showNew() } }
-                .opacity(cooling ? 0.5 : 1)
                 KitButton(line: CopyLine("common.close"), kind: .quiet) { Task { await model.closeScreen() } }
             case .enter, .joining:
                 let joining = state == .joining
+                let unavailable = disabled.contains("localPairing.pair") && !joining
                 KitButton(
-                    line: screen.lineOrKey("localPairing.pair"), kind: .primary, busy: joining
+                    line: screen.lineOrKey("localPairing.pair"), kind: unavailable ? .secondary : .primary,
+                    busy: joining
                 ) { Task { await model.pair() } }
-                .opacity(disabled.contains("localPairing.pair") && !joining ? 0.5 : 1)
+                // Dimmed, still pressable: its reason is what VoiceOver says about it.
+                .accessibilityHint(
+                    disabled.contains("localPairing.pair") && !joining
+                        ? Text(fieldMessage(screen).map { strings.string($0) } ?? "") : Text(""))
                 if joining {
                     KitButton(line: CopyLine("common.cancel"), kind: .quiet) { Task { await model.cancel() } }
                 } else {

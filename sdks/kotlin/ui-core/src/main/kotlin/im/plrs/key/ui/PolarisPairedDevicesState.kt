@@ -38,6 +38,8 @@ public data class PolarisPairedDevicesUi(
     val renameError: String? = null,
     val forgetError: Boolean = false,
     val notice: PolarisPairedNotice? = null,
+    /** The app was asked to try the notice's device again: the notice shows busy until the host reports the next answer. */
+    val noticeBusy: Boolean = false,
     /** The text in the rename field. */
     val draft: String = "",
     /** Set after an edit; the renderer moves focus and consumes it. */
@@ -265,7 +267,12 @@ public class PolarisPairedDevicesState(private val driver: PolarisLocalLinks) {
     /** The answer of the app's own connection to a device, shown with the list ([kind] null clears it). */
     public fun report(id: String, kind: String?) {
         val d = _ui.value.devices.firstOrNull { it.id == id }
-        ui { copy(notice = if (kind != null && d != null) PolarisPairedNotice(d.label.orEmpty(), kind, id) else null) }
+        ui { copy(notice = if (kind != null && d != null) PolarisPairedNotice(d.label.orEmpty(), kind, id) else null, noticeBusy = false) }
+    }
+
+    /** Try again on the app's answer for [id]: the notice shows busy; the host runs its own retry and reports the next answer. */
+    public fun retryNotice(id: String) {
+        if (_ui.value.notice?.id == id) ui { copy(noticeBusy = true) }
     }
 
     /** Pair with a Code, the one primary. */

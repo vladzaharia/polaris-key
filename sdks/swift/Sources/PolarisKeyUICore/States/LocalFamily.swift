@@ -136,7 +136,7 @@ extension KitStates {
             let renewing = p.busy == .newCode
             var args: [String: CopyArgument] = ["time": .text(kitCountdown(p.secondsLeft ?? 0))]
             if let code = p.code { args["code"] = .text(code.map(String.init).joined(separator: " ")) }
-            if let device { args["device"] = .text(kitIsolate(device)) }
+            if let device { args["device"] = .text(device) }
             return screen(
                 .show,
                 [
@@ -194,7 +194,7 @@ extension KitStates {
                 ], args,
                 disabled: [busy || p.pairDisabled == true ? "localPairing.pair" : nil])
         case .confirm:
-            let args: [String: CopyArgument] = device.map { ["device": .text(kitIsolate($0))] } ?? [:]
+            let args: [String: CopyArgument] = device.map { ["device": .text($0)] } ?? [:]
             let busy = p.busy != nil
             return screen(
                 .confirm,
@@ -209,10 +209,10 @@ extension KitStates {
                 [
                     "linkPairing.waiting", device != nil ? "localPairing.waitingWith" : nil,
                     shares(p.categories), "common.cancel",
-                ], device.map { ["device": .text(kitIsolate($0))] } ?? [:])
+                ], device.map { ["device": .text($0)] } ?? [:])
         case .paired:
             var args: [String: CopyArgument] = ["max": .number(p.max ?? kitMaxConnectable)]
-            args["device"] = .text(kitIsolate(device ?? ""))
+            args["device"] = .text(device ?? "")
             let cant = p.cantConnect == true
             return screen(
                 .paired,
@@ -279,7 +279,7 @@ extension KitStates {
                     devices.isEmpty ? nil : "a11y.deviceOptions",
                     devices.isEmpty ? nil : "devices.rename",
                     devices.isEmpty ? nil : "pairedDevices.forget", "common.done",
-                ], devices.first?.label.map { ["device": .text(kitIsolate($0))] } ?? [:])
+                ], devices.first?.label.map { ["device": .text($0)] } ?? [:])
         case .list, .renaming, .forgetting:
             break
         }

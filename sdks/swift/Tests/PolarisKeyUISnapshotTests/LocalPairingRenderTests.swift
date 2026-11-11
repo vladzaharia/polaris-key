@@ -64,7 +64,9 @@
         }
 
         private func render(_ row: Row, size: CGSize, dark: Bool) -> NSBitmapImageRep? {
+            // glassEffect draws blank under cacheDisplay on macOS 26: the material fallback draws the same screens opaque.
             let root = PolarisKeyScope(model: PolarisKeyGateModel(preview: row.inputs)) { self.view(row) }
+                .environment(\.polarisKeyMaterialFallback, true)
                 .frame(width: size.width, height: size.height)
                 .polarisKeyTheme(PolarisKeyTheme(colorScheme: dark ? .dark : .light))
                 .environment(\.colorScheme, dark ? .dark : .light)
@@ -87,19 +89,22 @@
             return rep
         }
 
-        private func distinctColours(_ rep: NSBitmapImageRep) -> Int {
-            var seen = Set<UInt32>()
-            let step = max(1, rep.pixelsWide / 60)
+        /// Sample points below the product header (the top tenth) that differ from the page colour: text, controls and
+        /// code tiles all count; a header gradient on an empty page counts nothing.
+        private func contentPoints(_ rep: NSBitmapImageRep) -> Int {
+            guard let page = rep.colorAt(x: 2, y: rep.pixelsHigh - 2)?.usingColorSpace(.sRGB) else { return 0 }
+            let step = max(1, rep.pixelsWide / 80)
+            var points = 0
             for x in stride(from: 0, to: rep.pixelsWide, by: step) {
-                for y in stride(from: 0, to: rep.pixelsHigh, by: step) {
+                for y in stride(from: rep.pixelsHigh / 10, to: rep.pixelsHigh, by: step) {
                     guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
-                    let key =
-                        UInt32(c.redComponent * 31) << 10 | UInt32(c.greenComponent * 31) << 5
-                        | UInt32(c.blueComponent * 31)
-                    seen.insert(key)
+                    let d =
+                        abs(c.redComponent - page.redComponent) + abs(c.greenComponent - page.greenComponent)
+                        + abs(c.blueComponent - page.blueComponent)
+                    if d > 0.15 { points += 1 }
                 }
             }
-            return seen.count
+            return points
         }
 
         private func write(_ rep: NSBitmapImageRep, _ name: String) {
@@ -128,7 +133,7 @@
                         let rep = try XCTUnwrap(
                             render(row, size: size, dark: dark), "\(row.id) \(label) renders")
                         XCTAssertGreaterThan(
-                            distinctColours(rep), 3,
+                            contentPoints(rep), 25,
                             "\(row.id) \(label) \(dark ? "dark" : "light") is not blank")
                         write(rep, "swiftui.\(row.id).\(label)-\(dark ? "dark" : "light")")
                     }

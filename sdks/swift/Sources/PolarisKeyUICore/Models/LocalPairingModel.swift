@@ -38,6 +38,8 @@ public final class LocalPairingModel {
     public private(set) var changed: [Int] = []
     /// show: bumps with each new code, so a renderer can restart its highlight and announce it.
     public private(set) var rotation = 0
+    /// show: this code replaced one the person was looking at (a wrong guess, a Not now, Show a new code).
+    public private(set) var replaced = false
     /// paired: the name field's text; Done renames when it changed.
     public private(set) var name = ""
     /// paired: the pairing's id.
@@ -213,6 +215,7 @@ public final class LocalPairingModel {
             if !wrongCode, let d = lastDevice { next.device = d }
         }
         rotation += 1
+        replaced = prev.step == .show
         go(next, changed: diff)
         tick()
     }

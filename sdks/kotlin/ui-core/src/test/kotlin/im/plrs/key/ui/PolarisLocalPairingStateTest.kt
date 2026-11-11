@@ -508,6 +508,32 @@ class PolarisLocalPairingStateTest {
     }
 
     @Test
+    fun tryAgainOnTheBusyNoticeShowsItBusyUntilTheHostAnswers() = runTest {
+        val links = FakeLinks().apply { rows = rows(2) }
+        val state = PolarisPairedDevicesState(links)
+        state.start()
+        state.report("L2", "busy")
+        state.retryNotice("L2")
+        assertTrue(state.ui.value.noticeBusy)
+        state.report("L2", null)
+        assertFalse(state.ui.value.noticeBusy)
+        assertNull(state.ui.value.notice)
+    }
+
+    @Test
+    fun aNewCodeAfterShowNewIsMarkedReplacedSoItIsAnnounced() = runTest {
+        val links = FakeLinks()
+        val state = make(links)
+        shown(state, links)
+        assertFalse(state.ui.value.replaced)
+        links.events!!.onCode(code("4812 1111", "wrong-code"))
+        runCurrent()
+        assertTrue(state.ui.value.replaced)
+        state.showNew()
+        assertTrue(state.ui.value.replaced)
+    }
+
+    @Test
     fun theAppsOwnAnswersAreShownWithTheList() = runTest {
         val links = FakeLinks().apply { rows = rows(2) }
         val state = PolarisPairedDevicesState(links)

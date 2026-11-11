@@ -148,6 +148,15 @@ final class LocalPairingModelTests: XCTestCase {
         XCTAssertNil(m.state.notice)
     }
 
+    func testOnlyACodeThatReplacedOneIsMarkedReplacedSoItIsAnnouncedOnce() async {
+        let (m, f, _) = make()
+        await shown(m, f)
+        XCTAssertFalse(m.replaced)
+        f.events?.onCode(code("4812 1111", "wrong-code"))
+        await settle()
+        XCTAssertTrue(m.replaced)
+    }
+
     func testAWrongCodeLightsTheChangedDigitsAndAnnounces() async {
         let (m, f, _) = make()
         await shown(m, f)
@@ -543,6 +552,21 @@ final class PairedDevicesModelTests: XCTestCase {
         XCTAssertEqual(m.state.step, .forgetting)
         XCTAssertEqual(m.state.forgetError, true)
         XCTAssertTrue(m.screen.shows("pairedDevices.forgetFailed"))
+    }
+
+    func testTryAgainOnTheBusyNoticeShowsItBusyUntilTheHostAnswers() async {
+        let f = FakeLinks()
+        f.rows = rows(2)
+        let m = PairedDevicesModel(driver: f.driver)
+        await m.start()
+        var tried: [String] = []
+        m.onRetry = { tried.append($0) }
+        m.report("L2", .busy)
+        m.retryNotice("L2")
+        XCTAssertTrue(m.noticeBusy)
+        XCTAssertEqual(tried, ["L2"])
+        m.report("L2", nil)
+        XCTAssertFalse(m.noticeBusy)
     }
 
     func testTheAppsOwnAnswersAreShownWithTheList() async {
