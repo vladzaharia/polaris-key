@@ -65,7 +65,9 @@ The public download page and the Polaris Locker product page offer the same acti
 | Store  | A listing someone else hosts, opened.                                 | App Store, Google Play, Steam, Flathub, winget |
 | Source | Served from the product's own feeds or tap: add it, or run its steps. | AltStore, F-Droid, Obtainium, Homebrew, Scoop  |
 
-A platform lists its offers in the catalogue's order for it, and a store carries every platform the product ships and the channel takes there. A Mac app with a CLI shows the download, the Mac App Store link and the Homebrew steps together; an `x86_64`-only Mac build gets no Mac App Store link.
+On a computer, a build this product hosts comes first and the stores follow; on a phone the platform's store leads. Install sources sit in the same order on the page and in the portal. In the portal, the owner's file comes first, then **Other ways to install**, then **Also yours on** with the device's own stores first.
+
+A store carries a platform only when the product ships a build the store takes there. The Mac App Store needs a `universal` or `arm64` `pkg`, so a Mac app shipped as a `dmg` has no Mac App Store link; with a `pkg` it shows as **Mac App Store**, beside the download and the Homebrew steps. When a product has both a Homebrew cask and a formula, they read **Homebrew (app)** and **Homebrew (command-line tool)**.
 
 ## The chain: release ← distribution ← update
 

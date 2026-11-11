@@ -205,8 +205,8 @@ describe("Distribution's customerDownloads hook (through Core)", () => {
     expect(
       d!.stores.map((s) => [s.kind, s.live, s.version, s.platforms]),
     ).toEqual([
-      // The Mac build is universal, so the Mac App Store carries it too (the catalogue says so).
-      ["app-store", true, "1.1.0", ["ios", "macos"]],
+      // The Mac build is a dmg, not the pkg the Mac App Store takes: the link stays on iPhone.
+      ["app-store", true, "1.1.0", ["ios"]],
       ["play", true, "1.2.0", ["android"]],
       ["ms-store", false, null, ["windows"]],
       ["steam", true, "1.1.0", ["windows", "macos", "linux"]],

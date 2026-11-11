@@ -172,6 +172,7 @@ export {
   actionClassOfKind,
   channelOfKind,
   customerActionOfKind,
+  labelOn,
   offerPlatforms,
   offerRank,
   offersForPlatform,

@@ -65,6 +65,7 @@ import {
   STORE_KINDS,
   storeLink,
   storeState,
+  storeVariants,
   type PageAction,
   type StoreKind,
 } from "./model.js";
@@ -271,19 +272,21 @@ export async function customerDownloads(
         .find(
           (r) => !r.yanked && !held?.has(r.releaseId) && live?.has(r.releaseId),
         );
-      stores.push({
-        id: `${outlet.kind}:${outlet.id}`,
-        kind: outlet.kind,
-        outletId: outlet.id,
-        platforms: [...link.platforms],
-        label: link.label,
-        url: link.url,
-        deepLink: link.deepLink,
-        command: link.command,
-        activateUrl: outlet.kind === "steam" ? STEAM_ACTIVATE_URL : null,
-        live: release !== undefined,
-        version: release?.version ?? null,
-      });
+      storeVariants(outlet.kind as StoreKind, link).forEach((v, i) =>
+        stores.push({
+          id: `${outlet.kind}:${outlet.id}${i === 0 ? "" : `:${v.platforms[0]}`}`,
+          kind: outlet.kind,
+          outletId: outlet.id,
+          platforms: [...v.platforms],
+          label: v.label,
+          url: v.url,
+          deepLink: v.deepLink,
+          command: v.command,
+          activateUrl: outlet.kind === "steam" ? STEAM_ACTIVATE_URL : null,
+          live: release !== undefined,
+          version: release?.version ?? null,
+        }),
+      );
     }
     stores.sort(
       (a, b) =>

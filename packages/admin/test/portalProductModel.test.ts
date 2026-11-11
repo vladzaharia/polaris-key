@@ -1,3 +1,4 @@
+import { sourceName } from "../src/portal/copy/getIt.js";
 import { describe, expect, it } from "vitest";
 import type { PortalProduct } from "../src/portal/api.js";
 import type { QuickAction } from "../src/portal/model/library.js";
@@ -292,6 +293,44 @@ describe("not_hosted reads where to get it (§0.6 P3, §11.2)", () => {
     ).toEqual([["m", "arm64"]]);
     expect(mac.sources.map((s) => s.kind)).toEqual(["homebrew"]);
     expect(m.stores.map((s) => s.platforms)).toEqual([["ios", "macos"]]);
+  });
+
+  it('lists the device\'s own stores first in "Also yours on", and tells two Homebrew rows apart (A-26)', () => {
+    const d = downloadsView(
+      "x",
+      [dlFile({ artifactId: "w", platform: "windows" })],
+      {
+        stores: [
+          storeLink({
+            kind: "app-store",
+            label: "App Store",
+            platforms: ["ios"],
+          }),
+          storeLink({
+            kind: "play",
+            label: "Google Play",
+            platforms: ["android"],
+          }),
+          storeLink({
+            kind: "ms-store",
+            label: "Microsoft Store",
+            platforms: ["windows"],
+          }),
+        ],
+      },
+    );
+    const m = getItFromDownloads(d, { os: "windows", phone: false })!;
+    expect(m.stores.map((s) => s.kind)).toEqual([
+      "ms-store",
+      "app-store",
+      "play",
+    ]);
+    expect(sourceName({ kind: "homebrew", label: "Homebrew (app)" })).toBe(
+      "Homebrew (app)",
+    );
+    expect(sourceName({ kind: "homebrew", label: "Homebrew" })).toBe(
+      "Homebrew",
+    );
   });
 
   it("on a phone, leads with what installs on it; otherwise there is nothing to lead with (P0-48)", () => {

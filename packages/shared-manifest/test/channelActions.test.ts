@@ -5,6 +5,7 @@ import {
   actionClassOfKind,
   channelOfKind,
   customerActionOfKind,
+  labelOn,
   offerPlatforms,
   offersForPlatform,
   findChannel,
@@ -68,6 +69,21 @@ describe("offer order", () => {
     expect(got).toEqual(["download", "app-store", "homebrew"]);
   });
 
+  it("puts the download first on every desktop, then the store", () => {
+    for (const platform of ["macos", "windows", "linux"]) {
+      const kinds = offersForPlatform(
+        [
+          offer("ms-store", [platform]),
+          offer("flathub", [platform]),
+          offer("app-store", [platform]),
+          offer("download", [platform]),
+        ],
+        platform,
+      ).map((o) => o.kind);
+      expect(kinds[0], platform).toBe("download");
+    }
+  });
+
   it("follows the catalogue per platform (store first on iPhone, file first on desktop)", () => {
     const kinds = (platform: string) =>
       offersForPlatform(
@@ -108,16 +124,24 @@ describe("offer order", () => {
 
 describe("platforms a channel serves for a product", () => {
   const appStore = findChannel("app-store")!;
-  it("serves a Mac only for a universal or arm64 build", () => {
-    expect(
-      offerPlatforms(appStore, [{ platform: "macos", arches: ["arm64"] }]),
-    ).toEqual(["macos"]);
-    expect(
-      offerPlatforms(appStore, [{ platform: "macos", arches: ["universal"] }]),
-    ).toEqual(["macos"]);
-    expect(
-      offerPlatforms(appStore, [{ platform: "macos", arches: ["x86_64"] }]),
-    ).toEqual([]);
+  const mac = (arches: string[], formats: string[]) => ({
+    platform: "macos",
+    arches,
+    formats,
+  });
+  it("serves a Mac only for a universal or arm64 pkg", () => {
+    expect(offerPlatforms(appStore, [mac(["arm64"], ["pkg"])])).toEqual([
+      "macos",
+    ]);
+    expect(offerPlatforms(appStore, [mac(["universal"], ["pkg"])])).toEqual([
+      "macos",
+    ]);
+    expect(offerPlatforms(appStore, [mac(["x86_64"], ["pkg"])])).toEqual([]);
+  });
+
+  it("gives a Mac dmg no Mac App Store, however universal", () => {
+    expect(offerPlatforms(appStore, [mac(["universal"], ["dmg"])])).toEqual([]);
+    expect(offerPlatforms(appStore, [mac(["universal"], [])])).toEqual([]);
   });
 
   it("serves only the platforms the product has", () => {
@@ -136,5 +160,13 @@ describe("platforms a channel serves for a product", () => {
       "macos",
       "linux",
     ]);
+  });
+});
+
+describe("a channel's name on a platform", () => {
+  it("is the Mac App Store on a Mac, the catalogue label elsewhere", () => {
+    expect(labelOn("app-store", "macos")).toBe("Mac App Store");
+    expect(labelOn("app-store", "ios")).toBe("App Store");
+    expect(labelOn("winget", "windows")).toBe("WinGet");
   });
 });

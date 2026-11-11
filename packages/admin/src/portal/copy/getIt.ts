@@ -56,7 +56,12 @@ const SOURCE_NAME: Readonly<Record<string, string>> = {
 
 /** A source's name: the app it is added to, else the Worker's label. */
 export function sourceName(s: { kind: string; label: string }): string {
-  return SOURCE_NAME[s.kind] ?? s.label;
+  const name = SOURCE_NAME[s.kind];
+  // A label that qualifies the name ("Homebrew (app)" beside "Homebrew (command-line tool)")
+  // is kept: the rows would otherwise read the same.
+  return name !== undefined && !s.label.startsWith(`${name} (`)
+    ? name
+    : s.label;
 }
 
 /** "Version 2.4.1". */

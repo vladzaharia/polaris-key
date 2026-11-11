@@ -50,6 +50,7 @@ import {
   NUMERIC_ID_PATTERN,
   channelLabel,
   channelOfKind,
+  labelOn,
   offerPlatforms,
   offersForPlatform,
   type ProductPlatformFact,
@@ -582,6 +583,38 @@ export async function storeState(db: Db, product: string): Promise<StoreState> {
 export function storeLink(
   kind: StoreKind,
   identity: Record<string, unknown>,
+  product: readonly ProductPlatformFact[] = [],
+): StoreLink | null {
+  const link = storeLinkOf(kind, identity, product);
+  return link && link.platforms.length > 0 ? link : null;
+}
+
+export type StoreLink = Pick<
+  PageAction,
+  "label" | "url" | "deepLink" | "command" | "platforms"
+>;
+
+/**
+ * A store link as one entry per name the channel goes by on its platforms: the App Store for the
+ * iPhone and the Mac App Store for the Mac (`labelOn`), the same page under each name.
+ */
+export function storeVariants(kind: StoreKind, link: StoreLink): StoreLink[] {
+  const groups = new Map<string, PagePlatform[]>();
+  for (const p of link.platforms) {
+    const label = labelOn(kind, p);
+    groups.set(label, [...(groups.get(label) ?? []), p]);
+  }
+  if (groups.size <= 1) return [link];
+  return [...groups].map(([label, platforms]) => ({
+    ...link,
+    label,
+    platforms,
+  }));
+}
+
+function storeLinkOf(
+  kind: StoreKind,
+  identity: Record<string, unknown>,
   /** What the product ships (`productPlatforms`): with it a store carries every platform the
    *  catalogue says it serves and the product has (the Mac App Store beside the iPhone's). */
   product: readonly ProductPlatformFact[] = [],
@@ -589,16 +622,16 @@ export function storeLink(
   PageAction,
   "label" | "url" | "deepLink" | "command" | "platforms"
 > | null {
-  // The platforms are the catalogue's: those the product has and the channel takes there, else
-  // (a product whose builds name none of them) the ones the channel takes whatever the arch.
+  // The platforms are the catalogue's: those the product has and the channel takes there. A
+  // product whose platforms are known and fit none has no link (the unchecked platforms are
+  // claimed only when nothing is known).
   const serve = (): PagePlatform[] => {
     const entry = channelOfKind(kind)!;
     const named = (list: string[]) =>
       list.filter((p): p is PagePlatform =>
         (PAGE_PLATFORMS as readonly string[]).includes(p),
       );
-    const fit = named(offerPlatforms(entry, product));
-    return fit.length > 0 ? fit : named(offerPlatforms(entry, []));
+    return named(offerPlatforms(entry, product));
   };
   switch (kind) {
     case "app-store": {
@@ -796,6 +829,17 @@ export async function buildDownloadModel(
             // an iOS build cannot (it goes through AltStore or a store), unless named.
             PAGE_PLATFORMS.filter((p) => p !== "ios");
         const formulaPlatforms: PagePlatform[] = [];
+        // An outlet with a cask and a formula offers two Homebrew steps: each is named by what it
+        // installs, the app first.
+        const brewBoth =
+          idOf(outlet.identity.homebrewCask, HOMEBREW_CASK_PATTERN) !== null &&
+          idOf(outlet.identity.homebrewFormula, HOMEBREW_FORMULA_PATTERN) !==
+            null &&
+          idOf(outlet.identity.homebrewTap, HOMEBREW_TAP_PATTERN) !== null;
+        const brewLabel = (what: "app" | "tool"): string =>
+          brewBoth
+            ? `${channelLabel("homebrew")} (${what === "app" ? "app" : "command-line tool"})`
+            : channelLabel("homebrew");
         for (const platform of offered) {
           const sel = await one(outlet, platform, { allBuilds: true });
           if (!sel?.entries.length) continue;
@@ -830,7 +874,7 @@ export async function buildDownloadModel(
                 kind: "homebrew",
                 outletId: outlet.id,
                 platforms: ["macos"],
-                label: channelLabel("homebrew"),
+                label: brewLabel("app"),
                 url: null,
                 deepLink: null,
                 command: `brew install --cask ${tapped(cask)}`,
@@ -857,7 +901,7 @@ export async function buildDownloadModel(
                   kind: "homebrew",
                   outletId: outlet.id,
                   platforms: formulaPlatforms,
-                  label: channelLabel("homebrew"),
+                  label: brewLabel("tool"),
                   url: null,
                   deepLink: null,
                   command: `brew install ${tap.replace("/homebrew-", "/")}/${formula}`,
@@ -1027,14 +1071,19 @@ export async function buildDownloadModel(
               !r.yanked && !held?.has(r.releaseId) && live?.has(r.releaseId),
           );
         if (!release) break;
-        actions.push(
-          action({
-            kind: outlet.kind as StoreKind,
-            outletId: outlet.id,
-            ...link,
-            qr: null,
-            version: release.version,
-          }),
+        storeVariants(outlet.kind as StoreKind, link).forEach((v, i) =>
+          actions.push(
+            action(
+              {
+                kind: outlet.kind as StoreKind,
+                outletId: outlet.id,
+                ...v,
+                qr: null,
+                version: release.version,
+              },
+              i === 0 ? "" : `:${v.platforms[0]}`,
+            ),
+          ),
         );
       }
     }

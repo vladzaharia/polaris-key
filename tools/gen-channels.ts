@@ -110,6 +110,8 @@ export interface ChannelRow {
   platformNeeds?: Record<string, string>;
   /** Platform -> where the channel's customer action sits among the platform's offers (lower first). */
   offerOrder?: Record<string, number>;
+  /** Platform -> the channel's name there, when it differs ("Mac App Store"). */
+  labelOn?: Record<string, string>;
   /** Other customer offers the channel brings (SideStore adds the same source AltStore does). */
   offerKinds?: string[];
   formats: string[];
@@ -252,6 +254,18 @@ export function validateTable(table: unknown): string[] {
             errors.push(`${at}.offerOrder.${plat}: must be a whole number`);
         }
     }
+    if (row.labelOn !== undefined) {
+      const n = row.labelOn as unknown;
+      if (!n || typeof n !== "object" || Array.isArray(n))
+        errors.push(`${at}.labelOn: must be an object`);
+      else
+        for (const [plat, v] of Object.entries(n)) {
+          if (!strings(row.platforms) || !row.platforms.includes(plat))
+            errors.push(`${at}.labelOn: "${plat}" is not one of the platforms`);
+          if (typeof v !== "string" || v.trim() === "")
+            errors.push(`${at}.labelOn.${plat}: must be a non-empty label`);
+        }
+    }
     if (
       row.offerKinds !== undefined &&
       (!strings(row.offerKinds) ||
@@ -338,6 +352,13 @@ export function renderManifestTs(table: ChannelTable): string {
       .join(", ")} },`
         : ""
     }${
+      c.labelOn
+        ? `
+    labelOn: { ${Object.entries(c.labelOn)
+      .map(([p, v]) => `${q(p)}: ${q(v)}`)
+      .join(", ")} },`
+        : ""
+    }${
       c.offerKinds
         ? `
     offerKinds: ${list(c.offerKinds)},`
@@ -392,6 +413,8 @@ export interface ChannelEntry {
   platformNeeds?: Readonly<Partial<Record<string, string>>>;
   /** Platform -> where the channel's customer action sits among the platform's offers (lower first). */
   offerOrder?: Readonly<Partial<Record<string, number>>>;
+  /** Platform -> the channel's name there, when it differs ("Mac App Store"). */
+  labelOn?: Readonly<Partial<Record<string, string>>>;
   /** Other customer offers the channel brings (SideStore adds the same source AltStore does). */
   offerKinds?: readonly string[];
   formats: readonly string[];

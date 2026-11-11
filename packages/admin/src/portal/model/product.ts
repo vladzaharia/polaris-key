@@ -624,7 +624,14 @@ export function getItFromDownloads(
     installSourcesOf(d),
     device.os,
   );
-  const stores = d.stores.filter((s) => s.live && httpsOrNull(s.url));
+  // The device's own stores first, in the catalogue's order for its OS (A-26).
+  const stores = d.stores
+    .filter((s) => s.live && httpsOrNull(s.url))
+    .sort((a, b) =>
+      device.os
+        ? offerRank(a.kind, device.os) - offerRank(b.kind, device.os)
+        : 0,
+    );
   const headline = rec ? recommended[0]?.release : undefined;
   return {
     release: headline ?? {

@@ -11,6 +11,7 @@ import {
   INSTALL_SOURCE_KINDS,
   STORE_KINDS,
   storeLink,
+  storeVariants,
 } from "../../../src/services/distribution/page/model.js";
 import { NOW } from "../../seed.js";
 import { model, setup } from "../../downloadWorld.js";
@@ -32,33 +33,55 @@ describe("the page's kind lists are the catalogue's classes", () => {
 
 describe("store platforms come from the catalogue and the product", () => {
   const identity = { appleId: "1234567890" };
-  const platforms = (facts: { platform: string; arches: string[] }[]) =>
-    storeLink("app-store", identity, facts)!.platforms;
+  const ios = { platform: "ios", arches: ["arm64"], formats: ["ipa"] };
+  const mac = (arches: string[], formats: string[]) => ({
+    platform: "macos",
+    arches,
+    formats,
+  });
+  const platforms = (facts: Parameters<typeof storeLink>[2]) =>
+    storeLink("app-store", identity, facts)?.platforms;
 
-  it("adds the Mac for a universal or arm64 build, never for x64 alone", () => {
-    const ios = { platform: "ios", arches: ["arm64"] };
-    expect(platforms([ios, { platform: "macos", arches: ["arm64"] }])).toEqual([
+  it("adds the Mac for a universal or arm64 pkg", () => {
+    expect(platforms([ios, mac(["arm64"], ["pkg"])])).toEqual(["ios", "macos"]);
+    expect(platforms([ios, mac(["universal"], ["pkg"])])).toEqual([
       "ios",
       "macos",
     ]);
-    expect(
-      platforms([ios, { platform: "macos", arches: ["universal"] }]),
-    ).toEqual(["ios", "macos"]);
-    expect(platforms([ios, { platform: "macos", arches: ["x86_64"] }])).toEqual(
-      ["ios"],
-    );
   });
 
-  it("keeps the unchecked platforms when the product names none", () => {
-    expect(platforms([])).toEqual(["ios"]);
-    expect(platforms([{ platform: "windows", arches: ["x86_64"] }])).toEqual([
-      "ios",
+  it("gives an x64-only Mac, or a Mac dmg, no Mac App Store", () => {
+    expect(platforms([ios, mac(["x86_64"], ["pkg"])])).toEqual(["ios"]);
+    expect(platforms([ios, mac(["universal"], ["dmg"])])).toEqual(["ios"]);
+  });
+
+  it("names the Mac listing the Mac App Store", () => {
+    const link = storeLink("app-store", identity, [
+      ios,
+      mac(["arm64"], ["pkg"]),
+    ])!;
+    expect(
+      storeVariants("app-store", link).map((v) => [v.label, v.platforms]),
+    ).toEqual([
+      ["App Store", ["ios"]],
+      ["Mac App Store", ["macos"]],
     ]);
+  });
+
+  it("claims the unchecked platforms only when nothing is known", () => {
+    expect(platforms([])).toEqual(["ios"]);
+    // Known platforms that fit none: no link at all.
+    expect(platforms([mac(["x86_64"], ["pkg"])])).toBeUndefined();
+    expect(
+      platforms([
+        { platform: "windows", arches: ["x86_64"], formats: ["exe"] },
+      ]),
+    ).toBeUndefined();
   });
 });
 
 describe("the page offers a platform's actions in the catalogue's order", () => {
-  it("lists a Mac's download before the Mac App Store, and the iPhone's store first", async () => {
+  it("lists the download first on a Mac, the store first on an iPhone, and no Mac App Store for a dmg", async () => {
     const w = await setup();
     const m = await model(w);
     const kinds = (platform: string) => {
@@ -67,8 +90,13 @@ describe("the page offers a platform's actions in the catalogue's order", () => 
     };
     const mac = kinds("macos");
     expect(mac[0]).toBe("download");
-    expect(mac).toContain("app-store");
-    expect(mac.indexOf("download")).toBeLessThan(mac.indexOf("app-store"));
     expect(kinds("ios")[0]).toBe("app-store");
+    // The fixture's Mac build is a dmg: no Mac App Store row beside its download.
+    expect(mac).not.toContain("app-store");
+    // Homebrew's app and command-line tool are told apart, the app first.
+    const brew = m.actions
+      .filter((a) => a.kind === "homebrew")
+      .map((a) => a.label);
+    expect(brew).toEqual(["Homebrew (app)", "Homebrew (command-line tool)"]);
   });
 });

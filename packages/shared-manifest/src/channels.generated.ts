@@ -70,6 +70,8 @@ export interface ChannelEntry {
   platformNeeds?: Readonly<Partial<Record<string, string>>>;
   /** Platform -> where the channel's customer action sits among the platform's offers (lower first). */
   offerOrder?: Readonly<Partial<Record<string, number>>>;
+  /** Platform -> the channel's name there, when it differs ("Mac App Store"). */
+  labelOn?: Readonly<Partial<Record<string, string>>>;
   /** Other customer offers the channel brings (SideStore adds the same source AltStore does). */
   offerKinds?: readonly string[];
   formats: readonly string[];
@@ -91,7 +93,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "worker",
     outlet: { kind: "direct" },
     platforms: ["macos", "windows", "linux", "android", "ios"],
-    offerOrder: { ios: 50, android: 20, macos: 10, windows: 20, linux: 10 },
+    offerOrder: { ios: 50, android: 20, macos: 10, windows: 10, linux: 10 },
     formats: ["dmg", "zip", "msi", "exe", "appimage", "deb", "apk", "ipa"],
     deliverableKinds: ["app", "pack", "package"],
     customerAction: "install",
@@ -110,6 +112,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     platforms: ["ios", "macos"],
     arches: { macos: ["universal", "arm64"] },
     offerOrder: { ios: 10, macos: 20 },
+    labelOn: { macos: "Mac App Store" },
     formats: ["ipa", "pkg"],
     deliverableKinds: ["app"],
     customerAction: "open-listing",
@@ -295,7 +298,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "worker",
     outlet: { kind: "ms-store" },
     platforms: ["windows"],
-    offerOrder: { windows: 10 },
+    offerOrder: { windows: 15 },
     formats: ["msix", "msixbundle", "msi", "exe"],
     deliverableKinds: ["app"],
     customerAction: "open-listing",
@@ -337,7 +340,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
   {
     id: "winget",
     aliases: [],
-    label: "winget",
+    label: "WinGet",
     family: "package-manager",
     plane: "pr",
     outlet: { kind: "winget" },

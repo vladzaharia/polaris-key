@@ -104,17 +104,26 @@ export function offersForPlatform<T extends OfferLike>(
 export interface ProductPlatformFact {
   platform: string;
   arches: readonly string[];
+  /** The build formats the product ships there (`pkg`, `dmg`); empty when unknown. */
+  formats?: readonly string[];
+}
+
+/** A channel's name on a platform ("Mac App Store" on macOS), else its label. */
+export function labelOn(kind: string, platform: string): string {
+  const c = channelOfKind(kind);
+  return c?.labelOn?.[platform] ?? c?.label ?? kind;
 }
 
 /**
- * The platforms a channel serves for a product. With the product's platforms and arches known, a
- * platform counts when the product has it and (where the channel takes only some arches there) at
- * least one of its builds fits: an x64-only Mac app is not on the Mac App Store, an arm64 one is.
- * With nothing known, the platforms with no arch limit, so a link never claims a platform whose
- * builds were not checked.
+ * The platforms a channel serves for a product, with evidence. With the product's platforms known,
+ * a platform counts when the product has it; where the channel takes only some arches there (it is
+ * a listing for a build of a particular kind: the Mac App Store takes a sandboxed `pkg`), the
+ * product must also ship a build in a format the channel takes, in an arch it takes: a universal
+ * `dmg` is not on the Mac App Store, an x64 `pkg` is not either. With nothing known, the platforms
+ * with no arch limit, so a link never claims a platform whose builds were not checked.
  */
 export function offerPlatforms(
-  entry: Pick<ChannelEntry, "platforms" | "arches">,
+  entry: Pick<ChannelEntry, "platforms" | "arches" | "formats">,
   product: readonly ProductPlatformFact[],
 ): string[] {
   const fits = (platform: string): boolean => {
@@ -122,11 +131,14 @@ export function offerPlatforms(
     if (product.length === 0) return accepted === undefined;
     const mine = product.find((p) => p.platform === platform);
     if (!mine) return false;
-    return (
-      accepted === undefined ||
+    if (accepted === undefined) return true;
+    const arch =
       mine.arches.length === 0 ||
-      mine.arches.some((a) => archFits(a, accepted))
+      mine.arches.some((a) => archFits(a, accepted));
+    const format = (mine.formats ?? []).some((f) =>
+      entry.formats.includes(f.toLowerCase()),
     );
+    return arch && format;
   };
   return entry.platforms.filter(fits);
 }
