@@ -227,7 +227,14 @@ async function consoleCall(
   const { token, session } = await consoleTestSession(
     env,
     db,
-    { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: ["admins"],
+      stepUp: true,
+      authTime: NOW,
+    },
     NOW,
   );
   const headers: Record<string, string> = {

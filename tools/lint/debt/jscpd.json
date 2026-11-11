@@ -4233,7 +4233,7 @@
       "jscpd:duplicate": 10
     },
     "packages/worker/test/surfaces/console/createDefaults.test.ts": {
-      "jscpd:duplicate": 15
+      "jscpd:duplicate": 14
     },
     "packages/worker/test/surfaces/console/createProbes.test.ts": {
       "jscpd:duplicate": 14
@@ -4347,7 +4347,7 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/surfaces/console/productsSlugRule.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/worker/test/surfaces/console/publishRoutes.test.ts": {
       "jscpd:duplicate": 19
@@ -4446,7 +4446,7 @@
       "jscpd:duplicate": 12
     },
     "packages/worker/test/surfaces/distributionOutlets.test.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 9
     },
     "packages/worker/test/surfaces/distributionPayload.test.ts": {
       "jscpd:duplicate": 25

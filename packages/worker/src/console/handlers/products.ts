@@ -223,6 +223,10 @@ export async function handleProducts(
         });
       return adminJson({ ...dry, dryRun: true });
     }
+    // Creating from a repository applies its whole manifest, identity clients and the issuer
+    // setting included: held to the step-up that creating a client needs. The dry run stays free.
+    const stale = requireStepUp(session, now);
+    if (stale) return stale;
     const digest = body.manifestDigest;
     if (digest !== undefined && typeof digest !== "string")
       return err(422, ErrorCode.BadRequest, "manifestDigest must be a string", {

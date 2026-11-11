@@ -405,7 +405,7 @@ describe("G6: a creator manages what they made", () => {
   });
 
   it("link-repo gives the creator the same binding", async () => {
-    const ann = await person(env, db, "ann");
+    const ann = await person(env, db, "ann", { stepUp: true });
     await bind(db, ann.accountId, "platform_admin", "platform", null);
     vi.stubGlobal("fetch", linkFetch());
     const res = await call(
