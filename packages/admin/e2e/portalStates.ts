@@ -1775,6 +1775,13 @@ export const SHIPPED: ShippedState[] = [
         // a fixed offset and the capture differs run to run.
         await settle(p);
         await ready(region);
+        // Where the click left the page depends on the layout at click time (two stable
+        // offsets, a few px apart). End on one fixed offset instead: the region's top under the
+        // sticky chrome (the root's scroll-padding), instant so a smooth-scroll rule cannot
+        // leave it moving. The capture settles again.
+        await region.evaluate((el) =>
+          el.scrollIntoView({ block: "start", behavior: "instant" }),
+        );
       },
     }),
   ),
