@@ -183,15 +183,20 @@ export async function handleIssuerToken(cx: IssuerTokenCx): Promise<Response> {
     (await erasureVerdict(env, now, account.id)) !== "clear"
   )
     return out(oauth(400, ErrorCode.InvalidGrant));
-  if (!(await getClientGrant(db, slug, account.id, client.clientId)))
-    return out(oauth(400, ErrorCode.InvalidGrant));
+  const held = await getClientGrant(db, slug, account.id, client.clientId);
+  if (!held) return out(oauth(400, ErrorCode.InvalidGrant));
+  // Change what <Client> gets may have narrowed the grant since Continue: the code's claims are
+  // read against the grant as it stands now, never wider (V5 §12.13.7).
+  const delivered = claims.claims.filter((c) =>
+    held.claimsGranted.some((g) => g === c),
+  );
 
   const { accessToken, idToken } = await mintIssuerTokens(cx, {
     clientId: client.clientId,
     account,
     subject,
     scope: record.scope,
-    claims: claims.claims,
+    claims: delivered,
     authTime: claims.authTime,
     nonce: record.nonce,
   });
@@ -204,7 +209,7 @@ export async function handleIssuerToken(cx: IssuerTokenCx): Promise<Response> {
           clientId: client.clientId,
           accountId: account.id,
           scope: record.scope.join(" "),
-          claims: claims.claims,
+          claims: delivered,
           authTime: claims.authTime,
           redirectUri: record.redirectUri,
           codeHash: await hashAuthCode(env, code),

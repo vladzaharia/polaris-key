@@ -66,6 +66,10 @@ import { platformConnectionSeedJob } from "./connections/seed.js";
 import { restoreServed } from "./restore/gate.js";
 import { issuerServed } from "./issuer/served.js";
 import {
+  IDENTITY_ISSUER_SERVICES_LISTENER,
+  issuerServicesListener,
+} from "./issuer/servicesListener.js";
+import {
   IDENTITY_RESTORE_LISTENER,
   restoreDeviceListener,
 } from "./restore/listener.js";
@@ -104,6 +108,8 @@ export const identityService: ServiceDescriptor = {
     // I-49.8: Identity off or back on ends every restore key (`DELETE restore` is 404 while off).
     onServicesChange: {
       [IDENTITY_RESTORE_SERVICES_LISTENER]: restoreServicesListener,
+      // I-21.15: Identity off ends the product's client refresh families.
+      [IDENTITY_ISSUER_SERVICES_LISTENER]: issuerServicesListener,
     },
     // P0-49: run by an operator through the migration runner, never by a tick.
     migrations: [platformConnectionSeedJob],
