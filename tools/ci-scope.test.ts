@@ -1307,7 +1307,7 @@ describe("ci.yml keeps the Swift SDK building on its oldest toolchain", () => {
     );
   });
 
-  it("keeps a full run to five macOS jobs", () => {
+  it("keeps a full run to six macOS jobs", () => {
     const mac = Object.entries(ci.jobs).filter(([, j]) =>
       String(j["runs-on"] ?? "").startsWith("macos-"),
     );
@@ -1318,6 +1318,7 @@ describe("ci.yml keeps the Swift SDK building on its oldest toolchain", () => {
       "the single-leg macOS jobs",
     ).toEqual([
       "browser-webkit",
+      "connect-live-macos",
       "swift-floor",
       "apple",
       "apple-hosted",

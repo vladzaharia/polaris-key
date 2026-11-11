@@ -26,10 +26,10 @@ const pythonExe = () =>
     : "python3");
 
 const kotlinBin = here("drivers/kotlin/build/install/live-peer/bin/live-peer");
-// `swift build -c release --package-path tools/live-peer/drivers/swift` puts the binary here.
+// `swift build -c release --package-path tools/live-peer/drivers/swift/live-peer-swift` puts the binary here.
 const swiftBin = () =>
   process.env.PKEY_LIVE_SWIFT ??
-  here("drivers/swift/.build/release/live-peer-swift");
+  here("drivers/swift/live-peer-swift/.build/release/live-peer-swift");
 
 // A matrix whose pairs all include one driver: the other SDKs are already paired in `linux`.
 const MATRIX_ANCHORS = { macos: "swift" };
@@ -227,7 +227,12 @@ const scenarios = (a, b) => {
           `wrong code reason: ${JSON.stringify(bad.error)}`,
         );
         // The window is still open, under a new code.
-        const again = await a.ok("show");
+        // The shower swaps its code a moment after the joiner's refusal arrives, so wait for it.
+        let again = await a.ok("show");
+        for (let i = 0; i < STEP_MS / 50 && again.code === shown.code; i++) {
+          await sleep(50);
+          again = await a.ok("show");
+        }
         check(
           again.code !== shown.code,
           "the code did not change after a failed guess",

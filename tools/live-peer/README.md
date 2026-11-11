@@ -7,13 +7,19 @@ discovery itself (`localPairing: true`). The harness is the mDNS broker, so no m
 ```sh
 node tools/live-peer/run.mjs --list                  # drivers and whether they can run here
 node tools/live-peer/run.mjs --pair node:python      # one ordered pair: A (node) shows, B (python) joins
-node tools/live-peer/run.mjs --matrix linux          # every ordered pair of two different Linux drivers
+node tools/live-peer/run.mjs --matrix linux          # every ordered pair of two different Linux drivers (node, python, kotlin)
+node tools/live-peer/run.mjs --matrix macos          # swift against node and python, both ways (macOS only)
 ```
 
 Node needs `pnpm build` first (the driver loads `packages/sdk-node/dist`). Python runs over
 `sdks/python/src` with `PYTHONPATH` set by the harness; set `PKEY_LIVE_PYTHON` to an interpreter with
 the SDK's dependencies (default: `sdks/python/.venv/bin/python`, else `python3`). `PKEY_LIVE_VERBOSE=1`
-streams driver stderr. `PKEY_LIVE_STEP_MS` sets the per-step hang guard (default 60000); no step asserts
+streams driver stderr.
+Kotlin needs a JDK 17 and `( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :live-peer:installDist )` once; the
+driver is the `:live-peer` module in `tools/live-peer/drivers/kotlin` (not published). Swift needs
+`swift build -c release --package-path tools/live-peer/drivers/swift/live-peer-swift` once; it is a SwiftPM
+executable that references `sdks/swift` by path (the SDK's `Package.swift` is unchanged). `PKEY_LIVE_SWIFT`
+overrides the Swift binary. `PKEY_LIVE_STEP_MS` sets the per-step hang guard (default 60000); no step asserts
 on elapsed time.
 
 ## Scenarios
@@ -60,6 +66,6 @@ mDNS: the driver's adapter sends `{"mdns":"advertise","advert":{instance,port,tx
 
 ## Adding a driver
 
-Write `drivers/<name>.<ext>` to the contract, add a row to `DRIVERS` in `run.mjs` (`available`,
-`command`, `matrices`) and run `--pair <name>:node` and `--pair node:<name>`. The Kotlin JVM and
-Godot headless drivers (CC-29X.2) and Swift on macOS (CC-29X.3) follow this way.
+Write `drivers/<name>.<ext>` (or a directory, as the Kotlin and Swift drivers are) to the contract, add a
+row to `DRIVERS` in `run.mjs` (`available`, `command`, `matrices`) and run `--pair <name>:node` and
+`--pair node:<name>`. The Godot headless driver follows this way once Godot's local links land.

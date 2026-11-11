@@ -900,8 +900,9 @@ jobs:
 
   # Cross-SDK live pairing (CC-29X; tools/live-peer/README.md): two SDK drivers pair by code and by QR,
   # open the link both ways, move 4 MiB and forget, over real TCP on 127.0.0.1. The harness brokers
-  # mDNS, so no multicast is needed. Linux drivers: Node and Python (every ordered pair of two
-  # different ones). The packages are the real built ones. Scope: tools/ci-scope.json lane connect-live.
+  # mDNS, so no multicast is needed. Linux drivers: Node, Python and the Kotlin JVM driver (every ordered
+  # pair of two different ones); `connect-live-macos` adds Swift against Node and Python. The packages
+  # are the real built ones. Scope: tools/ci-scope.json lane connect-live (both jobs).
   connect-live:
     name: Cross-SDK live pairing (linux)
     needs: changes
@@ -924,10 +925,61 @@ jobs:
           python -m venv .venv
           .venv/bin/pip install --quiet --upgrade pip
           .venv/bin/pip install --quiet -e . -c constraints/py312.txt
-      - name: Live matrix (node and python)
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+      # The same Gradle cache policy as the kotlin job: only next writes it.
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/next' }}
+          cache-cleanup: on-success
+      - name: Build the Kotlin driver (once)
+        working-directory: sdks/kotlin
+        run: ./gradlew --no-daemon -Ppkey.jvmOnly=true :live-peer:installDist
+      - name: Live matrix (node, python and kotlin)
         env:
           PKEY_LIVE_PYTHON: ${{ github.workspace }}/sdks/python/.venv/bin/python
         run: node tools/live-peer/run.mjs --matrix linux
+
+  # The macOS half of the live matrix: the Swift driver (a SwiftPM executable over sdks/swift) against Node
+  # and Python, both ways. The runner image and Xcode are `apple`'s; local links use Network.framework.
+  connect-live-macos:
+    name: Cross-SDK live pairing (macos)
+    needs: changes
+    if: needs.changes.outputs.connect-live == 'true'
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+        with:
+          install: "false"
+      - run: pnpm install --frozen-lockfile --filter=@polaris-key/node...
+      - run: pnpm exec turbo run build --filter=@polaris-key/node...
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Python venv (the SDK)
+        working-directory: sdks/python
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --quiet --upgrade pip
+          .venv/bin/pip install --quiet -e . -c constraints/py312.txt
+      - name: Xcode 26.6, Swift 6.3 or later
+        run: sdks/swift/tools/select-xcode-26.sh
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+          key: swiftpm-${{ runner.os }}-xcode26.6-${{ hashFiles('sdks/swift/Package.resolved', 'sdks/swift/Package.swift') }}
+      - name: Build the Swift driver (once)
+        run: swift build -c release --package-path tools/live-peer/drivers/swift/live-peer-swift
+      - name: Live matrix (swift with node and python)
+        env:
+          PKEY_LIVE_PYTHON: ${{ github.workspace }}/sdks/python/.venv/bin/python
+        run: node tools/live-peer/run.mjs --matrix macos
 
   # The Swift SDK on the OLDEST toolchain it supports: the half of the old `swift` job that `apple`
   # does not repeat (P0-43). sdks/swift/Package.swift is `swift-tools-version: 6.0`, and the Xcode 26+
@@ -1941,6 +1993,7 @@ jobs:
         godot,
         e2e-backend,
         connect-live,
+        connect-live-macos,
         docs-snippets,
       ]
     runs-on: ubuntu-latest
