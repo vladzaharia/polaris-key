@@ -109,8 +109,6 @@ export const CONNECT_LAYOUTS: Readonly<Record<ConnectScreenName, Layout>> = {
       "common.done",
       "common.tryAgain",
       "localPairing.openSettings",
-      "core.codes.nearby-permission-denied.message",
-      "core.codes.local-pairing-off.message",
       "devices.renameFailed",
     ],
   },

@@ -123,9 +123,22 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
 /* The window is opening: the tile holds its place, and the bars appear after the DL7 delay so a
    fast start does not flash. */
 .pk-root .pair-code[data-wait] {
-  min-block-size: 4.5rem;
+  min-block-size: calc(1.2em + 2 * var(--pk-space-3));
   align-items: center;
   gap: var(--pk-space-2);
+}
+.pk-root .pair-show [data-ghost] {
+  visibility: hidden;
+}
+.pk-root .pair-show .qr[data-ghost] {
+  inline-size: 11.5rem;
+  aspect-ratio: 1;
+  margin: 0;
+}
+@container pk (max-height: 30rem) {
+  .pk-root .pair-show .qr[data-ghost] {
+    inline-size: 10rem;
+  }
 }
 .pk-root .pair-skel {
   display: block;
@@ -218,6 +231,13 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
   justify-self: start;
   min-block-size: 1.5rem;
 }
+.pk-root .pair-notice[data-lone] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: var(--pk-space-3);
+}
 .pk-root .pair-wait {
   padding: var(--pk-space-3) var(--pk-space-4);
   border-radius: var(--pk-kit-radius-control);
@@ -291,7 +311,7 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
   opacity: 0.6;
 }
 @container pk (min-width: 37.5rem) {
-  .pk-root[data-component="LocalPairing"][data-state="show"] .stage[data-kind="screen"] .card {
+  .pk-root[data-component="LocalPairing"]:is([data-state="show"], [data-state="opening"]) .stage[data-kind="screen"] .card {
     inline-size: min(46rem, 100%);
   }
   .pk-root .pair-show {
@@ -337,11 +357,11 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
     gap: var(--pk-space-2);
   }
   @container pk (min-width: 37.5rem) {
-    .pk-root[data-component="LocalPairing"][data-state="show"] .stage[data-kind="screen"] {
+    .pk-root[data-component="LocalPairing"]:is([data-state="show"], [data-state="opening"]) .stage[data-kind="screen"] {
       align-content: start;
       padding-block: var(--pk-space-3);
     }
-    .pk-root[data-component="LocalPairing"][data-state="show"] .card {
+    .pk-root[data-component="LocalPairing"]:is([data-state="show"], [data-state="opening"]) .card {
       gap: var(--pk-space-2);
       padding-block: var(--pk-space-4);
     }
@@ -434,6 +454,15 @@ const LOCAL_CSS = `${PAIR_SHARED_CSS}
   padding-inline: var(--pk-space-4);
   gap: var(--pk-space-2);
   background: color-mix(in srgb, var(--pk-accent-fg) 8%, transparent);
+}
+/* The tint follows the list's rounded corners (the list cannot clip: an upward menu leaves it). */
+.pk-root .pair-row[data-editing]:first-child {
+  border-start-start-radius: var(--pk-kit-radius-group);
+  border-start-end-radius: var(--pk-kit-radius-group);
+}
+.pk-root .pair-row[data-editing]:last-child {
+  border-end-start-radius: var(--pk-kit-radius-group);
+  border-end-end-radius: var(--pk-kit-radius-group);
 }
 .pk-root .pair-name {
   display: block;
@@ -638,6 +667,7 @@ function Notice(props: {
       data-part="callout"
       data-tone="neutral"
       data-glyph={glyph ? "" : undefined}
+      data-lone={action && !body ? "" : undefined}
     >
       {glyph}
       <span className="callout-title" data-key={title}>
@@ -658,6 +688,9 @@ function Announce(props: { children?: ReactNode }): ReactNode {
     </div>
   );
 }
+
+/** A sentence without its closing full stop, so joining sentences never doubles it. */
+const unstop = (s: string): string => s.replace(/[.。]+\s*$/u, "");
 
 /** The time left, spoken to the minute and never rounded up: "4:51" is "4:00", under a minute
  *  "0:30" or "0:00". */
@@ -893,7 +926,16 @@ function OpeningBody(props: { c: KitCtx }): ReactNode {
           <span className="pair-skel" aria-hidden="true" />
           <span className="pair-skel" aria-hidden="true" />
         </span>
+        <p className="pair-time" data-ghost="" aria-hidden="true">
+          <span className="pair-ring" />
+          <span>{plain(c, "localPairing.expires", { time: "5:00" })}</span>
+        </p>
       </div>
+      <figure className="qr" data-ghost="" aria-hidden="true" />
+      <p className="pair-wait" data-ghost="" aria-hidden="true">
+        <span className="pair-dot" />
+        <span>{plain(c, "localPairing.waitingDevice")}</span>
+      </p>
       <ShowFoot c={c} />
     </div>
   );
@@ -964,7 +1006,7 @@ function ShowBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
       <Announce>
         {said ? (
           <>
-            {plain(c, said[0])}. {plain(c, said[1])}.{" "}
+            {unstop(plain(c, said[0]))}. {unstop(plain(c, said[1]))}.{" "}
             {n !== "blocked" ? (
               <span data-key="a11y.newCode">
                 {plain(c, "a11y.newCode", { code: spellOut(p.code ?? "") })}
@@ -1212,22 +1254,13 @@ function PairedBody(props: { c: KitCtx; x: LocalExtras }): ReactNode {
   );
 }
 
-/** A refusal or an end: its reason leads (the lede under the title), then the way out. Close is the
- *  filled control only where the view says so. */
-function ClosingBody(props: {
-  c: KitCtx;
-  keys: string[];
-  reason?: string;
-}): ReactNode {
-  const { c, keys, reason } = props;
+/** A refusal or an end: its reason is the header's lede (under the title, as every screen draws
+ *  one), then the way out here. Close is the filled control only where the view says so. */
+function ClosingBody(props: { c: KitCtx; keys: string[] }): ReactNode {
+  const { c, keys } = props;
   const primary = c.view.decisions.primary;
   return (
     <div className="pair-stack">
-      {reason && has(c, reason) ? (
-        <p className="body" data-key={reason}>
-          {text(c, reason)}
-        </p>
-      ) : null}
       <div className="pair-actions">
         {keys.map((k) => button(c, k, k === primary ? "primary" : "secondary"))}
       </div>
@@ -1271,7 +1304,6 @@ function localBody(c: KitCtx, x: LocalExtras): ReactNode {
       return (
         <ClosingBody
           c={c}
-          reason="core.codes.nearby-permission-denied.message"
           keys={[
             ...(has(c, "localPairing.openSettings")
               ? ["localPairing.openSettings"]
@@ -1282,13 +1314,7 @@ function localBody(c: KitCtx, x: LocalExtras): ReactNode {
         />
       );
     case "off":
-      return (
-        <ClosingBody
-          c={c}
-          reason="core.codes.local-pairing-off.message"
-          keys={["common.close"]}
-        />
-      );
+      return <ClosingBody c={c} keys={["common.close"]} />;
     default:
       return null;
   }
@@ -1653,7 +1679,12 @@ function Row(props: {
             aria-describedby={hint}
             onChange={(ev) => c.edit("draft", ev.currentTarget.value)}
             onKeyDown={(ev) => {
-              if (ev.key === "Enter") c.act("common.save");
+              if (ev.key !== "Enter") return;
+              // Saved from the keydown, which is then consumed: a store that answers at once moves
+              // focus to the row's button inside this event, and the keypress that follows would
+              // press it and reopen the menu.
+              ev.preventDefault();
+              c.act("common.save");
             }}
           />
         </div>
@@ -1741,14 +1772,53 @@ function Row(props: {
   );
 }
 
+/** Where focus goes: a row's button, or the heading. */
+type FocusAt = { kind: "row"; id: string } | { kind: "title" };
+
 /** What a driven list knows beyond the view: the draft name, where focus goes after Forget. */
 export interface PairedExtras {
   /** The rename field's text; null draws the name now held. */
   draft: string | null;
-  focus: { kind: "row"; id: string } | { kind: "title" } | null;
+  focus: FocusAt | null;
+}
+
+/** The host's answers about a device, said by the status region that is always in the page (the
+ *  notice itself comes and goes, so its own appearing would not be announced). */
+function pairedAnnounce(c: KitCtx): ReactNode {
+  const n = c.input.pairedDevices?.notice;
+  const say = (...keys: string[]): ReactNode =>
+    keys.map((k, i) => (
+      <Fragment key={k}>
+        {i > 0 ? " " : null}
+        {unstop(plain(c, k))}.
+      </Fragment>
+    ));
+  return (
+    <Announce>
+      {n?.kind === "not-found"
+        ? say("pairedDevices.notFoundTitle", "pairedDevices.notFoundBody")
+        : n?.kind === "busy"
+          ? say("pairedDevices.busyTitle")
+          : n?.kind === "unknown"
+            ? say(
+                "core.codes.link-unknown.title",
+                "core.codes.link-unknown.message",
+              )
+            : null}
+    </Announce>
+  );
 }
 
 function pairedBody(c: KitCtx, x: PairedExtras): ReactNode {
+  return (
+    <>
+      {pairedInner(c, x)}
+      {pairedAnnounce(c)}
+    </>
+  );
+}
+
+function pairedInner(c: KitCtx, x: PairedExtras): ReactNode {
   const p = c.input.pairedDevices!;
   const devices = p.devices ?? [];
   const state = c.view.state;
@@ -1903,12 +1973,13 @@ function Rows(props: {
     let live = true;
     queueMicrotask(() => {
       if (!live) return;
-      if (to.kind === "title")
-        root.querySelector<HTMLElement>("h1,h2,[data-part=title]")?.focus();
-      else
-        root
-          .querySelector<HTMLElement>(`[data-row="${to.id}"] .pair-more`)
-          ?.focus();
+      const row =
+        to.kind === "row"
+          ? root.querySelector<HTMLElement>(`[data-row="${to.id}"] .pair-more`)
+          : null;
+      (
+        row ?? root.querySelector<HTMLElement>("h1,h2,[data-part=title]")
+      )?.focus();
     });
     return () => {
       live = false;
@@ -1951,6 +2022,24 @@ export interface PairedDevicesProps extends KitProps {
  */
 export function PairedDevices(props: PairedDevicesProps): ReactNode {
   if (props.driver) return <DrivenDevices {...props} driver={props.driver} />;
+  return <PlainDevices {...props} />;
+}
+
+/** Try again on a device's answer removes the button that was pressed: focus goes to that device's
+ *  button (or the heading if the device left), drawn after the answer is gone. A newer focus the
+ *  list asks for (after Forget) wins. */
+function useRetryFocus(
+  asked: FocusAt | null,
+): [FocusAt | null, (id: string) => void] {
+  const [at, set] = useState<{ to: FocusAt; over: FocusAt | null } | null>(
+    null,
+  );
+  const mark = (id: string) => set({ to: { kind: "row", id }, over: asked });
+  return [at && at.over === asked ? at.to : asked, mark];
+}
+
+function PlainDevices(props: PairedDevicesProps): ReactNode {
+  const [focus, mark] = useRetryFocus(null);
   const input =
     props.notice && props.input?.pairedDevices
       ? {
@@ -1968,12 +2057,14 @@ export function PairedDevices(props: PairedDevicesProps): ReactNode {
       name="PairedDevices"
       input={input}
       escape={connectEscape}
-      body={(c) => pairedBody(c, { draft: null, focus: null })}
+      body={(c) => pairedBody(c, { draft: null, focus })}
       route={(a) => {
         if (a.key === "common.done") props.onClose?.();
         if (a.key === "pairedDevices.pair") props.onPair?.();
-        if (a.key === "common.tryAgain" && typeof a.id === "string")
+        if (a.key === "common.tryAgain" && typeof a.id === "string") {
+          mark(a.id);
           props.onRetry?.(a.id);
+        }
       }}
     />
   );
@@ -1988,6 +2079,7 @@ function DrivenDevices(
     notice: props.notice,
   });
   const { model, snapshot } = list;
+  const [focus, mark] = useRetryFocus(snapshot.focus);
   const told = useRef(false);
   useEffect(() => {
     if (snapshot.left && !told.current) {
@@ -2006,9 +2098,7 @@ function DrivenDevices(
         if (field === "draft") model.setDraft(value);
         props.onInput?.(field, value);
       }}
-      body={(c) =>
-        pairedBody(c, { draft: snapshot.draft, focus: snapshot.focus })
-      }
+      body={(c) => pairedBody(c, { draft: snapshot.draft, focus })}
       route={(a) => {
         const id = typeof a.id === "string" ? a.id : undefined;
         switch (a.key) {
@@ -2039,7 +2129,10 @@ function DrivenDevices(
                 ? a.id
                 : (snapshot.notice?.id ?? props.notice?.id);
             model.report("", null);
-            if (id) props.onRetry?.(id);
+            if (id) {
+              mark(id);
+              props.onRetry?.(id);
+            }
             break;
           }
           case "pairedDevices.pair":

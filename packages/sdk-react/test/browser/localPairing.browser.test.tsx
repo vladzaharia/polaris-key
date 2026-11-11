@@ -11,7 +11,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createRoot, type Root } from "react-dom/client";
-import { commands, page } from "vitest/browser";
+import { commands, page, userEvent } from "vitest/browser";
 import type { ReactNode } from "react";
 
 import * as Kit from "@polaris-key/react/kit";
@@ -512,13 +512,26 @@ const pairingNode = (d: Kit.LocalLinksLike): ReactNode => (
     theme={{ product: PRODUCT, colorScheme: "dark" }}
   />
 );
-const devicesNode = (d: Kit.LocalLinksLike): ReactNode => (
+const devicesNode = (
+  d: Kit.LocalLinksLike,
+  over: Partial<Kit.PairedDevicesProps> = {},
+): ReactNode => (
   <Kit.PairedDevices
     driver={d}
     fill
     theme={{ product: PRODUCT, colorScheme: "dark" }}
+    {...over}
   />
 );
+
+/** A 900 x 700 window with the list of devices `a`, `b` drawn and read. */
+async function listed(over: Partial<Kit.PairedDevicesProps> = {}) {
+  await page.viewport(900, 700);
+  const driver = fakeDriver([link("a"), link("b")]).driver;
+  const kit = await mountNode(devicesNode(driver, over));
+  await until(() => kit.querySelector("[data-row]"), "the rows");
+  return { kit, driver };
+}
 
 /** The shower's screen with its first code up, at a window size. */
 async function showing(width: number, height: number) {
@@ -579,6 +592,112 @@ describe("focus and what is announced", () => {
         ),
       "the answer in a status region",
     );
+  });
+});
+
+describe("the rename field and a device's answer", () => {
+  it("Enter saves a rename, closes it and leaves focus on the button with the menu closed", async () => {
+    const { kit } = await listed();
+    press(kit.querySelector('[data-row="a"] .pair-more'));
+    press(key(kit, "devices.rename"));
+    await until(() => kit.querySelector("input"), "the rename field");
+    const field = kit.querySelector("input")!;
+    await until(() => document.activeElement === field, "focus in the field");
+    await userEvent.fill(field, "Studio Mac");
+    // A real Enter: its keypress follows the keydown, and lands wherever focus has moved to.
+    await userEvent.keyboard("{Enter}");
+    await until(() => !kit.querySelector("input"), "the field to close");
+    // The row was redrawn, so the button is a new element: look it up again.
+    const button = (): HTMLElement =>
+      kit.querySelector<HTMLElement>('[data-row="a"] .pair-more')!;
+    await until(() => document.activeElement === button(), "focus on button");
+    await frame();
+    await frame();
+    expect(document.activeElement).toBe(button());
+    expect(button().getAttribute("aria-expanded")).toBe("false");
+    expect(
+      kit.querySelector<HTMLElement>('[data-row="a"] .pair-menu')!.hidden,
+    ).toBe(true);
+  });
+
+  it("Try again on a device's answer puts focus on that device's button", async () => {
+    let retried = "";
+    const { kit } = await listed({
+      notice: { kind: "busy", id: "b", device: "Device b" },
+      onRetry: (id) => {
+        retried = id;
+      },
+    });
+    press(key(kit, "common.tryAgain"));
+    await until(
+      () =>
+        document.activeElement ===
+        kit.querySelector('[data-row="b"] .pair-more'),
+      "focus on the device's button",
+    );
+    expect(retried).toBe("b");
+  });
+
+  it("a host's answer is told by the status region that was already there", async () => {
+    const { kit, driver } = await listed();
+    const before = [...kit.querySelectorAll('[role="status"]')];
+    stage.root!.render(
+      devicesNode(driver, {
+        notice: { kind: "busy", id: "a", device: "Device a" },
+      }),
+    );
+    await until(
+      () =>
+        before.some(
+          (n) => n.isConnected && /is busy/.test(n.textContent ?? ""),
+        ),
+      "the answer in a status region that was there before",
+    );
+  });
+});
+
+describe("the opening step and the announcements", () => {
+  it("the opening step holds the show layout: the card does not jump when the code arrives", async () => {
+    for (const [w, h] of [
+      [1280, 800],
+      [390, 844],
+    ] as const) {
+      await page.viewport(w, h);
+      const f = fakeDriver();
+      const kit = await mountNode(pairingNode(f.driver));
+      press(key(kit, "localPairing.show"));
+      await until(() => f.seen.pair, "the window");
+      await frame();
+      const card = (): number =>
+        kit.querySelector<HTMLElement>(".card")!.getBoundingClientRect().height;
+      const opening = card();
+      const dump = (): string =>
+        [...kit.querySelector(".pair-show")!.children]
+          .map(
+            (e) =>
+              `${e.className}:${Math.round(e.getBoundingClientRect().height)}`,
+          )
+          .join(" ");
+      const d0 = dump();
+      f.seen.pair!.onCode(code("4812 3456"));
+      await until(() => key(kit, "a11y.linkCode"), "the code");
+      await frame();
+      expect(
+        Math.abs(card() - opening),
+        `${w}x${h} ${d0} -> ${dump()}`,
+      ).toBeLessThanOrEqual(1.5);
+    }
+  });
+
+  it("a notice is announced as sentences, never a doubled full stop", async () => {
+    const { f, kit } = await showing(1280, 800);
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    await until(() => key(kit, "localPairing.showNew"), "the notice");
+    const said = [...kit.querySelectorAll('[role="status"]')]
+      .map((n) => n.textContent ?? "")
+      .find((t) => /New code/.test(t));
+    expect(said).toBeDefined();
+    expect(said).not.toMatch(/\.\./);
   });
 });
 
