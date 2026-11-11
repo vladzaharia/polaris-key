@@ -28,6 +28,7 @@ import { Callout } from "../../../../ui/Callout.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
+import { StepUpNotice, useStepUpDraft } from "../../../../ui/useStepUpDraft.js";
 import { toast } from "../../../../ui/toast.js";
 import { CheckRow, type RowState } from "../../../components/CheckRow.js";
 import { mutate } from "../../../data/mutations.js";
@@ -182,6 +183,7 @@ export function LinkRepositoryDrawer({
   open,
   onClose,
   onLinked,
+  onReopen,
 }: {
   slug: string;
   productName: string;
@@ -189,6 +191,8 @@ export function LinkRepositoryDrawer({
   onClose: () => void;
   /** Called with what the link applied, after the drawer closes. */
   onLinked?: (result: LinkExistingResult) => void;
+  /** Open the drawer again: after a step-up sign-in that left the repository typed here. */
+  onReopen?: () => void;
 }): React.ReactElement {
   const [repoUrl, setRepoUrl] = React.useState("");
   const [phase, setPhase] = React.useState<
@@ -198,17 +202,24 @@ export function LinkRepositoryDrawer({
   const [refusal, setRefusal] = React.useState<Refusal | null>(null);
   const [linking, setLinking] = React.useState(false);
   const busy = phase === "checking" || linking;
+  // Linking applies a whole manifest, so the Worker asks for a fresh sign-in first; the typed
+  // repository survives it and is checked again on return.
+  const stepUp = useStepUpDraft(`link-repo:${slug}`, open, () => onReopen?.());
 
   React.useEffect(() => {
     if (!open) return;
-    setRepoUrl("");
+    const saved = stepUp.take()?.repoUrl ?? "";
+    setRepoUrl(saved);
     setPhase("idle");
     setChecked(null);
     setRefusal(null);
+    if (saved) void check(saved);
+    // On open only: `check` reads the state this effect just set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const check = async (): Promise<void> => {
-    const url = repoUrl.trim();
+  const check = async (typed: string = repoUrl): Promise<void> => {
+    const url = typed.trim();
     if (!url || busy) return;
     setPhase("checking");
     setRefusal(null);
@@ -225,6 +236,7 @@ export function LinkRepositoryDrawer({
 
   const link = async (): Promise<void> => {
     if (!checked || busy) return;
+    if (stepUp.needed) return stepUp.signIn({ repoUrl: repoUrl.trim() });
     setLinking(true);
     try {
       const res = await mutate(
@@ -237,6 +249,8 @@ export function LinkRepositoryDrawer({
       onClose();
       onLinked?.(res);
     } catch (err) {
+      // The check and its plan stay on screen: signing in again keeps them.
+      if (stepUp.check(err)) return;
       setRefusal(linkRefusal(err, { slug, repository: checked.repository }));
       setChecked(null);
       setPhase("refused");
@@ -342,6 +356,9 @@ export function LinkRepositoryDrawer({
             })}
           </ul>
 
+          {stepUp.needed ? (
+            <StepUpNotice why="Linking applies the repository's manifest, which needs a sign-in from the last 5 minutes." />
+          ) : null}
           {refusal ? (
             <Callout tone="danger" title={refusal.title} live>
               <p>{refusal.description}</p>
@@ -420,7 +437,11 @@ export function LinkRepositoryDrawer({
                   : undefined
             }
           >
-            {removes > 0 ? `Link and remove ${removes}` : "Link repository"}
+            {stepUp.needed
+              ? "Sign in again"
+              : removes > 0
+                ? `Link and remove ${removes}`
+                : "Link repository"}
           </Button>
         </DrawerFooter>
       </form>

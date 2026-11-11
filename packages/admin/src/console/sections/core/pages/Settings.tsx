@@ -577,6 +577,7 @@ function RepositorySection({
           productName={product.name}
           open={linking}
           onClose={() => setLinking(false)}
+          onReopen={() => setLinking(true)}
           onLinked={(res) =>
             setResult({
               title: `Linked to ${res.repository}`,

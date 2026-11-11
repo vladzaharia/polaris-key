@@ -373,6 +373,7 @@ export function FirstReleasePanel({
           productName={productName}
           open={linking}
           onClose={() => setLinking(false)}
+          onReopen={() => setLinking(true)}
         />
       ) : null}
     </section>
