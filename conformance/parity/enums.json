@@ -330,14 +330,15 @@
     },
     {
       "name": "localPairFailure",
-      "description": "Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled).",
+      "description": "Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled), `cooldown` (a new window or renewal inside the 30 s the SDK waits after a too-many-tries end or a second wrong-code window, WIRE-CONTRACT-V5 §15.12).",
       "values": [
         "declined",
         "timeout",
         "full",
         "too-many-tries",
         "closed",
-        "cancelled"
+        "cancelled",
+        "cooldown"
       ]
     },
     {

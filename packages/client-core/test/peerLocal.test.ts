@@ -7,6 +7,7 @@ import {
   DialBudget,
   JoinPlan,
   NameplateMemory,
+  RenewFloor,
   dialsLeft,
   PairingWindow,
   displayCode,
@@ -149,6 +150,43 @@ describe("NameplateMemory", () => {
     expect(m.recent(400)).toEqual([]);
     m.shown("48", 500);
     expect(m.recent(700)).toEqual(["48"]);
+  });
+});
+
+describe("NameplateMemory.draw", () => {
+  const stream =
+    (...b: number[]) =>
+    (n: number) =>
+      b.length >= n ? Uint8Array.from(b.splice(0, n)) : null;
+  const two = (n: number): string => String(n).padStart(2, "0");
+
+  it("draws among the nameplates it does not hold", () => {
+    const m = new NameplateMemory();
+    m.shown("48", 0);
+    expect(m.draw(stream(48, 55), 10)).toBe("55");
+  });
+
+  it("holding all 100 takes the oldest close, the lowest on a tie, and reads no byte", () => {
+    const m = new NameplateMemory();
+    for (let i = 0; i < 100; i++) m.shown(two(i), i < 50 ? 20 : 10);
+    const s = stream(1, 2);
+    expect(m.draw(s, 30)).toBe("50");
+    expect(s(2)).not.toBeNull();
+  });
+});
+
+describe("RenewFloor", () => {
+  it("one wrong-code end is free, the second within 600 s starts 30 s, and too-many-tries starts 30 s at once", () => {
+    const f = new RenewFloor();
+    f.ended("wrong-code", 0);
+    expect(f.check(1).allowed).toBe(true);
+    f.ended("wrong-code", 599);
+    expect(f.check(600)).toEqual({ allowed: false, retryIn: 29 });
+    expect(f.check(629).allowed).toBe(true);
+    const g = new RenewFloor();
+    g.ended("too-many-tries", 5);
+    expect(g.check(34)).toEqual({ allowed: false, retryIn: 1 });
+    expect(g.check(35).allowed).toBe(true);
   });
 });
 

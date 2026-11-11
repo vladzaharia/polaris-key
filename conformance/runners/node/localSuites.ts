@@ -9,6 +9,10 @@ import {
   GATED_CALLS,
   JoinPlan,
   NameplateMemory,
+  RenewFloor,
+  LOCAL_RENEW_COOLDOWN_SECONDS,
+  LOCAL_RENEW_WRONG_LIMIT,
+  LOCAL_RENEW_WRONG_SECONDS,
   type JoinInput,
   LocalPairingGate,
   LocalExchange,
@@ -181,6 +185,19 @@ export interface LocalSection {
     }[];
     want: { allowed: boolean; used: number }[];
   }[];
+  renewFloor: {
+    cooldownSeconds: number;
+    wrongSeconds: number;
+    wrongLimit: number;
+    rows: {
+      id: string;
+      events: (
+        | { t: number; ended: "too-many-tries" | "wrong-code" }
+        | { t: number; check: true }
+      )[];
+      want: { allowed: boolean; retryIn: number }[];
+    }[];
+  };
   nameplateMemory: {
     seconds: number;
     rows: {
@@ -676,11 +693,34 @@ export function registerLocalSuites(
             continue;
           }
           const s = stream(e.draw);
-          const inUse = [...e.inUse, ...memory.recent(e.t)];
           got.push({
-            nameplate: drawNameplate(s.source, inUse),
+            nameplate: memory.draw(s.source, e.t),
             consumed: s.consumed(),
           });
+        }
+        expect(got).toEqual(r.want);
+      });
+  });
+
+  describe("peer-matrix local: renewFloor", () => {
+    it("the constants", () => {
+      expect([
+        l.renewFloor.cooldownSeconds,
+        l.renewFloor.wrongSeconds,
+        l.renewFloor.wrongLimit,
+      ]).toEqual([
+        LOCAL_RENEW_COOLDOWN_SECONDS,
+        LOCAL_RENEW_WRONG_SECONDS,
+        LOCAL_RENEW_WRONG_LIMIT,
+      ]);
+    });
+    for (const r of l.renewFloor.rows)
+      it(r.id, () => {
+        const floor = new RenewFloor();
+        const got: { allowed: boolean; retryIn: number }[] = [];
+        for (const e of r.events) {
+          if ("ended" in e) floor.ended(e.ended, e.t);
+          else got.push(floor.check(e.t));
         }
         expect(got).toEqual(r.want);
       });

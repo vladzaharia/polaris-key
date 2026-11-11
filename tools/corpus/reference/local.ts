@@ -849,8 +849,10 @@ export interface MemoryStep {
 }
 
 /**
- * A draw skips every nameplate in `inUse` and every nameplate whose window closed less than 300 s
- * before the draw; with all 100 skipped it draws among all. Returns one step per draw.
+ * The draw skips every nameplate whose window closed less than 300 s before it, and nothing else:
+ * `inUse` (the adverts other windows show, which no one authenticated) is ignored. With all 100
+ * remembered it takes the one that closed longest ago (the lowest on a tie), reading no byte.
+ * Returns one step per draw.
  */
 export function refNameplateMemory(
   events: readonly MemoryEvent[],
@@ -862,15 +864,70 @@ export function refNameplateMemory(
       closedAt.set(e.shown, Math.max(e.t, closedAt.get(e.shown) ?? e.t));
       continue;
     }
-    const skipped = new Set<number>(e.inUse.map(Number));
-    for (const [n, at] of closedAt)
-      if (e.t - at < REF_DIAL_BUDGET_SECONDS) skipped.add(Number(n));
-    const d = refNameplate(e.draw, [...skipped]);
+    const live = [...closedAt].filter(
+      ([, at]) => e.t - at < REF_DIAL_BUDGET_SECONDS,
+    );
+    if (live.length >= 100) {
+      let best = live[0]!;
+      for (const c of live)
+        if (c[1] < best[1] || (c[1] === best[1] && c[0] < best[0])) best = c;
+      out.push({ nameplate: best[0], consumed: 0 });
+      continue;
+    }
+    const d = refNameplate(
+      e.draw,
+      live.map(([n]) => Number(n)),
+    );
     out.push({
       nameplate: d.value === null ? null : refNameplateText(d.value),
       consumed: d.consumed,
     });
   }
+  return out;
+}
+
+// ── The renewal floor (§15.12, "The code") ───────────────────────────────────
+
+export const REF_RENEW_COOLDOWN_SECONDS = 30;
+export const REF_RENEW_WRONG_SECONDS = 600;
+export const REF_RENEW_WRONG_LIMIT = 2;
+
+/** A window ended (`too-many-tries`, or `wrong-code`: it counted a failed guess) or a check. */
+export type RenewEvent =
+  | { t: number; ended: "too-many-tries" | "wrong-code" }
+  | { t: number; check: true };
+
+export interface RenewStep {
+  allowed: boolean;
+  /** Whole seconds until a window may open; 0 when allowed. */
+  retryIn: number;
+}
+
+/**
+ * After a too-many-tries end, or the second wrong-code end in a 600 s span, no window opens for
+ * 30 s from that end. Recomputed from the full history at each check. Returns one step per check.
+ */
+export function refRenewFloor(events: readonly RenewEvent[]): RenewStep[] {
+  const out: RenewStep[] = [];
+  events.forEach((e, i) => {
+    if (!("check" in e)) return;
+    let until = -Infinity;
+    const wrongs: number[] = [];
+    for (const p of events.slice(0, i)) {
+      if (!("ended" in p)) continue;
+      if (p.ended === "wrong-code") {
+        const inSpan = wrongs.filter((w) => p.t - w < REF_RENEW_WRONG_SECONDS);
+        wrongs.push(p.t);
+        if (inSpan.length + 1 < REF_RENEW_WRONG_LIMIT) continue;
+      }
+      until = Math.max(until, p.t + REF_RENEW_COOLDOWN_SECONDS);
+    }
+    out.push(
+      e.t >= until
+        ? { allowed: true, retryIn: 0 }
+        : { allowed: false, retryIn: Math.ceil(until - e.t) },
+    );
+  });
   return out;
 }
 

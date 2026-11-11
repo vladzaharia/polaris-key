@@ -288,9 +288,11 @@ export class Joiner {
       this.#qrGen !== null
         ? this.#qrGen
         : await cpaceGenerator(cpacePrsCode(this.#password!), this.#ci, sid);
+    // A join cancelled while the generator was being made wipes what it made at once.
     const y = cpaceScalar(this.#env.random);
-    this.#secrets.push(y);
-    if (this.#qrGen === null) this.#secrets.push(gen);
+    this.#keep(y);
+    if (this.#qrGen === null) this.#keep(gen);
+    if (this.#done) return;
     const ya = await cpaceShare(y, gen);
     if (ya === null) return this.#plan.ended("before-c2");
     if (this.#done) return;
@@ -323,12 +325,13 @@ export class Joiner {
       yb: reply,
       role: "initiator",
     });
+    if (isk !== null) this.#keep(isk);
     if (isk === null || this.#done) {
       socket.destroy();
       return this.#plan.ended("before-c2");
     }
     const psk = await cpacePsk(isk, this.src.slug);
-    this.#secrets.push(isk, psk);
+    this.#keep(psk);
     const held = await this.src.store.count();
     if (this.#done) {
       socket.destroy();
@@ -461,6 +464,12 @@ export class Joiner {
         err instanceof Error ? err : new Error("The link was not stored."),
       );
     }
+  }
+
+  /** Hold a secret until the join ends; one made after it ended is wiped at once. */
+  #keep(...secrets: Uint8Array[]): void {
+    if (this.#done) for (const k of secrets) k.fill(0);
+    else this.#secrets.push(...secrets);
   }
 
   #finish(err?: Error, ok?: LocalPaired): void {

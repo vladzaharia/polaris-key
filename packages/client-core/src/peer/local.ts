@@ -89,8 +89,8 @@ export function drawNameplate(
 /**
  * The nameplates this device showed for one product in windows that closed less than
  * `LOCAL_DIAL_BUDGET_SECONDS` (300) ago (§15.12, "The code"), in memory. The shower's draw skips
- * them too, so a renewed window never reuses the nameplate of the window just closed, whose dials
- * a joiner may have spent. Hold one per product for the life of the process, like `DialBudget`.
+ * them, so a renewed window never reuses the nameplate of the window just closed, whose dials a
+ * joiner may have spent. Hold one per product for the life of the process, like `DialBudget`.
  */
 export class NameplateMemory {
   private readonly closed = new Map<string, number>();
@@ -100,11 +100,68 @@ export class NameplateMemory {
     this.closed.set(nameplate, Math.max(t, this.closed.get(nameplate) ?? t));
   }
 
-  /** The nameplates of windows that closed less than 300 s before `t`, to add to `inUse`. */
+  /** The nameplates of windows that closed less than 300 s before `t`. */
   recent(t: number): string[] {
     for (const [n, at] of this.closed)
       if (t - at >= LOCAL_DIAL_BUDGET_SECONDS) this.closed.delete(n);
     return [...this.closed.keys()];
+  }
+
+  /**
+   * The shower's draw, in two tiers. First among the nameplates this memory does not hold: the
+   * adverts of other windows are not authenticated, so they never steer it. Only when it holds all
+   * 100, the one that closed longest ago (the lowest on a tie), with no byte read. Null when the
+   * source runs out.
+   */
+  draw(source: DrawSource, t: number): string | null {
+    const held = this.recent(t);
+    if (held.length < 100) return drawNameplate(source, held);
+    let best = "";
+    let at = Infinity;
+    for (const [n, c] of [...this.closed].sort(([a], [b]) => (a < b ? -1 : 1)))
+      if (c < at) [best, at] = [n, c];
+    return best;
+  }
+}
+
+/** The SDK's renewal floor (§15.12, "The code"): refuse a new window for this long after a hard end. */
+export const LOCAL_RENEW_COOLDOWN_SECONDS = 30;
+/** Two windows that ended after a wrong guess within this many seconds start the cooldown. */
+export const LOCAL_RENEW_WRONG_SECONDS = 600;
+/** How many such windows start the cooldown. */
+export const LOCAL_RENEW_WRONG_LIMIT = 2;
+
+/**
+ * How a window ended, for `RenewFloor`: `too-many-tries` (the fifth failed guess) or `wrong-code`
+ * (any other end of a window that had counted a failed guess, a `renew()` replacement included).
+ */
+export type RenewEnd = "too-many-tries" | "wrong-code";
+
+/**
+ * The renewal floor, one per product for the life of the process, beside `DialBudget`. After a
+ * `too-many-tries` end, or the second `wrong-code` end within 600 s, no window opens for 30 s, so
+ * a host that renews from `onEnd` with no person cannot give a guesser windows at machine speed.
+ * Times are monotonic seconds. In memory only.
+ */
+export class RenewFloor {
+  private until = -Infinity;
+  private wrong: number[] = [];
+
+  /** A window ended at `t`. */
+  ended(end: RenewEnd, t: number): void {
+    if (end === "wrong-code") {
+      this.wrong = this.wrong.filter((w) => t - w < LOCAL_RENEW_WRONG_SECONDS);
+      this.wrong.push(t);
+      if (this.wrong.length < LOCAL_RENEW_WRONG_LIMIT) return;
+    }
+    this.until = Math.max(this.until, t + LOCAL_RENEW_COOLDOWN_SECONDS);
+  }
+
+  /** Whether a window may open at `t`, and else the whole seconds until it may. */
+  check(t: number): { allowed: boolean; retryIn: number } {
+    return t >= this.until
+      ? { allowed: true, retryIn: 0 }
+      : { allowed: false, retryIn: Math.ceil(this.until - t) };
   }
 }
 
@@ -438,7 +495,8 @@ export type LocalPairFailureReason =
   | "full"
   | "too-many-tries"
   | "closed"
-  | "cancelled";
+  | "cancelled"
+  | "cooldown";
 
 /** Which limit `local-links-full` hit. */
 export type LocalLinksCap = "stored" | "reachable";

@@ -1762,7 +1762,7 @@ export const LOCAL_WINDOW_END_VALUES: readonly LocalWindowEnd[] = [
   "off",
 ];
 
-/** Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled). */
+/** Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled), `cooldown` (a new window or renewal inside the 30 s the SDK waits after a too-many-tries end or a second wrong-code window, WIRE-CONTRACT-V5 §15.12). */
 export const LocalPairFailure = {
   declined: "declined",
   timeout: "timeout",
@@ -1770,6 +1770,7 @@ export const LocalPairFailure = {
   tooManyTries: "too-many-tries",
   closed: "closed",
   cancelled: "cancelled",
+  cooldown: "cooldown",
 } as const;
 export type LocalPairFailure =
   (typeof LocalPairFailure)[keyof typeof LocalPairFailure];
@@ -1782,6 +1783,7 @@ export const LOCAL_PAIR_FAILURE_VALUES: readonly LocalPairFailure[] = [
   "too-many-tries",
   "closed",
   "cancelled",
+  "cooldown",
 ];
 
 /** The `reason` of `pairing-code-failed` on a joining device (WIRE-CONTRACT-V5 §15.12): `invalid` (the code or QR did not parse), `other-app` (a QR for another app), `spent` (the dial budget for the nameplate is used), `wrong` (an attempt failed after the other device's first reply). The first that applies wins, in that order, with `spent` at the start before `wrong`; a budget stop in the middle of a join is `spent`. */

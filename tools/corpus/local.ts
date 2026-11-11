@@ -39,6 +39,11 @@ import {
   refDialBudget,
   refJoinReason,
   refNameplateMemory,
+  refRenewFloor,
+  REF_RENEW_COOLDOWN_SECONDS,
+  REF_RENEW_WRONG_LIMIT,
+  REF_RENEW_WRONG_SECONDS,
+  type RenewEvent,
   refLocalAdmission,
   REF_ADMISSION_GROUP_PER_MINUTE,
   REF_ADMISSION_SHARED_PER_MINUTE,
@@ -1898,14 +1903,40 @@ function buildNameplateMemory(): unknown {
       ],
     },
     {
-      id: "the-memory-and-in-use-combine",
+      id: "in-use-adverts-do-not-steer-the-draw",
       events: [
         { t: 0, shown: "48" },
         { t: 5, draw: bytes(48, 12, 77), inUse: ["12"] },
       ],
     },
     {
-      id: "with-all-100-excluded-the-draw-is-among-all",
+      id: "with-all-100-remembered-the-oldest-is-taken",
+      events: [
+        ...Array.from(
+          { length: 100 },
+          (_, i): MemoryEvent => ({
+            t: 100 - i,
+            shown: two(i),
+          }),
+        ),
+        { t: 120, draw: bytes(48, 55), inUse: [] },
+      ],
+    },
+    {
+      id: "with-all-100-remembered-an-older-close-ties-to-the-lowest",
+      events: [
+        ...Array.from(
+          { length: 100 },
+          (_, i): MemoryEvent => ({
+            t: i < 50 ? 10 : 20,
+            shown: two(i),
+          }),
+        ),
+        { t: 30, draw: bytes(48), inUse: [] },
+      ],
+    },
+    {
+      id: "with-50-remembered-the-draw-is-among-the-rest-whatever-is-in-use",
       events: [
         ...first50.map((n, i): MemoryEvent => ({ t: i, shown: n })),
         { t: 60, draw: bytes(48, 55), inUse: last50 },
@@ -1920,6 +1951,75 @@ function buildNameplateMemory(): unknown {
         "draw" in e ? { ...e, draw: hex(e.draw) } : e,
       ),
       want: refNameplateMemory(r.events),
+    })),
+  };
+}
+
+// ── renewFloor ───────────────────────────────────────────────────────────────
+
+function buildRenewFloor(): unknown {
+  const rows: { id: string; events: RenewEvent[] }[] = [
+    {
+      id: "no-history-allows",
+      events: [{ t: 0, check: true }],
+    },
+    {
+      id: "too-many-tries-refuses-at-10-s",
+      events: [
+        { t: 100, ended: "too-many-tries" },
+        { t: 110, check: true },
+        { t: 129, check: true },
+      ],
+    },
+    {
+      id: "too-many-tries-allows-at-30-s",
+      events: [
+        { t: 100, ended: "too-many-tries" },
+        { t: 130, check: true },
+        { t: 500, check: true },
+      ],
+    },
+    {
+      id: "two-wrong-code-windows-in-10-min-refuse",
+      events: [
+        { t: 0, ended: "wrong-code" },
+        { t: 300, ended: "wrong-code" },
+        { t: 310, check: true },
+        { t: 330, check: true },
+      ],
+    },
+    {
+      id: "one-wrong-code-window-allows",
+      events: [
+        { t: 0, ended: "wrong-code" },
+        { t: 1, check: true },
+      ],
+    },
+    {
+      id: "wrong-code-windows-older-than-600-s-do-not-count",
+      events: [
+        { t: 0, ended: "wrong-code" },
+        { t: 600, ended: "wrong-code" },
+        { t: 601, check: true },
+      ],
+    },
+    {
+      id: "wrong-code-windows-at-599-s-apart-count",
+      events: [
+        { t: 0, ended: "wrong-code" },
+        { t: 599, ended: "wrong-code" },
+        { t: 600, check: true },
+      ],
+    },
+  ];
+  return {
+    cooldownSeconds: REF_RENEW_COOLDOWN_SECONDS,
+    wrongSeconds: REF_RENEW_WRONG_SECONDS,
+    wrongLimit: REF_RENEW_WRONG_LIMIT,
+    rows: rows.map((r) => ({
+      id: r.id,
+      events: r.events,
+      want: refRenewFloor(r.events),
     })),
   };
 }
@@ -2471,7 +2571,7 @@ export function buildLocal(): unknown {
     if (REF_X25519_LOW_ORDER_HEX[k]!.length !== 64)
       throw new Error("local: low-order reference");
   return {
-    note: "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. `exchange`: one side's pairing events in order (own-confirm, own-decline, peer-confirm, peer-link with the body text, timeout-confirm: the 120 s from the first byte ran out, timeout-exchange: the 30 s after both CONFIRMs ran out), with `held` the local links the device holds and `cats` this side's approved categories; `want` has one entry per step: what that step makes this side send (CONFIRM, LOCAL_LINK, the second once this side's CONFIRM is sent and the peer's read), the code it closes with, and the link it stores (`label`, and `cats` the entries both sides listed in byte order, then peer_bye); after a close nothing more happens, so a side that stored the first valid LOCAL_LINK (and closed peer_bye) never answers a second one (row link-twice-is-quiet-after-the-first); a decline before this side's CONFIRM closes peer_bye. `pin`: mode l checks the remote static key against the peer link key of the link whose secret opened the session (after message 2 for the initiator, after message 3 for the responder): a mismatch is peer_revoked and nothing is sent; mode q ends the handshake silently when the remote static key is this side's own link key. `trialOrder`: the shared listener's trial of message 1: account discKeys (null = none; two tried), then contact secrets (72 tried), then local-link secrets (32 tried), at most 104 secrets after the account keys; `opens` names the key whose tag verifies; `limiter` is what the contact limiter says to a contact or local-link trial; `want.tried` lists a:<i>, c:<i> and l:<i> in order, `dummy` the dummy trials that follow a miss so a silent close costs 106 trials (2 + 72 + 32) whatever the host holds (0 on a hit, on peer_busy and for a host with no contact or local-link secret, which the limiter does not cover), `hit` the key that decided, `slot` whether the connection holds a limiter slot until message 3 (a contact or local-link hit), `close` the silent end (peer_busy when the limiter refused before any secret was tried, handshake_failed otherwise). `window`: the pairing window's machine over events with a monotonic time t in seconds (open, c1 with `valid`, begin-guess, guess-opened, guess-failed, msg1 (begin-guess then its verdict, `opens`), abandon, rotated, session-end with `stored`, tick, close). A c1 that admits an attempt hands out its `id` (1, 2, ... across windows); an event that names an attempt carries its `id`, and without one it names the latest attempt handed out. A guess is counted when it is permitted (begin-guess, `permit`), before its tag is tried, and only the holder's own attempt is permitted, once; any other id, an expired or closed attempt, answers `denied` and its tag is never tried. A guess that opens is refunded (guess-opened); one that does not, and a connection that ends after its permit, is a failed guess (guess-failed, abandon), and the fifth closes the window. `want` has one entry per event: `result` (opened, already-open, closed, busy, limited, refused, attempt, permit, denied, transport, failed, too-many-tries), `id`, `open`, `holder` (attempt from a valid C1 until its guess or 30 s; session from a guess that opens until it ends; rotating, busy and uncounted, from a failed guess or a session that ends without a link until rotated, which the host sends once the new password, QR secret and both generators are ready), `failures` (guesses counted), `rotations`, `closed` (expired at 300 s, too-many-tries, stored, person) and `host`; a window admits at most 5 C1s in any 60 s, counted when it admits them. `joinBudget`: joins in time order; per nameplate at most 2 dials in any 300 s across joins (a join with no dial spends none, a refused join records none and answers pairing-code-failed without browsing), a QR is never limited; `want` has `allowed` and `used`, the dials of the nameplate in the last 300 s before the join. `join`: the joiner: `input` is what the reader said (a code's nameplate, a QR's instance or invalid), `adverts` the m=q adverts seen in first-seen order (`h` current, previous or other, `n` the nameplate), `dials` how each dial ends (transport, before-c2, after-c2); `want` has the instances kept (matching h and the nameplate or the instance, at most 8, once each), those dialled (at most 2, in order), whether anything was browsed, and the result: transport, pairing-code-failed (an invalid input, or no transport and an attempt failed after C2) or pairing-not-found. `gate`: the cached discovery answer (`start` on, off or none) over reads (ok with the discovery body, not-found, error) and calls; services.connect.localPairing is true only as the boolean true while services.connect.enabled is the boolean true; an ok read replaces the answer, a not-found clears it, an error changes nothing; a read that leaves a cached true behind has the effects close-windows, withdraw-adverts and end-sessions; a call that opens, joins, advertises, browses, dials or answers needs on and otherwise answers local-pairing-off, and list, rename, remove and set-reachable are never gated. `admission`: a listener that holds no account key (15.10, \"Admission\") over events in monotonic seconds, `{t, group, opens}` (a message 1 from a source group; `opens` whether a secret's tag verifies), `{t, group, opens, later: true}` (the same, but the trial's verdict comes later: the message is counted as it arrives and a step of `tried` has no `hit`), `{t, settle}` (the verdict of the `later` event at that index: step `settled` with `hit` = its `opens`; an opening trial refunds that group's count in the group's live list, at the time it settles, and takes a waiting slot; a failed one spends the shared budget) or `{t, release}` (the waiting slot of the event at that index is given back); a group gets `admissionGroupPerMinute` message 1s in any `admissionWindowSeconds`, counted as they arrive and not counted again once the trial opens or when refused; behind that the shared limiter, spent only by a failed trial (`admissionSharedPerMinute` in the window), also refuses while `admissionWaiting` opened trials wait for message 3; `want` has one step per event: `result` (tried, refused, released), `hit` (tried: the trial opened and holds a slot), `by` (refused: group, checked first, or shared), then the group's count, the failed trials counted and the connections waiting after the step. A refusal closes silently as peer_busy and no secret is tried. `xfer`: Direct Transfer rows of mode l, in the shape and run of the `xfer` section of 15.11 (a runner that has no mode l skips them): mode l is allowed and the category rule of mode c applies. `records`: the mode rules of 15.6 for q and l (and the new rows in the other modes): a known type in a mode that does not allow it closes peer_not_allowed, an unknown type with the critical bit closes peer_unknown_critical and any other is ignored; `needs` is the capability the session must hold. `nameplateMemory`: the shower's draw over events `{t, shown}` (the window that showed that nameplate closed at t) and `{t, draw, inUse}` (a draw over the byte stream `draw`, as in `codes.nameplate`, with `inUse` the nameplates of live adverts); a draw skips every `inUse` nameplate and every nameplate whose window closed less than `seconds` (300) before t, and with all 100 skipped it draws among all; `want` has one entry per draw event: `nameplate` and `consumed`. `joinReasons`: the joiner's `pairing-code-failed` reason over `input` (a code's nameplate, a QR's instance, `invalid` or `other-app`), `budget` (the dials of the nameplate already spent in the last 300 s) and `dials` how each dial ends (transport, before-c2, after-c2, or budget: the budget stopped it); `want` has the `result` and, for pairing-code-failed, the `reason` (null otherwise); the first of `precedence` that applies wins: invalid, other-app, spent-at-start (a typed code with 2 dials spent), wrong (a dial ended after C2), spent-mid-join (a dial the budget stopped; the result is then pairing-code-failed, not pairing-not-found). Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+    note: "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. `exchange`: one side's pairing events in order (own-confirm, own-decline, peer-confirm, peer-link with the body text, timeout-confirm: the 120 s from the first byte ran out, timeout-exchange: the 30 s after both CONFIRMs ran out), with `held` the local links the device holds and `cats` this side's approved categories; `want` has one entry per step: what that step makes this side send (CONFIRM, LOCAL_LINK, the second once this side's CONFIRM is sent and the peer's read), the code it closes with, and the link it stores (`label`, and `cats` the entries both sides listed in byte order, then peer_bye); after a close nothing more happens, so a side that stored the first valid LOCAL_LINK (and closed peer_bye) never answers a second one (row link-twice-is-quiet-after-the-first); a decline before this side's CONFIRM closes peer_bye. `pin`: mode l checks the remote static key against the peer link key of the link whose secret opened the session (after message 2 for the initiator, after message 3 for the responder): a mismatch is peer_revoked and nothing is sent; mode q ends the handshake silently when the remote static key is this side's own link key. `trialOrder`: the shared listener's trial of message 1: account discKeys (null = none; two tried), then contact secrets (72 tried), then local-link secrets (32 tried), at most 104 secrets after the account keys; `opens` names the key whose tag verifies; `limiter` is what the contact limiter says to a contact or local-link trial; `want.tried` lists a:<i>, c:<i> and l:<i> in order, `dummy` the dummy trials that follow a miss so a silent close costs 106 trials (2 + 72 + 32) whatever the host holds (0 on a hit, on peer_busy and for a host with no contact or local-link secret, which the limiter does not cover), `hit` the key that decided, `slot` whether the connection holds a limiter slot until message 3 (a contact or local-link hit), `close` the silent end (peer_busy when the limiter refused before any secret was tried, handshake_failed otherwise). `window`: the pairing window's machine over events with a monotonic time t in seconds (open, c1 with `valid`, begin-guess, guess-opened, guess-failed, msg1 (begin-guess then its verdict, `opens`), abandon, rotated, session-end with `stored`, tick, close). A c1 that admits an attempt hands out its `id` (1, 2, ... across windows); an event that names an attempt carries its `id`, and without one it names the latest attempt handed out. A guess is counted when it is permitted (begin-guess, `permit`), before its tag is tried, and only the holder's own attempt is permitted, once; any other id, an expired or closed attempt, answers `denied` and its tag is never tried. A guess that opens is refunded (guess-opened); one that does not, and a connection that ends after its permit, is a failed guess (guess-failed, abandon), and the fifth closes the window. `want` has one entry per event: `result` (opened, already-open, closed, busy, limited, refused, attempt, permit, denied, transport, failed, too-many-tries), `id`, `open`, `holder` (attempt from a valid C1 until its guess or 30 s; session from a guess that opens until it ends; rotating, busy and uncounted, from a failed guess or a session that ends without a link until rotated, which the host sends once the new password, QR secret and both generators are ready), `failures` (guesses counted), `rotations`, `closed` (expired at 300 s, too-many-tries, stored, person) and `host`; a window admits at most 5 C1s in any 60 s, counted when it admits them. `joinBudget`: joins in time order; per nameplate at most 2 dials in any 300 s across joins (a join with no dial spends none, a refused join records none and answers pairing-code-failed without browsing), a QR is never limited; `want` has `allowed` and `used`, the dials of the nameplate in the last 300 s before the join. `join`: the joiner: `input` is what the reader said (a code's nameplate, a QR's instance or invalid), `adverts` the m=q adverts seen in first-seen order (`h` current, previous or other, `n` the nameplate), `dials` how each dial ends (transport, before-c2, after-c2); `want` has the instances kept (matching h and the nameplate or the instance, at most 8, once each), those dialled (at most 2, in order), whether anything was browsed, and the result: transport, pairing-code-failed (an invalid input, or no transport and an attempt failed after C2) or pairing-not-found. `gate`: the cached discovery answer (`start` on, off or none) over reads (ok with the discovery body, not-found, error) and calls; services.connect.localPairing is true only as the boolean true while services.connect.enabled is the boolean true; an ok read replaces the answer, a not-found clears it, an error changes nothing; a read that leaves a cached true behind has the effects close-windows, withdraw-adverts and end-sessions; a call that opens, joins, advertises, browses, dials or answers needs on and otherwise answers local-pairing-off, and list, rename, remove and set-reachable are never gated. `admission`: a listener that holds no account key (15.10, \"Admission\") over events in monotonic seconds, `{t, group, opens}` (a message 1 from a source group; `opens` whether a secret's tag verifies), `{t, group, opens, later: true}` (the same, but the trial's verdict comes later: the message is counted as it arrives and a step of `tried` has no `hit`), `{t, settle}` (the verdict of the `later` event at that index: step `settled` with `hit` = its `opens`; an opening trial refunds that group's count in the group's live list, at the time it settles, and takes a waiting slot; a failed one spends the shared budget) or `{t, release}` (the waiting slot of the event at that index is given back); a group gets `admissionGroupPerMinute` message 1s in any `admissionWindowSeconds`, counted as they arrive and not counted again once the trial opens or when refused; behind that the shared limiter, spent only by a failed trial (`admissionSharedPerMinute` in the window), also refuses while `admissionWaiting` opened trials wait for message 3; `want` has one step per event: `result` (tried, refused, released), `hit` (tried: the trial opened and holds a slot), `by` (refused: group, checked first, or shared), then the group's count, the failed trials counted and the connections waiting after the step. A refusal closes silently as peer_busy and no secret is tried. `xfer`: Direct Transfer rows of mode l, in the shape and run of the `xfer` section of 15.11 (a runner that has no mode l skips them): mode l is allowed and the category rule of mode c applies. `records`: the mode rules of 15.6 for q and l (and the new rows in the other modes): a known type in a mode that does not allow it closes peer_not_allowed, an unknown type with the critical bit closes peer_unknown_critical and any other is ignored; `needs` is the capability the session must hold. `nameplateMemory`: the shower's draw over events `{t, shown}` (the window that showed that nameplate closed at t) and `{t, draw, inUse}` (a draw over the byte stream `draw`, as in `codes.nameplate`, with `inUse` the nameplates of live adverts, which nobody authenticated and which are ignored); a draw skips every nameplate whose window closed less than `seconds` (300) before t, and with all 100 remembered it takes the one that closed longest ago (the lowest on a tie) and reads no byte; `want` has one entry per draw event: `nameplate` and `consumed`. `renewFloor`: the SDK's floor under new windows of one product over events `{t, ended}` (a window ended: `too-many-tries` the fifth failed guess, `wrong-code` any other end of a window that had counted a failed guess, a renewal's replacement included) and `{t, check}` (a pair or renew); after a too-many-tries end, or the second wrong-code end less than `wrongSeconds` (600) after the first, a check less than `cooldownSeconds` (30) after that end is refused with `cooldown`; `want` has one entry per check: `allowed` and `retryIn` (whole seconds, rounded up; 0 when allowed). `joinReasons`: the joiner's `pairing-code-failed` reason over `input` (a code's nameplate, a QR's instance, `invalid` or `other-app`), `budget` (the dials of the nameplate already spent in the last 300 s) and `dials` how each dial ends (transport, before-c2, after-c2, or budget: the budget stopped it); `want` has the `result` and, for pairing-code-failed, the `reason` (null otherwise); the first of `precedence` that applies wins: invalid, other-app, spent-at-start (a typed code with 2 dials spent), wrong (a dial ended after C2), spent-mid-join (a dial the budget stopped; the result is then pairing-code-failed, not pairing-not-found). Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     constants: {
       pairSeconds: REF_LOCAL_PAIR_SECONDS,
       codeDigits: REF_LOCAL_CODE_DIGITS,
@@ -2507,6 +2607,7 @@ export function buildLocal(): unknown {
     join: buildJoin(),
     joinBudget: buildJoinBudget(),
     nameplateMemory: buildNameplateMemory(),
+    renewFloor: buildRenewFloor(),
     joinReasons: buildJoinReasons(),
     gate: buildGate(),
     records: buildRecords(),

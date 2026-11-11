@@ -28,20 +28,19 @@ import {
   cpaceScalar,
   cpaceShare,
   displayCode,
-  drawNameplate,
   drawPassword,
   encodeC2,
   encodeFrame,
   makeQr,
   pairingInstance,
   parseC1,
-  parseTxt,
   peerPrologue,
   productTag,
   type DrawSource,
   type LocalCodeReason,
   type LocalWindowEnd,
   type NameplateMemory,
+  type RenewEnd,
   type SessionEvent,
   type WindowOutcome,
 } from "@polaris-key/client-core/peer";
@@ -57,7 +56,7 @@ import {
   type LocalPairOptions,
   type LocalSource,
 } from "./localCommon.js";
-import type { MdnsFound, MdnsHandle } from "./mdns.js";
+import type { MdnsHandle } from "./mdns.js";
 import {
   LanError,
   SocketLink,
@@ -81,7 +80,6 @@ export class Shower {
   readonly #draw: DrawSource;
   readonly #window = new PairingWindow();
   readonly #attempts = new Set<Attempt>();
-  readonly #inUse = new Map<string, string>();
   readonly #sid: Uint8Array;
   readonly #instance: string;
   readonly #ci: Uint8Array;
@@ -89,6 +87,8 @@ export class Shower {
   #expiresAt = 0;
   /** Connections closed without counting a guess since the code last changed (`onInterrupted`). */
   #interrupted = 0;
+  /** When `onInterrupted` was last called (monotonic seconds): at most one call a second. */
+  #interruptedAt = -Infinity;
   #nameplate = "";
   #password: string | null = null;
   #qrSecret: Uint8Array | null = null;
@@ -97,10 +97,9 @@ export class Shower {
   #server: Server | null = null;
   #gate: AcceptGate | null = null;
   #adv: MdnsHandle | null = null;
-  #browse: MdnsHandle | null = null;
   #cancel: (() => void) | null = null;
   #stopped = false;
-  #onEnd: (() => void) | null = null;
+  #onEnd: ((end: RenewEnd | null, t: number) => void) | null = null;
 
   private constructor(
     src: LocalSource,
@@ -123,7 +122,7 @@ export class Shower {
     src: LocalSource,
     o: LocalPairOptions,
     memory: NameplateMemory,
-    onEnd: () => void,
+    onEnd: (end: RenewEnd | null, t: number) => void,
   ): Promise<Shower> {
     const s = new Shower(src, o, memory);
     s.#onEnd = onEnd;
@@ -148,18 +147,9 @@ export class Shower {
     const o = this.#o;
     const t = this.#env.mono();
     this.#window.open(t);
-    // The nameplates other windows of this product are using on the link: best effort, from what
-    // the browse has seen so far.
-    const tags = await this.#tags();
-    this.#browse = await this.#env.mdns.browse(
-      (f) => this.#seen(f, tags),
-      (instance) => void this.#inUse.delete(instance),
-    );
-    // Skipped too: the nameplates this device's windows of the product closed with in the last 300 s.
-    const np = drawNameplate(this.#draw, [
-      ...this.#inUse.values(),
-      ...this.#memory.recent(this.#env.mono()),
-    ]);
+    // Two tiers, from this device's own memory only: the adverts of other windows are not
+    // authenticated, so they do not steer the draw.
+    const np = this.#memory.draw(this.#draw, this.#env.mono());
     if (np === null) throw new LanError("bad_input", "No random source.");
     this.#nameplate = np;
     await this.#renew();
@@ -184,6 +174,10 @@ export class Shower {
     );
     this.#cancel = this.#env.timer(() => void this.#expire(), seconds * 1000);
     this.#expiresAt = Math.floor(this.#src.now() + seconds);
+  }
+
+  /** Show the first code (`onCode`, reason `opened`): the caller does so once the gate has been checked. */
+  reveal(): void {
     this.#show("opened");
   }
 
@@ -192,13 +186,6 @@ export class Shower {
     return Promise.all(
       [epoch, epoch - 1].map((e) => productTag(this.#src.slug, e)),
     );
-  }
-
-  #seen(f: MdnsFound, tags: readonly string[]): void {
-    if (this.#stopped || f.instance === this.#instance) return;
-    const txt = parseTxt(f.txt);
-    if (!txt.ok || txt.mode !== "q" || !tags.includes(txt.h)) return;
-    if (this.#inUse.size < 64) this.#inUse.set(f.instance, txt.n);
   }
 
   /** A new password and QR secret, and both generators made from them. */
@@ -238,6 +225,7 @@ export class Shower {
     };
     this.#shown = c;
     this.#interrupted = 0;
+    this.#interruptedAt = -Infinity;
     guarded(() => this.#o.onCode(c));
   }
 
@@ -270,6 +258,10 @@ export class Shower {
   #interrupt(): void {
     if (this.#stopped) return;
     this.#interrupted++;
+    const t = this.#env.mono();
+    // Counted every time, told at most once a second: a flood does not flood the host.
+    if (t - this.#interruptedAt < 1) return;
+    this.#interruptedAt = t;
     guarded(() => this.#o.onInterrupted?.(this.#interrupted));
   }
 
@@ -300,6 +292,8 @@ export class Shower {
     this.#cancel?.();
     this.#cancel = null;
     const t = this.#env.mono();
+    // For the SDK's renewal floor: how this window ended, and whether it had counted a failed guess.
+    const failures = this.#window.state.failures;
     this.#window.close(t);
     // The next window of this product does not draw this nameplate for 300 s.
     if (this.#nameplate !== "") this.#memory.shown(this.#nameplate, t);
@@ -307,11 +301,9 @@ export class Shower {
     this.#gate?.destroyPending({ keepUp: keepSessions });
     const gone: Promise<unknown>[] = [
       this.#adv?.stop().catch(() => undefined) ?? Promise.resolve(),
-      this.#browse?.stop().catch(() => undefined) ?? Promise.resolve(),
     ];
     const work: Promise<unknown>[] = [];
     this.#adv = null;
-    this.#browse = null;
     for (const a of [...this.#attempts])
       if (!keepSessions || a.phase !== "session")
         work.push(this.#end(a, "peer_bye"));
@@ -323,8 +315,14 @@ export class Shower {
     this.#gens = null;
     this.#password = null;
     this.#shown = null;
-    this.#inUse.clear();
-    this.#onEnd?.();
+    this.#onEnd?.(
+      end === "too-many-tries"
+        ? "too-many-tries"
+        : end !== "stored" && failures > 0
+          ? "wrong-code"
+          : null,
+      t,
+    );
     // The host hears the end once the advert is withdrawn and the listener has stopped.
     await Promise.all(gone);
     if (end !== null) guarded(() => this.#o.onEnd?.({ reason: end }));
@@ -478,6 +476,7 @@ export class Shower {
     if (a.shown || this.#stopped || a.hello === null) return;
     a.shown = true;
     this.#interrupted = 0;
+    this.#interruptedAt = -Infinity;
     const offer = offerOf(a, this.#cats, a.hello);
     guarded(() => this.#o.onConfirm(offer));
   }
