@@ -25,7 +25,7 @@ export const MAX_CONNECTABLE = 8;
 export const MAX_PAIRED = 32;
 /** The longest name a person may give a paired device. */
 export const MAX_NAME = 64;
-/** Seconds a new code waits after Too many tries (LP1 F9). */
+/** Seconds a new code waits after Too many tries. */
 export const COOLDOWN_SECONDS = 30;
 
 const FAILED_BODY = {
