@@ -850,12 +850,15 @@ internal class CloudSyncApi(
                 }
             }
             forgetJob = null
-            // Back from a failed forget with a person waiting on it: they sign in now.
-            val waiting = waitingSignIn
-            val fresh = waitingFresh
-            waitingSignIn = null
-            waitingFresh = false
-            if (ok && subject == null && waiting != null) signIn(waiting, fresh)
+            // Back from a forget with a person waiting on it: they sign in now. A forget that failed again leaves
+            // them waiting for the next retry.
+            if (ok) {
+                val waiting = waitingSignIn
+                val fresh = waitingFresh
+                waitingSignIn = null
+                waitingFresh = false
+                if (subject == null && waiting != null) signIn(waiting, fresh)
+            }
         }
         forgetJob = job
         return job
