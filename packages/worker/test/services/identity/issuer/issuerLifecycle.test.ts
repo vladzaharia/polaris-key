@@ -17,6 +17,7 @@ import { parseServices } from "../../../../src/core/services.js";
 import {
   deleteAccount,
   disableAccount,
+  replayErasures,
   sweepErasures,
 } from "../../../../src/services/identity/accounts/deletion.js";
 import { mergeAccounts } from "../../../../src/services/identity/accounts/merge.js";
@@ -35,6 +36,7 @@ import {
   putClientGrant,
 } from "../../../../src/services/identity/issuer/grantsRepo.js";
 import { issueRefreshFamily } from "../../../../src/services/identity/issuer/refreshRepo.js";
+import { eraseAndRestore } from "../../../eraseRestore.js";
 import { asR2, R2Mock } from "../../../r2Mock.js";
 import { NOW } from "../../../seed.js";
 import { BASE, SLUG } from "../../connect/connectFixture.js";
@@ -438,15 +440,22 @@ describe("the account", () => {
       expect(
         await count("identity_refresh_tokens", "account_id = ?", s.accountId),
       ).toBe(0);
-      // A replay (a D1 restore brought the rows back) ends them again.
+    });
+
+    it("a D1 restore that brings the rows back is ended again by the ledger replay", async () => {
+      s.w.env.BLOBS = asR2(new R2Mock());
+      const t = await signIn();
       await seedOtherProduct(s.accountId);
-      await s.w.db.run(
-        "UPDATE identity_refresh_tokens SET revoked_at = NULL WHERE account_id = ?",
-        s.accountId,
-      );
-      expect((await deleteAccount(ctx(NOW + 48 * 3600), s.accountId)).ok).toBe(
-        false,
-      );
+      await eraseAndRestore(ctx(), s.accountId);
+      // The rewound database holds a live account, its grant and its family: nothing yet ended them.
+      expect(await grants()).toBe(2);
+      expect(await live()).toBe(1);
+      await replayErasures(ctx(NOW + 60));
+      expect(await grants()).toBe(0);
+      expect(
+        await count("identity_refresh_tokens", "account_id = ?", s.accountId),
+      ).toBe(0);
+      await refreshRefused(t);
     });
   });
 
