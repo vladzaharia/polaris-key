@@ -58,6 +58,7 @@ const code = (
   expiresAt = 1_300,
 ): LocalCodeLike => ({
   code: c,
+  qr: `PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:${c.replace(" ", "")}`,
   reason,
   expiresAt,
   failures: 0,
@@ -143,6 +144,14 @@ const make = (f: ReturnType<typeof fake>, c = clock()) => ({
   }),
 });
 
+/** The shower with its window open and its first code on screen. */
+async function opened(f: ReturnType<typeof fake>) {
+  const { m } = make(f);
+  await m.show();
+  f.seen.pair!.onCode(code("4812 3456"));
+  return m;
+}
+
 describe("LocalPairingModel: show", () => {
   it("opens a window, counts down from expiresAt and ticks each second", async () => {
     const f = fake();
@@ -163,9 +172,7 @@ describe("LocalPairingModel: show", () => {
 
   it("lights the changed digits and announces the new code after a wrong one", async () => {
     const f = fake();
-    const { m } = make(f);
-    await m.show();
-    f.seen.pair!.onCode(code("4812 3456"));
+    const m = await opened(f);
     f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
     expect(m.snapshot.notice).toBe("rotated");
     expect(m.snapshot.changed).toEqual([2, 3, 5, 6, 7, 8]);
@@ -176,9 +183,7 @@ describe("LocalPairingModel: show", () => {
 
   it("says a declined prompt on the changed code, naming the device", async () => {
     const f = fake();
-    const { m } = make(f);
-    await m.show();
-    f.seen.pair!.onCode(code("4812 3456"));
+    const m = await opened(f);
     f.seen.pair!.onConfirm(offer(f.log, "LAPTOP-7QH3RX"));
     expect(m.snapshot.step).toBe("confirm");
     await m.notNow();
@@ -193,9 +198,7 @@ describe("LocalPairingModel: show", () => {
 
   it("shows the blocked notice at 3 interruptions and the next code clears it", async () => {
     const f = fake();
-    const { m } = make(f);
-    await m.show();
-    f.seen.pair!.onCode(code("4812 3456"));
+    const m = await opened(f);
     f.seen.pair!.onInterrupted(2);
     expect(m.snapshot.notice).toBeUndefined();
     f.seen.pair!.onInterrupted(3);

@@ -2487,6 +2487,8 @@
     <string name="pairedDevices_busyTitle">%1$s은(는) 사용 중입니다</string>
     <!-- Pair with a Code: list: pairing is off for the app. -->
     <string name="pairedDevices_offBody">이 앱에서는 코드로 페어링하는 기능이 꺼져 있습니다. 페어링된 기기는 연결할 수 없습니다.</string>
+    <!-- Pair with a Code: list: the one primary; opens Pair with a Code. -->
+    <string name="pairedDevices_pair">코드로 페어링</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

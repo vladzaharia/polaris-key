@@ -1954,6 +1954,7 @@
     "pairedDevices.notFoundTitle": "找不到 {device}",
     "pairedDevices.notFoundBody": "请确认它已开机并在同一网络中。",
     "pairedDevices.busyTitle": "{device} 正忙",
-    "pairedDevices.offBody": "此应用已关闭验证码配对。已配对的设备无法连接。"
+    "pairedDevices.offBody": "此应用已关闭验证码配对。已配对的设备无法连接。",
+    "pairedDevices.pair": "用验证码配对"
   }
 }

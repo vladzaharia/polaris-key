@@ -1130,6 +1130,7 @@
   "pairedDevices.notFoundBody": "Vérifiez qu’il est allumé et sur le même réseau.",
   "pairedDevices.busyTitle": "{device} est occupé",
   "pairedDevices.offBody": "L’association par code est désactivée pour cette app. Les appareils associés ne peuvent pas se connecter.",
+  "pairedDevices.pair": "Associer avec un code",
   "core.fallback.title": "Une erreur s’est produite",
   "core.fallback.message": "Une erreur s’est produite ({code}). Réessayez.",
   "core.codes.unauthorized.title": "Non connecté",

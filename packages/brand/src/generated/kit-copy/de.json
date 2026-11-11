@@ -1130,6 +1130,7 @@
   "pairedDevices.notFoundBody": "Prüfen Sie, ob es eingeschaltet und im selben Netzwerk ist.",
   "pairedDevices.busyTitle": "{device} ist beschäftigt",
   "pairedDevices.offBody": "Das Koppeln mit Code ist für diese App ausgeschaltet. Gekoppelte Geräte können sich nicht verbinden.",
+  "pairedDevices.pair": "Mit Code koppeln",
   "core.fallback.title": "Ein Fehler ist aufgetreten",
   "core.fallback.message": "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
   "core.codes.unauthorized.title": "Nicht angemeldet",

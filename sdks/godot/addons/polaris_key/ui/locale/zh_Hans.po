@@ -6625,6 +6625,11 @@ msgstr "{device} 正忙"
 msgid "pairedDevices.offBody"
 msgstr "此应用已关闭验证码配对。已配对的设备无法连接。"
 
+#. Pair with a Code
+#. Pair with a Code: list: the one primary; opens Pair with a Code.
+msgid "pairedDevices.pair"
+msgstr "用验证码配对"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

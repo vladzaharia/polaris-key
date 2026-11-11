@@ -1130,6 +1130,7 @@
   "pairedDevices.notFoundBody": "请确认它已开机并在同一网络中。",
   "pairedDevices.busyTitle": "{device} 正忙",
   "pairedDevices.offBody": "此应用已关闭验证码配对。已配对的设备无法连接。",
+  "pairedDevices.pair": "用验证码配对",
   "core.fallback.title": "出现问题",
   "core.fallback.message": "出现问题（{code}）。请重试。",
   "core.codes.unauthorized.title": "未登录",

@@ -216,7 +216,7 @@ export function localPairingView(
           "localPairing.nameHint",
           p.cantConnect && "localPairing.cantConnectTitle",
           p.cantConnect && "localPairing.cantConnectBody",
-          p.cantConnect && "pairedDevices.title",
+          p.cantConnect && "localPairing.pairedDevices",
           "common.done",
         ],
         args: { device: device ?? "", max: p.max ?? MAX_CONNECTABLE },
@@ -352,10 +352,10 @@ export function pairedDevicesView(
       copy: [
         "pairedDevices.title",
         "pairedDevices.empty",
-        "localPairing.title",
+        "pairedDevices.pair",
         "common.done",
       ],
-      primary: "localPairing.title",
+      primary: "pairedDevices.pair",
       focus: "heading",
     });
   const switches = showSwitchColumn(devices);
@@ -400,16 +400,22 @@ export function pairedDevicesView(
       state === "forgetting" && "pairedDevices.forgetConfirm",
       state === "forgetting" && "pairedDevices.forgetBody",
       state === "forgetting" && "common.cancel",
-      "localPairing.title",
+      "pairedDevices.pair",
       "common.done",
     ],
     args: {
       device: p.notice?.device ?? name,
       max: p.renameError === "long" ? MAX_NAME : MAX_CONNECTABLE,
     },
-    disabled: [full && "localPairing.title"],
-    // Pair with a Code is the one primary; with no room it waits (disabled) and Done is next.
-    primary: full ? "common.done" : "localPairing.title",
+    disabled: [full && "pairedDevices.pair"],
+    // The row being edited owns the filled control; otherwise Pair with a Code is the one primary
+    // (drawn unavailable when there is no room).
+    primary:
+      state === "renaming"
+        ? "common.save"
+        : state === "forgetting"
+          ? "pairedDevices.forget"
+          : "pairedDevices.pair",
     tone: state === "renaming" && p.renameError ? "danger" : null,
     errorSlot:
       state === "renaming" && p.renameError ? "devices.renameLabel" : null,
@@ -434,7 +440,7 @@ export interface WindowSize {
   tv?: boolean;
 }
 
-/** How the show screen lays out in a window (UI-KITS 4.3, LocalPairing). */
+/** How the show screen lays out for a window size (UI-KITS 4.3, LocalPairing). */
 export interface LocalPairingLayout {
   /** 2: the QR sits beside the code; 1: under it. */
   panes: 1 | 2;

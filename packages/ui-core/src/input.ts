@@ -354,6 +354,8 @@ export interface LocalPairingInput {
   full?: boolean;
   /** show: the code as two groups of four (`4812 3456`). */
   code?: string;
+  /** show: the text the QR encodes. */
+  qr?: string;
   /** show: seconds left of the window's 5 minutes. */
   secondsLeft?: number;
   /** show: the notice under the time row. */

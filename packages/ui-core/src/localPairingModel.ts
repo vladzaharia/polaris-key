@@ -43,6 +43,8 @@ import type { View } from "./view.js";
 /** The code a shower shows now (`LocalCode` of `localLinks.pair`). */
 export interface LocalCodeLike {
   readonly code: string;
+  /** The QR's text (`PKP1:<SLUG>:<INSTANCE>:<SECRET>`). */
+  readonly qr: string;
   readonly reason: string;
   readonly expiresAt: number;
   readonly failures: number;
@@ -310,6 +312,7 @@ export class LocalPairingModel {
       {
         step: "show",
         code: c.code,
+        qr: c.qr,
         secondsLeft: Math.max(0, Math.ceil(c.expiresAt - this.now())),
         ...(notice ? { notice } : {}),
         ...(notice === "declined" && this.lastDevice
@@ -393,18 +396,20 @@ export class LocalPairingModel {
   }
 
   private linked(link: LocalPairedLike): void {
-    this.offer = null;
     this.shower = null;
     this.cancelTick();
-    this.tooMany = 0;
-    this.wrong = 0;
-    this.failedCode = null;
-    this.lastDevice = null;
+    this.stored(link);
+  }
+
+  /** A pairing was stored, from either role: the paired screen, and a clean slate for the next. */
+  private stored(link: LocalPairedLike): void {
+    this.offer = null;
+    this.abort = null;
+    this.tooMany = this.wrong = 0;
+    this.failedCode = this.lastDevice = null;
+    const device = link.label ? { device: link.label } : {};
     this.go(
-      {
-        step: "paired",
-        ...(link.label ? { device: link.label } : {}),
-      },
+      { step: "paired", ...device },
       { name: link.label ?? "", id: link.id },
     );
     void this.checkReachable(link.id);
@@ -518,19 +523,7 @@ export class LocalPairingModel {
         signal: abort.signal,
       });
       if (!live()) return;
-      this.abort = null;
-      this.offer = null;
-      this.failedCode = null;
-      this.tooMany = 0;
-      this.wrong = 0;
-      this.go(
-        {
-          step: "paired",
-          ...(link.label ? { device: link.label } : {}),
-        },
-        { name: link.label ?? "", id: link.id },
-      );
-      void this.checkReachable(link.id);
+      this.stored(link);
     } catch (e) {
       if (live()) this.joinFailed(e, code);
     }
@@ -685,7 +678,7 @@ export class LocalPairingModel {
 
   // ── Errors ────────────────────────────────────────────────────────────────────────────────────
 
-  /** A rejection no screen of the flow names: the gate, the cap, the network, or the window. */
+  /** A rejection no screen of the flow names: the gate, the cap, the network, or the shower. */
   private fail(e: unknown, where: "show" | "enter"): void {
     const { code, reason, cap } = detail(e);
     if (code === ErrorCode.localPairingOff) this.go({ step: "off" });

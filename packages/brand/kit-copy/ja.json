@@ -1954,6 +1954,7 @@
     "pairedDevices.notFoundTitle": "{device} が見つかりません",
     "pairedDevices.notFoundBody": "電源が入っていて、同じネットワークにあることを確認してください。",
     "pairedDevices.busyTitle": "{device} は使用中です",
-    "pairedDevices.offBody": "このアプリではコードによるペアリングがオフです。ペアリング済みのデバイスは接続できません。"
+    "pairedDevices.offBody": "このアプリではコードによるペアリングがオフです。ペアリング済みのデバイスは接続できません。",
+    "pairedDevices.pair": "コードでペアリング"
   }
 }

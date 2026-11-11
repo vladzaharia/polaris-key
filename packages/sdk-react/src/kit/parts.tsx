@@ -43,8 +43,10 @@ import {
 /** What the drop-in adds around a view's own controls: the step's Back, controls and links the
  *  state lacks (Use another key), and keys it drops (Sign out on a signed-out screen). */
 export interface Chrome {
-  /** Draw Back above the card's content, bound to `common.back`. */
+  /** Draw Back above the card's content, bound to `common.back` (or `backKey`). */
   back?: boolean;
+  /** The control Back stands for where the step has a different one (Cancel while pairing). */
+  backKey?: string;
   controls?: string[];
   links?: string[];
   drop?: string[];
@@ -658,17 +660,18 @@ function plainButton(
 
 /** Back (DL9): the same action as Escape, drawn on every step past Welcome. */
 export function backButton(c: KitCtx): ReactNode {
+  const key = c.chrome?.backKey ?? "common.back";
   return (
     <div className="links" data-part="back">
       <button
         type="button"
         className="btn"
         data-variant="link"
-        data-key="common.back"
-        onClick={() => c.act("common.back")}
+        data-key={key}
+        onClick={() => c.act(key)}
       >
         {GLYPHS.back()}
-        <span>{text(c, "common.back")}</span>
+        <span>{text(c, key)}</span>
       </button>
     </div>
   );
@@ -913,7 +916,8 @@ export function qrCode(
     | "a11y.qr"
     | "a11y.qrManage"
     | "a11y.qrAddKey"
-    | "a11y.qrRequest" = "a11y.qr",
+    | "a11y.qrRequest"
+    | "a11y.qrPairing" = "a11y.qr",
 ): ReactNode {
   if (!data || !c.view.copy.includes(key)) return null;
   const q = encodeQr(data);

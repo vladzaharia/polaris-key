@@ -2501,6 +2501,8 @@
     <string name="pairedDevices_busyTitle">%1$s is busy</string>
     <!-- Pair with a Code: list: pairing is off for the app. -->
     <string name="pairedDevices_offBody">Pairing with a code is off for this app. Paired devices can’t connect.</string>
+    <!-- Pair with a Code: list: the one primary; opens Pair with a Code. -->
+    <string name="pairedDevices_pair">Pair with a Code</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

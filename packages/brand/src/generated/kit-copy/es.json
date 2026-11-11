@@ -1130,6 +1130,7 @@
   "pairedDevices.notFoundBody": "Comprueba que está encendido y en la misma red.",
   "pairedDevices.busyTitle": "{device} está ocupado",
   "pairedDevices.offBody": "La vinculación con código está desactivada para esta app. Los dispositivos vinculados no pueden conectarse.",
+  "pairedDevices.pair": "Vincular con un código",
   "core.fallback.title": "Algo salió mal",
   "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
   "core.codes.unauthorized.title": "Sin sesión iniciada",

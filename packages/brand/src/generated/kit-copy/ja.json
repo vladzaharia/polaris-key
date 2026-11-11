@@ -1130,6 +1130,7 @@
   "pairedDevices.notFoundBody": "電源が入っていて、同じネットワークにあることを確認してください。",
   "pairedDevices.busyTitle": "{device} は使用中です",
   "pairedDevices.offBody": "このアプリではコードによるペアリングがオフです。ペアリング済みのデバイスは接続できません。",
+  "pairedDevices.pair": "コードでペアリング",
   "core.fallback.title": "問題が発生しました",
   "core.fallback.message": "問題が発生しました（{code}）。もう一度お試しください。",
   "core.codes.unauthorized.title": "サインインしていません",

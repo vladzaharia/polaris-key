@@ -6653,6 +6653,11 @@ msgstr "{device} est occupé"
 msgid "pairedDevices.offBody"
 msgstr "L’association par code est désactivée pour cette app. Les appareils associés ne peuvent pas se connecter."
 
+#. Pair with a Code
+#. Pair with a Code: list: the one primary; opens Pair with a Code.
+msgid "pairedDevices.pair"
+msgstr "Associer avec un code"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

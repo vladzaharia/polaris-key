@@ -9790,6 +9790,11 @@
       "value": "Pairing with a code is off for this app. Paired devices can’t connect.",
       "role": "body",
       "note": "Pair with a Code: list: pairing is off for the app."
+    },
+    "pairedDevices.pair": {
+      "value": "Pair with a Code",
+      "role": "button",
+      "note": "Pair with a Code: list: the one primary; opens Pair with a Code."
     }
   }
 }
