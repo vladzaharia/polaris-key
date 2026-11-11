@@ -304,22 +304,7 @@ describe("cloudSync.export: the archive", () => {
     expect(files(dir)).toEqual([]);
   });
 
-  it("refuses an export over a bound before writing anything", async () => {
-    const { w } = exportWorld({
-      file: { bytes: bytes(10), version: 3 },
-      pointerSize: 5_000_000_000,
-    });
-    const { client } = await signedIn(w);
-    const dir = tmp();
-    const err = await client.cloudSync
-      .export(join(dir, "a.zip"))
-      .catch((e) => e);
-    expect(err).toBeInstanceOf(PolarisError);
-    expect(err.code).toBe("sync-export-too-large");
-    expect(files(dir)).toEqual([]);
-  });
-
-  it("creates no partial before the plan accepts: a refusal never touches the partial path", async () => {
+  it("refuses an export over a bound before creating the partial or writing anything", async () => {
     const { w } = exportWorld({
       file: { bytes: bytes(10), version: 3 },
       pointerSize: 5_000_000_000,
@@ -327,14 +312,16 @@ describe("cloudSync.export: the archive", () => {
     const { client } = await signedIn(w);
     const dir = tmp();
     const dest = join(dir, "a.zip");
-    // Planted after the destination was prepared: an early exclusive create would fail on it.
+    // Planted after the destination was prepared: creating the partial early would fail on it.
     const pull = w.pull;
     w.pull = (url) => {
       writeFileSync(`${dest}.partial`, "not ours");
       return pull(url);
     };
     const err = await client.cloudSync.export(dest).catch((e) => e);
+    expect(err).toBeInstanceOf(PolarisError);
     expect(err.code).toBe("sync-export-too-large");
+    expect(files(dir)).toEqual(["a.zip.partial"]);
     expect(readFileSync(`${dest}.partial`, "utf8")).toBe("not ours");
   });
 
