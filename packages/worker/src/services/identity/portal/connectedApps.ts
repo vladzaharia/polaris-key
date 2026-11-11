@@ -49,7 +49,17 @@ import {
 } from "./api.js";
 import type { PortalSession } from "./session.js";
 
-/** The budget a Change or a Disconnect spends: 20 per 60 s per account, failing closed. */
+/** The budget a Change spends: 20 per 60 s per account, failing closed. */
+export const CLIENT_CHANGE_RATE = {
+  bucket: "portalClientChange",
+  limit: 20,
+  windowSec: 60,
+};
+/**
+ * The budget a Disconnect spends, apart from Change's so a run of Changes never blocks it: 20 per
+ * 60 s per account. It fails OPEN: Disconnect is the protective action, so a limiter outage must
+ * not refuse it.
+ */
 export const CLIENT_DISCONNECT_RATE = {
   bucket: "portalClientDisconnect",
   limit: 20,
@@ -224,17 +234,18 @@ async function ownGrant(
   return grant && client ? { client, grant } : null;
 }
 
-/** Charge the shared Change and Disconnect budget; the `429` when it is spent. */
+/** Charge the budget of a Change or a Disconnect; the `429` when it is spent. */
 async function limited(
   env: Env,
   session: PortalSession,
   product: string,
   now: number,
+  rate: typeof CLIENT_CHANGE_RATE,
 ): Promise<Response | null> {
   const ok = await rateLimitOk(
     env,
     product,
-    { ...CLIENT_DISCONNECT_RATE, id: `${product}:${session.accountId}` },
+    { ...rate, id: `${product}:${session.accountId}` },
     now,
   );
   return ok ? null : err(429, "rate_limited", "too many attempts");
@@ -270,7 +281,7 @@ export async function handleConnectedAppChange(
 ): Promise<Response> {
   const found = await ownGrant(db, session, product, clientId);
   if (!found) return notFound();
-  const refused = await limited(env, session, product, now);
+  const refused = await limited(env, session, product, now, CLIENT_CHANGE_RATE);
   if (refused) return refused;
   const want = parseChange(await readBody(req));
   if (!want) return err(400, "bad_request", "Send the claims to change.");
@@ -303,6 +314,7 @@ export async function handleConnectedAppChange(
           claimsDeclined,
         },
         now,
+        grant.changedAt,
       ),
       auditStatement(
         {
@@ -318,17 +330,30 @@ export async function handleConnectedAppChange(
           parent_id: null,
           summary: `Changed what a client gets: ${flipped.join(", ")}`,
         },
+        // Only when the update above landed: the grant carries the `changed_at` it wrote.
         sql(
           `WHERE EXISTS (SELECT 1 FROM identity_client_grants
-                          WHERE product = ? AND account_id = ? AND client_id = ?)`,
+                          WHERE product = ? AND account_id = ? AND client_id = ?
+                            AND changed_at = ? AND claims_granted_json = ?)`,
           product,
           session.accountId,
           clientId,
+          Math.max(now, grant.changedAt + 1),
+          JSON.stringify(claimsGranted),
         ),
       ),
     ]);
-    // A Disconnect that landed in between: the grant is gone, so is the answer.
-    if (counts[0] !== 1) return notFound();
+    if (counts[0] !== 1) {
+      // Nothing was written. A Disconnect that landed in between: the grant is gone, so is the
+      // answer. Otherwise another Change or a new consent got there first: say so, write nothing.
+      if (!(await getClientGrant(db, product, session.accountId, clientId)))
+        return notFound();
+      return err(
+        409,
+        "revision_conflict",
+        "This app's access changed. Reload to see it.",
+      );
+    }
   }
   const fresh = await ownGrant(db, session, product, clientId);
   if (!fresh) return notFound();
@@ -360,7 +385,13 @@ export async function handleConnectedAppDisconnect(
   now: number,
 ): Promise<Response> {
   if (!(await ownGrant(db, session, product, clientId))) return notFound();
-  const refused = await limited(env, session, product, now);
+  const refused = await limited(
+    env,
+    session,
+    product,
+    now,
+    CLIENT_DISCONNECT_RATE,
+  );
   if (refused) return refused;
   const subject = await existingSubjectFor(db, session.accountId, product);
   // One batch: the row of audit (only while the grant exists), the families, then the grant.

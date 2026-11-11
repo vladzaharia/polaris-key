@@ -4,7 +4,8 @@
  * family of the product: the issuer answers `404` while Identity is off, so a family must not
  * outlive that window. Grants stay, so turning Identity back on asks nobody again.
  *
- * Writers call it on every write, so it runs whether or not the set changed and is idempotent: a
+ * It also runs on a write that turns Identity on when the set it replaced was off or unknown, so a
+missed off-write cannot let the old families revive. Writers call it on every write, so it runs whether or not the set changed and is idempotent: a
  * second call revokes nothing and writes no audit row. One `identity.issuer.refresh_revoked` row
  * says it happened, and only when it did.
  */
@@ -18,9 +19,13 @@ export const IDENTITY_ISSUER_SERVICES_LISTENER = "identity.issuer";
 
 export const issuerServicesListener: ServicesChangeListener = async (
   { db, now },
-  { product, after, actor },
+  { product, before, after, actor },
 ) => {
-  if (after.identity?.enabled === true) return;
+  // Identity on and it was on: nothing to do. Identity off, or on after it was off or unknown
+  // (a write whose predecessor was missed): nothing legitimate was issued meanwhile, so end the
+  // families that are left, or a missed off-write would let them revive.
+  if (after.identity?.enabled === true && before?.identity?.enabled === true)
+    return;
   const revoked = await revokeProductRefresh(db, product, now);
   if (revoked === 0) return;
   await appendAudit(db, {

@@ -108,18 +108,22 @@ export function changeGrantClaimsStatement(
     "product" | "accountId" | "clientId" | "claimsGranted" | "claimsDeclined"
   >,
   now: number,
+  /** The `changedAt` of the grant the claims were worked out from: the write lands only if it still is. */
+  expectedChangedAt: number,
 ): DbStatement {
   return {
     sql: `UPDATE identity_client_grants
              SET claims_granted_json = ?, claims_declined_json = ?, changed_at = ?
-           WHERE product = ? AND account_id = ? AND client_id = ?`,
+           WHERE product = ? AND account_id = ? AND client_id = ? AND changed_at = ?`,
     params: [
       JSON.stringify(g.claimsGranted),
       JSON.stringify(g.claimsDeclined),
-      now,
+      // Strictly after the value it replaces, so two writes in one second still tell apart.
+      Math.max(now, expectedChangedAt + 1),
       g.product,
       g.accountId,
       g.clientId,
+      expectedChangedAt,
     ],
   };
 }
@@ -139,7 +143,7 @@ export function clientGrantStatement(
        claims_declined_json = excluded.claims_declined_json,
        scopes_json = excluded.scopes_json,
        scope_hash = excluded.scope_hash,
-       changed_at = excluded.changed_at`,
+       changed_at = MAX(excluded.changed_at, identity_client_grants.changed_at + 1)`,
     params: [
       g.accountId,
       g.clientId,

@@ -97,11 +97,32 @@ export async function applyServiceTransitions(
   const result = after.identity?.enabled
     ? { signedInDevicesCleared: 0 }
     : await signOutIdentityOff(env, db, product, actor, now);
-  for (const listener of contributedServicesChangeListeners())
-    await listener(
-      { db, env, now },
-      { product, before: opts.before ?? null, after, actor },
-    );
+  // Each listener runs alone: one that throws leaves an audit row (its name and the error's name,
+  // never its message) and the rest still hear the write, so a revocation (the issuer's families)
+  // is never skipped because an earlier listener failed.
+  for (const [name, listener] of contributedServicesChangeListeners()) {
+    try {
+      await listener(
+        { db, env, now },
+        { product, before: opts.before ?? null, after, actor },
+      );
+    } catch (e) {
+      const kind = e instanceof Error ? e.name : "error";
+      await appendAudit(db, {
+        product,
+        id: randomId("aud"),
+        at: now,
+        actor_sub: actor.sub,
+        actor_name: actor.name,
+        actor_email: actor.email,
+        action: "services.listener.failed",
+        target_kind: "product",
+        target_id: product,
+        parent_id: null,
+        summary: `A services listener failed for ${product}: ${name} (${kind})`,
+      }).catch(() => undefined);
+    }
+  }
   return result;
 }
 

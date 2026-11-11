@@ -215,8 +215,12 @@ export async function handleIssuerToken(cx: IssuerTokenCx): Promise<Response> {
           codeHash: await hashAuthCode(env, code),
         },
         now,
+        { requireGrant: true },
       )
     : null;
+  // A Disconnect landed since the grant was read: nothing was issued, so nothing is answered.
+  if (refresh === null && record.scope.includes("offline_access"))
+    return out(oauth(400, ErrorCode.InvalidGrant));
   await touchClientGrant(db, slug, account.id, client.clientId, now);
   await appendAudit(db, {
     product: slug,

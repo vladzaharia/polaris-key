@@ -6,7 +6,12 @@
 import { describe, expect, it } from "vitest";
 import { dispatchWith } from "../../../src/dispatch.js";
 import { setClientStatus } from "../../../src/services/identity/issuer/clientsRepo.js";
-import { getClientGrant } from "../../../src/services/identity/issuer/grantsRepo.js";
+import {
+  changeGrantClaimsStatement,
+  getClientGrant,
+  putClientGrant,
+} from "../../../src/services/identity/issuer/grantsRepo.js";
+import type { Db } from "../../../src/db/types.js";
 import { NOW } from "../../seed.js";
 import { BASE, SLUG } from "../connect/connectFixture.js";
 import {
@@ -224,6 +229,123 @@ describe("PATCH Change what a client gets", () => {
         "SELECT 1 FROM audit WHERE action = 'identity.client.change'",
       ),
     ).toBeNull();
+  });
+});
+
+/** The world's database, but `before` runs once, just before the first guarded batch lands. */
+const racing = (before: () => Promise<void>) => {
+  let done = false;
+  const real = s.w.db;
+  const db = new Proxy(real, {
+    get(target, prop) {
+      if (prop === "batchChanges")
+        return async (
+          statements: Parameters<NonNullable<Db["batchChanges"]>>[0],
+        ) => {
+          if (!done) {
+            done = true;
+            await before();
+          }
+          return target.batchChanges!(statements);
+        };
+      const v = (target as unknown as Record<string | symbol, unknown>)[prop];
+      return typeof v === "function" ? v.bind(target) : v;
+    },
+  });
+  return { ...s.w, db } as typeof s.w;
+};
+const grantNow = () =>
+  getClientGrant(s.w.db, SLUG, s.accountId, s.spa.clientId).then((g) => g!);
+const changeAudits = () =>
+  s.w.db.all("SELECT 1 FROM audit WHERE action = 'identity.client.change'");
+
+describe("PATCH racing another write", () => {
+  it("a Change that loses to another Change is 409 revision_conflict and writes nothing, no audit row", async () => {
+    await signIn();
+    const read = await grantNow();
+    const w = racing(async () => {
+      const stmt = changeGrantClaimsStatement(
+        {
+          ...read,
+          claimsGranted: ["name", "picture", "email"],
+          claimsDeclined: [],
+        },
+        NOW + 20,
+        read.changedAt,
+      );
+      await s.w.db.run(stmt.sql, ...stmt.params);
+    });
+    const res = await connectedAppsCall(
+      w,
+      await me(),
+      "PATCH",
+      base(s.spa.clientId),
+      {
+        body: { claims: { email: false } },
+        at: NOW + 20,
+      },
+    );
+    expect(res.status).toBe(409);
+    expect(await json(res)).toMatchObject({
+      error: "revision_conflict",
+      message: "This app's access changed. Reload to see it.",
+    });
+    // The winner's claims stand; the loser's lost update never landed.
+    expect((await grantNow()).claimsGranted).toEqual([
+      "name",
+      "picture",
+      "email",
+    ]);
+    expect(await changeAudits()).toHaveLength(0);
+  });
+
+  it("a Change that races a re-consent in the same second is 409, and the re-consent stands", async () => {
+    await signIn();
+    const read = await grantNow();
+    const w = racing(async () => {
+      await putClientGrant(
+        s.w.db,
+        {
+          product: SLUG,
+          accountId: s.accountId,
+          clientId: s.spa.clientId,
+          claimsGranted: read.claimsGranted,
+          claimsDeclined: read.claimsDeclined,
+          scopes: read.scopes,
+          scopeHash: read.scopeHash,
+        },
+        read.changedAt,
+      );
+    });
+    const res = await connectedAppsCall(
+      w,
+      await me(),
+      "PATCH",
+      base(s.spa.clientId),
+      {
+        body: { claims: { email: false } },
+        at: read.changedAt,
+      },
+    );
+    expect(res.status).toBe(409);
+    expect((await grantNow()).claimsGranted).toEqual(read.claimsGranted);
+    expect(await changeAudits()).toHaveLength(0);
+  });
+
+  it("two Changes in one second both land when they run one after the other", async () => {
+    await signIn();
+    const who = await me();
+    const at = (await grantNow()).changedAt;
+    for (const email of [false, true])
+      expect(
+        (
+          await connectedAppsCall(s.w, who, "PATCH", base(s.spa.clientId), {
+            body: { claims: { email } },
+            at,
+          })
+        ).status,
+      ).toBe(200);
+    expect(await changeAudits()).toHaveLength(2);
   });
 });
 

@@ -5,13 +5,14 @@
  * stands. Each row asserts both ends: the token endpoints (`invalid_grant`, `invalid_token`) and the
  * rows that go or stay.
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { dispatchWith } from "../../../../src/dispatch.js";
 import {
   registerSubjectStore,
   unregisterSubjectStore,
 } from "../../../../src/core/accounts/subjectHooks.js";
 import { deleteProduct } from "../../../../src/core/products/store.js";
+import * as contributions from "../../../../src/core/contributions.js";
 import { applyServiceTransitions } from "../../../../src/core/servicesTransitions.js";
 import { parseServices } from "../../../../src/core/services.js";
 import {
@@ -97,6 +98,158 @@ const live = (accountId = s.accountId) =>
   );
 const grants = (accountId = s.accountId) =>
   count("identity_client_grants", "account_id = ?", accountId);
+describe("services listeners and the issuer", () => {
+  const set = (enabled: boolean) =>
+    parseServices(JSON.stringify({ identity: { enabled } })).services;
+  const actor = { sub: "op", name: null, email: null };
+  afterEach(() => vi.restoreAllMocks());
+
+  it("a listener that throws does not stop the issuer's: Identity off still revokes the families", async () => {
+    const t = await signIn();
+    const real = contributions.contributedServicesChangeListeners();
+    vi.spyOn(
+      contributions,
+      "contributedServicesChangeListeners",
+    ).mockReturnValue([
+      [
+        "test.broken",
+        async () => {
+          throw new TypeError("secret detail that must not be recorded");
+        },
+      ],
+      ...real,
+    ]);
+    await applyServiceTransitions(
+      s.w.env,
+      s.w.db,
+      SLUG,
+      set(false),
+      actor,
+      NOW + 1,
+      {
+        before: set(true),
+      },
+    );
+    const rows = await s.w.db.all<{ summary: string; target_id: string }>(
+      "SELECT summary, target_id FROM audit WHERE action = 'services.listener.failed'",
+    );
+    expect(rows).toEqual([
+      {
+        summary: `A services listener failed for ${SLUG}: test.broken (TypeError)`,
+        target_id: SLUG,
+      },
+    ]);
+    expect(await live()).toBe(0);
+    await refreshRefused(t);
+    expect(await grants()).toBe(1);
+  });
+
+  it("a re-enable after a missed off-write revokes the families that are left, even when the restore listener throws", async () => {
+    const t = await signIn();
+    // The restore listener fails on an off-to-on write; the off-write itself was never applied.
+    await s.w.db.run("DROP TABLE identity_restore_keys");
+    await applyServiceTransitions(
+      s.w.env,
+      s.w.db,
+      SLUG,
+      set(true),
+      actor,
+      NOW + 5,
+      {
+        before: set(false),
+      },
+    );
+    expect(await live()).toBe(0);
+    await refreshRefused(t);
+    expect(await grants()).toBe(1);
+  });
+
+  it("an on-to-on write revokes nothing", async () => {
+    await signIn();
+    await applyServiceTransitions(
+      s.w.env,
+      s.w.db,
+      SLUG,
+      set(true),
+      actor,
+      NOW + 5,
+      {
+        before: set(true),
+      },
+    );
+    expect(await live()).toBe(1);
+  });
+});
+
+describe("a family opened after a Disconnect", () => {
+  const fields = () => ({
+    product: SLUG,
+    clientId: s.spa.clientId,
+    accountId: s.accountId,
+    scope: "openid profile email offline_access pkey:entitlements",
+    claims: ["name" as const],
+    authTime: NOW,
+    redirectUri: s.spa.redirectUris[0]!,
+  });
+
+  it("is refused when the grant is gone: nothing is written", async () => {
+    await signIn();
+    await disconnectClient(s.w.db, SLUG, s.accountId, s.spa.clientId, NOW + 1);
+    const before = await count("identity_refresh_tokens");
+    expect(
+      await issueRefreshFamily(s.w.env, s.w.db, fields(), NOW + 1, {
+        requireGrant: true,
+      }),
+    ).toBeNull();
+    expect(await count("identity_refresh_tokens")).toBe(before);
+  });
+
+  it("is opened while the grant exists", async () => {
+    await signIn();
+    const f = await issueRefreshFamily(s.w.env, s.w.db, fields(), NOW + 1, {
+      requireGrant: true,
+    });
+    expect(f?.token).toBeTruthy();
+  });
+
+  it("the token endpoint answers invalid_grant when a Disconnect lands between the grant read and the insert", async () => {
+    const code = await codeFor(s.spa);
+    // The first insert into the families is the one the redemption makes; the grant goes first.
+    const real = s.w.db;
+    let done = false;
+    const racing = new Proxy(real, {
+      get(target, prop) {
+        if (prop === "runChanges")
+          return async (sql: string, ...params: never[]) => {
+            if (!done && sql.includes("INSERT INTO identity_refresh_tokens")) {
+              done = true;
+              await disconnectClient(
+                target,
+                SLUG,
+                s.accountId,
+                s.spa.clientId,
+                NOW,
+              );
+            }
+            return target.runChanges(sql, ...params);
+          };
+        const v = (target as unknown as Record<string | symbol, unknown>)[prop];
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    });
+    let res: Response;
+    (s.w as { db: unknown }).db = racing;
+    try {
+      res = await token(grantForm(s.spa, code));
+    } finally {
+      (s.w as { db: unknown }).db = real;
+    }
+    expect(done).toBe(true);
+    expect(await err(res)).toBe("invalid_grant");
+    expect(await count("identity_refresh_tokens")).toBe(0);
+  });
+});
+
 const ctx = (now = NOW) => ({
   db: s.w.db,
   env: s.w.env,

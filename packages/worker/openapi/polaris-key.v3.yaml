@@ -17816,8 +17816,11 @@ paths:
         client. A required claim, a line (`entitlements`, `offline`), a claim the person was never
         asked and an unknown member are `400 bad_request`. The grant's scopes and `grantedAt`
         never change, so existing sign-ins continue; the next refresh and `userinfo` carry the new
-        claims. Spends the `portalClientDisconnect` budget (20 per 60 s per account, failing
-        closed). Another person's, an unknown or a malformed client id answers the same 404.
+        claims. Spends the `portalClientChange` budget (20 per 60 s per account, failing closed;
+        Disconnect has its own). The write lands only if the grant is as it was read: when another
+        Change or a new consent got there first it is `409 revision_conflict` ("This app's access
+        changed. Reload to see it.") and nothing is written. Another person's, an unknown or a
+        malformed client id answers the same 404.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - { name: clientId, in: path, required: true, schema: { type: string } }
@@ -17860,8 +17863,15 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: >
+            The grant changed between the read and the write (another Change or a new consent).
+            Nothing was written; reload the list. Code `revision_conflict`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
         "429":
-          description: Too many changes (the `portalClientDisconnect` budget).
+          description: Too many changes (the `portalClientChange` budget).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -17874,7 +17884,8 @@ paths:
         account and client, in one batch. `userinfo` and refresh refuse at once; an access token
         already issued ends within 10 minutes. The client keeps what it already received. A
         second Disconnect, another person's client, an unknown one and a malformed id answer the
-        same 404. Spends the `portalClientDisconnect` budget.
+        same 404. Spends the `portalClientDisconnect` budget (20 per 60 s per account), which fails
+        open when the limiter cannot be read.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - { name: clientId, in: path, required: true, schema: { type: string } }

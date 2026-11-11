@@ -2,7 +2,7 @@
  * I-21.15, IS-2 and IS-5 (a client's grant and tokens, ended by the person): the Connected apps API
  * cannot be driven by anyone but the account that holds the grant, cannot widen a grant, and ends
  * it atomically. One 404 shape for every client id that is not the caller's; CSRF on both writes;
- * the Change/Disconnect budget fails closed.
+ * Change fails closed and Disconnect fails open, each on its own budget.
  */
 import { describe, expect, it } from "vitest";
 import { getClientGrant } from "../../src/services/identity/issuer/grantsRepo.js";
@@ -235,7 +235,7 @@ describe("Disconnect is atomic", () => {
 });
 
 describe("the budget (IS-14)", () => {
-  it("is 20 a minute per account, shared by Change and Disconnect, and one account cannot spend another's", async () => {
+  it("is 20 a minute per account for Change, apart from Disconnect's, and one account cannot spend another's", async () => {
     await signIn();
     const who = await me();
     for (let i = 0; i < 20; i++)
@@ -256,27 +256,38 @@ describe("the budget (IS-14)", () => {
       },
     );
     expect(limited.status).toBe(429);
-    expect(
-      (await connectedAppsCall(s.w, who, "DELETE", path(s.spa.clientId)))
-        .status,
-    ).toBe(429);
     expect(await grantOf()).not.toBeNull();
-    // A stranger's 404s do not spend the owner's budget, and the next window is free.
+    // A stranger's 404s do not spend the owner's budget, and Disconnect has its own: a spent
+    // Change budget never blocks it.
     const eve = await mallory();
     expect(
       (await connectedAppsCall(s.w, eve, "DELETE", path(s.spa.clientId)))
         .status,
     ).toBe(404);
     expect(
-      (
-        await connectedAppsCall(s.w, who, "DELETE", path(s.spa.clientId), {
-          at: NOW + 61,
-        })
-      ).status,
+      (await connectedAppsCall(s.w, who, "DELETE", path(s.spa.clientId)))
+        .status,
     ).toBe(204);
   });
 
-  it("fails closed when the limiter cannot be read", async () => {
+  it("Disconnect is 20 a minute on its own budget", async () => {
+    const who = await me();
+    for (let i = 0; i < 20; i++) {
+      await signIn();
+      expect(
+        (await connectedAppsCall(s.w, who, "DELETE", path(s.spa.clientId)))
+          .status,
+      ).toBe(204);
+    }
+    await signIn();
+    expect(
+      (await connectedAppsCall(s.w, who, "DELETE", path(s.spa.clientId)))
+        .status,
+    ).toBe(429);
+    expect(await grantOf()).not.toBeNull();
+  });
+
+  it("when the limiter cannot be read, Change fails closed and Disconnect fails open", async () => {
     await signIn();
     const who = await me();
     (s.w.env as unknown as Record<string, unknown>).RL = {
@@ -287,14 +298,18 @@ describe("the budget (IS-14)", () => {
         throw new Error("limiter down");
       },
     };
-    for (const method of ["PATCH", "DELETE"])
-      expect(
-        (
-          await connectedAppsCall(s.w, who, method, path(s.spa.clientId), {
-            body: method === "PATCH" ? { claims: { email: false } } : undefined,
-          })
-        ).status,
-      ).toBe(429);
+    expect(
+      (
+        await connectedAppsCall(s.w, who, "PATCH", path(s.spa.clientId), {
+          body: { claims: { email: false } },
+        })
+      ).status,
+    ).toBe(429);
     expect(await grantOf()).not.toBeNull();
+    expect(
+      (await connectedAppsCall(s.w, who, "DELETE", path(s.spa.clientId)))
+        .status,
+    ).toBe(204);
+    expect(await grantOf()).toBeNull();
   });
 });
