@@ -15251,9 +15251,9 @@
       "area": "identity",
       "surface": "portal",
       "owners": ["I-21", "I-21", "I-34", "I-11", "PX-31a", "PX-31b"],
-      "built": "mockup-only",
+      "built": "partial",
       "brandV2": "no",
-      "evidence": "searched admin/src/portal for Connected apps / Change what: nothing; AccountPage uses account/SignInMethods.tsx and SessionsCard.tsx only; worker identity/passthrough/routes.ts serves the consent read API but no portal UI"
+      "evidence": "built: Account \u2192 Connected apps (portal/components/account/ConnectedAppsSection.tsx): list, chips, Change panel, off rows; e2e states account-apps*, unit portalConnectedApps.test.tsx; own-app rows are I-34"
     },
     {
       "id": "identity.connection-audience",
@@ -15406,9 +15406,9 @@
       "surface": "portal",
       "overlays": ["ST-48"],
       "owners": ["I-21", "I-21", "I-34", "I-11"],
-      "built": "mockup-only",
+      "built": "partial",
       "brandV2": "no",
-      "evidence": "portal account/MethodRow.tsx Disconnect is for sign-in methods only; no app disconnect dialog"
+      "evidence": "built: Disconnect confirm in the Connected apps row (RemovePanel with the D8 copy); e2e state account-apps-disconnect"
     },
     {
       "id": "identity.finish",
