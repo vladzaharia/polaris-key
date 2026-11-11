@@ -1481,6 +1481,25 @@ Mockups: [web](ui-kits/shots/web-settings-light.png),
 - **Godot.** Once Godot draws these screens it uses its own two-pane rule, `two_pane_fits()`
   (landscape, 680 px or wider, aspect 1.5 or more), as SaveConflict does: one rule per kit.
 
+#### LocalPairing (Pair with a Code)
+
+- **Which states split.** Only the show state (the code and its QR) has two panes. Choose, enter,
+  confirm, paired and every closed or failed state stay one column. Mockups:
+  `sdk.react-pair-show`, `sdk.react-pair-enter`, `sdk.react-pair-confirm` and
+  `sdk.swiftui-pair-scan`.
+- **Layout.** The title and lede span the top. Start pane: the code in the kit's code face
+  (`--pk-kit-type-code-*`, the largest text on the screen) over its time ring, then the notice, the
+  waiting row, Cancel and the quiet switch to entering. End pane: the QR, centred on the code. One
+  column: title, lede, code, time, QR, notice, waiting, Cancel. The reading and focus order is the
+  same in both.
+- **When.** Two panes in a window at least 600 dp/pt/px wide, at any height; this is wider than
+  LinkPairing's rule on purpose, because the QR is read from another device and the code beside it
+  is the person's fallback. One column under 600 wide and at 200 % text. A window under 480 tall
+  (a 768 px laptop with a title bar, a Steam Deck, a TV) drops the kit's logo, which the window
+  already shows, and keeps the QR beside the whole start pane, so nothing scrolls. TV and consoles
+  always use two panes inside the title-safe area.
+- **Godot.** `two_pane_fits()`, as above.
+
 ### 4.4 Accessibility (every kit)
 
 WCAG 2.2 AA in both themes (BRAND §9) plus:

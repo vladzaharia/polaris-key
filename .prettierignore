@@ -27,6 +27,10 @@ packages/cli/test/fixtures/transport/
 packages/cli/test/fixtures/pr-golden/
 packages/cli/test/fixtures/winget-schema-1.12.0/
 
+# The mockup kit stylesheet: its fonts, icons and token blocks are written by tools/mockups/build-kit.mjs
+# and byte-checked by `pnpm gen mockup-kit --check`, so prettier must never rewrite it.
+docs/design/mockups/kit/mockup.css
+
 # The setup-wizard mockups: written by docs/design/setup/_src/build.mjs (edit _src, then rebuild).
 docs/design/setup/[0-9]*.html
 

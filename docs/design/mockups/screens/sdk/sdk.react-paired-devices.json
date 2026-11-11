@@ -1,0 +1,313 @@
+{
+  "id": "sdk.react-paired-devices",
+  "title": "React kit: paired devices",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 29,
+  "packages": ["CC-29K"],
+  "uxRows": [],
+  "summary": "The devices this one is paired with (PairedDevicesModel): each name over when it was last seen, on one line each, and a menu with Rename and Forget; the Can connect switch only when one is off or more than 8 are paired; renaming and forgetting inside the row; a refused name; the 8-can-connect and 32-paired caps; none yet; couldn't load; and what a connection the app makes can answer.",
+  "compare": [
+    "1: 'They connect only on the same network.' is said once, in the lede. Each row is the name (the rename, or the label the device sent) over 'Last seen today', 'yesterday', '3 days ago' (the shipped relative formatter, since()/days(), from the hour-coarse stored time), each on one line with an ellipsis, then ⋯ (Rename, Forget). No 'Not reachable now': the SDK cannot tell away from forgotten. No platform icon unless R12 lands.",
+    "2: the Can connect column appears only when a device is off or more than 8 are paired (with every device on and 8 or fewer, the switch does nothing useful). A switch is the link's reachable flag (on: the other device can find and connect to this one), on for a new pairing (LP3-D2), named 'Let {device} connect to this device', drawn quiet (a tint with the knob in the product's colour), and its target is 44 x 24. From 480px of window the label 'Can connect' sits once above the switches, its end on theirs; under 480 it goes and the switch sits 8px before ⋯. ui-core owns this disclosure rule.",
+    "3: Rename edits inside the row (as the shipped Devices list, rows.tsx data-editing='rename'): 'Device name', 'Shown on this device only.', Save and Cancel; Enter saves, Escape cancels; nothing is sent.",
+    "3b: a name is refused inside the row: 'Use 64 characters or fewer.' for a longer one, 'Enter a name.' when nothing is left once it is cleaned; the field keeps the text and focus.",
+    "4: Forget confirms inside the row: 'Forget Riverside booth?' / 'To connect again, pair with a new code.' with a danger Forget and Cancel. Forgetting deletes it here only, and the other device is not told (Forget is local; the license Devices list keeps Remove, a server action). After Forget, focus moves to the next row, or the title when none is left (UI-KITS 4.3).",
+    "5: with 8 switches on, the notice 'Up to 8 can connect' / 'Turn one off to let another connect.' sits directly above the list; every off switch is aria-disabled and described by it; turning one off enables the rest at once. If setReachable answers local-links-full it carries cap 'reachable' (R14), never the 32 copy.",
+    "6: with 32 paired devices, 'No room to pair' / 'Forget a paired device to pair another.' and Pair with a Code is aria-disabled; the list scrolls inside the window.",
+    "7: no paired devices: 'No paired devices yet.' and Pair with a Code.",
+    "8: an unreadable record (the strict store) shows 'Couldn't load your paired devices.' with Try again, as the shipped devices.loadFailed; no list and no Pair with a Code.",
+    "9: what the app's own connection to a paired device can answer, shown where the app connects: not seen on this network ('Can't find Theo's laptop' / 'Check it's on and on the same network.', the most common answer of open()), busy ('Theo's laptop is busy' with Try again, enabled once the SDK's cooldown has passed, no seconds in the copy) and no longer paired (the core link-unknown copy).",
+    "Pair with a Code (plus glyph) is the one primary; Done closes. Sign-out and account changes never touch this list. The list updates live (R10).",
+    "Four sizes: three windows a row at wide and desktop, two at tablet, one on phone; rows keep name, switch and menu on one line down to 390px.",
+    "Accent, type and radii match sdk.react-activate: Polaris look by default, DJDL's coral accent, no Polaris Key or Polaris Locker words or marks anywhere (there is no account in this flow).",
+    "Words are the copyKeys below, verbatim ('revised' marks a key this round added or changed; 'was' is the old value); no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
+  ],
+  "copyKeys": [
+    {
+      "key": "pairedDevices.title",
+      "value": "Paired devices",
+      "role": "title",
+      "note": "PairedDevices (new namespace; add it to KEY_NAMESPACES). Sentence case, like devices.title."
+    },
+    {
+      "key": "pairedDevices.lede",
+      "value": "They connect only on the same network.",
+      "role": "body",
+      "note": "Said once for the list."
+    },
+    {
+      "key": "pairedDevices.lastSeen",
+      "value": "Last seen {when}",
+      "role": "hint",
+      "revised": "changed",
+      "was": "Last seen {when} ({when} = today, yesterday or a date)",
+      "note": "Arguments: {when} = the shipped relative formatter's text (today, yesterday, 3 days ago)."
+    },
+    {
+      "key": "a11y.deviceOptions",
+      "value": "Options for {device}",
+      "role": "a11y",
+      "note": "The ⋯ menu."
+    },
+    {
+      "key": "pairedDevices.canConnect",
+      "value": "Can connect",
+      "role": "label",
+      "note": "Column label, from 480px of window, only while the column shows."
+    },
+    {
+      "key": "a11y.letConnect",
+      "value": "Let {device} connect to this device",
+      "role": "a11y",
+      "note": "Each switch (directional)."
+    },
+    {
+      "key": "devices.rename",
+      "value": "Rename",
+      "role": "menu",
+      "existing": true
+    },
+    {
+      "key": "devices.renameLabel",
+      "value": "Device name",
+      "role": "label",
+      "existing": true
+    },
+    {
+      "key": "localPairing.nameHint",
+      "value": "Shown on this device only.",
+      "role": "hint"
+    },
+    {
+      "key": "common.save",
+      "value": "Save",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "common.cancel",
+      "value": "Cancel",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "pairedDevices.renameLong",
+      "value": "Use {max} characters or fewer.",
+      "role": "body",
+      "revised": "new",
+      "note": "Rename refused. Arguments: {max} = 64."
+    },
+    {
+      "key": "pairedDevices.renameEmpty",
+      "value": "Enter a name.",
+      "role": "body",
+      "revised": "new",
+      "note": "Rename refused: nothing left once cleaned."
+    },
+    {
+      "key": "pairedDevices.forget",
+      "value": "Forget",
+      "role": "button",
+      "note": "Menu item and the confirm's danger button (local; never Remove)."
+    },
+    {
+      "key": "pairedDevices.forgetConfirm",
+      "value": "Forget {device}?",
+      "role": "title"
+    },
+    {
+      "key": "pairedDevices.forgetBody",
+      "value": "To connect again, pair with a new code.",
+      "role": "body",
+      "note": "The one consequence line."
+    },
+    {
+      "key": "pairedDevices.reachableFullTitle",
+      "value": "Up to {max} can connect",
+      "role": "label",
+      "note": "Arguments: {max} = 8 (MAX_LIVE_LOCAL_ADVERTS)."
+    },
+    {
+      "key": "pairedDevices.reachableFullBody",
+      "value": "Turn one off to let another connect.",
+      "role": "body"
+    },
+    {
+      "key": "core.codes.local-links-full.title",
+      "value": "No room to pair",
+      "role": "label",
+      "existing": true
+    },
+    {
+      "key": "pairedDevices.fullBody",
+      "value": "Forget a paired device to pair another.",
+      "role": "body",
+      "note": "32 paired (MAX_LOCAL_LINKS)."
+    },
+    {
+      "key": "pairedDevices.empty",
+      "value": "No paired devices yet.",
+      "role": "body"
+    },
+    {
+      "key": "pairedDevices.loadFailed",
+      "value": "Couldn’t load your paired devices.",
+      "role": "body",
+      "revised": "new",
+      "note": "The record could not be read; Try again follows. Modelled on devices.loadFailed."
+    },
+    {
+      "key": "common.tryAgain",
+      "value": "Try again",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "localPairing.title",
+      "value": "Pair with a Code",
+      "role": "button",
+      "note": "The entry button."
+    },
+    {
+      "key": "common.done",
+      "value": "Done",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "pairedDevices.notFoundTitle",
+      "value": "Can’t find {device}",
+      "role": "label",
+      "revised": "new",
+      "note": "open() answered unknown_peer (not seen on this network)."
+    },
+    {
+      "key": "pairedDevices.notFoundBody",
+      "value": "Check it’s on and on the same network.",
+      "role": "body",
+      "revised": "new"
+    },
+    {
+      "key": "pairedDevices.busyTitle",
+      "value": "{device} is busy",
+      "role": "label",
+      "note": "The app's connection met a busy answer; Try again follows."
+    },
+    {
+      "key": "core.codes.link-unknown",
+      "value": "Not paired · That device is no longer paired with this one.",
+      "role": "body",
+      "existing": true,
+      "note": "Existing core copy."
+    }
+  ],
+  "removedCopyKeys": [
+    {
+      "key": "pairedDevices.notReachable",
+      "was": "Not reachable now · last seen {when}",
+      "why": "The SDK cannot tell away from forgotten; last seen is the pruning signal (plan §12 Q9). A positive 'On this network' cue can come later with R13."
+    },
+    {
+      "key": "pairedDevices.busyBody",
+      "was": "Try again in {seconds, plural, …}.",
+      "why": "No seconds: Try again is enabled once the cooldown has passed."
+    }
+  ],
+  "sdkNeeds": [
+    {
+      "id": "R10",
+      "need": "List: a public onChange(fn), firing on pair, rename, forget, setReachable, lastSeen writes and gate flips.",
+      "states": ["1", "2", "3", "4", "5", "6"]
+    },
+    {
+      "id": "R11",
+      "need": "List: the gate's value and its changes (through R10 or an event of its own), to hide the entry, drop the switches and close show or enter.",
+      "states": ["2"]
+    },
+    {
+      "id": "R14",
+      "need": "List: local-links-full from setReachable carries cap: 'reachable' (as opposed to 'stored'), so the 8-can-connect answer is never 'Forget a paired device first'.",
+      "states": ["5"]
+    },
+    {
+      "id": "R12",
+      "need": "List, optional: platform on LocalLinkInfo (HELLO's platform, stored as an additive field only if every SDK's strict store accepts it without a schema bump); without it rows have no icon.",
+      "states": ["1"]
+    },
+    {
+      "id": "R13",
+      "need": "List, only if 'On this network' is adopted later: a public presence field (localPeers() is internal today). Not needed by these boards.",
+      "states": ["1"]
+    },
+    {
+      "id": "R15",
+      "need": "Every SDK keeps list, rename, remove and setReachable ungated: stated in V5 §15.12 and pinned by a local.gate corpus row (Node already behaves so).",
+      "states": ["3", "4"]
+    }
+  ],
+  "platforms": {
+    "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
+    "swiftui": "iOS and iPadOS: scan first, then show, enter and manage (sdk.swiftui-pair-scan: AVFoundation, the kit's own viewfinder); the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning, as the React boards.",
+    "compose": "Android: scan first, then show, enter and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so sdk.swiftui-pair-scan 2, 3 and 3c are iOS only; because Google's scanner cannot show the categories, its choose screen (1) shows 'Each of you shares' and the pills under Scan a code before the scanner opens. A build without Play services has no Scan a code and types the code. Desktop: show, enter and manage.",
+    "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
+    "python": "API only (no kit yet)."
+  },
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (mockup mode)",
+    "date": "2026-11-10",
+    "verdict": "Fix (mediocre): names squeezed at phone width, 'Not reachable now' beside an on switch, edits away from their row, and the most common connect answer missing. Fixed in the one fix round, every recommendation taken.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "At 390px the fixed switch column left names about 130px; five to eight accent switches were the loudest thing on screen; 'Not reachable now' sat beside an on switch with no data behind it.",
+        "resolution": "'Not reachable now' is gone. The switch column shows only when one is off or more than 8 are paired (2, 5, 6); switches are quiet (a tint, the knob in the product's colour) with a 44 x 24 target; under 480px of window the label goes and the switch sits 8px before ⋯. Names and meta stay on one line.",
+        "ref": "M8"
+      },
+      {
+        "severity": "major",
+        "issue": "Rename and Forget opened under the whole list, away from their row.",
+        "resolution": "Both edit and confirm inside the row, as the shipped Devices list; ⋯ stays; after Forget focus moves to the next row or the title.",
+        "ref": "M9"
+      },
+      {
+        "severity": "major",
+        "issue": "'When the app connects' left out unknown_peer and asked people to time a 3–5 second cooldown.",
+        "resolution": "Added 'Can't find Theo's laptop' / 'Check it's on and on the same network.'; busy is 'Theo's laptop is busy' with Try again enabled after the cooldown, no seconds.",
+        "ref": "M10"
+      },
+      {
+        "severity": "minor",
+        "issue": "'Last seen Oct 28' was a date.",
+        "resolution": "The shipped relative formatter: today, yesterday, 3 days ago.",
+        "ref": "m10"
+      },
+      {
+        "severity": "minor",
+        "issue": "At 8 can connect the off switches were disabled with no reason on the row.",
+        "resolution": "The notice stays directly above the list and describes every aria-disabled off switch.",
+        "ref": "m12"
+      },
+      {
+        "severity": "minor",
+        "issue": "No load-failed or rename-refused state.",
+        "resolution": "8: 'Couldn't load your paired devices.' with Try again. 3b: 'Use 64 characters or fewer.' / 'Enter a name.' inside the row.",
+        "ref": "m14"
+      },
+      {
+        "severity": "minor",
+        "issue": "Words and case: Forget or Remove, Can connect, the title's case.",
+        "resolution": "Forget (local); Remove stays for the license Devices list. Can connect keeps the directional accessible name. 'Paired devices' in sentence case.",
+        "ref": "Q4, Q5"
+      },
+      {
+        "severity": "minor",
+        "issue": "No platform icon.",
+        "resolution": "Not drawn; an icon needs R12, only if every SDK's strict store accepts the additive field.",
+        "ref": "Q8"
+      }
+    ]
+  }
+}

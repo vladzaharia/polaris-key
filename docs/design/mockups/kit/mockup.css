@@ -1416,6 +1416,10 @@ main [data-service="commerce"] a:not([class*="bg-"]) {
   --ic-signal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 20h.01'/%3E%3Cpath d='M7 20v-4'/%3E%3Cpath d='M12 20v-8'/%3E%3Cpath d='M17 20V8'/%3E%3Cpath d='M22 4v16'/%3E%3C/svg%3E");
   --ic-battery-full: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 10v4'/%3E%3Cpath d='M14 10v4'/%3E%3Cpath d='M22 14v-4'/%3E%3Cpath d='M6 10v4'/%3E%3Crect x='2' y='6' width='16' height='12' rx='2'/%3E%3C/svg%3E");
   --ic-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'/%3E%3C/svg%3E");
+  --ic-keyboard: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 8h.01'/%3E%3Cpath d='M12 12h.01'/%3E%3Cpath d='M14 8h.01'/%3E%3Cpath d='M16 12h.01'/%3E%3Cpath d='M18 8h.01'/%3E%3Cpath d='M6 8h.01'/%3E%3Cpath d='M7 16h10'/%3E%3Cpath d='M8 12h.01'/%3E%3Crect width='20' height='16' x='2' y='4' rx='2'/%3E%3C/svg%3E");
+  --ic-scan-qr-code: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 12v4a1 1 0 0 1-1 1h-4'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M17 8V7'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M7 17h.01'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Crect x='7' y='7' width='5' height='5' rx='1'/%3E%3C/svg%3E");
+  --ic-camera-off: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.564 14.558a3 3 0 1 1-4.122-4.121'/%3E%3Cpath d='m2 2 20 20'/%3E%3Cpath d='M20 20H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 .819-.175'/%3E%3Cpath d='M9.695 4.024A2 2 0 0 1 10.004 4h3.993a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v7.344'/%3E%3C/svg%3E");
+  --ic-shield-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z'/%3E%3Cpath d='M12 8v4'/%3E%3Cpath d='M12 16h.01'/%3E%3C/svg%3E");
   --ic-apple: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701'/%3E%3C/svg%3E");
   --ic-windows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M3 5.1 10.4 4v7.3H3zM11.4 3.9 21 2.5v8.8h-9.6zM3 12.6h7.4V20L3 18.9zM11.4 12.6H21v8.9l-9.6-1.4z'/%3E%3C/svg%3E");
   --ic-linux: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath fill-rule='evenodd' d='M12 2c2.3 0 3.6 1.9 3.6 4.4 0 1.3.5 2.3 1.4 3.6 1.2 1.7 2.4 3.6 2.4 6 0 1.3-.4 2.4-1.1 3.2.6.3 1 .8 1 1.4 0 .9-1.2 1.4-3 1.4-1.2 0-2-.3-2.4-.8a8.4 8.4 0 0 1-3.8 0c-.4.5-1.2.8-2.4.8-1.8 0-3-.5-3-1.4 0-.6.4-1.1 1-1.4A4.8 4.8 0 0 1 4.6 16c0-2.4 1.2-4.3 2.4-6 .9-1.3 1.4-2.3 1.4-3.6C8.4 3.9 9.7 2 12 2zm0 7.3c-1.9 0-3.4 2.6-3.4 5.8 0 2.6 1.5 4.2 3.4 4.2s3.4-1.6 3.4-4.2c0-3.2-1.5-5.8-3.4-5.8zM10.6 5a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6zm2.8 0a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6z'/%3E%3C/svg%3E");
@@ -1619,6 +1623,10 @@ main [data-service="commerce"] a:not([class*="bg-"]) {
 .ic-signal { --i: var(--ic-signal); }
 .ic-battery-full { --i: var(--ic-battery-full); }
 .ic-star { --i: var(--ic-star); }
+.ic-keyboard { --i: var(--ic-keyboard); }
+.ic-scan-qr-code { --i: var(--ic-scan-qr-code); }
+.ic-camera-off { --i: var(--ic-camera-off); }
+.ic-shield-alert { --i: var(--ic-shield-alert); }
 .ic-apple { --i: var(--ic-apple); }
 .ic-windows { --i: var(--ic-windows); }
 .ic-linux { --i: var(--ic-linux); }
@@ -1631,7 +1639,7 @@ main [data-service="commerce"] a:not([class*="bg-"]) {
 .ic-microsoft-store { --i: var(--ic-microsoft-store); }
 .ic-star-cut { --i: var(--ic-star-cut); }
 .ic-polaris { --i: var(--ic-polaris); }
-/* 188 lucide icons, 10 platform and store marks, the Star Cut and the Pinned K. */
+/* 192 lucide icons, 10 platform and store marks, the Star Cut and the Pinned K. */
 /* @generated icons:end */
 
 /* @generated lockups:start — the Key compact lockup per theme (packages/brand, BRAND.md §1.4) */
@@ -27420,3 +27428,12 @@ tr.chg {
 }
 /* end hosted */
 /* END portal-redraw-2026-10-20 */
+
+/* ── local-pairing: Pair with a Code (sdk.react-pair-*, sdk.swiftui-pair-scan) ──────────────────
+   .kit-form.short: a window under 480px tall (a 768px laptop with a title bar, a Steam Deck, a TV)
+   insets its form by 24 above and below instead of the card padding, so a code and its QR stay
+   side by side with no scroll. */
+.kit-host.plain > .kit-form.short {
+  padding-block: var(--sp-6);
+}
+/* end local-pairing */

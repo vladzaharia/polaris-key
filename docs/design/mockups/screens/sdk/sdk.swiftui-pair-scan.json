@@ -1,0 +1,267 @@
+{
+  "id": "sdk.swiftui-pair-scan",
+  "title": "SwiftUI kit: Pair with a Code on iPhone",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 31,
+  "packages": ["CC-29K"],
+  "uxRows": [],
+  "summary": "Pair with a Code on iPhone in the SwiftUI kit, with Diceroll's facts: Scan a code first and Show a code, the camera pre-prompt, the viewfinder, another app's QR, camera access off with Open Settings, entering the code as the fallback, showing a code, and the joiner's other answers. Android is the same in Compose, except where the Play build opens Google's scanner.",
+  "compare": [
+    "1: on a device that can scan, the choices are Scan a code (first) and Show a code, two equal glass block buttons; a QR is never limited by the dial budget, carries 128 bits and cannot be mistyped, so it never reaches Too many tries. Typing is reached from the scan screens. The L-11 footnote 'If asked, allow Diceroll to find devices on your network.' shows until iOS has asked once.",
+    "2: once, before iOS's own camera prompt, in the shipped signin.nearby.prePrompt pattern: 'Scan the code' / 'Next, allow Diceroll to use the camera, so you can scan the code.' with Continue (which raises the system prompt) and 'Enter the code instead'.",
+    "3: the camera view with the viewfinder's corners, dark in both themes; it pairs as soon as a code reads (no shutter). 'Each of you shares' and the category pills sit under the view on 3, 3b and 3c, before anything is dialled. Scanning is this person's yes, as Pair is on 4. 'Enter the code instead' and Cancel. 3b: another app's QR shows 'This code is for another app.' under the view and scanning goes on (R6 reason other-app).",
+    "3c: with the camera off the view says 'Camera access is off' / 'Allow it in Settings.' and Open Settings opens the app's page in Settings; 'Enter the code instead' stays.",
+    "4: entering the code: the field in the kit's code face, the number pad, digits only; 'Scan the code instead'; the shared categories before Pair, which is this person's consent; the rules of sdk.react-pair-enter (wrong code keeps the first two digits, no countdown after too many tries, 6's answers).",
+    "5: showing a code: 'Scan or enter this code on the other device.', the code over its time and the QR, the waiting row, Cancel and 'Scan a code instead', with sdk.react-pair-show's rules (the changed code, Show a new code, the cooldown).",
+    "Every text link is a 44pt target (Enter the code instead, Scan the code instead, Scan a code instead, Back). The primary is the bottom-anchored accent capsule; secondaries are glass.",
+    "Android (Compose): the same screens; the Play flavour opens Google's code scanner instead of 2, 3 and 3c (its own UI, no camera permission), so its choose screen (1) shows 'Each of you shares' and the pills under Scan a code before the scanner opens; a build without Play services has no Scan a code.",
+    "Four sizes: the phones four a row at wide with the answers card in the fourth cell of the second row, three at desktop with the card across two cells, two at tablet, one on phone.",
+    "Accent, type, radii and glass match sdk.swiftui-activate; no Polaris Key or Polaris Locker words or marks.",
+    "Words are the copyKeys below, verbatim ('revised' marks a key this round added or changed; 'was' is the old value)."
+  ],
+  "copyKeys": [
+    {
+      "key": "localPairing.title",
+      "value": "Pair with a Code",
+      "role": "title",
+      "note": "See sdk.react-pair-show."
+    },
+    {
+      "key": "localPairing.chooseBody",
+      "value": "Both devices need to be on the same network.",
+      "role": "body"
+    },
+    {
+      "key": "localPairing.scan",
+      "value": "Scan a code",
+      "role": "button",
+      "note": "First on a device that can scan."
+    },
+    {
+      "key": "localPairing.show",
+      "value": "Show a code",
+      "role": "button"
+    },
+    {
+      "key": "localPairing.prePrompt",
+      "value": "If asked, allow {app} to find devices on your network.",
+      "role": "hint",
+      "revised": "changed",
+      "was": "If asked, let {app} find devices on your network.",
+      "note": "See sdk.react-pair-show."
+    },
+    {
+      "key": "localPairing.cameraPromptTitle",
+      "value": "Scan the code",
+      "role": "title",
+      "revised": "new",
+      "note": "The camera pre-prompt's title."
+    },
+    {
+      "key": "localPairing.cameraPrePrompt",
+      "value": "Next, allow {app} to use the camera, so you can scan the code.",
+      "role": "body",
+      "revised": "changed",
+      "was": "Next, allow {app} to use the camera.",
+      "note": "Once, before the OS camera prompt, as signin.nearby.prePrompt. Arguments: {app}."
+    },
+    {
+      "key": "common.continue",
+      "value": "Continue",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "localPairing.scanBody",
+      "value": "Point at the code on the other device.",
+      "role": "body",
+      "note": "The scan screen's lede."
+    },
+    {
+      "key": "a11y.cameraView",
+      "value": "Camera view",
+      "role": "a11y",
+      "note": "The viewfinder."
+    },
+    {
+      "key": "localPairing.enterInstead",
+      "value": "Enter the code instead",
+      "role": "button",
+      "note": "Link on the pre-prompt and scan screens (44pt)."
+    },
+    {
+      "key": "localPairing.otherApp",
+      "value": "This code is for another app.",
+      "role": "body",
+      "note": "A QR whose slug is not this app's (R6 reason other-app)."
+    },
+    {
+      "key": "localPairing.cameraOffTitle",
+      "value": "Camera access is off",
+      "role": "label",
+      "note": "Camera permission denied."
+    },
+    {
+      "key": "localPairing.cameraOffBody",
+      "value": "Allow it in Settings.",
+      "role": "body",
+      "revised": "changed",
+      "was": "Allow it in Settings, or enter the code.",
+      "note": "The link under it says the rest."
+    },
+    {
+      "key": "localPairing.openSettings",
+      "value": "Open Settings",
+      "role": "button",
+      "revised": "new",
+      "note": "Opens the app's page in Settings."
+    },
+    {
+      "key": "localPairing.enterBody",
+      "value": "Enter the code from the other device.",
+      "role": "body"
+    },
+    {
+      "key": "localPairing.codeLabel",
+      "value": "Code",
+      "role": "label"
+    },
+    {
+      "key": "localPairing.scanInstead",
+      "value": "Scan the code instead",
+      "role": "button",
+      "note": "Link on the enter screen (44pt)."
+    },
+    {
+      "key": "linkPairing.shares",
+      "value": "Each of you shares",
+      "role": "label",
+      "existing": true,
+      "note": "Over the categories on 3, 3b, 3c and 4 (and on Android's choose screen before Google's scanner opens)."
+    },
+    {
+      "key": "localPairing.pair",
+      "value": "Pair",
+      "role": "button"
+    },
+    {
+      "key": "common.back",
+      "value": "Back",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "localPairing.showBody",
+      "value": "Scan or enter this code on the other device.",
+      "role": "body",
+      "revised": "changed",
+      "was": "Enter or scan this code on the other device.",
+      "note": "See sdk.react-pair-show."
+    },
+    {
+      "key": "localPairing.expires",
+      "value": "Expires in {time}",
+      "role": "label"
+    },
+    {
+      "key": "localPairing.waitingDevice",
+      "value": "Waiting for the other device…",
+      "role": "label"
+    },
+    {
+      "key": "localPairing.toScan",
+      "value": "Scan a code instead",
+      "role": "button",
+      "revised": "new",
+      "note": "Quiet link on the show screen of a device that can scan."
+    },
+    {
+      "key": "common.cancel",
+      "value": "Cancel",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "localPairing.wrongCode",
+      "value": "That code didn’t work. Enter the code the other device shows now.",
+      "role": "body",
+      "revised": "changed",
+      "was": "That code didn’t work. Enter the new code from the other device.",
+      "note": "See sdk.react-pair-enter."
+    },
+    {
+      "key": "localPairing.cooldownBody",
+      "value": "Ask for a new code on the other device.",
+      "role": "body",
+      "revised": "changed",
+      "was": "Try again in {time}, or cancel on the other device and show a new code.",
+      "note": "See sdk.react-pair-enter."
+    },
+    {
+      "key": "localPairing.notFoundBody",
+      "value": "Check the code, and that you’re both on the same network.",
+      "role": "body",
+      "revised": "changed",
+      "was": "Check you’re both on the same network.",
+      "note": "See sdk.react-pair-enter."
+    }
+  ],
+  "sdkNeeds": [
+    {
+      "id": "R6",
+      "need": "Joiner: pairing-code-failed carries a reason detail: wrong (the other device answered and changed its code), spent (this code's first two digits have no dial left; nothing was sent), invalid, or other-app.",
+      "states": ["3b", "6"]
+    },
+    {
+      "id": "R7",
+      "need": "Joiner: dialsLeft(text) returns 0 | 1 | 2, or null until two digits are typed (D5).",
+      "states": ["6"]
+    },
+    {
+      "id": "R3",
+      "need": "Shower: handle.renew(), or a documented stop() then pair(), opening a new window whose first two digits differ from the previous window's.",
+      "states": ["5"]
+    }
+  ],
+  "platforms": {
+    "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
+    "swiftui": "iOS and iPadOS: scan first, then show, enter and manage (sdk.swiftui-pair-scan: AVFoundation, the kit's own viewfinder); the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning, as the React boards.",
+    "compose": "Android: scan first, then show, enter and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so sdk.swiftui-pair-scan 2, 3 and 3c are iOS only; because Google's scanner cannot show the categories, its choose screen (1) shows 'Each of you shares' and the pills under Scan a code before the scanner opens. A build without Play services has no Scan a code and types the code. Desktop: show, enter and manage.",
+    "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
+    "python": "API only (no kit yet)."
+  },
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (mockup mode)",
+    "date": "2026-11-10",
+    "verdict": "New in the fix round: the iPhone frames moved here from sdk.react-pair-enter (M11, Q10), so the React board's compare list covers only what K.1 builds.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Typing was primary and scanning the fallback on phones; links were 22px tall.",
+        "resolution": "Scan a code first, Show a code second; typing from 'Enter the code instead'; every link a 44pt target.",
+        "ref": "M11"
+      },
+      {
+        "severity": "minor",
+        "issue": "Camera off said 'or enter the code' and then a link said the same; the pre-prompt was an instruction.",
+        "resolution": "'Allow it in Settings.' with Open Settings; the pre-prompt is 'Next, allow Diceroll to use the camera, so you can scan the code.' in the shipped signin.nearby.prePrompt pattern.",
+        "ref": "m9"
+      },
+      {
+        "severity": "minor",
+        "issue": "Fixture and ownership of the phone frames.",
+        "resolution": "Diceroll in the SwiftUI kit; owned by K.2 (SwiftUI and Compose) and K.3 (scanning).",
+        "ref": "Q10"
+      },
+      {
+        "severity": "major",
+        "issue": "Re-check: scanning pairs as soon as a code reads, but 3, 3b and 3c never showed what each of you shares, so the main phone path skipped the joiner's consent.",
+        "resolution": "'Each of you shares' and the pills under the viewfinder on 3, 3b and 3c; scanning is this person's yes, as Pair is on 4. Compose's Play scanner shows them on choose (1) before Google's scanner opens.",
+        "ref": "recheck-1"
+      }
+    ]
+  }
+}

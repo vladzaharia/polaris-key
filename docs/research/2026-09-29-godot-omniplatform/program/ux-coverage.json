@@ -17183,6 +17183,78 @@
       "evidence": "board and artifact screen drawn by UK-56; no kit code yet (owner package todo or optional)"
     },
     {
+      "id": "sdk.react-pair-show",
+      "kind": "screen",
+      "title": "React kit: Pair with a Code, show a code",
+      "source": "docs/design/mockups/screens/sdk/sdk.react-pair-show",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["CC-29K"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board drawn for CC-29K (account-free local pairing); CC-29K.1 builds the React kit, K.2 SwiftUI and Compose, K.3 scanning, K.4 Godot (not built yet)"
+    },
+    {
+      "id": "sdk.react-pair-enter",
+      "kind": "screen",
+      "title": "React kit: Pair with a Code, enter a code",
+      "source": "docs/design/mockups/screens/sdk/sdk.react-pair-enter",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["CC-29K"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board drawn for CC-29K (account-free local pairing); CC-29K.1 builds the React kit, K.2 SwiftUI and Compose, K.3 scanning, K.4 Godot (not built yet)"
+    },
+    {
+      "id": "sdk.react-pair-confirm",
+      "kind": "screen",
+      "title": "React kit: Pair with a Code, confirm and paired",
+      "source": "docs/design/mockups/screens/sdk/sdk.react-pair-confirm",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["CC-29K"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board drawn for CC-29K (account-free local pairing); CC-29K.1 builds the React kit, K.2 SwiftUI and Compose, K.3 scanning, K.4 Godot (not built yet)"
+    },
+    {
+      "id": "sdk.react-paired-devices",
+      "kind": "screen",
+      "title": "React kit: paired devices",
+      "source": "docs/design/mockups/screens/sdk/sdk.react-paired-devices",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["CC-29K"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board drawn for CC-29K (account-free local pairing); CC-29K.1 builds the React kit, K.2 SwiftUI and Compose, K.3 scanning, K.4 Godot (not built yet)"
+    },
+    {
+      "id": "sdk.react-pair-off",
+      "kind": "screen",
+      "title": "React kit: Pair with a Code turned off",
+      "source": "docs/design/mockups/screens/sdk/sdk.react-pair-off",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["CC-29K"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board drawn for CC-29K (account-free local pairing); CC-29K.1 builds the React kit, K.2 SwiftUI and Compose, K.3 scanning, K.4 Godot (not built yet)"
+    },
+    {
+      "id": "sdk.swiftui-pair-scan",
+      "kind": "screen",
+      "title": "SwiftUI kit: Pair with a Code on iPhone",
+      "source": "docs/design/mockups/screens/sdk/sdk.swiftui-pair-scan",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["CC-29K"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board drawn for CC-29K (account-free local pairing): the iPhone frames, scan first; CC-29K.2 builds SwiftUI and Compose, K.3 scanning (not built yet)"
+    },
+    {
       "id": "docs.guide-lanes",
       "kind": "screen",
       "title": "Add licensing to your app",
