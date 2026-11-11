@@ -256,6 +256,18 @@ private final class TaskBox: @unchecked Sendable {
         }
         if late { t.cancel() }
     }
+    /// Start `body` only once the task is stored, so a cancel always reaches a task that is still running
+    /// (a task that finished before `set` could not be cancelled, and a starved runner let it).
+    func launch(_ body: @escaping @Sendable () async throws -> JSONValue) -> Task<JSONValue, Error> {
+        let (gate, open) = AsyncStream.makeStream(of: Void.self)
+        let t = Task<JSONValue, Error> {
+            for await _ in gate { break }
+            return try await body()
+        }
+        set(t)
+        open.yield()
+        return t
+    }
     func cancel() {
         let t = lock.withLock { () -> Task<JSONValue, Error>? in
             cancelRequested = true
@@ -412,8 +424,7 @@ final class CloudSyncTransferTests: XCTestCase {
         }
         let e = engine(s, j, parallelism: 1)
         let req = upReq("k1", big)
-        let task = Task<JSONValue, Error> { try await e.upload(req) }
-        box.set(task)
+        let task = box.launch { try await e.upload(req) }
         await expect(.aborted) { _ = try await task.value }
         let rec = try parseJournalRecord(j.get("k1"))
         XCTAssertEqual(rec.done, [1, 2])
@@ -441,8 +452,7 @@ final class CloudSyncTransferTests: XCTestCase {
         }
         let e = engine(s, j, parallelism: 1)
         let req = upReq("k2", big)
-        let task = Task<JSONValue, Error> { try await e.upload(req) }
-        box.set(task)
+        let task = box.launch { try await e.upload(req) }
         _ = try? await task.value
         let up = try XCTUnwrap(s.uploads.keys.first, "the upload had started before the cancel")
         s.uploads[up]?.parts[2] = nil
@@ -661,8 +671,7 @@ final class CloudSyncTransferTests: XCTestCase {
         }
         let e = engine(s2, j2, parallelism: 1)
         let req = chunkedReq("c4", data, codec)
-        let task = Task<JSONValue, Error> { try await e.uploadChunked(req) }
-        box.set(task)
+        let task = box.launch { try await e.uploadChunked(req) }
         await expect(.aborted) { _ = try await task.value }
         let rec = try parseJournalRecord(j2.get("c4"))
         XCTAssertEqual(rec.mode, "chunks")
