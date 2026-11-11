@@ -36,15 +36,13 @@ val liveDevSuite = "im.plrs.key.conformance.LiveDevTest"
 // The generated quickstart config rides into the test sources only when a lane names one.
 val liveDevConfig = providers.environmentVariable("PKEY_DEV_CONFIG").orNull?.trim()?.takeIf { it.isNotEmpty() }?.let(::File)
 if (liveDevConfig != null) {
+    require(liveDevConfig.isAbsolute && liveDevConfig.isFile) {
+        "PKEY_DEV_CONFIG must be the absolute path of a generated PolarisConfig.kt; got $liveDevConfig"
+    }
     val stagePkeyDevConfig = tasks.register<Sync>("stagePkeyDevConfig") {
         description = "Copies PKEY_DEV_CONFIG, the PolarisConfig.kt `pkey sdk` generated, into the test sources."
         from(liveDevConfig)
         into(layout.buildDirectory.dir("generated/pkey-dev/kotlin"))
-        doFirst {
-            require(liveDevConfig.isAbsolute && liveDevConfig.isFile) {
-                "PKEY_DEV_CONFIG must be the absolute path of a generated PolarisConfig.kt; got $liveDevConfig"
-            }
-        }
     }
     kotlin.sourceSets.named("test") { kotlin.srcDir(stagePkeyDevConfig) }
 }
