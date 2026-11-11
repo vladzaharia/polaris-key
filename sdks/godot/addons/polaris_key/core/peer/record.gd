@@ -35,6 +35,7 @@ const VOUCH_REQ := 0x8010
 const VOUCH_RESULT := 0x8011
 const CONFIRM := 0x8012
 const CONTACT := 0x0013
+const LOCAL_LINK := 0x0014
 const SAS_COMMIT := 0x8014
 const SAS_NONCE := 0x8015
 const SAS_REVEAL := 0x8016
