@@ -33,7 +33,7 @@ const ACTION_KEYS := {
 	"open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
 	"replace-in-browser": [],
 	"open-manage-url": ["deviceLimit.openBrowser", "devices.manage", "signin.key.addInLocker", "signin.deviceLimit.replace", "activate.otherEmail.verify"],
-	"start-sign-in": ["signin.key.ownedSignIn", "signin.key.signIn", "activate.waitingSignIn", "activate.recommend.action"],
+	"start-sign-in": ["signin.key.ownedSignIn", "signin.key.signIn", "activate.waitingSignIn", "activate.recommend.action", "cloudSync.signIn"],
 	"copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
 	"retry": ["common.tryAgain", "common.reconnect", "signin.again", "signInHandoff.newCode"],
 	"cancel": ["common.cancel"],
