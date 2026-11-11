@@ -137,6 +137,23 @@ static func depth_ok(v: Variant, level := 1) -> bool:
 	return true
 
 
+## Whether `v` is the stand-in for a string with a lone surrogate (a GDScript String cannot hold one, so the
+## export's pull reads it as NaN, which no canonical writer spells).
+static func is_unspellable(v: Variant) -> bool:
+	return typeof(v) == TYPE_FLOAT and is_nan(v)
+
+
+## Whether a `record` member is a pair whose names are strings or stand-ins, at least one a stand-in.
+static func has_unspellable_ref(r: Variant) -> bool:
+	if not (r is Array) or (r as Array).size() < 2:
+		return false
+	var a: Variant = r[0]
+	var b: Variant = r[1]
+	if not ((a is String or is_unspellable(a)) and (b is String or is_unspellable(b))):
+		return false
+	return is_unspellable(a) or is_unspellable(b)
+
+
 ## Whether `v` has a canonical JSON spelling: no lone surrogate, no number that is not finite, no integer past
 ## 2^53, nesting within `MAX_DEPTH`.
 static func serialisable(v: Variant) -> bool:
@@ -165,6 +182,8 @@ class _Run:
 	const FILE_ONLY := "file-only"
 	const OMIT := "omit"
 	const INVALID := "invalid"
+	## A file may take `ceil(planned / this) + 8` requests of its source.
+	const PIECE_FLOOR := 65536
 
 	var inp: Dictionary
 	var sink: Object
@@ -396,6 +415,9 @@ class _Run:
 		for c: Dictionary in _changes:
 			if c.get("setting") is String:
 				_setting_changes.append({"c": c, "name": c["setting"]})
+			elif PKeySyncExport.is_unspellable(c.get("setting")):
+				# A name with a lone surrogate (read as NaN): a row no runtime can write, listed, never dropped quietly.
+				_setting_skips.append({"kind": "setting", "code": "invalid"})
 		_sort_by(_setting_changes, "name")
 		for sc: Dictionary in _setting_changes:
 			if _stop():
@@ -417,6 +439,11 @@ class _Run:
 			if ref != null:
 				_record_changes.append({"c": c, "collection": ref[0], "wire": ref[1]})
 				collection_set[ref[0]] = true
+			elif PKeySyncExport.has_unspellable_ref(c.get("record")):
+				var skip := {"kind": "record", "code": "invalid"}
+				if c["record"][0] is String:
+					skip["collection"] = c["record"][0]
+				_record_skips.append(skip)
 		var collection_items: Array = []
 		for k in collection_set:
 			collection_items.append({"name": k})
@@ -854,14 +881,22 @@ class _Run:
 		var _reader: Variant
 		var _limit: int
 		var _ctx := HashingContext.new()
+		## The pieces asked of the reader, and the most a file may take: `ceil(limit / 64 KiB) + 8`. A Worker that
+		## serves one-byte ranges ends the file short (partial) instead of holding the export for ever.
+		var _asked := 0
+		var _cap: int
 
 		func _init(reader: Variant, limit: int) -> void:
 			_reader = reader
 			_limit = limit
+			_cap = (limit + PIECE_FLOOR - 1) / PIECE_FLOOR + 8
 			_ctx.start(HashingContext.HASH_SHA256)
 
 		func next() -> PackedByteArray:
 			if _reader == null or total >= _limit:
+				return PackedByteArray()
+			_asked += 1
+			if _asked > _cap:
 				return PackedByteArray()
 			var piece: PackedByteArray = await _reader.read_piece()
 			var room := _limit - total

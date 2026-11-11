@@ -9056,10 +9056,12 @@ the task's end.
     open `completeUnlessOpen` file stays writable. macOS has no such attribute: `0600` is the
     protection.
   - **Godot** has less to work with. `FileAccess` has no exclusive create, so a stale partial is
-    removed first and the partial is created empty, tightened and reopened without truncating; a
-    same-user process that creates it in between is not detected. It has no `O_NOFOLLOW`: links
-    are checked before creating, after creating and again before the rename, and a link swapped in
-    between a check and its use is followed (a same-user race). It has no fsync, only a flush, so
+    removed first and the partial is created empty, tightened and reopened without truncating; another
+    process that can write the destination's folder, and creates it in between, is not detected.
+    It has no `O_NOFOLLOW`: links are checked before creating (again immediately before the open),
+    after creating and again before the rename, and a link swapped in between a check and its use
+    is followed (a race with another process that can write the destination's folder). An app
+    exports to `user://` or a folder only it can write. It has no fsync, only a flush, so
     after a power loss a renamed file can be short. Mode bits exist only on macOS and Linux (the
     file is created empty, set to `0600`, and only then written); on Windows the ACL applies, on
     Android and iOS the app-private store is the protection, and on the web `user://` is held in

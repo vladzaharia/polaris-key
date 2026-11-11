@@ -196,7 +196,7 @@ func export_data(path: String) -> void:
   </TabItem>
 </Tabs>
 
-Where a runtime lacks a file primitive, the SDK checks around it: Godot has no exclusive create, no `O_NOFOLLOW` and no fsync, and sets mode bits on macOS and Linux only; Windows ignores the mode and uses the folder's access rules. A crash leaves `<destination>.partial` until the next export removes it. The threat model's T33 lists every limit.
+Where a runtime lacks a file primitive, the SDK checks around it: Godot has no exclusive create, no `O_NOFOLLOW` and no fsync, and sets mode bits on macOS and Linux only; Windows ignores the mode and uses the folder's access rules. In Godot, export to `user://` or a folder only your app can write: another process that can write the destination's folder could swap a link in during the export. A crash leaves `<destination>.partial` until the next export removes it. The threat model's T33 lists every limit.
 
 ## Removal
 

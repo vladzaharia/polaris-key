@@ -270,6 +270,9 @@ class _Budget:
 ## The pulls: from cursor 0 until `more` is false, bounded.
 class _Puller:
 	extends RefCounted
+	## Matches an escape in a body: a valid surrogate pair, a lone surrogate (`\ud800` not followed by a low one, a
+	## low one not preceded by a high one) or any other escape; an escaped backslash before the `u` is text.
+	static var _escape_re: RegEx
 	var _tr: PKeyTransport
 	var _ctx: Callable
 	var _cancel: Transfer.Cancel
@@ -305,12 +308,61 @@ class _Puller:
 			return _net_fail()
 		return {"status": 0, "body": PackedByteArray(), "told": -1.0}
 
+	## `Types.load_json_bytes`, except that a pull body with a lone surrogate escape does not fail the pull: a
+	## String cannot hold one, so each is read as the marker U+FDD0 and every string (or object, for a key) that
+	## holds a marker becomes NaN, a value the writer refuses. The row is then dropped and listed, as every
+	## other SDK lists it, and never stops the rest. Only a body the strict parse refused is read this way, and
+	## only if it is well-formed UTF-8.
+	static func _parse_pull(body: PackedByteArray) -> Dictionary:
+		var strict := Types.load_json_bytes(body)
+		if strict["ok"]:
+			return strict
+		var text := body.get_string_from_utf8()
+		if text.to_utf8_buffer() != body or not text.contains("\\u"):
+			return strict
+		if _escape_re == null:
+			_escape_re = RegEx.create_from_string("\\\\(?:u[dD][89abAB][0-9a-fA-F]{2}\\\\u[dD][c-fC-F][0-9a-fA-F]{2}|u[dD][89a-fA-F][0-9a-fA-F]{2}|.)")
+		var out := ""
+		var at := 0
+		var changed := false
+		for m in _escape_re.search_all(text):
+			var tok := m.get_string()
+			if tok.length() == 6 and tok[1] == "u":
+				out += text.substr(at, m.get_start() - at) + "\\ufdd0"
+				at = m.get_end()
+				changed = true
+		if not changed:
+			return strict
+		out += text.substr(at)
+		var parsed := Types.load_json_bytes(out.to_utf8_buffer())
+		if not parsed["ok"]:
+			return strict
+		return {"ok": true, "value": _taint(parsed["value"])}
+
+	## `v` with every string that holds the marker, and every object with a key that does, replaced by NaN.
+	static func _taint(v: Variant) -> Variant:
+		if v is String:
+			return NAN if (v as String).contains("\ufdd0") else v
+		if v is Array:
+			var a := []
+			for e in v:
+				a.append(_taint(e))
+			return a
+		if v is Dictionary:
+			var d := {}
+			for k in v:
+				if (k as String).contains("\ufdd0"):
+					return NAN
+				d[k] = _taint(v[k])
+			return d
+		return v
+
 	## The answer of an attempt as a result, or `{}` when it is worth another try.
 	static func _verdict(got: Dictionary) -> Dictionary:
 		var status: int = got["status"]
 		var body: PackedByteArray = got["body"]
 		if status == 200:
-			var parsed := Types.load_json_bytes(body)
+			var parsed := _parse_pull(body)
 			return {"ok": true, "body": parsed["value"]} if parsed["ok"] and parsed["value"] is Dictionary else _net_fail()
 		if status == 403 and body.get_string_from_utf8().contains(PKeyConstants.ErrorCode.ACCOUNT_REQUIRED):
 			return {"ok": false, "code": PKeyConstants.ErrorCode.ACCOUNT_REQUIRED, "reason": ""}
@@ -349,6 +401,8 @@ class _Puller:
 		var product: String = _ctx.call()["product"]
 		var settings := {}
 		var records := {}
+		## Rows whose name held a lone surrogate (NaN in the pull): the export lists them.
+		var unspellable := []
 		var cursor := 0
 		for _page in PKeyConstants.SYNC_EXPORT_MAX_PULLS:
 			var got := await _get_json("/%s/sync?cursor=%d&clientId=%s" % [product, cursor, client_id])
@@ -361,6 +415,8 @@ class _Puller:
 						continue
 					if c.get("setting") is String:
 						settings[c["setting"]] = c
+					elif PKeySyncExport.is_unspellable(c.get("setting")) or PKeySyncExport.has_unspellable_ref(c.get("record")):
+						unspellable.append(c)
 					else:
 						var key: Variant = _row_ref(c)
 						if key != null:
@@ -377,6 +433,7 @@ class _Puller:
 			if body.get("more") != true:
 				var out: Array = settings.values()
 				out.append_array(records.values())
+				out.append_array(unspellable)
 				return {"ok": true, "changes": out}
 			var next: Variant = body.get("cursor")
 			if not Types.is_number(next) or float(next) <= float(cursor):
@@ -561,6 +618,10 @@ class _PartialFile:
 	## Creates the partial empty, tightens its mode, then opens it for writing: no data is ever in a file with the
 	## mode the umask gave.
 	func _open() -> bool:
+		# The partial is checked again right before it is opened: the window for a link planted since the
+		# export began is the gap between this check and the open (the engine has no `O_NOFOLLOW`).
+		if prepare() != "":
+			return false
 		var made := FileAccess.open(partial, FileAccess.WRITE)
 		if made == null:
 			return false

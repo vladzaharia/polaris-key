@@ -38,6 +38,10 @@ class Worker:
 	## Wire ids of records the pull reports as deleted.
 	var tombstones: Array = []
 	var file_gets: Array = []
+	## The most bytes one range answer carries (a hostile Worker serves one byte).
+	var max_piece := 1 << 30
+	## Raw JSON rows (as text, escapes and all) the pull serves ahead of the rest.
+	var raw_changes: Array = []
 
 	func add(wire: String, version: int, value: Dictionary, data: Array) -> void:
 		var revs: Array = []
@@ -76,7 +80,10 @@ class Worker:
 					row["file"] = f
 				changes.append(row)
 			var tombs: Array = tombstones.map(func(w: String) -> Dictionary: return {"record": ["saves", w], "version": 9})
-			return _json(200, {"cursor": pulls + 1, "changes": changes, "tombstones": tombs, "serverNow": 1760000000000, "more": more_forever})
+			var served := _json(200, {"cursor": pulls + 1, "changes": changes, "tombstones": tombs, "serverNow": 1760000000000, "more": more_forever})
+			if not raw_changes.is_empty():
+				served["body"] = (served["body"] as String).replace("\"changes\":[", "\"changes\":[" + ",".join(raw_changes) + ",")
+			return served
 		if path == "/diceroll/sync/ops":
 			return _json(200, {"results": [], "cursor": pulls + 1, "serverNow": 1760000000000})
 		var base := "/diceroll/sync/files/saves/"
@@ -113,7 +120,7 @@ class Worker:
 		if rng.begins_with("bytes="):
 			var span := rng.substr(6).split("-")
 			var from := int(span[0])
-			var to := mini(data.size(), int(span[1]) + 1)
+			var to := mini(mini(data.size(), int(span[1]) + 1), from + max_piece)
 			return {"status": 206, "headers": {"content-range": "bytes %d-%d/%d" % [from, to - 1, data.size()], "etag": etag}, "body": data.slice(from, to)}
 		return {"status": 200, "headers": {"etag": etag}, "body": data}
 
@@ -126,6 +133,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _bounds(t)
 	await _preconditions(t)
 	await _pulls(t)
+	await _hostile(t)
 	await _zip(t)
 	return true
 
@@ -469,6 +477,64 @@ func _pulls(t: PKeyTestContext) -> void:
 			ids.append(c["setting"] if c.has("setting") else c["record"][1])
 	t.check("pulls: a tombstone removes its row", ids == ["a", "keep"], str(ids))
 	_free(rig)
+
+
+# ── a hostile Worker ─────────────────────────────────────────────────────────────────────────
+
+## One-byte ranges end the file short within the request cap; a lone surrogate escape in the pull drops and lists
+## its row and never fails the pull; a link planted after the destination was prepared is refused at the open.
+func _hostile(t: PKeyTestContext) -> void:
+	var worker := Worker.new()
+	worker.add("slot1", 1, {"a": 1}, [_noise("export-hostile", 3000)])
+	worker.max_piece = 1
+	var rig := await _rig(worker)
+	var dest: String = rig["dir"].path_join("h.zip")
+	var res: PKeyResult = await rig["exporter"].run(dest)
+	t.check("hostile: one-byte ranges still end in a written export", res.ok, str(res.code))
+	if res.ok:
+		# ceil(3000 / 64 KiB) + 8 requests at most.
+		t.check("hostile: the file took at most the request cap", worker.file_gets.size() <= 9, str(worker.file_gets.size()))
+		var skipped: Array = res.detail["skipped"]
+		var short: bool = skipped.size() == 1 and skipped[0]["code"] == "sync-file-invalid" and skipped[0].get("partial", false) == true
+		t.check("hostile: the file is listed short (sync-file-invalid, partial)", short, str(skipped))
+		t.check("hostile: the record is written", res.detail["records"] == 1, str(res.detail))
+	_free(rig)
+
+	var surrogates := Worker.new()
+	surrogates.settings = {"audio.volume": 7}
+	surrogates.raw_changes = [
+		"{\"setting\":\"bad\\ud800\",\"scope\":\"user\",\"value\":1,\"version\":2}",
+		"{\"record\":[\"saves\",\"x\\udc00\"],\"version\":1,\"value\":{\"n\":1}}",
+		"{\"record\":[\"saves\",\"lone-value\"],\"version\":1,\"value\":{\"s\":\"a\\ud83d\"}}",
+		"{\"record\":[\"saves\",\"pair\"],\"version\":1,\"value\":{\"s\":\"p\\ud83d\\ude00\"}}",
+		"{\"record\":[\"saves\",\"escaped\"],\"version\":1,\"value\":{\"s\":\"\\\\ud800\"}}",
+	]
+	var rig2 := await _rig(surrogates)
+	var dest2: String = rig2["dir"].path_join("s.zip")
+	var res2: PKeyResult = await rig2["exporter"].run(dest2)
+	t.check("surrogates: a lone surrogate escape does not fail the pull", res2.ok, str(res2.code) + str(res2.detail))
+	if res2.ok:
+		var d: Dictionary = res2.detail
+		var codes: Array = (d["skipped"] as Array).map(func(x: Dictionary) -> String: return "%s:%s" % [x["kind"], x["code"]])
+		codes.sort()
+		t.check("surrogates: the three rows no runtime can write are listed invalid", codes == ["record:invalid", "record:invalid", "setting:invalid"], str(codes))
+		t.check("surrogates: the setting and the two good records are written", d["settings"] == 1 and d["records"] == 2, str(d))
+		var line := _text(_entries(dest2), "stores/sync.cloudSync/records/0.ndjson")
+		var kept: bool = line.contains("\"id\":\"pair\"") and line.contains(String.chr(0x1F600)) and line.contains("\"id\":\"escaped\"")
+		t.check("surrogates: a valid pair and an escaped backslash are kept", kept, line)
+	_free(rig2)
+
+	if OS.has_feature("macos") or OS.has_feature("linuxbsd"):
+		var rig3 := await _rig(Worker.new())
+		var dir: String = rig3["dir"]
+		var target := dir.path_join("victim.txt")
+		_write_file(target, "keep")
+		var file := Exporter._PartialFile.new(dir.path_join("w.zip"))
+		t.check("link race: the destination is usable", file.prepare() == "")
+		OS.execute("ln", ["-s", ProjectSettings.globalize_path(target), ProjectSettings.globalize_path(dir.path_join("w.zip.partial"))])
+		t.check("link race: a link planted after prepare is refused at the open", not file.write(PackedByteArray([1, 2, 3])))
+		t.check("link race: its target is untouched", _read_file(target) == "keep")
+		_free(rig3)
 
 
 # ── the zip writer and the core's cancel ─────────────────────────────────────────────────────
