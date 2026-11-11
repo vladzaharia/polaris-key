@@ -548,17 +548,17 @@
     "P2-11": {
       "verdict": "pass",
       "date": "2026-11-10",
-      "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/P2-11-ux.md"
+      "evidence": "BUILT UX review (lead notes, kept locally)"
     },
     "I-10a": {
       "verdict": "pass",
       "date": "2026-11-10",
-      "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/I-10a.12-ux.md"
+      "evidence": "BUILT UX review (lead notes, kept locally)"
     },
     "I-10b": {
       "verdict": "pass",
       "date": "2026-11-10",
-      "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/I-10b.13-20-ux.md"
+      "evidence": "BUILT UX review (lead notes, kept locally)"
     }
   }
 }
