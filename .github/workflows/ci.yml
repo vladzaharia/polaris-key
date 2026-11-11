@@ -1475,40 +1475,37 @@ jobs:
           yes | "$SDKM" --licenses >/dev/null
           set -o pipefail
           "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
-      - name: Unit tests (play and direct)
+      # One Gradle invocation (one JVM start, one configuration, one task graph run in parallel), --continue
+      # so a failure in one task still reports the rest. The play flavour runs every unit test; the direct
+      # flavour of :platform, :godot and :android runs only src/testDirect and the shared tests that touch
+      # the flavour (-Ppkey.directFlavourOnly, sdks/kotlin/tools/flavour-tests.txt), and checkFlavourTests
+      # fails when a flavour-sensitive shared test is not on that list. checkModuleBoundaries reads other
+      # projects at execution time and opts out of the configuration cache, so this build does not use it.
+      # P6-09: :platform stays standalone (no project or im.plrs.key module on any classpath), and both
+      # flavours publish to the local build/repo with POM, sources and Gradle module metadata.
+      # P6-10: :godot reaches :platform and no other SDK module on any classpath (checkPlatformOnly) and
+      # publishes polaris-key-godot-{play,direct} beside it.
+      - name: Unit tests, lint, assembleRelease, boundaries and local publication
         working-directory: sdks/kotlin
         run: >-
-          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "android unit tests" ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "android gradle" ./gradlew --no-daemon --continue -Ppkey.directFlavourOnly=true
+          checkFlavourTests checkModuleBoundaries
+          :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest :ui:verifyRoborazziDebug
           :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest :billing:testDebugUnitTest
-          :games:testDebugUnitTest
-          :sample-compose-android:testDirectDebugUnitTest
-      - name: Lint and assembleRelease (play and direct)
-        working-directory: sdks/kotlin
-        run: >-
-          ./gradlew --no-daemon :platform:lintPlayRelease :platform:lintDirectRelease
+          :games:testDebugUnitTest :sample-compose-android:testDirectDebugUnitTest
+          :platform:lintPlayRelease :platform:lintDirectRelease
           :godot:lintPlayRelease :godot:lintDirectRelease :android:lintPlayRelease :android:lintDirectRelease
           :platform:assembleRelease :godot:assembleRelease :android:assembleRelease :boundary:assembleRelease
           :ui:lintRelease :ui:assembleRelease :billing:lintRelease :billing:assembleRelease
-          :games:lintRelease :games:assembleRelease
-          :sample-compose-android:assembleDebug
-      - name: Flavour boundary
-        run: sdks/kotlin/tools/check_flavours.sh
-      - name: Module boundaries (:core has no Android dependency, :platform no SDK module, only :android sees both)
-        working-directory: sdks/kotlin
-        run: ./gradlew --no-daemon checkModuleBoundaries
-      # P6-09: :platform stays standalone (no project or im.plrs.key module on any classpath), and
-      # both flavours publish to the local build/repo with POM, sources and Gradle module metadata.
-      # P6-10: :godot reaches :platform and no other SDK module on any classpath (checkPlatformOnly),
-      # publishes polaris-key-godot-{play,direct} beside it (each POM naming only
-      # polaris-key-platform-<same flavour>), and the export plugin's Play Core list matches the
-      # platform play POM (check_publication.sh).
-      - name: Standalone platform, platform-only Godot binding and local publication
+          :games:lintRelease :games:assembleRelease :sample-compose-android:assembleDebug
+          :platform:checkStandalone :godot:checkPlatformOnly
+          :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository
+          :ui:publishAllPublicationsToLocalRepository :android:publishAllPublicationsToLocalRepository
+      - name: Flavour boundary and publication
         working-directory: sdks/kotlin
         run: |
-          ./gradlew --no-daemon :platform:checkStandalone :godot:checkPlatformOnly \
-            :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository \
-            :ui:publishAllPublicationsToLocalRepository :android:publishAllPublicationsToLocalRepository
+          tools/check_flavours.sh
           tools/check_publication.sh
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

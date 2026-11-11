@@ -1,0 +1,14 @@
+# Shared (src/test) test classes of :platform, :android and :godot that touch the flavour. CI runs the
+# direct flavour with -Ppkey.directFlavourOnly=true: src/testDirect plus these; the play flavour runs
+# everything. `./gradlew checkFlavourTests` fails when a shared test that touches the flavour is missing
+# here, or an entry is stale. One fully qualified class per line.
+im.plrs.key.platform.InstallSourceTest
+im.plrs.key.platform.PlatformIntegrityTest
+im.plrs.key.android.PolarisKeyAndroidTest
+im.plrs.key.godot.BackupCommandsTest
+im.plrs.key.godot.BulkCommandsTest
+im.plrs.key.godot.CommandsTest
+im.plrs.key.godot.GoogleIdentityCommandsTest
+im.plrs.key.godot.NsdCommandsTest
+im.plrs.key.godot.RedirectCommandsTest
+im.plrs.key.godot.SealerCommandsTest
