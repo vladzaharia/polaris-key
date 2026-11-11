@@ -446,6 +446,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/sign-in/automatic",
           "features/sign-in/platform-setup",
           "features/sign-in/sessions",
+          "features/sign-in/accounts",
           "features/sign-in/customer-portal",
           "features/sign-in/troubleshooting",
         ),
