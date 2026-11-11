@@ -726,7 +726,7 @@
       "jscpd:duplicate": 2
     },
     "packages/admin/test/motion/consoleNavigation.test.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/admin/test/motion/expand.test.tsx": {
       "jscpd:duplicate": 1
@@ -813,7 +813,7 @@
       "jscpd:duplicate": 3
     },
     "packages/admin/test/portalDeviceMotion.test.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/admin/test/portalDiscoverCount.test.tsx": {
       "jscpd:duplicate": 2

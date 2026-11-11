@@ -302,6 +302,32 @@ describe("Account → Connected apps", () => {
       });
     };
 
+    /**
+     * The portal over one app, its panel open and its picture saved: the PATCH is answered with
+     * `status` and `body`, and the list reads `after` from then on.
+     */
+    async function saveAnswered(
+      after: unknown[],
+      status: number,
+      body: unknown,
+    ): Promise<HTMLElement> {
+      let clients: unknown[] = [COMPANION];
+      mockFetch(
+        signedIn([], {
+          "/api/me/connected-apps": () => group(clients),
+          [`PATCH ${URL_OF("cl_companion")}`]: () => {
+            clients = after;
+            return { status, body };
+          },
+        }),
+      );
+      renderPortal();
+      const card = await region();
+      await open(card);
+      await savePicture(card);
+      return card;
+    }
+
     it("offers a switch for the optional items already decided, and marks the rest as needed", async () => {
       mockFetch(signedIn([], { "/api/me/connected-apps": group([COMPANION]) }));
       renderPortal();
@@ -437,20 +463,11 @@ describe("Account → Connected apps", () => {
     });
 
     it("a 409 then Reload that finds the app turned off closes the panel and focuses its Disconnect", async () => {
-      let clients: unknown[] = [COMPANION];
-      mockFetch(
-        signedIn([], {
-          "/api/me/connected-apps": () => group(clients),
-          [`PATCH ${URL_OF("cl_companion")}`]: () => {
-            clients = [{ ...COMPANION, available: false }];
-            return { status: 409, body: { error: "conflict" } };
-          },
-        }),
+      const card = await saveAnswered(
+        [{ ...COMPANION, available: false }],
+        409,
+        { error: "conflict" },
       );
-      renderPortal();
-      const card = await region();
-      await open(card);
-      await savePicture(card);
       await userEvent.click(
         await within(card).findByRole("button", { name: "Reload" }),
       );
@@ -461,20 +478,7 @@ describe("Account → Connected apps", () => {
     });
 
     it("a 409 then Reload that finds the app gone focuses the section heading", async () => {
-      let clients: unknown[] = [COMPANION];
-      mockFetch(
-        signedIn([], {
-          "/api/me/connected-apps": () => group(clients),
-          [`PATCH ${URL_OF("cl_companion")}`]: () => {
-            clients = [MAPS];
-            return { status: 409, body: { error: "conflict" } };
-          },
-        }),
-      );
-      renderPortal();
-      const card = await region();
-      await open(card);
-      await savePicture(card);
+      const card = await saveAnswered([MAPS], 409, { error: "conflict" });
       await userEvent.click(
         await within(card).findByRole("button", { name: "Reload" }),
       );
@@ -489,20 +493,7 @@ describe("Account → Connected apps", () => {
     });
 
     it("a gone app (404) leaves the list and closes the panel", async () => {
-      let clients: unknown[] = [COMPANION];
-      mockFetch(
-        signedIn([], {
-          "/api/me/connected-apps": () => group(clients),
-          [`PATCH ${URL_OF("cl_companion")}`]: () => {
-            clients = [MAPS];
-            return { status: 404, body: { error: "not_found" } };
-          },
-        }),
-      );
-      renderPortal();
-      const card = await region();
-      await open(card);
-      await savePicture(card);
+      const card = await saveAnswered([MAPS], 404, { error: "not_found" });
       await waitFor(() =>
         expect(within(card).queryByText("Quill Companion")).toBeNull(),
       );
