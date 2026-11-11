@@ -71,6 +71,12 @@ internal object PolarisSymbols {
     }
 
     /** The new-window glyph that ends an external link ("All changes ↗"). */
+    val More: ImageVector by lazy {
+        symbol(
+            "PolarisMore",
+            "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z",
+        )
+    }
     val OpenInNew: ImageVector by lazy {
         symbol(
             "PolarisOpenInNew",

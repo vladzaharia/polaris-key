@@ -56,6 +56,31 @@ class UIMatrixPresentationTest {
     // The connect family: LinkPairing and TransferOffer (CC-19.10).
     @Test fun connectFamily() = runFamily("connect")
 
+    // The local family: LocalPairing and PairedDevices (CC-29K).
+    @Test fun localFamily() = runFamily("local")
+
+    @Test
+    fun localLayoutRows() {
+        val rows = matrix.rows("localLayout")
+        val failures = mutableListOf<String>()
+        for (row in rows) {
+            val name = row.string("name") ?: "?"
+            val window = requireNotNull(row.obj("window")) { "$name: window" }
+            val expect = requireNotNull(row.obj("expect")) { "$name: expect" }
+            val got = KitLocal.layout(
+                window["width"].double() ?: 0.0,
+                window["height"].double() ?: 0.0,
+                window["textScale"].double() ?: 1.0,
+                window.boolean("tv") == true,
+            )
+            failures.compare("$name panes", expect.integer("panes"), got.panes)
+            failures.compare("$name logo", expect.boolean("logo"), got.logo)
+            failures.compare("$name scrolls", expect.boolean("scrolls"), got.scrolls)
+            failures.compare("$name noticeBeforeQr", expect.boolean("noticeBeforeQr"), got.noticeBeforeQr)
+        }
+        failures.assertNone("localLayout (${rows.size} rows)")
+    }
+
     @Test
     fun themeFamily() {
         val rows = matrix.rows("theme")
@@ -118,6 +143,7 @@ class UIMatrixPresentationTest {
                 expect.array("actions")?.strings().orEmpty().sorted(),
                 got.actions.map(KitAction::id).sorted(),
             )
+            failures.compare("$name disabled", expect.array("disabled")?.strings().orEmpty().sorted(), got.disabledKeys)
             if (state == "hidden" && (got.copy.isNotEmpty() || got.actions.isNotEmpty())) {
                 failures += "$name: hidden renders nothing"
             }

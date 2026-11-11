@@ -382,7 +382,7 @@ private fun ReportedLine(lines: KitLines) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Shares(lines: KitLines, categories: List<String>, labels: Map<String, String>) {
+internal fun Shares(lines: KitLines, categories: List<String>, labels: Map<String, String>) {
     val heading = lines.text("linkPairing.shares")
     if (heading == null) {
         lines.text("linkPairing.sharesNone")?.let { PolarisBody(it, textAlign = TextAlign.Start) }
