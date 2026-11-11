@@ -19,12 +19,22 @@ class Hub:
 	var offers: Array = []
 	var dest := ""
 	var results: Array = []
+	var _unset: Callable
+	var _on_result: Callable
 
 	func _init(dir: String, p_dest: String) -> void:
 		dest = p_dest
 		hub = PKeyCloudTransfer.new({"store_dir": func() -> String: return dir, "budget_usec": 0})
-		hub.on_offer(Callable(self, "_on_offer"))
-		hub.result.connect(func(r: Dictionary) -> void: results.append(r))
+		_unset = hub.on_offer(Callable(self, "_on_offer"))
+		_on_result = func(r: Dictionary) -> void: results.append(r)
+		hub.result.connect(_on_result)
+
+	## The hub and this holder point at each other; cut both ends so neither outlives the test.
+	func release() -> void:
+		_unset.call()
+		hub.result.disconnect(_on_result)
+		_on_result = Callable()
+		offers.clear()
 
 	func _on_offer(offer: PKeyTransferOffer) -> void:
 		offers.append(offer)
@@ -322,6 +332,8 @@ func _transfer(t: PKeyTestContext) -> void:
 	)
 	await _cooldown(t, a, b)
 	_stop(devs)
+	ha.release()
+	hb.release()
 
 
 # -- remove ends the session peer_revoked ------------------------------------------------------------
