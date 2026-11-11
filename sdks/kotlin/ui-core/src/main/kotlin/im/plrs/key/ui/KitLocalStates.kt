@@ -31,7 +31,8 @@ public object KitLocal {
     public const val COOLDOWN_SECONDS: Int = 30
 
     private const val SECONDS_PER_MINUTE: Int = 60
-    private const val TWO_PANE_MIN_WIDTH: Int = 600
+    private const val QR_COLUMNS_MIN_WIDTH: Int = 720
+    private const val QR_COLUMNS_MAX_HEIGHT: Int = 900
     private const val SHORT_WINDOW_HEIGHT: Int = 480
 
     /** `m:ss` for a countdown. */
@@ -47,15 +48,22 @@ public object KitLocal {
     public fun reachableFull(reachable: List<Boolean>): Boolean = reachable.size > MAX_CONNECTABLE && reachable.count { it } >= MAX_CONNECTABLE
 
     /**
-     * How the show screen lays out for a window size (UI-KITS 4.3, LocalPairing): two panes from 600 dp of window at the root text
-     * size (so 200 % text keeps one column), at any height, and always on a TV; a window under 480 tall drops the logo; a window
-     * both narrow and short keeps one column that scrolls, with the notice before the QR.
+     * How the show screen lays out for a window size (UI-KITS 4.3, LocalPairing): one centred column at every size, because a
+     * screen shows the digits or the QR, never both. A window under 480 tall drops the logo and the column scrolls, with the
+     * notice before the QR. A TV keeps its logo.
      */
-    public fun layout(width: Double, height: Double, textScale: Double = 1.0, tv: Boolean = false): Layout {
-        val scale = if (textScale > 0) textScale else 1.0
-        val panes = if (tv || width / scale >= TWO_PANE_MIN_WIDTH) 2 else 1
+    public fun layout(height: Double, tv: Boolean = false): Layout {
         val short = height < SHORT_WINDOW_HEIGHT && !tv
-        return Layout(panes, !short, panes == 1 && short, panes == 1 && short)
+        return Layout(1, !short, short, short)
+    }
+
+    /**
+     * The QR view's two columns (UI-KITS 4.9, Fit): from 720 dp of window at the root text size and 900 dp tall or less the text sits
+     * at the start and the card at the end; otherwise one column.
+     */
+    public fun qrTwoColumns(width: Double, height: Double, textScale: Double = 1.0): Boolean {
+        val scale = if (textScale > 0) textScale else 1.0
+        return width / scale >= QR_COLUMNS_MIN_WIDTH && height <= QR_COLUMNS_MAX_HEIGHT
     }
 
     /** The words a scan notice says (`scanNotice` of the matrix). */
@@ -68,7 +76,7 @@ public object KitLocal {
         else -> null
     }
 
-    /** The show screen's layout: [panes] 2 puts the QR beside the code. */
+    /** The show screen's layout: one pane at every size. */
     public data class Layout(val panes: Int, val logo: Boolean, val scrolls: Boolean, val noticeBeforeQr: Boolean)
 }
 
@@ -130,36 +138,74 @@ internal fun localPairingScreen(inputs: KitInputs): KitScreen {
                 "localPairing.title",
                 "localPairing.showBody",
                 "a11y.busy",
-                "localPairing.toEnter",
                 "common.cancel",
             ),
         )
 
         "show" -> {
             val renewing = busy == "new-code"
-            view(
-                "show",
-                listOf(
-                    "localPairing.title",
-                    "localPairing.showBody",
-                    if (code != null) "a11y.linkCode" else null,
-                    "a11y.qrPairing",
-                    "localPairing.expires",
-                    "localPairing.waitingDevice",
-                    "localPairing.toEnter",
-                    "common.cancel",
-                    if (notice == "rotated" || notice == "guessing") "localPairing.rotatedTitle" else null,
-                    if (notice == "rotated" || notice == "declined") "localPairing.rotatedBody" else null,
-                    if (notice == "declined") "localPairing.notPairedWith" else null,
-                    if (notice == "rotated" || notice == "declined" || notice == "guessing") "a11y.newCode" else null,
-                    if (notice == "blocked") "localPairing.blockedTitle" else null,
-                    if (notice == "blocked") "localPairing.blockedBody" else null,
-                    if (notice == "guessing") "localPairing.tooManyAgainBody" else null,
-                    if (notice != null && notice != "blocked") "localPairing.showNew" else null,
-                    if (renewing) "a11y.busy" else null,
-                ),
-                listOf(if (renewing) "localPairing.showNew" else null),
-            )
+            // The window ran out and nothing renewed it: the view stays, dimmed, with a new code one press away.
+            val gone = p.boolean("expired") == true
+            val n = if (gone) null else notice
+            val timeLines = if (gone) emptyList() else listOf("localPairing.expires", "localPairing.waitingDevice")
+            if (gone) {
+                // Expired says it once, in the title (and to a screen reader): no instruction, no time and no switch, because both views
+                // of a dead window are dead; the next window opens on the chosen one.
+                val qrView = p.string("view") == "qr"
+                return view(
+                    if (qrView) "show-qr" else "show",
+                    listOf(
+                        "core.codes.sign-in-expired.title",
+                        "localPairing.showNew",
+                        "common.cancel",
+                        if (qrView) {
+                            "a11y.qrPairing"
+                        } else if (code != null) {
+                            "a11y.linkCode"
+                        } else {
+                            null
+                        },
+                        if (renewing) "a11y.busy" else null,
+                    ),
+                    listOf(if (renewing) "localPairing.showNew" else null),
+                )
+            }
+            if (p.string("view") == "qr") {
+                // The QR alone: no digits, said or drawn. What the code view announces is announced here too.
+                view(
+                    "show-qr",
+                    listOf("localPairing.qrTitle", "localPairing.qrBody", "a11y.qrPairing") + timeLines + listOf(
+                        "localPairing.toCode",
+                        "common.cancel",
+                        if (n == "blocked") "localPairing.blockedTitle" else null,
+                        if (n == "blocked") "localPairing.blockedBody" else null,
+                        if (n == "guessing" || n == "rotated") "localPairing.rotatedTitle" else null,
+                        if (n == "guessing") "localPairing.tooManyAgainBody" else null,
+                        if (n == "rotated" || n == "declined") "localPairing.rotatedBody" else null,
+                        if (n == "declined") "localPairing.notPairedWith" else null,
+                        if (renewing) "a11y.busy" else null,
+                    ),
+                    listOf(if (renewing) "localPairing.showNew" else null),
+                )
+            } else {
+                view(
+                    "show",
+                    listOf("localPairing.title", "localPairing.showBody", if (code != null) "a11y.linkCode" else null) + timeLines + listOf(
+                        "localPairing.toQr",
+                        "common.cancel",
+                        if (n == "rotated" || n == "guessing") "localPairing.rotatedTitle" else null,
+                        if (n == "rotated" || n == "declined") "localPairing.rotatedBody" else null,
+                        if (n == "declined") "localPairing.notPairedWith" else null,
+                        if (n == "rotated" || n == "declined" || n == "guessing") "a11y.newCode" else null,
+                        if (n == "blocked") "localPairing.blockedTitle" else null,
+                        if (n == "blocked") "localPairing.blockedBody" else null,
+                        if (n == "guessing") "localPairing.tooManyAgainBody" else null,
+                        if (n != null && n != "blocked") "localPairing.showNew" else null,
+                        if (renewing) "a11y.busy" else null,
+                    ),
+                    listOf(if (renewing) "localPairing.showNew" else null),
+                )
+            }
         }
 
         "closed" -> {

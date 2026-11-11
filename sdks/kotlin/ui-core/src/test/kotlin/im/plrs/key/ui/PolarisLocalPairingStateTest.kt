@@ -191,14 +191,78 @@ class PolarisLocalPairingStateTest {
     }
 
     @Test
-    fun aWindowThatRanOutHasNoWait() = runTest {
+    fun aWindowThatRanOutBeforeAnyCodeHasNoWait() = runTest {
         val links = FakeLinks()
         val state = make(links)
-        shown(state, links)
+        state.start()
+        state.show()
         links.events!!.onEnd("expired")
         runCurrent()
         assertEquals("expired", state.ui.value.closedBy)
         assertNull(state.ui.value.cooldownLeft)
+    }
+
+    @Test
+    fun aShownWindowThatRanOutStaysInItsViewAndRenewsInPlace() = runTest {
+        val links = FakeLinks()
+        val state = make(links)
+        shown(state, links)
+        state.showQr()
+        links.events!!.onEnd("expired")
+        runCurrent()
+        val gone = state.ui.value
+        assertEquals("show", gone.step)
+        assertTrue(gone.expired)
+        assertEquals("qr", gone.view)
+        assertEquals("show-qr", gone.screen().state)
+        // It says "Code expired" once, in the title: no instruction, no time, no waiting row, no switch.
+        assertEquals("core.codes.sign-in-expired.title", gone.screen().copy.first().key)
+        val keys = gone.screen().copy.map { it.key }
+        for (absent in listOf("localPairing.expires", "localPairing.waitingDevice", "localPairing.qrBody", "localPairing.toCode")) {
+            assertFalse(absent, absent in keys)
+        }
+        assertTrue("localPairing.showNew" in keys)
+        state.showNew()
+        // Still on screen and busy, until the next window's first code arrives, in the same view.
+        assertEquals("new-code", state.ui.value.busy)
+        assertEquals("show", state.ui.value.step)
+        links.events!!.onCode(code("7000 1234", "opened"))
+        runCurrent()
+        assertEquals("qr", state.ui.value.view)
+        assertFalse(state.ui.value.expired)
+        assertEquals("7000 1234", state.ui.value.code)
+        assertTrue(state.ui.value.renewedFromExpired)
+    }
+
+    @Test
+    fun theTwoViewsShareOneWindowAndSwitchingNeverRenews() = runTest {
+        val links = FakeLinks()
+        val state = make(links)
+        shown(state, links)
+        val first = state.ui.value
+        assertEquals("show", first.screen().state)
+        state.showQr()
+        assertEquals("show-qr", state.ui.value.screen().state)
+        assertNull(state.ui.value.screen().copy.firstOrNull { it.key == "a11y.linkCode" })
+        state.showCode()
+        state.showQr()
+        assertEquals(first.code, state.ui.value.code)
+        assertEquals(first.rotation, state.ui.value.rotation)
+        assertEquals(3, state.ui.value.switches)
+        assertEquals(0, links.stops)
+        // A switch to the view already open is not a switch.
+        state.showQr()
+        assertEquals(3, state.ui.value.switches)
+        // A rotation keeps the view.
+        links.events!!.onCode(code("4899 0000", "wrong-code"))
+        runCurrent()
+        assertEquals("qr", state.ui.value.view)
+        // Leaving the show flow forgets the choice.
+        state.cancel()
+        state.show()
+        links.events!!.onCode(code("5000 1111", "opened"))
+        runCurrent()
+        assertNull(state.ui.value.view)
     }
 
     @Test
@@ -704,5 +768,42 @@ class PolarisLocalPairingScanFailureTest {
         assertEquals("not-ready", state.ui.value.scanNotice)
         assertTrue(state.ui.value.canScan)
         assertTrue("localPairing.scan" in state.ui.value.screen().copy.map { it.key })
+    }
+
+    @Test
+    fun theModuleArrivingClearsTheGettingReadyNotice() = runTest {
+        val scanner = FakeScanner().also { it.moduleThere = false }
+        val state = make(FakeLinks(), scanner)
+        state.start()
+        assertEquals("preparing", state.ui.value.scanNotice)
+        scanner.moduleThere = true
+        advanceTimeBy(2_500)
+        runCurrent()
+        assertNull(state.ui.value.scanNotice)
+        assertTrue(state.ui.value.canScan)
+    }
+
+    @Test
+    fun aScannerThatCannotOpenWithTheModuleThereIsHiddenAfterTheSecondTry() = runTest {
+        val scanner = FakeScanner(next = PolarisScanResult.NotReady)
+        val state = make(FakeLinks(), scanner)
+        state.start()
+        state.scan()
+        assertEquals("not-ready", state.ui.value.scanNotice)
+        assertTrue(state.ui.value.canScan)
+        state.scan()
+        assertNull(state.ui.value.scanNotice)
+        assertFalse(state.ui.value.canScan)
+        assertFalse("localPairing.scan" in state.ui.value.screen().copy.map { it.key })
+    }
+
+    @Test
+    fun theQrViewSplitsInTwoColumnsInAWideWindowThatIsNotTall() {
+        assertTrue(KitLocal.qrTwoColumns(852.0, 393.0))
+        assertTrue(KitLocal.qrTwoColumns(1194.0, 834.0))
+        assertTrue(KitLocal.qrTwoColumns(1440.0, 900.0))
+        assertFalse(KitLocal.qrTwoColumns(1440.0, 901.0))
+        assertFalse(KitLocal.qrTwoColumns(393.0, 852.0))
+        assertFalse(KitLocal.qrTwoColumns(1100.0, 800.0, textScale = 2.0))
     }
 }
