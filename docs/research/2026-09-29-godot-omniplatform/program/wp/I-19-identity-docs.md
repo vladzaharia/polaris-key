@@ -55,6 +55,28 @@ These approved plans change this package. Where they differ from the text below,
 
 - [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 1: customer help lives in the docs site's public Help area (D1); the portal links to it and keeps its in-product copy on the catalog. This package narrows to developer identity docs; the consumer identity articles are DOC-04b's, and each I- package updates its article.
 
+## Corrections from the code (2026-11-11, builder)
+
+The code on `next` wins over the text below where they differ.
+
+- **Already written by other packages.** The sign-in pages (`features/sign-in/`), the Help account
+  articles (DOC-04b, DOC-05b), key entries (`features/licensing/activation.md`), Sign in with
+  <Product> (I-21.14), `pkey login` and personal tokens (the generated CLI reference and the
+  packages page) exist. This package fills the gaps: accounts, sign-in methods and their reach,
+  joining, recovery and deletion (`features/sign-in/accounts.md`), the concepts entries, the data
+  roles in `docs/PRIVACY.md`, and the stale lines it found.
+- **No `PKEY_ADMIN_COOKIE` recipe is left** outside the changelog, which names it on purpose.
+- **Named-user seats are not built** (I-24a and I-24b are `todo`): no page until they ship.
+- **Dormant-account deletion (36 months) is not built:** no Worker code deletes dormant accounts,
+  so the docs do not describe it.
+- **Steam has no in-app sign-in** and EOS has no verifier: the exchange kinds are Google, Apple,
+  Game Center and Play Games. Steam signs in on the Polaris Locker card only.
+- **"From signing in" is retired:** a sign-in license's origin reads "Sign-in".
+- **PX-19:** `PORTAL.md` and `ADMIN.md` are now current-state documents, so there is no portal
+  part to mark superseded, and PORTAL.md §7 and §11 no longer exist. Listing art and branding are
+  documented in `features/ship-builds/channels/polaris-key.md`, `operate/console/presentation.md`
+  and the Locker settings on `features/sign-in/customer-portal.md`.
+
 ## Goal
 
 Developers and end users have accurate docs for layer 1: the account and the Library, recovery ("remaining links, then the developer's licence tool"), key-entry limits for developers, tenant-scoped native links, Steam and Game Center guides, and the inputs for the Polaris privacy notice.
