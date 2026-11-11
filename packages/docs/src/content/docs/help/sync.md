@@ -37,7 +37,7 @@ Synced data is usually encrypted on your devices, so Polaris Locker can't read i
 
 ## Your synced data in Polaris Locker
 
-Open the app at [polaris.locker](https://polaris.locker): **Sync Across Devices** shows your storage and each device's last sync. To download or remove it, see [Synced data](/docs/help/manage-your-data/#synced-data).
+Open the app at [polaris.locker](https://polaris.locker): **Sync Across Devices** shows your storage and each device's last sync. To download or remove it, see [Synced data](/docs/help/manage-your-data/#synced-data). For a readable copy saved by the app, see [Get a readable copy of your synced data](/docs/help/readable-copy/).
 
 ## Related
 

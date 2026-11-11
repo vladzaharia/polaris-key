@@ -166,7 +166,7 @@ Retired with no replacement period: `onAttach`, `cloudSync.saves` (use a collect
 
 ## Export and removal
 
-A person downloads their Cloud Sync data in Polaris Locker as part of the product's export, a JSON file or a zip with every record and file, and "Remove my data" removes it with the rest of the product's data. See [Export and removal](/docs/features/cloud-sync/export-and-removal/).
+A person downloads their Cloud Sync data in Polaris Locker as part of the product's export, a JSON file or a zip with every record and file, and "Remove my data" removes it with the rest of the product's data. An app can also write the same zip on the device, decrypted, with `cloudSync.export()`. See [Export and removal](/docs/features/cloud-sync/export-and-removal/).
 
 ## In the console
 

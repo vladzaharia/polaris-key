@@ -185,6 +185,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "help/your-data",
           "help/manage-your-data",
           "help/sync",
+          "help/readable-copy",
           "help/sync-new-device",
           "help/recovery-code",
           "help/messages/accounts",

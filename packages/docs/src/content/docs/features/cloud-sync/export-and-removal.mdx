@@ -1,0 +1,208 @@
+---
+title: "Cloud Sync export and removal"
+description: "What a person's export holds of their Cloud Sync data, how an app writes the same zip on the device with cloudSync.export(), and how removing their data from a product reaches Cloud Sync."
+type: "reference"
+lastReviewed: "2026-11-10"
+sidebar:
+  order: 4
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
+Polaris Locker shows a person what Cloud Sync holds for them in a product, as sizes and times, in its **Sync Across Devices** section. From there they download it, and Your Data removes it with the rest of the product's data. Both go through the portal API with the portal session; no device route takes part.
+
+## Export
+
+A person downloads what Cloud Sync holds for them in Polaris Locker, as part of the product's export: `GET /api/products/<product>/export`, schema `pkey-product-export/1`. Its `stores["sync.cloudSync"]` section carries:
+
+- the directory counters, usage, the encryption mode and `encryptionSince`;
+- the synced settings rows, with end-to-end rows as ciphertext and their `kid`;
+- counts and bytes per collection, and the chunk count and bytes;
+- the client bindings: `clientId`, `deviceId` and `lastSeen`;
+- the records inline only while they total 4 MiB or less, else `recordsIn: "zip"`;
+- the file metadata up to 2,000 rows, else `filesIn: "zip"`.
+
+With `?format=zip` the answer is `polaris-locker-<product>-data.zip`: `README.txt`, `data.json` (the document above) and the folder `stores/sync.cloudSync/`. Entry names are indexes, never the ids the data holds; `index.json` maps them.
+
+| Entry                           | What it holds                                                      |
+| ------------------------------- | ------------------------------------------------------------------ |
+| `index.json`                    | Which entry holds which collection, file or chunk container        |
+| `records/<i>.ndjson`            | One collection's rows, a line each: live rows and tombstones       |
+| `records/parked.ndjson`         | The copies earlier account merges parked                           |
+| `files.json`, `files/<n>.bin`   | Every live file and kept revision, as stored                       |
+| `chunks.json`, `chunks/<j>.bin` | One collection's delta chunks back to back, with each one's offset |
+
+In end-to-end mode the record values and the files are the stored ciphertext, readable only on the person's devices; in server mode the files are plaintext. The zip is streamed with uncompressed entries, one read at a time. An export that would need more than 8,000 storage reads (two a file, one a chunk) or 65,000 entries is refused up front with `413 export_too_large`, never cut off halfway, and an object erased or merged while the export runs fails the download rather than finishing it short. The export has the same gates as the JSON: the portal session, a sign-in no older than five minutes, a rate limit and an audit row.
+
+## Export on the device
+
+`cloudSync.export()` writes the same zip on the device, so a person can keep a readable copy without Polaris Locker. It sends what is waiting, reads what the Worker holds, and writes `README.txt`, `data.json` and `stores/sync.cloudSync/` in the portal's layout, with the settings, records and files **decrypted**. The archive is not encrypted: tell the person where you put it. The SDK never picks the place, never uploads and shows no prompt; ask first if you want one.
+
+- Edits the send could not make are not in the zip. `unsynced` counts them.
+- A file that fails its check is written as far as it checked and listed in `skipped` with `partial: true`. Check `skipped` before you call the copy complete.
+- Files are read as `saves.read` reads them, so a large export spends the hourly file allowance and can wait on a `429`. A wait past its bound fails with `sync-export-failed`, reason `network`.
+- A plan over 4 GiB, 65,535 entries or the chunk bound is refused with `sync-export-too-large` before the first byte.
+- Revisions are left out unless you ask: `includeRevisions` (`include_revisions` in Python and Godot).
+- It refuses `account_required` when nobody is signed in, `sync-locked` while the keys are locked, `sync-encryption-pinned`, `cancelled`, and `sync-export-failed` with a reason of `destination`, `network` or `busy` (one export per client).
+
+<Tabs syncKey="sdk">
+  <TabItem label="Node">
+
+`export(destination, { includeRevisions?, signal? })` writes `<destination>.partial` (created exclusively, mode `0600`), flushes it to disk and renames it over `destination`. An error or an abort removes the partial and keeps the old file. Do not log an error's `cause`: it can hold the path.
+
+```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
+
+export async function exportData(client: PolarisKeyClient, path: string) {
+  const controller = new AbortController();
+  const result = await client.cloudSync.export(path, {
+    signal: controller.signal,
+  });
+  console.log(result.entries, "entries", result.unsynced, "unsynced");
+  for (const item of result.skipped)
+    console.log(item.kind, item.code, item.partial);
+}
+```
+
+  </TabItem>
+  <TabItem label="React">
+
+A browser has no path. `useCloudSync().export(options)` answers a `blob` (at most 256 MiB), or streams to `options.sink` when you have one, such as the writable of a `showSaveFilePicker()` handle. The SDK closes a sink, aborts it on an error and keeps neither the Blob nor the sink. Revoke the object URL you make.
+
+```tsx
+import { useCloudSync } from "@polaris-key/react";
+
+export function ExportButton() {
+  const { export: exportData } = useCloudSync();
+  return (
+    <button
+      onClick={async () => {
+        const result = await exportData();
+        if (!result.blob) return;
+        const url = URL.createObjectURL(result.blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "my-data.zip";
+        link.click();
+        URL.revokeObjectURL(url);
+      }}
+    >
+      Download my data
+    </button>
+  );
+}
+```
+
+  </TabItem>
+  <TabItem label="Python">
+
+`client.cloud_sync.export(destination, include_revisions=False, on_progress=None, cancel=None)` writes the file as Node does. `cancel` is a `threading.Event`. The async client's `export` is a coroutine; canceling the task cancels the export.
+
+```python
+from polaris_key import PolarisError, PolarisKeyClient
+
+
+def export_data(client: PolarisKeyClient, path: str) -> None:
+    try:
+        result = client.cloud_sync.export(path)
+    except PolarisError as error:
+        print(error.code, error.detail)
+        return
+    print(result["entries"], "entries", result["unsynced"], "unsynced")
+    for item in result["skipped"]:
+        print(item["kind"], item["code"], item.get("partial", False))
+```
+
+  </TabItem>
+  <TabItem label="Swift">
+
+`export(to:options:)` takes a file URL. Cancel the task to cancel the export. On iOS, tvOS, visionOS and watchOS the partial has file protection `completeUnlessOpen`. Put the file in your app's container, then offer it with `ShareLink` or the document picker, and delete it after the sheet closes.
+
+```swift
+import Foundation
+import PolarisKey
+
+func exportData(_ client: PolarisKeyClient, to url: URL) async {
+    do {
+        let result = try await client.cloudSync.export(
+            to: url, options: CloudSyncExportOptions(includeRevisions: false))
+        print(result.entries, "entries", result.unsynced, "unsynced")
+        for item in result.skipped { print(item.kind, item.code) }
+    } catch let error as PolarisError {
+        // sync-export-failed carries "destination", "network" or "busy".
+        print(error.code.rawValue, error.exportFailureReason ?? "")
+    } catch {
+        print(error)
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="Kotlin">
+
+`export(destination: Path, options)` writes a file as Node does; `export(output: OutputStream, options)` writes to a stream you own. Both are `suspend`, and canceling the coroutine cancels the export (`exportFuture` is the Java form). The SDK writes and flushes the stream and never closes it. You close it, and you delete the document when the export fails or is canceled: the SDK holds only the stream, so it cannot.
+
+```kotlin
+import im.plrs.key.sdk.PolarisKeyClient
+import java.nio.file.Path
+
+suspend fun exportData(client: PolarisKeyClient, path: Path) {
+    val result = client.cloudSync.export(path)
+    println("${result.entries} entries, ${result.unsynced} unsynced")
+    result.skipped.forEach { println("${it.kind} ${it.code}") }
+}
+```
+
+On Android the person picks the place. Hand the SDK the document's stream and delete the document on any failure:
+
+```kotlin android
+import android.content.ContentResolver
+import android.net.Uri
+import android.provider.DocumentsContract
+import im.plrs.key.sdk.PolarisKeyClient
+import kotlinx.coroutines.CancellationException
+
+// uri comes from ActivityResultContracts.CreateDocument("application/zip")
+suspend fun exportData(client: PolarisKeyClient, resolver: ContentResolver, uri: Uri) {
+    try {
+        val out = resolver.openOutputStream(uri) ?: error("no stream")
+        out.use { client.cloudSync.export(it) }
+    } catch (e: Exception) {
+        DocumentsContract.deleteDocument(resolver, uri)
+        throw e
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="Godot">
+
+`export(destination, options)` is a coroutine that answers a `PKeyResult`. `destination` is an absolute path or one under `user://`; `cancel_export()` stops it. Options are `include_revisions` and `on_progress`, a Callable taking `{done, total, waiting}`. On the web `user://` is held in memory, so the SDK cannot hand the file to a download itself: offer it from the app and delete it. On Windows the engine's rename removes the old file before it moves the new one.
+
+```gdscript
+extends Node
+
+
+func export_data(path: String) -> void:
+	var result: PKeyResult = await PolarisKey.cloud_sync.export(path)
+	if not result.ok:
+		# "sync-export-failed" carries detail.reason: "destination", "network" or "busy".
+		print(result.code, " ", result.detail)
+		return
+	print(result.detail["entries"], " entries ", result.detail["unsynced"], " unsynced")
+```
+
+  </TabItem>
+</Tabs>
+
+Where a runtime lacks a file primitive, the SDK checks around it: Godot has no exclusive create, no `O_NOFOLLOW` and no fsync, and sets mode bits on macOS and Linux only; Windows ignores the mode and uses the folder's access rules. A crash leaves `<destination>.partial` until the next export removes it. The threat model's T33 lists every limit.
+
+## Removal
+
+"Remove my data from &lt;Product&gt;" in Polaris Locker (`DELETE /api/products/<product>/data`) removes what every store holds for the person's pairwise subject in the product, Cloud Sync included, in this order:
+
+1. The removal is recorded in a ledger outside the database. If that fails the answer is `503 erasure_ledger_unavailable` and nothing has changed.
+2. The devices signed in with the subject lose the binding: they get `account_required` and stop syncing.
+3. Each store deletes on its own. The key ring goes before Cloud Sync's object, which deletes its file keys, its files and its storage, and refuses writes for 24 hours.
+
+If a store fails, the answer is `200` with `pending: true`: the other stores still ran, and the removal is finished on the next maintenance pass or when the person repeats it. While it is owed, the portal's summary (`GET /api/products/<product>/sync`) reads `state: "removing"`. After a database restore, the same pass removes the restored rows again. The developer is told with `subject.deleted`.

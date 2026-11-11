@@ -9006,9 +9006,7 @@ the task's end.
 ### Cloud Sync device export: T33 (U-51)
 
 `cloudSync.export()` writes a person's synced data, decrypted, to a file on the device
-(WIRE-CONTRACT-V5 §13.12). It adds no route, header or server row. The plan labelled the row T33;
-it is the next free number at U-51.1's base, and the lead renumbers it at merge if another row
-took it first.
+(WIRE-CONTRACT-V5 §13.12). It adds no route, header or server row.
 
 - **T33, the device export writes plaintext outside protected storage.** In end-to-end mode the
   data was ciphertext at rest and is now a readable file, in a place the person chose. Controls:
@@ -9041,6 +9039,49 @@ took it first.
   download) is the app's to delete; and the hourly file
   allowance (§13.8.2) means a large export can wait, up to the wait bound, then fails with
   reason `network`.
+
+  What each port can and cannot guarantee at the destination (the rules are §13.12's; where a
+  runtime has no primitive the SDK checks around the gap and the gap is a residual):
+  - **Node, Python, Swift, Kotlin on a POSIX file system** do all of it: `<destination>.partial`
+    is created exclusively, without following a link, at mode `0600`, flushed and fsynced
+    (Swift `F_FULLFSYNC`), renamed over the destination, and the directory is synced.
+  - **Windows** (Node, Python, Kotlin) has no `O_NOFOLLOW` and ignores the mode: the user's
+    default ACL on the folder applies, so another account the folder is shared with may read a
+    file the person put there. The exclusive create still refuses an existing entry, and each
+    port checks for a link before creating.
+  - **Swift on iOS, tvOS, visionOS, watchOS** sets `FileProtectionType.completeUnlessOpen` on the
+    partial before the first byte, and the class survives the rename: once the file is closed it
+    cannot be read while the device is locked. `complete` was not used: the partial stays open
+    for the whole export, and a device that locks mid-export would make its writes fail, where an
+    open `completeUnlessOpen` file stays writable. macOS has no such attribute: `0600` is the
+    protection.
+  - **Godot** has less to work with. `FileAccess` has no exclusive create, so a stale partial is
+    removed first and the partial is created empty, tightened and reopened without truncating; a
+    same-user process that creates it in between is not detected. It has no `O_NOFOLLOW`: links
+    are checked before creating, after creating and again before the rename, and a link swapped in
+    between a check and its use is followed (a same-user race). It has no fsync, only a flush, so
+    after a power loss a renamed file can be short. Mode bits exist only on macOS and Linux (the
+    file is created empty, set to `0600`, and only then written); on Windows the ACL applies, on
+    Android and iOS the app-private store is the protection, and on the web `user://` is held in
+    memory (IndexedDB) so the plaintext sits there until the app deletes it or offers it. A
+    device or pipe at the destination is not told from a file. On Windows the engine's rename
+    removes an existing target and then moves, so a crash between the two can lose the old
+    destination. `export` also finishes only at its next step after a cancel: a request in flight
+    (at most 15 s) ends first.
+  - **Kotlin on Android** has no path: the app passes an SAF `OutputStream`. The SDK writes and
+    flushes it and never closes it; the app closes it and deletes the document on a failure or
+    cancel. The SDK can neither delete nor tell what the document held before, so a document the
+    person chose to overwrite can be left truncated.
+  - **A browser** has no path and no rename: a Blob returned to the app (capped), or a picker's
+    stream that an error aborts. The app revokes any object URL it made.
+  - **A hard crash** (power loss, a kill) on any path port leaves a `.partial` until the next
+    export removes it.
+  - **A destination error's operating-system message can carry the path.** The SDK puts a reason,
+    never a path, in its own error and logs nothing, but a chained or wrapped OS error may name
+    it: a host must not log or report a destination error it did not build.
+  - **One more difference:** the Godot SDK refuses a Worker body that holds a lone surrogate as a
+    whole (the pull fails with reason `network`) where the other ports drop that one row and list
+    it `invalid`, because a Godot `String` cannot hold one.
 
 ### The account override layer (U-03, U-27)
 
