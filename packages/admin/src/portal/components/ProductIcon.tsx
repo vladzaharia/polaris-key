@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { iconShape, type IconShape } from "../../lib/productArt.js";
-import { artTint, inkFor, letterOf, tintFor } from "./ProductArt.js";
+import { artTint, letterOf, tintFor } from "./ProductArt.js";
 
 export { iconShape };
 
@@ -79,7 +79,6 @@ export function ProductIcon({
   const [failed, setFailed] = React.useState(false);
   const [shape, setShape] = React.useState<IconShape>("shaped");
   const color = tintFor(slug, tint);
-  const ink = inkFor(color);
   if (src && !failed) {
     return (
       <img
@@ -108,16 +107,12 @@ export function ProductIcon({
     <span
       aria-hidden
       data-art="fallback"
-      style={
-        neutral
-          ? undefined
-          : { ...artTint(color), color: ink ?? "var(--pk-brand-text)" }
-      }
+      style={neutral ? undefined : artTint(color)}
       className={cn(
         "inline-flex shrink-0 items-center justify-center font-medium",
         neutral
           ? "border border-border bg-surface-sunken text-fg-strong"
-          : "bg-(--pk-art)",
+          : "bg-(--pk-art) text-[color:var(--pk-art-ink,var(--pk-brand-text))]",
         SIZE[size],
         TILE[size],
         RADIUS[size],

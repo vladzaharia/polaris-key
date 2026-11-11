@@ -49,7 +49,10 @@ export { letterOf };
  * not a token, and `bg-(--pk-art)` paints it.
  */
 export function artTint(color: string): React.CSSProperties {
-  return { "--pk-art": color } as React.CSSProperties;
+  const ink = inkFor(color);
+  const vars: Record<string, string> = { "--pk-art": color };
+  if (ink !== null) vars["--pk-art-ink"] = ink;
+  return vars as React.CSSProperties;
 }
 
 const INK_LIGHT = "#ffffff";
@@ -220,9 +223,8 @@ export function ProductArt({
       {showLetter ? (
         <span
           aria-hidden
-          style={{ color: inkFor(background) ?? "var(--pk-brand-text)" }}
           className={cn(
-            "absolute start-1/2 top-1/2 inline-flex -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-(--polaris-key-page-dark)/25 font-medium",
+            "text-[color:var(--pk-art-ink,var(--pk-brand-text))] absolute start-1/2 top-1/2 inline-flex -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-(--polaris-key-page-dark)/25 font-medium",
             variant === "banner" && "size-28 text-6xl",
             variant === "tile" && "size-16 text-3xl",
             variant === "thumb" && "size-9 text-lg",
