@@ -159,12 +159,84 @@ describe("<LocalPairing>", () => {
     act(() => f.seen.pair!.onCode(code("4873 0691", "wrong-code")));
     expect(await screen.findByText("Wrong code entered")).not.toBeNull();
     expect(container.querySelectorAll(".pair-lit")).toHaveLength(6);
-    expect(container.querySelector(".pair-live")?.textContent).toContain(
-      "New code 4873 0691",
+    // The code is spelled out for the reader, and told apart from the notice's action.
+    const said = container.querySelector(
+      "[role=status] [data-key='a11y.newCode']",
     );
+    expect(said?.textContent).toContain("4 8 7 3");
+    const action = screen.getByRole("button", { name: "Show a new code" });
+    expect(action.closest("[role=status]")).toBeNull();
+  });
+
+  it("the time is told to the minute and never rounded up", async () => {
+    const f = fake();
+    const { container } = await shown(f);
+    // 300 s left reads "5:00"; 291 s is "4:00", not "5:00".
+    act(() =>
+      f.seen.pair!.onCode({
+        ...code("4812 3456"),
+        expiresAt: Math.floor(Date.now() / 1000) + 291,
+      }),
+    );
+    const status = [...container.querySelectorAll("[role=status]")].map(
+      (n) => n.textContent,
+    );
+    expect(status.some((t) => /Expires in 4:00/.test(t ?? ""))).toBe(true);
+    expect(status.some((t) => /Expires in 5:00/.test(t ?? ""))).toBe(false);
+  });
+
+  it("Show a new code from the notice puts focus on the code when the notice goes", async () => {
+    const f = fake();
+    const { container } = await shown(f);
+    act(() => f.seen.pair!.onCode(code("4873 0691", "wrong-code")));
+    const again = await screen.findByRole("button", {
+      name: "Show a new code",
+    });
+    again.focus();
+    fireEvent.click(again);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        container.querySelector('[data-key="a11y.linkCode"]'),
+      ),
+    );
+  });
+
+  it("Show a code opens the placeholder tile at once, and Cancel withdraws a window that is late", async () => {
+    const f = fake();
+    let open!: () => void;
+    f.driver.pair = async (o) => {
+      f.seen.pair = o;
+      await new Promise<void>((r) => (open = r));
+      return {
+        open: true,
+        stop: async () => void f.log.push("stop"),
+        renew: async () => code("5512 0000"),
+        code: () => null,
+      };
+    };
+    const { container } = pairing(f);
+    await press(/Show a code/);
+    await waitFor(() =>
+      expect(container.querySelector("[data-opening]")).not.toBeNull(),
+    );
+    expect(container.querySelector('[data-key="a11y.linkCode"]')).toBeNull();
+    expect(screen.getAllByText("In progress").length).toBeGreaterThan(0);
+    await waitFor(() => expect(f.seen.pair).not.toBeNull());
+    await press("Cancel");
+    open();
+    await waitFor(() => expect(f.log).toContain("stop"));
+  });
+
+  it("the wrong-guess warning has its own title and the Too many tries wait reads at full contrast", async () => {
+    const f = fake();
+    await shown(f);
+    for (let i = 0; i < 5; i++)
+      act(() => f.seen.pair!.onCode(code(`48${i}3 0691`, "wrong-code")));
+    expect(await screen.findByText("Wrong code entered")).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Show a new code" }),
+      screen.getByText("Someone nearby may be guessing codes."),
     ).toBeTruthy();
+    expect(screen.queryByText("Too many tries again")).toBeNull();
   });
 
   it("Pair under 8 digits answers under the field and sends nothing; a wrong code keeps 48", async () => {
@@ -227,6 +299,100 @@ describe("<LocalPairing>", () => {
     await settle(260);
     fireEvent.click(screen.getByRole("button", { name: "Pair" }));
     expect(f.log).toContain("confirm");
+  });
+
+  it("Pair on the prompt answers at once: one confirm, a ring, Not now waits; Pair leads, Not now takes focus", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const f = fake();
+    const { container } = pairing(f);
+    const settle = (ms: number) =>
+      act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
+    await settle(0);
+    fireEvent.click(screen.getByRole("button", { name: /Show a code/ }));
+    await settle(0);
+    act(() => f.seen.pair!.onCode(code("4812 3456")));
+    let release!: () => void;
+    const slow = offer(f.log);
+    slow.confirm = () => {
+      f.log.push("confirm");
+      return new Promise<void>((r) => (release = r));
+    };
+    act(() => f.seen.pair!.onConfirm(slow));
+    const keys = [...container.querySelectorAll(".pair-actions .btn")].map(
+      (b) => b.getAttribute("data-key"),
+    );
+    expect(keys).toEqual(["localPairing.pair", "common.notNow"]);
+    await settle(260);
+    const pair = screen.getByRole("button", { name: "Pair" });
+    fireEvent.click(pair);
+    fireEvent.click(pair);
+    await settle(0);
+    expect(f.log.filter((l) => l === "confirm")).toHaveLength(1);
+    expect(pair.getAttribute("aria-disabled")).toBe("true");
+    expect(pair.querySelector(".ring")).not.toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Not now" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    act(() => release());
+  });
+
+  it("the late answers on the field are told as they arrive, and the waiting screen drops its duplicate row", async () => {
+    const f = fake();
+    const { container } = pairing(f);
+    await press(/Enter a code/);
+    const field = await codeField();
+    fireEvent.change(field, { target: { value: "48123456" } });
+    f.next.join = async () => {
+      throw Object.assign(new Error("x"), { code: "pairing-not-found" });
+    };
+    await press("Pair");
+    await screen.findByText(
+      "Check the code, and that you’re both on the same network.",
+    );
+    const live = [...container.querySelectorAll("[role=status]")].map(
+      (n) => n.textContent,
+    );
+    expect(live.some((t) => /Can’t find the other device/.test(t ?? ""))).toBe(
+      true,
+    );
+    // Waiting: the title says it, so the row does not repeat it; what each shares is shown.
+    f.next.join = () => new Promise(() => undefined);
+    await press("Pair");
+    await waitFor(() => expect(f.seen.join).not.toBeNull());
+    act(() => f.seen.join!.onConfirm(offer(f.log)));
+    expect(await screen.findByText("Each of you shares")).toBeTruthy();
+    expect(
+      container.querySelector('[data-key="localPairing.waitingDevice"]'),
+    ).toBeNull();
+  });
+
+  it("Cancel while pairing keeps the typed code", async () => {
+    const f = fake();
+    pairing(f);
+    await press(/Enter a code/);
+    fireEvent.change(await codeField(), { target: { value: "48123456" } });
+    await press("Pair");
+    await waitFor(() => expect(f.seen.join).not.toBeNull());
+    await press("Cancel");
+    expect((await codeField()).value).toBe("4812 3456");
+  });
+
+  it("network blocked offers Try again, back to the field with the code kept", async () => {
+    const f = fake();
+    pairing(f);
+    await press(/Enter a code/);
+    fireEvent.change(await codeField(), { target: { value: "48123456" } });
+    f.next.join = async () => {
+      throw Object.assign(new Error("x"), { code: "nearby-permission-denied" });
+    };
+    await press("Pair");
+    expect(
+      (await screen.findAllByText(/Local network/i)).length,
+    ).toBeGreaterThan(0);
+    await press("Try again");
+    expect((await codeField()).value).toBe("4812 3456");
   });
 
   it("Escape is Back on the field, Cancel while pairing, Not now on the prompt", async () => {
@@ -331,6 +497,126 @@ describe("<PairedDevices>", () => {
     );
   });
 
+  it("says nothing about what is paired until the first read answers", async () => {
+    const f = fake([link("a")]);
+    let answer!: (r: LocalLinkLike[]) => void;
+    f.driver.list = () => new Promise((r) => (answer = r));
+    const { container } = devices(f);
+    await waitFor(() =>
+      expect(container.querySelector("[data-loading]")).not.toBeNull(),
+    );
+    expect(screen.getAllByText("In progress").length).toBeGreaterThan(0);
+    expect(container.textContent).not.toContain("No paired devices yet.");
+    act(() => answer([link("a")]));
+    expect(await screen.findByText("Device a")).toBeTruthy();
+  });
+
+  it("the row menu is a menu: focus goes in, the arrows move, Escape returns to the button", async () => {
+    const f = fake([link("a"), link("b")]);
+    const { container } = devices(f);
+    await screen.findByText("Device a");
+    const more = container.querySelector<HTMLElement>(
+      '[data-row="a"] .pair-more',
+    )!;
+    more.focus();
+    fireEvent.click(more);
+    const rename = container.querySelector<HTMLElement>(
+      '[data-row="a"] [data-key="devices.rename"]',
+    )!;
+    const forget = container.querySelector<HTMLElement>(
+      '[data-row="a"] [data-key="pairedDevices.forget"]',
+    )!;
+    await waitFor(() => expect(document.activeElement).toBe(rename));
+    fireEvent.keyDown(rename, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(forget);
+    fireEvent.keyDown(forget, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(rename);
+    fireEvent.keyDown(rename, { key: "End" });
+    expect(document.activeElement).toBe(forget);
+    fireEvent.keyDown(forget, { key: "Home" });
+    expect(document.activeElement).toBe(rename);
+    fireEvent.keyDown(rename, { key: "Escape" });
+    expect(document.activeElement).toBe(more);
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("Cancel on a rename or a forget returns focus to the row's button", async () => {
+    const f = fake([link("a"), link("b")]);
+    const { container } = devices(f);
+    await screen.findByText("Device a");
+    fromMenu(container, "a", "devices.rename");
+    await screen.findByLabelText("Device name");
+    await press("Cancel");
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        container.querySelector('[data-row="a"] .pair-more'),
+      ),
+    );
+    fromMenu(container, "b", "pairedDevices.forget");
+    await press("Cancel");
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        container.querySelector('[data-row="b"] .pair-more'),
+      ),
+    );
+  });
+
+  it("a store that refuses a rename or a forget says so and keeps the edit", async () => {
+    const f = fake([link("a"), link("b")]);
+    f.driver.rename = async () => {
+      throw new Error("store");
+    };
+    f.driver.remove = async () => {
+      throw new Error("store");
+    };
+    const { container } = devices(f);
+    await screen.findByText("Device a");
+    fromMenu(container, "a", "devices.rename");
+    const name = (await screen.findByLabelText(
+      "Device name",
+    )) as HTMLInputElement;
+    fireEvent.change(name, { target: { value: "Riverside" } });
+    await press("Save");
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-key="devices.renameFailed"]')
+          ?.textContent,
+      ).toMatch(/Couldn.t rename Device a/),
+    );
+    expect(screen.queryByText("Enter a name.")).toBeNull();
+    expect(name.value).toBe("Riverside");
+    await press("Cancel");
+    fromMenu(container, "b", "pairedDevices.forget");
+    fireEvent.click(
+      container.querySelector(
+        '[data-editing="forget"] button[data-key="pairedDevices.forget"]',
+      )!,
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-key="pairedDevices.forgetFailed"]')
+          ?.textContent,
+      ).toMatch(/Couldn.t forget Device b/),
+    );
+    expect(container.querySelector('[data-editing="forget"]')).not.toBeNull();
+  });
+
+  it("a driven list shows the host's notice and Try again names the device", async () => {
+    const onRetry = vi.fn();
+    const { container } = devices(fake([link("a")]), {
+      notice: { device: "Device a", kind: "busy", id: "a" },
+      onRetry,
+    });
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-key="pairedDevices.busyTitle"]')
+          ?.textContent,
+      ).toBe("Device a is busy"),
+    );
+    await press("Try again");
+    expect(onRetry).toHaveBeenCalledWith("a");
+  });
+
   it("with 32 paired, Pair with a Code is unavailable and says why", async () => {
     const full = Array.from({ length: 32 }, (_, i) =>
       link(`d${i}`, { reachable: i < 8 }),
@@ -342,6 +628,58 @@ describe("<PairedDevices>", () => {
     expect(pair.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(pair);
     expect(onPair).not.toHaveBeenCalled();
+  });
+});
+
+describe("<LocalPairing> paired", () => {
+  const linked = async (f: Fake) => {
+    const view = pairing(f);
+    await press(/Show a code/);
+    await waitFor(() => expect(f.seen.pair).not.toBeNull());
+    act(() =>
+      f.seen.pair!.onLinked({
+        id: "L1",
+        label: "LAPTOP-7QH3RX",
+        categories: [],
+      }),
+    );
+    await screen.findByText("Paired");
+    return view;
+  };
+
+  it("a name the store refuses keeps the screen and says so", async () => {
+    const f = fake([link("L1", { label: "LAPTOP-7QH3RX" })]);
+    f.driver.rename = async () => {
+      throw new Error("store");
+    };
+    const { container } = await linked(f);
+    const name = container.querySelector<HTMLInputElement>("#pk-pair-name")!;
+    fireEvent.change(name, { target: { value: "Booth" } });
+    await press("Done");
+    expect(await screen.findByText(/Couldn.t rename/)).toBeTruthy();
+    expect(screen.getByText("Paired")).toBeTruthy();
+  });
+
+  it("Escape leaves with the name as it was; Done saves an edited one", async () => {
+    const f = fake([link("L1", { label: "LAPTOP-7QH3RX" })]);
+    const onClose = vi.fn();
+    const { container } = pairing(f, { onClose });
+    await press(/Show a code/);
+    await waitFor(() => expect(f.seen.pair).not.toBeNull());
+    act(() =>
+      f.seen.pair!.onLinked({
+        id: "L1",
+        label: "LAPTOP-7QH3RX",
+        categories: [],
+      }),
+    );
+    await screen.findByText("Paired");
+    fireEvent.change(container.querySelector("#pk-pair-name")!, {
+      target: { value: "Booth" },
+    });
+    fireEvent.keyDown(container.querySelector(".pk-root")!, { key: "Escape" });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(f.log.some((l) => l.startsWith("rename"))).toBe(false);
   });
 });
 

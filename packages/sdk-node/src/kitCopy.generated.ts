@@ -1339,6 +1339,7 @@ export const KIT_COPY: Readonly<
     "pairedDevices.forget": "Forget",
     "pairedDevices.forgetConfirm": "Forget {device}?",
     "pairedDevices.forgetBody": "To connect again, pair with a new code.",
+    "pairedDevices.forgetFailed": "Couldn’t forget {device}. Try again.",
     "pairedDevices.reachableFullTitle": "Up to {max} can connect",
     "pairedDevices.reachableFullBody": "Turn one off to let another connect.",
     "pairedDevices.fullBody": "Forget a paired device to pair another.",
@@ -3550,6 +3551,8 @@ export const KIT_COPY: Readonly<
     "pairedDevices.forgetConfirm": "{device} entfernen?",
     "pairedDevices.forgetBody":
       "Um sich wieder zu verbinden, koppeln Sie mit einem neuen Code.",
+    "pairedDevices.forgetFailed":
+      "{device} konnte nicht entfernt werden. Versuchen Sie es erneut.",
     "pairedDevices.reachableFullTitle": "Bis zu {max} können sich verbinden",
     "pairedDevices.reachableFullBody":
       "Schalten Sie eines aus, damit sich ein anderes verbinden kann.",
@@ -4621,7 +4624,7 @@ export const KIT_COPY: Readonly<
     "devices.empty": "Aucun appareil n’utilise encore cette licence.",
     "devices.loadFailed": "Impossible de charger vos appareils.",
     "devices.renameFailed": "Impossible de renommer {device}. Réessayez.",
-    "devices.removeFailed": "Impossible de retirer {device}. Réessayez.",
+    "devices.removeFailed": "Impossible d’oublier {device}. Réessayez.",
     "devices.browser": "Gérez vos appareils dans votre navigateur.",
     "devices.manage": "Gérer les appareils",
     "update.title": "{product} {version}",
@@ -5779,6 +5782,7 @@ export const KIT_COPY: Readonly<
     "pairedDevices.forgetConfirm": "Oublier {device} ?",
     "pairedDevices.forgetBody":
       "Pour vous reconnecter, associez-vous avec un nouveau code.",
+    "pairedDevices.forgetFailed": "Impossible d’oublier {device}. Réessayez.",
     "pairedDevices.reachableFullTitle": "Jusqu’à {max} peuvent se connecter",
     "pairedDevices.reachableFullBody":
       "Désactivez-en un pour en laisser un autre se connecter.",
@@ -7995,6 +7999,8 @@ export const KIT_COPY: Readonly<
     "pairedDevices.forgetConfirm": "¿Olvidar {device}?",
     "pairedDevices.forgetBody":
       "Para conectar de nuevo, vincula con un código nuevo.",
+    "pairedDevices.forgetFailed":
+      "No se pudo olvidar {device}. Inténtalo de nuevo.",
     "pairedDevices.reachableFullTitle": "Pueden conectarse hasta {max}",
     "pairedDevices.reachableFullBody":
       "Desactiva uno para que se conecte otro.",
@@ -10205,6 +10211,8 @@ export const KIT_COPY: Readonly<
     "pairedDevices.forgetConfirm": "Esquecer {device}?",
     "pairedDevices.forgetBody":
       "Para se conectar de novo, pareie com um novo código.",
+    "pairedDevices.forgetFailed":
+      "Não foi possível esquecer {device}. Tente de novo.",
     "pairedDevices.reachableFullTitle": "Até {max} podem se conectar",
     "pairedDevices.reachableFullBody":
       "Desative um para permitir que outro se conecte.",
@@ -12392,6 +12400,7 @@ export const KIT_COPY: Readonly<
     "pairedDevices.forgetConfirm": "Dimenticare {device}?",
     "pairedDevices.forgetBody":
       "Per collegarti di nuovo, associa con un nuovo codice.",
+    "pairedDevices.forgetFailed": "Impossibile dimenticare {device}. Riprova.",
     "pairedDevices.reachableFullTitle": "Possono connettersi fino a {max}",
     "pairedDevices.reachableFullBody":
       "Disattivane uno per far connettere un altro.",
@@ -14610,6 +14619,8 @@ export const KIT_COPY: Readonly<
     "pairedDevices.forgetConfirm": "{device} を削除しますか？",
     "pairedDevices.forgetBody":
       "再接続するには、新しいコードでペアリングしてください。",
+    "pairedDevices.forgetFailed":
+      "{device}を削除できませんでした。もう一度お試しください。",
     "pairedDevices.reachableFullTitle": "最大 {max} 台まで接続できます",
     "pairedDevices.reachableFullBody":
       "別のデバイスを接続するには、どれかをオフにしてください。",
@@ -16763,6 +16774,8 @@ export const KIT_COPY: Readonly<
     "pairedDevices.forget": "삭제",
     "pairedDevices.forgetConfirm": "{device}을(를) 삭제할까요?",
     "pairedDevices.forgetBody": "다시 연결하려면 새 코드로 페어링하세요.",
+    "pairedDevices.forgetFailed":
+      "{device}을(를) 삭제하지 못했습니다. 다시 시도하세요.",
     "pairedDevices.reachableFullTitle": "최대 {max}대까지 연결할 수 있습니다",
     "pairedDevices.reachableFullBody": "다른 기기를 연결하려면 하나를 끄세요.",
     "pairedDevices.fullBody":
@@ -18780,6 +18793,7 @@ export const KIT_COPY: Readonly<
     "pairedDevices.forget": "移除",
     "pairedDevices.forgetConfirm": "要移除 {device} 吗？",
     "pairedDevices.forgetBody": "要再次连接，请用新验证码配对。",
+    "pairedDevices.forgetFailed": "无法移除{device}。请重试。",
     "pairedDevices.reachableFullTitle": "最多 {max} 台可连接",
     "pairedDevices.reachableFullBody": "关闭一台，才能让另一台连接。",
     "pairedDevices.fullBody": "移除一台已配对的设备，才能配对另一台。",
