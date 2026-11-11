@@ -47,6 +47,8 @@ const MODELS := {
 	"AddToAccount": ["holders.gd", "add_to_account_view"],
 	"About": ["settings.gd", "about_view"],
 	"ChannelPicker": ["settings.gd", "channel_picker_view"],
+	"LocalPairing": ["local.gd", "local_pairing_view"],
+	"PairedDevices": ["local.gd", "paired_devices_view"],
 }
 
 

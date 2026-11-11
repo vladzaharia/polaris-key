@@ -17,6 +17,7 @@ const MATRIX_PATH := "res://tests/corpus/v2/ui-matrix.json"
 const Models := preload("res://addons/polaris_key/ui/model/models.gd")
 const Vocabulary := preload("res://addons/polaris_key/ui/model/vocabulary.gd")
 const Holders := preload("res://addons/polaris_key/ui/model/holders.gd")
+const Local := preload("res://addons/polaris_key/ui/model/local.gd")
 const _MODEL_DIR := "res://addons/polaris_key/ui/model/"
 
 ## ui-matrix.json family → its `ui.*` feature (features.json).
@@ -32,6 +33,7 @@ const FAMILIES := {
 	"cloudSync": "ui.settings",
 	"saveConflict": "ui.settings",
 	"holders": "ui.kit.holders",
+	"local": "ui.kit",
 }
 const SIGN_IN := ["SignIn", "SignInHandoff", "LicenseChoice"]
 
@@ -45,7 +47,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	if not t.check("ui-matrix.json: reads", m is Dictionary):
 		return true
 	t.check("ui-matrix.json: uiMatrixVersion is the kit's and the generated constant", m.get("uiMatrixVersion") == float(Vocabulary.UI_MATRIX_VERSION) and Vocabulary.UI_MATRIX_VERSION == PKeyConstants.UI_MATRIX_VERSION, str(m.get("uiMatrixVersion")))
-	for family in FAMILIES.keys() + ["theme", "i18n"]:
+	for family in FAMILIES.keys() + ["localLayout", "theme", "i18n"]:
 		t.check("ui-matrix.json: holds the %s family" % family, m.get(family) is Array)
 	var defaults: Dictionary = m["vocabulary"]["defaults"]
 	for family in FAMILIES:
@@ -57,6 +59,8 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 		_mask_email(t, m["holdersFlow"]["maskEmail"])
 		_lead_parts(t)
 		_activate_done_identity(t, defaults)
+	if only == "" or only == "local":
+		_local_layout(t, m["localLayout"])
 	if only == "" or only == "theme":
 		_theme(t, m["theme"], defaults)
 	if only == "" or only == "i18n":
@@ -133,6 +137,10 @@ func _components(t: PKeyTestContext, family: String, rows: Array, defaults: Dict
 			"copy": _sorted(want.get("copy", [])),
 			"actions": _sorted(want.get("actions", [])),
 		}
+		# The controls drawn but unavailable are pinned too, where the row names them.
+		if want.has("disabled"):
+			got["disabled"] = _sorted(view.get("disabled", []))
+			expect["disabled"] = _sorted(want["disabled"])
 		var ok := got == expect
 		var detail := "" if ok else _diff(got, expect)
 		var must_not = row.get("mustNot")
@@ -152,6 +160,20 @@ func _components(t: PKeyTestContext, family: String, rows: Array, defaults: Dict
 		if t.check(name, ok, detail):
 			ran += 1
 	t.check("ui-matrix.json %s: every row passes (%d/%d)" % [family, ran, rows.size()], ran == rows.size() and rows.size() > 0)
+
+
+## `localLayout`: the window rule of the show screen, row by row.
+func _local_layout(t: PKeyTestContext, rows: Array) -> void:
+	var ran := 0
+	for row in rows:
+		var name := "ui-matrix.json localLayout (ui.kit): %s" % row["name"]
+		var got := Local.layout(row["window"])
+		# JSON numbers are floats.
+		got["panes"] = float(got["panes"])
+		var want: Dictionary = row["expect"]
+		if t.check(name, got == want, "got %s, want %s" % [got, want]):
+			ran += 1
+	t.check("ui-matrix.json localLayout: every row passes (%d/%d)" % [ran, rows.size()], ran == rows.size() and rows.size() > 0)
 
 
 ## `holdersFlow.maskEmail`: the masking every screen uses, and the account tab's helper over it.
