@@ -472,6 +472,46 @@ def test_after_too_many_tries_pair_and_renew_are_refused_for_30_s_with_cooldown(
     assert s.handle.renew().reason == "opened"
 
 
+def test_a_renewal_from_on_failed_meets_the_floor_at_once_through_the_async_client(world: World) -> None:
+    w = world
+    clock = Clock()
+    s = Shown()
+
+    async def main() -> Any:
+        loop = asyncio.get_running_loop()
+        a = AsyncPolarisKeyClient(w.a)
+        renewed: "List[Any]" = []
+
+        def on_failed(f: Any) -> None:
+            s.failed.append(f.reason)
+            if f.reason == "too-many-tries":
+                # Called on the Connect thread: the host's renewal runs on its own loop, started the moment it hears.
+                renewed.append(asyncio.run_coroutine_threadsafe(handle.renew(), loop))
+
+        handle = await a.cloud_connect.local_links.pair(
+            categories=["notes"],
+            mdns=w.net,
+            on_code=s.codes.append,
+            on_confirm=s.offers.append,
+            on_failed=on_failed,
+            on_end=lambda e: s.ends.append(e.reason),
+            mono=clock,
+            **LOOP,
+        )
+        w.handles.append(handle._target)
+        s.handle = handle
+        await loop.run_in_executor(None, exhaust, w, s)
+        await loop.run_in_executor(None, lambda: until(lambda: len(renewed) == 1))
+        try:
+            return await asyncio.wait_for(asyncio.wrap_future(renewed[0]), 10)
+        except LocalPairingError as e:
+            return e
+
+    got = asyncio.run(main())
+    assert isinstance(got, LocalPairingError)
+    assert (got.code, got.reason) == ("peer-closed", "cooldown")
+
+
 def test_the_second_window_that_ends_after_a_wrong_guess_within_10_minutes_starts_the_cooldown_one_does_not(
     world: World,
 ) -> None:

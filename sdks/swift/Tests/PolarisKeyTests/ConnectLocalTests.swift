@@ -1330,6 +1330,45 @@ import XCTest
             XCTAssertEqual(ends.current?.reason, .stored)
         }
 
+        func testARenewalFromOnFailedMeetsTheFloorAtOnce() async throws {
+            let dir = Directory()
+            let b = try await Device.make()
+            let a = try await Device.make()
+            let code = Latest<LocalCode>()
+            let ends = Latest<LocalPairEnd>()
+            let renewed = Latest<String>()
+            let box = LockedValue<LocalPairHandle?>(nil)
+            let shower = Mono()
+            // The host renews the moment it hears the fifth failed guess closed the window.
+            let handle = try await a.local.pair(
+                LocalPairOptions(
+                    categories: cats, onCode: { code.set($0) }, onConfirm: { _ in },
+                    onFailed: { f in
+                        guard f.reason == .tooManyTries, let h = box.current else { return }
+                        Task {
+                            do {
+                                _ = try await h.renew()
+                                renewed.set("renewed")
+                            } catch let e as LocalPairingError {
+                                renewed.set(e.reason.map { "\($0)" } ?? "other")
+                            } catch { renewed.set("other") }
+                        }
+                    },
+                    onEnd: { ends.set($0) }, network: FakeNet(dir), allowLoopback: true, mono: { shower.now }))
+            box.set(handle)
+            let nameplate = try XCTUnwrap(code.current).nameplate
+            let joiner = Mono()
+            for i in 0..<5 {
+                await until("code \(i) is shown") { code.history.count == i + 1 || !handle.isOpen }
+                if !handle.isOpen { break }
+                _ = await wrongGuess(b, dir, nameplate: nameplate, clock: joiner)
+            }
+            await until("the renewal is answered") { renewed.current != nil }
+            XCTAssertEqual(renewed.current, "cooldown")
+            XCTAssertFalse(handle.isOpen)
+            XCTAssertEqual(dir.count(mode: "q"), 0)
+        }
+
         func testFiveWrongGuessesEndTheWindowAndStartTheCooldown() async throws {
             let dir = Directory()
             let b = try await Device.make()
