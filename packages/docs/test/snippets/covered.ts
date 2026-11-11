@@ -187,6 +187,11 @@ export const COVERED_PAGES: Covered[] = [
     prose: false,
   },
   {
+    path: "packages/docs/src/content/docs/features/cloud-sync/export-and-removal.mdx",
+    language: "ts",
+    prose: false,
+  },
+  {
     path: "packages/docs/src/content/docs/features/cloud-sync/saves.mdx",
     language: "ts",
     prose: false,

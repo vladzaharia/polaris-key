@@ -4529,6 +4529,79 @@
       "layer": "client"
     },
     {
+      "id": "cloudSync.export",
+      "kind": "method",
+      "feature": "sync.export",
+      "args": [
+        {
+          "name": "destination",
+          "type": "string"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "CloudSyncExport",
+      "errors": [
+        "account_required",
+        "sync-locked",
+        "sync-encryption-pinned",
+        "unsupported",
+        "cancelled",
+        "sync-export-too-large",
+        "sync-export-failed"
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "react": {
+          "spelling": "useCloudSync().export",
+          "shape": "hook",
+          "reason": "a browser has no path: the hook's export (useCloudSync().export, spelled by U-51.4) takes options and answers a Blob, or writes to options.sink; the desktop bridge answers unsupported"
+        },
+        "swift": {
+          "labels": ["to", "options"]
+        },
+        "kotlin": {},
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.cancelExport",
+      "kind": "method",
+      "feature": "sync.export",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node cancels with the AbortSignal passed as the signal option of cloudSync.export"
+        },
+        "react": {
+          "sdkOnly": true,
+          "reason": "React cancels with the AbortSignal passed as the signal option of useCloudSync().export"
+        },
+        "godot": {
+          "sdkOnly": true,
+          "spelling": "PKeyCloudSync.cancel_export",
+          "reason": "GDScript has no cancellation token: the other SDKs cancel with an AbortSignal, a threading.Event or task cancellation"
+        },
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python cancels with the threading.Event passed as cancel, or by cancelling the awaiting task"
+        },
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift cancels with the Task that awaits cloudSync.export(to:options:)"
+        },
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin cancels by cancelling the coroutine (or the Java future) that runs the export"
+        }
+      },
+      "layer": "client"
+    },
+    {
       "id": "cloudSync.collection",
       "kind": "method",
       "feature": "sync.records",

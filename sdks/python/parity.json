@@ -585,6 +585,10 @@
     "server.webhooks": {
       "status": "planned",
       "wp": "SP-67"
+    },
+    "sync.export": {
+      "status": "implemented",
+      "note": "client.cloud_sync.export(destination, include_revisions=False, on_progress=None, cancel=None) (cloud_sync/export.py: the plan, the serialisers and a streaming STORED zip writer; cloud_sync/export_host.py: the preconditions, the pulls and their bounds, the file source over the transfer engine and the path destination): a readable zip of the synced data written to <destination>.partial (exclusive create, 0600, fsync) and renamed over the destination; a failure or cancel removes the partial and keeps the old file. The async client's export is a coroutine on a worker thread that cancels with the task. tests/test_sync_crypto_conformance.py replays every exportCases row (zipfile.testzip), tests/test_cloud_sync_export.py the host."
     }
   }
 }

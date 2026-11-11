@@ -69,6 +69,7 @@ export type Surface = [
   ReturnType<typeof useTransfers>["resume"],
   ReturnType<typeof useTransfers>["cancel"],
   ReturnType<typeof useTransfers>["transfers"],
+  ReturnType<typeof useCloudSync>["export"],
   PolarisKeyConfig["auth"],
   PolarisKeyConfig["mode"],
   PolarisKeyConfig["bridge"],

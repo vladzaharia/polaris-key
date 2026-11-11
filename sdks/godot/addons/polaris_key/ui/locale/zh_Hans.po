@@ -7748,6 +7748,26 @@ msgstr "已做出选择"
 msgid "core.codes.sync-merge-closed.message"
 msgstr "已经做出选择，或已被更新的更改取代。未做任何更改。"
 
+#. Copy too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.title"
+msgstr "副本过大"
+
+#. The synced data is too big to save as one file. Nothing was saved.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.message"
+msgstr "同步的数据太大，无法保存为一个文件。未保存任何内容。"
+
+#. Copy not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.title"
+msgstr "副本未保存"
+
+#. The copy of your synced data couldn't be saved. Check the destination and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.message"
+msgstr "无法保存同步数据的副本。请检查保存位置后重试。"
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

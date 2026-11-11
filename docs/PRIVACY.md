@@ -260,6 +260,7 @@ upload session lasts 24 hours. Quota never deletes. The person can clear it, exp
 portal (the JSON copy holds the settings, counters and, while small, the records and file
 metadata; the zip copy holds every record and the stored bytes of every file, revision and delta
 chunk, which in end-to-end mode are still ciphertext), or delete it with the account; deleting a product erases its objects, and an object that finds its product gone erases itself. After a removal, each device discards its synced copy and its stored key at its next contact.
+An app can also write a readable, decrypted copy of the person's synced data to a place the app is given (`cloudSync.export()`): nothing is uploaded, the SDK keeps no copy and logs no value, and the file is the app's to protect and delete.
 
 ### The key ring — wrapped keys for a person's devices
 

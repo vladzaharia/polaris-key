@@ -7760,6 +7760,26 @@ msgstr ""
 msgid "core.codes.sync-merge-closed.message"
 msgstr ""
 
+#. Copy too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.title"
+msgstr ""
+
+#. The synced data is too big to save as one file. Nothing was saved.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.message"
+msgstr ""
+
+#. Copy not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.title"
+msgstr ""
+
+#. The copy of your synced data couldn't be saved. Check the destination and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.message"
+msgstr ""
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

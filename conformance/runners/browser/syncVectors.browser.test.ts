@@ -1,4 +1,4 @@
-// @pkey-feature sync.files.delta sync.e2e.recovery
+// @pkey-feature sync.files.delta sync.e2e.recovery sync.export
 //
 // The browser conformance runner for `conformance/corpus/v2/sync-vectors.json` (WIRE-CONTRACT-V5
 // section 13.10), mirroring `../node/syncVectors.test.ts` through WebCrypto in a real engine.
@@ -75,6 +75,10 @@ import {
   Sha256,
   type SyncJson,
 } from "@polaris-key/client-core/sync";
+import {
+  defineExportSuites,
+  type ExportCase,
+} from "../node/syncExportSuite.js";
 
 interface HkdfCase {
   id: string;
@@ -1220,3 +1224,7 @@ describe("sync-vectors.json: deltaCases", () => {
     });
   }
 });
+
+defineExportSuites(
+  (syncVectors as unknown as { exportCases: ExportCase[] }).exportCases,
+);

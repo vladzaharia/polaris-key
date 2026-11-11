@@ -158,6 +158,8 @@ public enum ErrorCode {
     public static let recoveryCodeInvalid = "recovery-code-invalid"
     public static let syncEncryptionPinned = "sync-encryption-pinned"
     public static let syncFileInvalid = "sync-file-invalid"
+    public static let syncExportTooLarge = "sync-export-too-large"
+    public static let syncExportFailed = "sync-export-failed"
     public static let syncMergeClosed = "sync-merge-closed"
     public static let invalidOptions = "invalid-options"
     public static let invalidArgument = "invalid-argument"
@@ -402,6 +404,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "recovery-code-invalid",
     "sync-encryption-pinned",
     "sync-file-invalid",
+    "sync-export-too-large",
+    "sync-export-failed",
     "sync-merge-closed",
     "invalid-options",
     "invalid-argument",
@@ -646,6 +650,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "recovery-code-invalid": "client",
     "sync-encryption-pinned": "client",
     "sync-file-invalid": "client",
+    "sync-export-too-large": "client",
+    "sync-export-failed": "client",
     "sync-merge-closed": "client",
     "invalid-options": "client",
     "invalid-argument": "client",
@@ -786,6 +792,7 @@ public enum Feature {
     public static let syncE2eRecovery = "sync.e2e.recovery"
     public static let syncTransferBackground = "sync.transfer.background"
     public static let syncE2e = "sync.e2e"
+    public static let syncExport = "sync.export"
     public static let connectIdentity = "connect.identity"
     public static let connectNoise = "connect.noise"
     public static let connectProtocol = "connect.protocol"
@@ -934,6 +941,7 @@ public let FEATURE_VALUES: [String] = [
     "sync.e2e.recovery",
     "sync.transfer.background",
     "sync.e2e",
+    "sync.export",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -1857,6 +1865,42 @@ public let SYNC_ENVELOPE_FIXED_BYTES = 49
 /// Cloud Sync: `SYNC_ENVELOPE_PAD_BLOCK` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
 public let SYNC_ENVELOPE_PAD_BLOCK = 64
 
+/// Cloud Sync: `SYNC_EXPORT_BLOB_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_BLOB_MAX_BYTES = 268435456
+
+/// Cloud Sync: `SYNC_EXPORT_FORMAT` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_FORMAT = "pkey-sync-export/1"
+
+/// Cloud Sync: `SYNC_EXPORT_ITEM_RESERVE_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_ITEM_RESERVE_BYTES = 1024
+
+/// Cloud Sync: `SYNC_EXPORT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_MAX_BYTES = 4294967295
+
+/// Cloud Sync: `SYNC_EXPORT_MAX_CHUNKS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_MAX_CHUNKS = 65536
+
+/// Cloud Sync: `SYNC_EXPORT_MAX_ENTRIES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_MAX_ENTRIES = 65000
+
+/// Cloud Sync: `SYNC_EXPORT_MAX_PULLS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_MAX_PULLS = 64
+
+/// Cloud Sync: `SYNC_EXPORT_MAX_WAIT_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_MAX_WAIT_MS = 5400000
+
+/// Cloud Sync: `SYNC_EXPORT_RETRY_AFTER_MAX_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_RETRY_AFTER_MAX_MS = 900000
+
+/// Cloud Sync: `SYNC_EXPORT_STORE_DIR` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_STORE_DIR = "stores/sync.cloudSync/"
+
+/// Cloud Sync: `SYNC_EXPORT_ZIP_END_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_ZIP_END_BYTES = 22
+
+/// Cloud Sync: `SYNC_EXPORT_ZIP_ENTRY_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+public let SYNC_EXPORT_ZIP_ENTRY_BYTES = 92
+
 /// Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
 public let SYNC_FILE_FORMAT = "pkey-sync-file/1"
 
@@ -2162,6 +2206,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.e2e.recovery": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.transfer.background": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.e2e": CapabilityRow(status: "implemented", service: "sync", na: []),
+    "sync.export": CapabilityRow(status: "implemented", service: "sync", na: []),
     "connect.identity": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.noise": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.protocol": CapabilityRow(status: "implemented", service: "connect", na: []),
@@ -2266,4 +2311,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "12d847f7c70b131519b9775d0d93807c5fc9ad836a90f951272eb99d1e4aea07"
+public let CAPABILITY_DIGEST = "d37e927a8505d0f1499cae3d8ebe7ed5da582a18e4ba44f2952226dbd207688e"

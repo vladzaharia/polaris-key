@@ -153,6 +153,18 @@ __all__ = [
     "SYNC_E2E_OVERHEAD_BYTES",
     "SYNC_ENVELOPE_FIXED_BYTES",
     "SYNC_ENVELOPE_PAD_BLOCK",
+    "SYNC_EXPORT_BLOB_MAX_BYTES",
+    "SYNC_EXPORT_FORMAT",
+    "SYNC_EXPORT_ITEM_RESERVE_BYTES",
+    "SYNC_EXPORT_MAX_BYTES",
+    "SYNC_EXPORT_MAX_CHUNKS",
+    "SYNC_EXPORT_MAX_ENTRIES",
+    "SYNC_EXPORT_MAX_PULLS",
+    "SYNC_EXPORT_MAX_WAIT_MS",
+    "SYNC_EXPORT_RETRY_AFTER_MAX_MS",
+    "SYNC_EXPORT_STORE_DIR",
+    "SYNC_EXPORT_ZIP_END_BYTES",
+    "SYNC_EXPORT_ZIP_ENTRY_BYTES",
     "SYNC_FILE_FORMAT",
     "SYNC_FILE_MAX_BYTES",
     "SYNC_FILE_SEGMENT_BYTES",
@@ -378,6 +390,8 @@ class ErrorCode:
     RECOVERY_CODE_INVALID: Final = "recovery-code-invalid"
     SYNC_ENCRYPTION_PINNED: Final = "sync-encryption-pinned"
     SYNC_FILE_INVALID: Final = "sync-file-invalid"
+    SYNC_EXPORT_TOO_LARGE: Final = "sync-export-too-large"
+    SYNC_EXPORT_FAILED: Final = "sync-export-failed"
     SYNC_MERGE_CLOSED: Final = "sync-merge-closed"
     INVALID_OPTIONS: Final = "invalid-options"
     INVALID_ARGUMENT: Final = "invalid-argument"
@@ -622,6 +636,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "recovery-code-invalid",
     "sync-encryption-pinned",
     "sync-file-invalid",
+    "sync-export-too-large",
+    "sync-export-failed",
     "sync-merge-closed",
     "invalid-options",
     "invalid-argument",
@@ -868,6 +884,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "recovery-code-invalid": "client",
         "sync-encryption-pinned": "client",
         "sync-file-invalid": "client",
+        "sync-export-too-large": "client",
+        "sync-export-failed": "client",
         "sync-merge-closed": "client",
         "invalid-options": "client",
         "invalid-argument": "client",
@@ -1011,6 +1029,7 @@ class Feature:
     SYNC_E2E_RECOVERY: Final = "sync.e2e.recovery"
     SYNC_TRANSFER_BACKGROUND: Final = "sync.transfer.background"
     SYNC_E2E: Final = "sync.e2e"
+    SYNC_EXPORT: Final = "sync.export"
     CONNECT_IDENTITY: Final = "connect.identity"
     CONNECT_NOISE: Final = "connect.noise"
     CONNECT_PROTOCOL: Final = "connect.protocol"
@@ -1159,6 +1178,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "sync.e2e.recovery",
     "sync.transfer.background",
     "sync.e2e",
+    "sync.export",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -2283,6 +2303,54 @@ SYNC_ENVELOPE_FIXED_BYTES: Final[int] = 49
 SYNC_ENVELOPE_PAD_BLOCK: Final[int] = 64
 
 
+#: Cloud Sync: `SYNC_EXPORT_BLOB_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_BLOB_MAX_BYTES: Final[int] = 268435456
+
+
+#: Cloud Sync: `SYNC_EXPORT_FORMAT` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_FORMAT: Final[str] = "pkey-sync-export/1"
+
+
+#: Cloud Sync: `SYNC_EXPORT_ITEM_RESERVE_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_ITEM_RESERVE_BYTES: Final[int] = 1024
+
+
+#: Cloud Sync: `SYNC_EXPORT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_MAX_BYTES: Final[int] = 4294967295
+
+
+#: Cloud Sync: `SYNC_EXPORT_MAX_CHUNKS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_MAX_CHUNKS: Final[int] = 65536
+
+
+#: Cloud Sync: `SYNC_EXPORT_MAX_ENTRIES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_MAX_ENTRIES: Final[int] = 65000
+
+
+#: Cloud Sync: `SYNC_EXPORT_MAX_PULLS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_MAX_PULLS: Final[int] = 64
+
+
+#: Cloud Sync: `SYNC_EXPORT_MAX_WAIT_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_MAX_WAIT_MS: Final[int] = 5400000
+
+
+#: Cloud Sync: `SYNC_EXPORT_RETRY_AFTER_MAX_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_RETRY_AFTER_MAX_MS: Final[int] = 900000
+
+
+#: Cloud Sync: `SYNC_EXPORT_STORE_DIR` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_STORE_DIR: Final[str] = "stores/sync.cloudSync/"
+
+
+#: Cloud Sync: `SYNC_EXPORT_ZIP_END_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_ZIP_END_BYTES: Final[int] = 22
+
+
+#: Cloud Sync: `SYNC_EXPORT_ZIP_ENTRY_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_ZIP_ENTRY_BYTES: Final[int] = 92
+
+
 #: Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
 SYNC_FILE_FORMAT: Final[str] = "pkey-sync-file/1"
 
@@ -2660,6 +2728,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.e2e.recovery": CapabilityRow("implemented", "sync", ()),
         "sync.transfer.background": CapabilityRow("na", "sync", (CapabilityNa("python", "runtime"),)),
         "sync.e2e": CapabilityRow("implemented", "sync", ()),
+        "sync.export": CapabilityRow("implemented", "sync", ()),
         "connect.identity": CapabilityRow("implemented", "connect", ()),
         "connect.noise": CapabilityRow("implemented", "connect", ()),
         "connect.protocol": CapabilityRow("implemented", "connect", ()),
@@ -2765,4 +2834,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "332f3fc24502ce60b40d7e499a3922886bed6ac1d9ab653b9856ddda1758fce4"
+CAPABILITY_DIGEST: Final[str] = "96c350d90182e9aec3cb033999eca3316441d37f25e112838782fd104e6708a5"

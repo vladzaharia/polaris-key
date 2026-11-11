@@ -600,6 +600,14 @@
       "title": "Already decided",
       "message": "The choice was already made, or a newer change replaced it. Nothing changed."
     },
+    "sync-export-too-large": {
+      "title": "Copy too large",
+      "message": "The synced data is too big to save as one file. Nothing was saved."
+    },
+    "sync-export-failed": {
+      "title": "Copy not saved",
+      "message": "The copy of your synced data couldn't be saved. Check the destination and try again."
+    },
     "invalid-options": {
       "title": "App not set up",
       "message": "The app's licensing isn't set up correctly. Contact the developer."

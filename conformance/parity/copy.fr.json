@@ -601,6 +601,14 @@
       "title": "Déjà décidé",
       "message": "Le choix a déjà été fait ou remplacé par une modification plus récente. Rien n’a changé."
     },
+    "sync-export-too-large": {
+      "title": "Copie trop volumineuse",
+      "message": "Les données synchronisées sont trop volumineuses pour tenir dans un seul fichier. Rien n'a été enregistré."
+    },
+    "sync-export-failed": {
+      "title": "Copie non enregistrée",
+      "message": "La copie de vos données synchronisées n'a pas pu être enregistrée. Vérifiez la destination et réessayez."
+    },
     "invalid-options": {
       "title": "App non configurée",
       "message": "La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur."

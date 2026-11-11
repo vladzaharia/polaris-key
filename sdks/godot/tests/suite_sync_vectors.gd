@@ -1,18 +1,20 @@
 extends RefCounted
-# @pkey-feature sync.e2e sync.files.delta
+# @pkey-feature sync.e2e sync.files.delta sync.export
 # Cloud Sync end-to-end primitives over the generator-owned mirror of conformance/corpus/v2/
 # sync-vectors.json (WIRE-CONTRACT-V5 §13.10, U-40.1): the the settings-size sections (primitives, AES-256-GCM, the
 # envelope, HPKE, wrap, recovery, adopt, U-40.5) and, from U-23.G1, the chunker, the chunk objects and
 # the manifest (cdcCases, cdcEditCases, deltaCases, chunkCases, manifestCases). From U-23.G2 the file
 # stream with its ranged open and the transfer planner (fileStreamCases, transferPlanCases) run in
-# suite_sync_files. A section that is neither run, run elsewhere nor typed N/A below fails the suite,
+# suite_sync_files. exportCases (13.12, U-51.8) runs here: every row through the export core, the archive opened
+# with ZIPReader. A section that is neither run, run elsewhere nor typed N/A below fails the suite,
 # so a new corpus section is noticed.
 
 const VECTORS := "res://tests/corpus/v2/sync-vectors.json"
+const LONE_SURROGATE := PKeyExportFixtures.LONE_SURROGATE
 
 ## Implemented sections.
 const RUN := ["hkdfCases", "blindCases", "canonicalJsonCases", "recoveryCodeCases", "envelopeCases", "hpkeAnchor", "wrapCases", "adoptCases",
-		"cdcCases", "cdcEditCases", "deltaCases", "chunkCases", "manifestCases"]
+		"cdcCases", "cdcEditCases", "deltaCases", "chunkCases", "manifestCases", "exportCases"]
 ## Run by suite_sync_files (the file stream is big enough to be a suite of its own).
 const RUN_ELSEWHERE := ["fileStreamCases", "transferPlanCases"]
 ## Typed N/A: a section whose primitive this lane does not ship (none now).
@@ -26,7 +28,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	# 4.4's parser drops a U+0000 escape (newer engines read it as U+FFFD); spell it as U+FFFD
 	# so every engine hands _name_of the same text.
 	var nul_escape := RegEx.create_from_string("(?<!\\\\)((?:\\\\\\\\)*)\\\\u0000")
-	var text := nul_escape.sub(FileAccess.get_file_as_string(VECTORS), "$1\\uFFFD", true)
+	var text := PKeyExportFixtures.lone_surrogates(nul_escape.sub(FileAccess.get_file_as_string(VECTORS), "$1\\uFFFD", true))
 	if not t.check("vectors parse", j.parse(text) == OK and j.data is Dictionary, VECTORS):
 		return true
 	var d: Dictionary = j.data
@@ -59,7 +61,79 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_cdc_edit(t, d["cdcEditCases"], d["deltaCases"])
 	_through_native_lane(t, d)
 	_wrong_aad_lane(t)
+	await _export_cases(t, d["exportCases"])
 	return true
+
+
+## `v` with every string that held a lone surrogate (now `LONE_SURROGATE`) replaced by NaN. A String cannot hold
+## the code point, and the engine's strict wire parser refuses a body that spells one, so the replay gives the
+## core a value no canonical JSON can spell instead: the row is dropped and listed `invalid` the same way.
+## A lone surrogate in a key or an id has no such stand-in: it is left in place and the row fails.
+static func _stand_in(v: Variant) -> Variant:
+	if v is String:
+		return NAN if (v as String).contains(LONE_SURROGATE) else v
+	if v is Array:
+		return (v as Array).map(func(e: Variant) -> Variant: return _stand_in(e))
+	if v is Dictionary:
+		var out := {}
+		for k in v:
+			out[k] = _stand_in(v[k])
+		return out
+	return v
+
+
+## exportCases (WIRE-CONTRACT-V5 13.12): every row through the export core into a collecting sink, the archive
+## opened with the engine's `ZIPReader`, and its entries compared with the row: names in order, sizes, SHA-256
+## and the text of the small ones; a refusal writes nothing. The core's own refusals are rows too.
+func _export_cases(t: PKeyTestContext, cases: Array) -> void:
+	var rows: Array = []
+	for r: Dictionary in cases:
+		rows.append(_stand_in(r))
+	t.check("exportCases: the rows are there", rows.size() >= 31, str(rows.size()))
+	var names := "README\\.txt|data\\.json|stores/sync\\.cloudSync/(settings\\.json|files\\.json|index\\.json"
+	names += "|records/(0|[1-9][0-9]*)\\.ndjson|files/(0|[1-9][0-9]*)\\.bin)"
+	var grammar := RegEx.create_from_string("\\A(" + names + ")\\z")
+	for row: Dictionary in rows:
+		await _export_row(t, row, grammar)
+
+
+func _export_row(t: PKeyTestContext, row: Dictionary, grammar: RegEx) -> void:
+	var id: String = row["id"]
+	var got: Dictionary = await PKeyExportFixtures.run_row(row)
+	var res: Dictionary = got["result"]
+	var sink: PKeyExportFixtures.CollectSink = got["sink"]
+	var expect: Dictionary = row["expect"]
+	if expect.has("refusal"):
+		t.check("export %s: refused with %s" % [id, expect["refusal"]["code"]], not res["ok"] and res["code"] == expect["refusal"]["code"], str(res))
+		t.check("export %s: a refusal writes nothing" % id, sink.writes == 0)
+		return
+	if not t.check("export %s: written" % id, res["ok"], str(res)):
+		return
+	var data := sink.bytes()
+	t.check("export %s: the result counts the archive" % id, res["bytes"] == data.size() and res["bytes"] <= res["planned_bytes"])
+	t.check("export %s: no write over a segment" % id, sink.max_piece <= PKeySyncFileStream.SEGMENT_BYTES)
+	var entries: Variant = PKeyExportFixtures.read_zip(data, id)
+	if not t.check("export %s: ZIPReader opens the archive" % id, entries is Array):
+		return
+	var want: Array = expect["entries"]
+	var names: Array = []
+	for e: Dictionary in entries:
+		names.append(e["name"])
+	var want_names: Array = want.map(func(w: Dictionary) -> String: return w["name"])
+	t.check("export %s: entry names in order" % id, names == want_names, "%s vs %s" % [names, want_names])
+	t.check("export %s: every name is one the grammar allows" % id, names.all(func(n: String) -> bool: return grammar.search(n) != null))
+	if names != want_names:
+		return
+	for i in want.size():
+		var w: Dictionary = want[i]
+		var bytes: PackedByteArray = entries[i]["data"]
+		var label := "export %s: %s" % [id, w["name"]]
+		t.check(label + " size", bytes.size() == int(w["size"]), "%d vs %d" % [bytes.size(), int(w["size"])])
+		t.check(label + " sha256", PKeySyncHkdf.sha256(bytes).hex_encode() == w["sha256Hex"])
+		if w.has("utf8"):
+			t.check(label + " text", bytes.get_string_from_utf8() == w["utf8"], bytes.get_string_from_utf8())
+		if w.has("hex"):
+			t.check(label + " bytes", bytes.hex_encode() == w["hex"])
 
 
 ## A stand-in for a native lane: it counts the calls that reach it and answers from the GDScript

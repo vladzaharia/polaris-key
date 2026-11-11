@@ -46,6 +46,9 @@ export {
   type UseCloudSync,
   type SignInOffer,
 } from "./react/useCloudSync.js";
+// sync.export (U-51.4): what `useCloudSync().export` takes and answers.
+export type { BrowserExport, BrowserExportOptions } from "./core/cloudSync.js";
+export { SyncExportError } from "@polaris-key/client-core/sync";
 // sync.conflict (U-08): the MergeRequests open now, and `keep` to settle one.
 export { useConflicts, type UseConflicts } from "./react/useConflicts.js";
 // sync.saves (U-22.7): the saves of the signed-in person and the writes in flight.

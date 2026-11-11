@@ -73,7 +73,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
+import java.io.OutputStream
 import java.net.URI
+import java.nio.file.Path
 
 /** One Cloud Sync event for app code: the machine's events, and [PurgeFailed]. Names keys and codes only (H-11). */
 public sealed interface CloudSyncEvent {
@@ -150,6 +152,7 @@ public class RecoveryCodeModel internal constructor(private val make: suspend ()
 }
 
 /** `client.cloudSync`: the verbs. A product without the Sync service gets the typed N/A. */
+@Suppress("TooManyFunctions")
 public class CloudSyncClient internal constructor(private val api: CloudSyncApi) {
     /** The machine's status. `local` before Cloud Sync has started. Throws the typed `product` N/A when the product does not run the Sync service. */
     public suspend fun status(): SyncStatus = api.status()
@@ -190,6 +193,28 @@ public class CloudSyncClient internal constructor(private val api: CloudSyncApi)
 
     /** The save writes in flight (running, paused or waiting on the network). */
     public fun transfers(): List<SaveTransfer> = api.saves.transfers()
+
+    /**
+     * A readable, decrypted zip of what this app synced, made on this device and written to [destination] (U-51.7; the layout of
+     * the Polaris Locker portal's own export, with the data in plaintext: it is **not encrypted**). The SDK sends what is waiting,
+     * reads what the Worker holds, writes `<destination>.partial` (created exclusively, owner-only), and renames it over
+     * [destination] when it is whole. An error or a cancel removes the partial and leaves the old destination as it was.
+     *
+     * Throws the typed `product` N/A when the product does not run the Sync service, `account_required`, `sync-locked`,
+     * `sync-encryption-pinned`, [SyncExportException] (`sync-export-failed`, reason `destination`, `network` or `busy`) and
+     * `sync-export-too-large` (nothing written). Cancelling the coroutine cancels the export. The SDK has no consent gate: ask
+     * before you call if you want one.
+     */
+    public suspend fun export(destination: Path, options: CloudSyncExportOptions = CloudSyncExportOptions()): CloudSyncExport =
+        api.export(PartialFile(destination), destination, options)
+
+    /**
+     * The same, into a stream the app owns (Android's `ContentResolver.openOutputStream` of an `ACTION_CREATE_DOCUMENT` document).
+     * The SDK writes and flushes [output] and never closes or keeps it, after a success, a failure or a cancel: close it yourself,
+     * and delete the document when the export fails (the SDK cannot, and a partial archive is not one a person should keep).
+     */
+    public suspend fun export(output: OutputStream, options: CloudSyncExportOptions = CloudSyncExportOptions()): CloudSyncExport =
+        api.export(StreamDestination(output), null, options)
 }
 
 /** A sign-in URL fit to hand to the app: https on the Worker's origin, else null (the one rule, [SignInUrl.safe]). */
@@ -452,6 +477,19 @@ internal class CloudSyncApi(
     }
 
     suspend fun newRecoveryCode(): String = recovery()
+
+    private val exporter = CloudSyncExporter(
+        core,
+        startedHost = {
+            withContext(dispatcher) { attach() }
+            withContext(dispatcher) { startedHost() }
+        },
+        flush = ::flush,
+        fileCodec = fileCodec,
+    )
+
+    suspend fun export(destination: ExportDestination, path: Path?, options: CloudSyncExportOptions): CloudSyncExport =
+        exporter.export(destination, path, options)
 
     private val collections = java.util.concurrent.ConcurrentHashMap<String, SyncCollection>()
 

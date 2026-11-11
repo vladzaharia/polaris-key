@@ -37,10 +37,12 @@ static func canonicalize_text(json: String) -> Dictionary:
 	return _ok(out)
 
 
-## `value`: null, bool, int, float, String, Array, Dictionary (String keys).
-static func canonicalize_value(value: Variant) -> Dictionary:
+## `value`: null, bool, int, float, String, Array, Dictionary (String keys). `limit` is the nesting a value
+## may have (the value's own outermost array or object is level 1); 0 lifts it, for a caller that wraps a
+## value it has checked already (the export's lines).
+static func canonicalize_value(value: Variant, limit := MAX_DEPTH) -> Dictionary:
 	var err := [""]
-	var out: Variant = _from_value(value, 1, err)
+	var out: Variant = _from_value(value, 1, err, limit)
 	if out == null:
 		return {"ok": false, "error": err[0]}
 	return _ok(out)
@@ -50,8 +52,8 @@ static func _ok(bytes: PackedByteArray) -> Dictionary:
 	return {"ok": true, "canonical": bytes.get_string_from_utf8(), "bytes": bytes}
 
 
-static func _from_value(v: Variant, depth: int, err: Array) -> Variant:
-	if depth > MAX_DEPTH:
+static func _from_value(v: Variant, depth: int, err: Array, limit := MAX_DEPTH) -> Variant:
+	if limit > 0 and depth > limit:
 		err[0] = "nesting too deep"
 		return null
 	match typeof(v):
@@ -83,7 +85,7 @@ static func _from_value(v: Variant, depth: int, err: Array) -> Variant:
 			var out := PackedByteArray([91])
 			var first := true
 			for e in v:
-				var b: Variant = _from_value(e, depth + 1, err)
+				var b: Variant = _from_value(e, depth + 1, err, limit)
 				if b == null:
 					return null
 				if not first:
@@ -102,7 +104,7 @@ static func _from_value(v: Variant, depth: int, err: Array) -> Variant:
 				if ku == null:
 					err[0] = "lone surrogate"
 					return null
-				var vb: Variant = _from_value(v[k], depth + 1, err)
+				var vb: Variant = _from_value(v[k], depth + 1, err, limit)
 				if vb == null:
 					return null
 				members.append([ku, vb])

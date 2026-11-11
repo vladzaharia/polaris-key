@@ -157,6 +157,25 @@ public final class CloudSyncClient: Sendable {
     /// A new recovery code for the key ring (`SyncKeyring.setRecoveryCode`). Shown once, kept nowhere.
     public func newRecoveryCode() async throws -> String { try await api.newRecoveryCode() }
 
+    /// Writes a readable (decrypted) zip of the app's synced data to `destination`, a file URL: settings,
+    /// records and files, in the layout of Polaris Locker's own export (WIRE-CONTRACT-V5 §13.12). The file is
+    /// **not encrypted**: tell the person before you call this, and delete it when it has been shared. The SDK
+    /// picks no location and has no consent prompt; on iOS pass a URL in the app's own container and offer it
+    /// through `ShareLink` or the document picker, then delete it.
+    ///
+    /// `<destination>.partial` is created exclusively with owner-only access (and iOS data protection
+    /// `completeUnlessOpen`), flushed to disk and renamed over `destination`; an error or a cancel (cancel the
+    /// task) removes it and leaves any earlier file as it was. Throws the typed `product` N/A when the product
+    /// does not run the Sync service; `account_required`, `sync-locked`, `sync-encryption-pinned`, `cancelled`,
+    /// `sync-export-too-large` (nothing is written) and `sync-export-failed` (`exportFailureReason`:
+    /// `destination`, `network` or `busy`). Data that does not check is left out or written short and listed in
+    /// `skipped`; it never stops the export.
+    public func export(to destination: URL, options: CloudSyncExportOptions = CloudSyncExportOptions()) async throws
+        -> CloudSyncExport
+    {
+        try await api.export(to: destination, options: options)
+    }
+
     /// The recovery-code screen's model.
     public var recoveryCode: RecoveryCodeModel { RecoveryCodeModel { try await self.api.newRecoveryCode() } }
 }
@@ -325,6 +344,14 @@ actor CloudSyncApi {
     }
 
     func newRecoveryCode() async throws -> String { try await recovery() }
+
+    nonisolated let exporterBox = LockedValue<CloudSyncExporter?>(nil)
+
+    func export(to destination: URL, options: CloudSyncExportOptions) async throws -> CloudSyncExport {
+        try await core.requireService(.sync, feature: Feature.syncExport)
+        guard let exporter = exporterBox.current else { throw syncExportFailed("network") }
+        return try await exporter.run(to: destination, options: options)
+    }
 
     // MARK: MergeRequests (plans/U-08.md section 2.5)
 

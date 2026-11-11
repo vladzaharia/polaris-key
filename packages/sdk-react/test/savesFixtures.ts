@@ -339,6 +339,7 @@ export async function makeRing(root: Uint8Array = RAW) {
   };
   const codec = ringCodec({ hasRoot: () => held, ringKeys: keys });
   return {
+    keys,
     codec: () => (held ? codec : null),
     fileCodec: async (c: string): Promise<FileCodec | null> => {
       const k = held ? await keys() : null;

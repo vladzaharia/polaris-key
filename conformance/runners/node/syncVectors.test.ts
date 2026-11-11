@@ -1,4 +1,4 @@
-// @pkey-feature sync.e2e sync.files.delta sync.e2e.recovery
+// @pkey-feature sync.e2e sync.files.delta sync.e2e.recovery sync.export
 // The Node conformance runner for `conformance/corpus/v2/sync-vectors.json` (WIRE-CONTRACT-V5
 // §13.10). It covers React too, since both JS SDKs share `@polaris-key/client-core`.
 //
@@ -68,6 +68,7 @@ import {
   canonicalJson,
   type SyncJson,
 } from "@polaris-key/client-core/sync";
+import { defineExportSuites, type ExportCase } from "./syncExportSuite.js";
 
 interface HkdfCase {
   id: string;
@@ -1109,3 +1110,7 @@ describe("sync-vectors.json: deltaCases", () => {
     });
   }
 });
+
+defineExportSuites(
+  (vectors as unknown as { exportCases: ExportCase[] }).exportCases,
+);

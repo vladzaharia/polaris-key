@@ -21,6 +21,8 @@ import im.plrs.key.sdk.CloudConnect
 import im.plrs.key.sdk.CloudLinks
 import im.plrs.key.sdk.CloudNearby
 import im.plrs.key.sdk.CloudSyncClient
+import im.plrs.key.sdk.CloudSyncExport
+import im.plrs.key.sdk.CloudSyncExportOptions
 import im.plrs.key.sdk.CloudSyncHostOptions
 import im.plrs.key.sdk.CloudTransfer
 import im.plrs.key.sdk.CommerceClient
@@ -32,6 +34,7 @@ import im.plrs.key.sdk.boot
 import im.plrs.key.sdk.bootHost
 import im.plrs.key.update.UpdateClient
 import im.plrs.key.update.UpdateClientOptions
+import java.nio.file.Path
 
 /** Compile-only and never called: a renamed or removed symbol fails the test source set's build. */
 internal suspend fun apiSurface() {
@@ -98,6 +101,7 @@ internal suspend fun apiSurface() {
     SaveTransfer::resume  // cloudSync.transfer.resume
     SaveTransfer::cancel  // cloudSync.transfer.cancel
     PolarisKeyClient::events  // cloudSync.transferEvent
+    val exportToPath: suspend (CloudSyncClient, Path, CloudSyncExportOptions) -> CloudSyncExport = CloudSyncClient::export  // cloudSync.export
     CloudSyncClient::collection  // cloudSync.collection
     PolarisKeyClient::discover  // client.discover
     PolarisKeyClient::presentation  // client.presentation

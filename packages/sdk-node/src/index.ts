@@ -17,6 +17,7 @@ export {
   type PolarisKeyClientOptions,
   type DeviceInfo,
   type SyncState,
+  type CloudSyncExportOptions,
 } from "./client.js";
 // Discovery's `core.presentation` (HA-13): the client's `presentation()`, `presentationIcon()`
 // and `presentationSource()`; the parse, pick and verify rules stay in client-core.
@@ -91,6 +92,10 @@ export {
   type SyncCodec,
   type UnlockResult,
 } from "./keyring/index.js";
+export {
+  SyncExportError,
+  type CloudSyncExport,
+} from "@polaris-key/client-core/sync";
 export {
   CloudConnect,
   CloudNearby,

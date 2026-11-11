@@ -31,6 +31,8 @@ import {
   type SyncStatus,
 } from "@polaris-key/client-core/cloud-sync";
 import type {
+  BrowserExport,
+  BrowserExportOptions,
   BrowserSaves,
   CloudSyncClient,
   CloudSyncEvent,
@@ -38,12 +40,19 @@ import type {
   IdentityNote,
   MergeRequest,
 } from "../../core/cloudSync.js";
-import { mergeStreamEvent, mergedStatus } from "@polaris-key/client-core/sync";
+import {
+  SyncExportError,
+  mergeStreamEvent,
+  mergedStatus,
+} from "@polaris-key/client-core/sync";
 import type {
   ConfigSyncPort,
   LocalConfigEngine,
 } from "../../core/localConfig.js";
 import type { KeyringClient } from "../../core/keyring.js";
+import { Feature } from "../../constants.generated.js";
+import { UnsupportedError } from "../../core/caps.js";
+import type { BrowserExportDeps } from "./export.js";
 import type { BrowserCloudSyncHost } from "./host.js";
 import { safeSignInUrl } from "../../core/signInUrl.js";
 import { browserCollection } from "./collection.js";
@@ -111,6 +120,9 @@ export interface BrowserCloudSyncApiDeps {
   signInOrigin?: string;
   /** Diagnostics; never given a value or a secret. */
   log?: (message: string) => void;
+  /** What `export()` reads with: the session's requests and the ring. Absent: `export()` answers
+   *  the typed unsupported. */
+  exportDeps?: Omit<BrowserExportDeps, "host" | "flush">;
 }
 
 export class BrowserCloudSyncApi {
@@ -127,6 +139,7 @@ export class BrowserCloudSyncApi {
     this.#d.host.bindSubject(s);
   }
   #forgot = false;
+  #exporting = false;
   #chain: Promise<void> = Promise.resolve();
   /** Identity changes, one at a time and in order. */
   #work: Promise<void> = Promise.resolve();
@@ -162,6 +175,34 @@ export class BrowserCloudSyncApi {
     await this.#d.host.flush();
     await this.#chain;
     return this.status();
+  }
+
+  /** The readable copy of the synced data (`CloudSyncClient.export`). Loads the export module on
+   *  first use, so a page that never exports carries none of it. */
+  async export(options: BrowserExportOptions = {}): Promise<BrowserExport> {
+    const deps = this.#d.exportDeps;
+    if (deps === undefined)
+      throw new UnsupportedError({
+        supported: false,
+        feature: Feature.syncExport,
+        reason: "runtime",
+        detail: "This page has no way to export the synced data.",
+      });
+    if (this.#exporting)
+      throw new SyncExportError(
+        "busy",
+        "Another export of this client is running",
+      );
+    this.#exporting = true;
+    try {
+      const { runBrowserExport } = await import("./export.js");
+      return await runBrowserExport(
+        { ...deps, host: this.#d.host, flush: () => this.flush() },
+        options,
+      );
+    } finally {
+      this.#exporting = false;
+    }
   }
 
   onEvents(fn: (events: CloudSyncEvent[]) => void): () => void {
@@ -456,6 +497,7 @@ export function clientOf(
     onConflict: (l) => api.onConflict(l),
     conflicts: () => api.conflicts(),
     cloudEmpty: () => api.cloudEmpty(),
+    export: (o) => api.export(o),
     onStatus: (l) => api.onStatus(l),
     attach: () => api.attach(),
     identity: (n) => api.identity(n),

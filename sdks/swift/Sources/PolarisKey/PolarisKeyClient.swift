@@ -417,6 +417,8 @@ public actor PolarisKeyClient {
             Task { await api.accountRequired(signInUrl: url, forSubject: who) }
         }
         ring().subjectProvider.set { await api.currentSubject() }
+        api.exporterBox.set(
+            CloudSyncExporter(.live(core: core, api: api, keyring: ring, account: { identityClient.account })))
         // The bearer of a background task is read when the task is made; a 401 re-acquires once.
         let fingerprintOn = options.license.fingerprint
         let backgroundTokens: BackgroundTokens? =

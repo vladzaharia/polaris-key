@@ -601,6 +601,14 @@
       "title": "Bereits entschieden",
       "message": "Die Auswahl wurde bereits getroffen oder durch eine neuere Änderung ersetzt. Es wurde nichts geändert."
     },
+    "sync-export-too-large": {
+      "title": "Kopie zu groß",
+      "message": "Die synchronisierten Daten sind zu groß für eine einzelne Datei. Es wurde nichts gespeichert."
+    },
+    "sync-export-failed": {
+      "title": "Kopie nicht gespeichert",
+      "message": "Die Kopie Ihrer synchronisierten Daten konnte nicht gespeichert werden. Prüfen Sie das Ziel und versuchen Sie es erneut."
+    },
     "invalid-options": {
       "title": "App nicht eingerichtet",
       "message": "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler."

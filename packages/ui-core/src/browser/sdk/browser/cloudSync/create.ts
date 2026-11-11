@@ -147,6 +147,12 @@ export async function createBrowserCloudSync(
     subject: () => o.syncSubject(),
     marker: importMarker(`${dbName}:imported`),
     signInOrigin: workerOrigin,
+    exportDeps: {
+      product: o.product,
+      keyring: o.keyring,
+      request: (path, init) => bearer.ringRequest(path, init),
+      fileFetch: (path, init) => bearer.fileFetch(path, init),
+    },
   });
   return clientOf(api, host, saves);
 }

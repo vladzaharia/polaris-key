@@ -2969,6 +2969,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_merge_closed_message">Le choix a déjà été fait ou remplacé par une modification plus récente. Rien n’a changé.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_export_too_large_title">Copie trop volumineuse</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_export_too_large_message">Les données synchronisées sont trop volumineuses pour tenir dans un seul fichier. Rien n'a été enregistré.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_export_failed_title">Copie non enregistrée</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_export_failed_message">La copie de vos données synchronisées n'a pas pu être enregistrée. Vérifiez la destination et réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App non configurée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur.</string>
