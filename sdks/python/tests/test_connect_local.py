@@ -560,10 +560,10 @@ def test_a_gate_clearing_read_while_a_window_is_still_opening_closes_it_before_a
     class Held(Network):
         hold: Any = None
 
-        async def browse(self, *a: Any, **k: Any) -> Any:
+        async def advertise(self, *a: Any, **k: Any) -> Any:
             if self.hold is not None:
                 await self.hold.wait()
-            return await super().browse(*a, **k)
+            return await super().advertise(*a, **k)
 
     w = World(tmp_path)
     try:

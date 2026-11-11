@@ -12,7 +12,9 @@ clock of its own.
 from __future__ import annotations
 
 import json
+import math
 import re
+import threading
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence
 
 from .peer_advert import advert_epoch, base32_lower, is_instance_name, txt_entries
@@ -40,17 +42,23 @@ __all__ = [
     "LOCAL_PAIR_FAILURES",
     "LOCAL_PAIR_SECONDS",
     "LOCAL_QR_SECRET_BYTES",
+    "LOCAL_RENEW_COOLDOWN_SECONDS",
+    "LOCAL_RENEW_WRONG_LIMIT",
+    "LOCAL_RENEW_WRONG_SECONDS",
     "LocalExchange",
     "LocalLinkKey",
     "LocalPairingGate",
     "MAX_LINK_SECRETS",
     "MAX_LIVE_LOCAL_ADVERTS",
     "MAX_LOCAL_LINKS",
+    "NameplateMemory",
     "PairingWindow",
+    "RenewFloor",
     "TRIAL_TOTAL",
     "TrialEntry",
     "browse_local_instance",
     "build_local_link",
+    "dials_left",
     "display_code",
     "draw_nameplate",
     "draw_password",
@@ -133,6 +141,82 @@ def draw_nameplate(source: DrawSource, in_use: Sequence[str] = ()) -> Optional[s
         if not everything and n in used:
             continue
         return n
+
+
+class NameplateMemory:
+    """The nameplates this device showed for one product in windows that closed less than
+    ``LOCAL_DIAL_BUDGET_SECONDS`` (300) ago (§15.12, "The code"), in memory. The shower's draw skips them, so a
+    renewed window never reuses the nameplate of the window just closed, whose dials a joiner may have spent.
+    Hold one per product for the life of the process, like :class:`DialBudget`; it is safe from any thread."""
+
+    def __init__(self) -> None:
+        self._closed: Dict[str, float] = {}
+        self._lock = threading.RLock()
+
+    def shown(self, nameplate: str, t: float) -> None:
+        """The window that showed ``nameplate`` closed at the monotonic time ``t`` (seconds)."""
+        with self._lock:
+            self._closed[nameplate] = max(t, self._closed.get(nameplate, t))
+
+    def recent(self, t: float) -> List[str]:
+        """The nameplates of windows that closed less than 300 s before ``t``."""
+        with self._lock:
+            for n in [n for n, at in self._closed.items() if t - at >= LOCAL_DIAL_BUDGET_SECONDS]:
+                del self._closed[n]
+            return list(self._closed)
+
+    def draw(self, source: DrawSource, t: float) -> Optional[str]:
+        """The shower's draw, in two tiers. First among the nameplates this memory does not hold: the adverts of
+        other windows are not authenticated, so they never steer it. Only when it holds all 100, the one that
+        closed longest ago (the lowest on a tie), with no byte read. ``None`` when the source runs out."""
+        with self._lock:
+            held = self.recent(t)
+            if len(held) < 100:
+                return draw_nameplate(source, held)
+            best, at = "", float("inf")
+            for n in sorted(self._closed):
+                if self._closed[n] < at:
+                    best, at = n, self._closed[n]
+            return best
+
+
+#: The SDK's renewal floor (§15.12, "The code"): refuse a new window for this long after a hard end.
+LOCAL_RENEW_COOLDOWN_SECONDS = 30
+#: Two windows that ended after a wrong guess within this many seconds start the cooldown.
+LOCAL_RENEW_WRONG_SECONDS = 600
+#: How many such windows start the cooldown.
+LOCAL_RENEW_WRONG_LIMIT = 2
+
+
+class RenewFloor:
+    """The renewal floor, one per product for the life of the process, beside :class:`DialBudget`. After a
+    ``too-many-tries`` end, or the second ``wrong-code`` end within 600 s, no window opens for 30 s, so a host
+    that renews from ``on_end`` with no person cannot give a guesser windows at machine speed. Times are
+    monotonic seconds. In memory only; safe from any thread."""
+
+    def __init__(self) -> None:
+        self._until = float("-inf")
+        self._wrong: List[float] = []
+        self._lock = threading.RLock()
+
+    def ended(self, end: str, t: float) -> None:
+        """A window ended at ``t``: ``end`` is ``too-many-tries`` or ``wrong-code`` (any other end of a window
+        that had counted a failed guess, a ``renew()`` replacement included)."""
+        with self._lock:
+            if end == "wrong-code":
+                self._wrong = [w for w in self._wrong if t - w < LOCAL_RENEW_WRONG_SECONDS]
+                self._wrong.append(t)
+                if len(self._wrong) < LOCAL_RENEW_WRONG_LIMIT:
+                    return
+            self._until = max(self._until, t + LOCAL_RENEW_COOLDOWN_SECONDS)
+
+    def check(self, t: float) -> Dict[str, Any]:
+        """Whether a window may open at ``t`` (``allowed``), and else the whole seconds until it may
+        (``retry_in``; 0 when allowed). The keys are those of the vectors: ``allowed`` and ``retryIn``."""
+        with self._lock:
+            if t >= self._until:
+                return {"allowed": True, "retryIn": 0}
+            return {"allowed": False, "retryIn": int(math.ceil(self._until - t))}
 
 
 def draw_password(source: DrawSource) -> Optional[str]:
@@ -367,10 +451,10 @@ def negotiate_local_caps(mode: str, local: Sequence[str], remote: Sequence[str])
 
 class JoinPlan:
     """The joiner's choices over one browse. ``input`` is ``{"kind": "code", "nameplate"}``, ``{"kind": "qr",
-    "instance"}`` or ``{"kind": "invalid"}``. A code or QR that did not parse browses nothing and answers
-    ``pairing-code-failed``. Matching ``m=q`` adverts are kept once each in first-seen order, at most
-    ``LOCAL_JOIN_KEPT``, and the first ``LOCAL_JOIN_CANDIDATES`` are dialled, never redialled. The first
-    session that reaches the transport ends the dial."""
+    "instance"}``, ``{"kind": "other-app"}`` (a QR for another app) or ``{"kind": "invalid"}``. A code or QR that
+    did not parse browses nothing and answers ``pairing-code-failed``. Matching ``m=q`` adverts are kept once each
+    in first-seen order, at most ``LOCAL_JOIN_KEPT``, and the first ``LOCAL_JOIN_CANDIDATES`` are dialled, never
+    redialled. The first session that reaches the transport ends the dial."""
 
     def __init__(self, input: Dict[str, Any]) -> None:  # noqa: A002 - mirrors the vectors
         self._input = input
@@ -378,11 +462,17 @@ class JoinPlan:
         self._dials = 0
         self._transport = False
         self._after_c2 = False
+        self._budget_stopped = False
+        self._spent_at_start = False
 
     @property
     def browses(self) -> bool:
         """Whether anything is browsed at all."""
-        return self._input["kind"] != "invalid"
+        return self._input["kind"] not in ("invalid", "other-app") and not self._spent_at_start
+
+    def start_spent(self) -> None:
+        """The nameplate's dials were spent before the join began: nothing is browsed or dialled."""
+        self._spent_at_start = True
 
     @property
     def kept(self) -> List[str]:
@@ -406,20 +496,35 @@ class JoinPlan:
         return self._kept[self._dials] if self._dials < len(self._kept) else None
 
     def ended(self, outcome: str) -> None:
-        """The dial of :meth:`next` ended: ``transport``, ``before-c2`` or ``after-c2``."""
+        """The dial of :meth:`next` ended: ``transport``, ``before-c2``, ``after-c2`` or ``budget`` (the dial
+        budget stopped it)."""
         self._dials += 1
         if outcome == "transport":
             self._transport = True
         elif outcome == "after-c2":
             self._after_c2 = True
+        elif outcome == "budget":
+            self._budget_stopped = True
 
     def result(self) -> str:
         """The answer once no dial is left (or the browse ran out)."""
-        if self._input["kind"] == "invalid":
+        if not self.browses:
             return "pairing-code-failed"
         if self._transport:
             return "transport"
-        return "pairing-code-failed" if self._after_c2 else "pairing-not-found"
+        return "pairing-code-failed" if self._after_c2 or self._budget_stopped else "pairing-not-found"
+
+    def reason(self) -> Optional[str]:
+        """Of a ``pairing-code-failed`` result, why (``invalid``, ``other-app``, ``spent`` or ``wrong``);
+        ``None`` for any other result."""
+        if self.result() != "pairing-code-failed":
+            return None
+        kind = self._input["kind"]
+        if kind in ("invalid", "other-app"):
+            return str(kind)
+        if self._spent_at_start:
+            return "spent"
+        return "wrong" if self._after_c2 else "spent"
 
 
 #: At most this many dials per nameplate in any ``LOCAL_DIAL_BUDGET_SECONDS``, across joins.
@@ -430,10 +535,11 @@ LOCAL_DIAL_BUDGET_SECONDS = 300
 class DialBudget:
     """The joiner's dials per typed nameplate across joins, in memory, per product (§15.12). A person who
     retypes a code meets the same budget as one join: a fake advert that answers a dial gets one guess, so
-    retries must not multiply the dials. A QR names its instance and is never limited."""
+    retries must not multiply the dials. A QR names its instance and is never limited. Safe from any thread."""
 
     def __init__(self) -> None:
         self._dialled: Dict[str, List[float]] = {}
+        self._lock = threading.RLock()
 
     def _recent(self, nameplate: str, t: float) -> List[float]:
         kept = [d for d in self._dialled.get(nameplate, []) if t - d < LOCAL_DIAL_BUDGET_SECONDS]
@@ -445,16 +551,33 @@ class DialBudget:
 
     def check(self, nameplate: str, t: float) -> Dict[str, Any]:
         """Whether a join of this nameplate may browse and dial now, and the dials already spent."""
-        used = len(self._recent(nameplate, t))
-        return {"allowed": used < LOCAL_DIAL_BUDGET, "used": used}
+        with self._lock:
+            used = len(self._recent(nameplate, t))
+            return {"allowed": used < LOCAL_DIAL_BUDGET, "used": used}
 
     def spend(self, nameplate: str, t: float, dials: int) -> None:
         """The join made ``dials`` dials."""
         if dials <= 0:
             return
-        kept = self._recent(nameplate, t)
-        kept.extend([t] * dials)
-        self._dialled[nameplate] = kept
+        with self._lock:
+            kept = self._recent(nameplate, t)
+            kept.extend([t] * dials)
+            self._dialled[nameplate] = kept
+
+    def left(self, nameplate: str, t: float) -> int:
+        """The dials a join of this nameplate may still make now (0, 1 or 2): 2 less the dials spent."""
+        return LOCAL_DIAL_BUDGET - int(self.check(nameplate, t)["used"])
+
+
+_TWO_DIGITS = re.compile(r"[0-9]{2}")
+
+
+def dials_left(budget: DialBudget, text: str, t: float) -> Optional[int]:
+    """The dials left for the nameplate a person has typed so far: ``None`` unless the text, with ASCII spaces and
+    hyphens removed, starts with two ASCII digits. It reads those two digits only, keeps nothing and spends
+    nothing."""
+    m = _TWO_DIGITS.match(text.replace(" ", "").replace("-", ""))
+    return None if m is None else budget.left(m.group(0), t)
 
 
 # -- The pairing window (§15.12, "The pairing window") ----------------------------------------------

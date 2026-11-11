@@ -17,7 +17,7 @@ from .cloud_connect import CloudConnect, CloudConnectStatus, CloudPeer
 from .contacts import ContactInfo, ContactRef
 from .errors import LanError, RelayError
 from .links import CloudLinks
-from .local_common import LocalCode, LocalPaired, LocalPairFailure
+from .local_common import LocalCode, LocalPaired, LocalPairEnd, LocalPairFailure, LocalPairingError
 from .local_links import LocalLinks
 from .local_state import LocalLinkInfo, LocalRef
 from .nearby import ApproveAnswerInput, CloudNearby, NearbyApproval, NearbyApproverHandle, NearbyDeps, NearbyRequest
@@ -40,9 +40,11 @@ __all__ = [
     "LocalLinkInfo",
     "LocalLinks",
     "LocalOffer",
+    "LocalPairEnd",
     "LocalPairFailure",
     "LocalPairHandle",
     "LocalPaired",
+    "LocalPairingError",
     "LocalRef",
     "LinkOffer",
     "LinkPairHandle",

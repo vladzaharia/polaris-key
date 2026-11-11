@@ -15,6 +15,8 @@ account serves local links alone (§15.5, §15.12 "Mode l")::
     set_reachable(id, b) advertise the link's ``m=l`` name on the LAN (at most 8), or stop
     open(id)             a session to the peer, found by its advert on the LAN (no relay)
     on_link(fn)          called with each session a local link opened to this device
+    on_change(fn)        called after the links or the gate changed: read ``list()`` and ``local_pairing()`` again
+    dials_left(text)     the dials a join of the code typed so far may still make: 2, 1, 0 or ``None``
 
 Rules this module keeps:
 
@@ -25,8 +27,11 @@ Rules this module keeps:
   ``MAX_LOCAL_LINKS`` answers ``local-links-full`` before anything is advertised or dialled;
 - ``open``, the ``m=l`` adverts and the mode-``l`` answer need the same cached answer; a read that clears it
   withdraws the adverts and ends the open sessions with ``peer_bye``, and the links stay on disk, inert. Managing
-  links (``list``, ``rename``, ``remove``, ``set_reachable``) is never gated;
-- the joiner's dials are counted per typed nameplate across joins, in memory, for the whole process;
+  links (``list``, ``rename``, ``remove``, ``set_reachable``, ``on_change``) is never gated, with the gate off and
+  with no cached document;
+- the joiner's dials are counted per typed nameplate across joins, in memory, for the whole process; so are the
+  nameplates the shower's windows closed with in the last 300 s (a renewed window skips them) and the renewal
+  floor (30 s after a window ended ``too-many-tries``, or after a second wrong-code window in 10 minutes);
 - ``open`` makes one dial per link at a time, and a dial that reached the network and failed holds the next one
   off for 3 to 5 s, doubled for each failure in a row up to 60 s.
 """
@@ -36,13 +41,20 @@ from __future__ import annotations
 import random
 import threading
 import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Mapping, Optional, Set, Tuple
 
 from ..core.b64url import b64url_decode
 from ..core.peer_display import clean_label
-from ..core.peer_local import MAX_LIVE_LOCAL_ADVERTS, MAX_LOCAL_LINKS, DialBudget
+from ..core.peer_local import (
+    MAX_LIVE_LOCAL_ADVERTS,
+    MAX_LOCAL_LINKS,
+    DialBudget,
+    NameplateMemory,
+    RenewFloor,
+    dials_left,
+)
 from .errors import LanError
-from .local_common import LocalPaired, check_options, full, off, reachable_full
+from .local_common import LocalPaired, cancelled, check_options, cooldown, full, off, reachable_full
 from .local_state import LocalLinkInfo, LocalLinkRow, info_of_local, local_tag
 
 if TYPE_CHECKING:  # the pairing window imports asyncio and sockets: only when it is opened
@@ -77,21 +89,64 @@ def _budget_of(slug: str) -> DialBudget:
         return b
 
 
+#: The nameplates the shower's windows of a product closed with, one memory per product for the whole process, like
+#: the dial budgets: a window that closes and the next one that opens, even through a new client, never share a
+#: nameplate within 300 s.
+_NAMEPLATES: Dict[str, NameplateMemory] = {}
+
+#: The renewal floors, one per product for the whole process, like the dial budgets: a host that renews from
+#: ``on_end`` meets the same floor through a new client.
+_FLOORS: Dict[str, RenewFloor] = {}
+
+
+def _memory_of(slug: str) -> NameplateMemory:
+    with _BUDGETS_LOCK:
+        m = _NAMEPLATES.get(slug)
+        if m is None:
+            _NAMEPLATES[slug] = m = NameplateMemory()
+        return m
+
+
+def _floor_of(slug: str) -> RenewFloor:
+    with _BUDGETS_LOCK:
+        f = _FLOORS.get(slug)
+        if f is None:
+            _FLOORS[slug] = f = RenewFloor()
+        return f
+
+
 def reset_local_budgets() -> None:
-    """Forget every dial budget. For tests."""
+    """Forget every dial budget, remembered nameplate and renewal floor. For tests."""
     with _BUDGETS_LOCK:
         _BUDGETS.clear()
+        _NAMEPLATES.clear()
+        _FLOORS.clear()
+
+
+#: How often a join looks at the host's ``cancel`` event (seconds): a cancel is heard within 250 ms.
+CANCEL_POLL_S = 0.05
+
+
+async def _watch(stop: "threading.Event", handle: "_JoinHandle") -> None:
+    """Cancel the join once the host sets its event."""
+    import asyncio
+
+    while not stop.is_set():
+        await asyncio.sleep(CANCEL_POLL_S)
+    handle.cancel("cancelled")
 
 
 class _JoinHandle:
     def __init__(self) -> None:
-        self.cancelled = False
+        #: ``cancelled`` (the host's ``cancel`` event) or ``closed`` (the gate went off); the first one wins.
+        self.stopped: Optional[str] = None
         self.joiner: Optional[LocalJoiner] = None
 
-    def cancel(self) -> None:
-        self.cancelled = True
+    def cancel(self, why: str = "closed") -> None:
+        if self.stopped is None:
+            self.stopped = why
         if self.joiner is not None:
-            self.joiner.cancel()
+            self.joiner.cancel(why)
 
 
 class LocalLinks:
@@ -147,6 +202,14 @@ class LocalLinks:
     def _budget(self) -> DialBudget:
         return _budget_of(self._src.slug)
 
+    @property
+    def _memory(self) -> NameplateMemory:
+        return _memory_of(self._src.slug)
+
+    @property
+    def _floor(self) -> RenewFloor:
+        return _floor_of(self._src.slug)
+
     def local_pairing(self) -> bool:
         """The cached discovery answer ``services.connect.localPairing`` (§15.9, §15.12). False before
         discovery."""
@@ -158,6 +221,21 @@ class LocalLinks:
 
     # -- the API --------------------------------------------------------------------------------------
 
+    def on_change(self, fn: Callable[[], None]) -> Callable[[], None]:
+        """Called after the links or the gate changed: a pairing was stored, a link was renamed, forgotten,
+        re-marked or seen, or the ``local_pairing`` answer flipped. It carries no data: read :meth:`list` and
+        :meth:`local_pairing` again. Runs on the thread that made the change. Returns the unsubscribe. Never
+        gated."""
+        return self._src.on_view(fn)  # type: ignore[no-any-return]
+
+    def dials_left(self, text: str) -> Optional[int]:
+        """How many dials a join of the code typed so far may still make: 2, 1 or 0, from the first two digits
+        alone; ``None`` until the text (spaces and hyphens ignored) starts with two digits. It reads those two
+        digits, keeps nothing and spends nothing."""
+        if not isinstance(text, str):
+            return None
+        return dials_left(self._budget, text, self._mono())
+
     def list(self) -> List[LocalLinkInfo]:
         """The local links this device holds. Listing is not gated."""
         return info_of_local(self._src.store.rows()) if self._real else []
@@ -165,14 +243,21 @@ class LocalLinks:
     def pair(self, options: Optional[Mapping[str, Any]] = None, **kw: Any) -> "LocalPairHandle":
         """Show a code and a QR and wait for the other device (the responder). Options (a mapping, or keyword
         arguments): ``categories`` (at most 8 distinct ``a-z 0-9 -`` strings, the ones this app asks both
-        people to approve), ``on_code`` (called with each :class:`~polaris_key.connect.local_pairing.LocalCode`:
+        people to approve), ``on_code`` (called with each :class:`~polaris_key.connect.local_common.LocalCode`:
         the window's code, and the new one after every failed guess), ``on_confirm`` (called with the
         :class:`~polaris_key.connect.local_pairing.LocalOffer` once a device reaches the consent: show it, then
-        ``confirm()`` or ``decline()``), ``label``, ``on_linked``, ``on_failed`` and ``seconds`` (at most 300).
-        Raises the typed N/A ``local-pairing-off`` while the gate is off, ``local-links-full`` at the cap, and
-        :class:`LanError` ``bad_input`` for options that break a rule or when this product already has a
-        window open. The handle closes the window (``stop()``); it also closes by itself after ``seconds``,
-        after the fifth failed guess and once a link is made. Callbacks run on the Connect thread."""
+        ``confirm()`` or ``decline()``), ``label``, ``on_linked``, ``on_failed``, ``seconds`` (at most 300),
+        ``on_interrupted`` (called with how many connections were closed without counting a guess since the code
+        last changed, at most once a second) and ``on_end`` (called once with a
+        :class:`~polaris_key.connect.local_common.LocalPairEnd` when the window ends, after its advert and
+        listener are gone: ``expired``, ``too-many-tries``, ``stored``, ``person`` or ``off``; a window
+        ``renew()`` replaces ends with no call). Raises the typed N/A ``local-pairing-off`` while the gate is off,
+        :class:`~polaris_key.connect.local_common.LocalPairingError` ``local-links-full`` (``cap`` ``stored``) at
+        the cap and ``peer-closed`` (reason ``cooldown``) inside the renewal floor, and :class:`LanError`
+        ``bad_input`` for options that break a rule or when this product already has a window open. The handle
+        closes the window (``stop()``) and makes the next one (``renew()``); the window also closes by itself
+        after ``seconds``, after the fifth failed guess, once a link is made and when the gate goes off.
+        Callbacks run on the Connect thread."""
         o: Dict[str, Any] = {**(dict(options) if options else {}), **kw}
         self._require_on("pair")
         check_options(o)
@@ -184,13 +269,28 @@ class LocalLinks:
         return self._cloud._run(self._pair(o))  # type: ignore[no-any-return]
 
     async def _pair(self, o: Dict[str, Any]) -> "LocalPairHandle":
+        from .local_pairing import LocalPairHandle
+
+        first = await self._window(o, None)
+        first.reveal()
+
+        def again(cur: "LocalShower") -> "Awaitable[LocalShower]":
+            return self._window(o, cur)
+
+        return LocalPairHandle(first, again, self._cloud._run)
+
+    async def _window(self, o: Dict[str, Any], replacing: "Optional[LocalShower]") -> "LocalShower":
+        """Open a window; ``replacing`` is the one a renewal closes first (it makes no ``on_end``). The slot is
+        taken before the first await and kept across the replacement."""
         import asyncio
 
-        from .local_pairing import LocalPairHandle, LocalShower
+        from .local_pairing import LocalShower
 
         loop = asyncio.get_running_loop()
-        # The slot is taken before the first await: a second ``pair`` (a double click) meets it.
-        if (self._shower is not None and self._shower.open) or self._starting is not None:
+        self._require_on("pair")
+        if (self._shower is not None and self._shower.open and self._shower is not replacing) or (
+            self._starting is not None
+        ):
             raise LanError("bad_input", "A pairing window is already open.")
         start: "asyncio.Future[None]" = loop.create_future()
         self._starting = start
@@ -198,20 +298,32 @@ class LocalLinks:
         try:
             if await loop.run_in_executor(None, self._src.store.count) >= MAX_LOCAL_LINKS:
                 raise full()
+            if replacing is not None:
+                try:
+                    await replacing.close(None)
+                except Exception:
+                    pass
+            # The SDK's floor under new windows (after a hard end, 30 s), checked once the window a renewal
+            # replaces has ended and been counted.
+            floor = self._floor.check((o.get("mono") or time.monotonic)())
+            if not floor["allowed"]:
+                raise cooldown(floor["retryIn"])
             box: List[Optional[LocalShower]] = [None]
 
-            def ended() -> None:
-                if self._shower is box[0]:
+            def closed(end: Optional[str], t: float) -> None:
+                if box[0] is not None and self._shower is box[0]:
                     self._shower = None
+                if end is not None:
+                    self._floor.ended(end, t)
 
-            mine = await LocalShower.start(self._src, o, ended)
+            mine = await LocalShower.start(self._src, o, self._memory, closed)
             box[0] = mine
             self._shower = mine
             # The gate was cleared while the window was opening: it closes before anyone sees a code.
             if epoch != self._epoch or not self._src.allowed():
-                await mine.stop()
+                await mine.close("off")
                 raise off("Pairing with a code was turned off (pair).")
-            return LocalPairHandle(mine)
+            return mine
         finally:
             if self._starting is start:
                 self._starting = None
@@ -221,12 +333,16 @@ class LocalLinks:
     def join(self, options: Optional[Mapping[str, Any]] = None, **kw: Any) -> LocalPaired:
         """Type or scan the other device's code (the initiator). Options: ``code`` (the 8 digits typed, spaces
         and hyphens ignored) or ``qr`` (the text of the QR; exactly one of the two), ``categories``,
-        ``on_confirm`` (as for ``pair``), ``label`` and ``browse_seconds`` (at most 15). Blocks until both
-        people confirmed and both devices stored the link, and returns it. Raises ``pairing-code-failed`` (the
-        code did not parse, the QR was not this app's, the dial budget for this code is spent, or an attempt
-        failed after the other device answered), ``pairing-not-found`` (no matching advert in 15 s, or every
-        attempt ended before an answer) and ``peer-closed`` (the session ended first); the typed N/A
-        ``local-pairing-off`` and ``local-links-full`` are raised before anything is browsed."""
+        ``on_confirm`` (as for ``pair``), ``label``, ``browse_seconds`` (at most 15) and ``cancel`` (a
+        :class:`threading.Event`: set it to cancel the join, which reacts within 250 ms; no dial is refunded).
+        Blocks until both people confirmed and both devices stored the link, and returns it. Raises a
+        :class:`~polaris_key.connect.local_common.LocalPairingError`: ``pairing-code-failed`` (``reason``
+        ``invalid``: the code did not parse; ``other-app``: the QR was not this app's; ``spent``: the dial budget
+        for this code is spent; ``wrong``: an attempt failed after the other device answered),
+        ``pairing-not-found`` (no matching advert in 15 s, or every attempt ended before an answer) and
+        ``peer-closed`` (``reason`` ``declined``, ``timeout``, ``closed`` or ``cancelled``); the typed N/A
+        ``local-pairing-off`` and ``local-links-full`` (``cap`` ``stored``) are raised before anything is
+        browsed."""
         o: Dict[str, Any] = {**(dict(options) if options else {}), **kw}
         self._require_on("join")
         check_options(o)
@@ -235,6 +351,11 @@ class LocalLinks:
         bs = o.get("browse_seconds")
         if bs is not None and (isinstance(bs, bool) or not isinstance(bs, (int, float)) or not bs > 0):
             raise LanError("bad_input", "browse_seconds must be above 0.")
+        stop = o.get("cancel")
+        if stop is not None and not isinstance(stop, threading.Event):
+            raise LanError("bad_input", "cancel must be a threading.Event.")
+        if stop is not None and stop.is_set():
+            raise cancelled()
         return self._cloud._run(self._join(o))  # type: ignore[no-any-return]
 
     async def _join(self, o: Dict[str, Any]) -> LocalPaired:
@@ -243,18 +364,24 @@ class LocalLinks:
         from .local_pairing import LocalJoiner
 
         loop = asyncio.get_running_loop()
-        # Registered before the first await, so a gate-clearing read can cancel it.
+        # Registered before the first await, so a gate-clearing read or a cancel can stop it.
         handle = _JoinHandle()
         self._joins.add(handle)
+        stop: Optional[threading.Event] = o.get("cancel")
+        watch = loop.create_task(_watch(stop, handle)) if stop is not None else None
         try:
             if await loop.run_in_executor(None, self._src.store.count) >= MAX_LOCAL_LINKS:
                 raise full()
-            if handle.cancelled or not self._src.allowed():
+            if handle.stopped == "cancelled":
+                raise cancelled()
+            if handle.stopped is not None or not self._src.allowed():
                 raise off("Pairing with a code was turned off (join).")
             j = LocalJoiner(self._src, self._budget, o)
             handle.joiner = j
             return await j.run()
         finally:
+            if watch is not None:
+                watch.cancel()
             self._joins.discard(handle)
 
     def rename(self, id: str, label: str) -> bool:  # noqa: A002 - mirrors Node
@@ -581,7 +708,7 @@ class LocalLinks:
         shower = self._shower
         if shower is not None:
             try:
-                await shower.stop()
+                await shower.close("off")
             except Exception:
                 pass
         # A window still opening is stopped by its own start, which sees the new epoch.

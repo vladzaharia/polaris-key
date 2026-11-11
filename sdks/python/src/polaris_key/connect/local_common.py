@@ -13,19 +13,24 @@ from ..core.caps import Unsupported, UnsupportedError
 from ..core.errors import PolarisError
 from ..core.peer_contact import MAX_CONTACT_CATS
 from .errors import LanError
-from .local_state import LocalLinkStore
+from .local_state import LocalLinkStore, platform_of
 
 if TYPE_CHECKING:  # session.py loads the stream binding (asyncio): only when a pairing runs
     from .session import SessionClosed
 
 __all__ = [
     "LocalCode",
+    "LocalPairEnd",
     "LocalPairFailure",
     "LocalPaired",
+    "LocalPairingError",
     "LocalSource",
+    "cancelled",
     "check_options",
+    "cooldown",
     "full",
     "off",
+    "platform_of",
     "reachable_full",
 ]
 
@@ -48,6 +53,9 @@ class LocalSource:
     notify: Callable[[], None]
     #: Called by ``notify()`` and when the gate moves; returns the unsubscribe.
     on_change: Callable[[Callable[[], None]], Callable[[], None]]
+    #: The host-facing change feed (``local_links.on_change``): a pairing was stored, a link was renamed,
+    #: forgotten, re-marked or seen, or the gate flipped. Returns the unsubscribe.
+    on_view: Callable[[Callable[[], None]], Callable[[], None]]
 
 
 @dataclass(frozen=True)
@@ -60,6 +68,13 @@ class LocalCode:
     qr: str
     #: The public two digits of the code, the advert's ``n``.
     nameplate: str
+    #: Why this code is on show: ``opened`` (the window's first code), ``wrong-code`` (a counted failed guess),
+    #: ``declined``, ``timeout`` or ``closed`` (a pairing that ended without a link). Display only.
+    reason: str = "opened"
+    #: When the window closes, in Unix seconds (rounded down). Every code of one window has the same one.
+    expires_at: int = 0
+    #: The guesses counted in this window so far (0 to 4). Never show it as "tries left".
+    failures: int = 0
 
     def __repr__(self) -> str:
         return "<LocalCode>"
@@ -79,10 +94,47 @@ class LocalPaired:
 @dataclass(frozen=True)
 class LocalPairFailure:
     """``declined`` here, ``timeout`` a deadline ran out, ``full`` at the cap, ``too-many-tries`` the fifth failed
-    guess, ``closed`` otherwise."""
+    guess, ``closed`` otherwise (``cancelled`` and ``cooldown`` are the reasons of a joiner's or a window's
+    refusal: :class:`LocalPairingError`)."""
 
     reason: str
     close: Optional[SessionClosed] = None
+
+
+@dataclass(frozen=True)
+class LocalPairEnd:
+    """What ``on_end`` is told once per window, after its advert and listener are gone: ``reason`` is
+    ``expired``, ``too-many-tries``, ``stored`` (a link was made), ``person`` (``stop()``) or ``off`` (the gate
+    went off). A window replaced by ``renew()`` ends with no call."""
+
+    reason: str
+
+
+class LocalPairingError(PolarisError):
+    """A pairing that is refused or ended, with the detail the code alone does not give. The codes are
+    unchanged: ``pairing-code-failed`` carries a ``reason`` (``invalid``, ``other-app``, ``spent``, ``wrong``),
+    ``peer-closed`` one of ``declined``, ``timeout``, ``closed``, ``cancelled`` or ``cooldown``, and
+    ``local-links-full`` a ``cap`` (``stored`` or ``reachable``). The details are for display; nothing here holds
+    a digit."""
+
+    def __init__(self, code: str, message: str, *, reason: Optional[str] = None, cap: Optional[str] = None) -> None:
+        super().__init__(code, message)
+        self.reason = reason
+        self.cap = cap
+
+
+def cancelled() -> LocalPairingError:
+    """The join was cancelled by the host."""
+    return LocalPairingError(ErrorCode.PEER_CLOSED, "The pairing was cancelled.", reason="cancelled")
+
+
+def cooldown(retry_in: int) -> LocalPairingError:
+    """A new window inside the SDK's 30 s renewal floor: ``peer-closed``, reason ``cooldown``."""
+    return LocalPairingError(
+        ErrorCode.PEER_CLOSED,
+        "Too many failed tries. Wait %d s before opening another window." % retry_in,
+        reason="cooldown",
+    )
 
 
 def off(detail: str) -> UnsupportedError:
@@ -91,14 +143,18 @@ def off(detail: str) -> UnsupportedError:
     )
 
 
-def full() -> PolarisError:
-    return PolarisError(ErrorCode.LOCAL_LINKS_FULL, "This device holds the most local links it can for this app.")
+def full() -> LocalPairingError:
+    return LocalPairingError(
+        ErrorCode.LOCAL_LINKS_FULL, "This device holds the most local links it can for this app.", cap="stored"
+    )
 
 
-def reachable_full() -> PolarisError:
+def reachable_full() -> LocalPairingError:
     """Eight links are reachable already: turn one off before another is advertised (§15.12)."""
-    return PolarisError(
-        ErrorCode.LOCAL_LINKS_FULL, "Eight local links are already reachable on this network; turn one off first."
+    return LocalPairingError(
+        ErrorCode.LOCAL_LINKS_FULL,
+        "Eight local links are already reachable on this network; turn one off first.",
+        cap="reachable",
     )
 
 
@@ -121,5 +177,8 @@ def check_options(o: Dict[str, Any]) -> None:
     lab = o.get("label")
     if lab is not None and (not isinstance(lab, str) or len(lab) > LABEL_MAX):
         bad("The label is not valid.")
+    for name in ("on_interrupted", "on_end"):
+        if o.get(name) is not None and not callable(o[name]):
+            bad("%s must be callable." % name)
 
 

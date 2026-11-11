@@ -27,7 +27,7 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
-from ..constants_generated import ErrorCode
+from ..constants_generated import PLATFORM_VALUES, ErrorCode
 from ..core.b64url import b64url_decode, b64url_encode
 from ..core.errors import PolarisError
 from ..core.peer_contact import MAX_CONTACT_CATS
@@ -54,6 +54,7 @@ __all__ = [
     "local_storage",
     "local_tag",
     "parse_local_state",
+    "platform_of",
     "ref_of_local",
     "wipe_locals",
 ]
@@ -77,6 +78,11 @@ def _key32(v: Any) -> bool:
 
 def _is_int(v: Any) -> bool:
     return isinstance(v, int) and not isinstance(v, bool)
+
+
+def platform_of(p: Any) -> Optional[str]:
+    """The peer's platform as the store keeps it: only an ``X-PKey-Platform`` spelling, else ``None``."""
+    return p if isinstance(p, str) and p in PLATFORM_VALUES else None
 
 
 def local_link_id(peer_key: bytes) -> str:
@@ -107,6 +113,8 @@ class LocalLinkRow:
     #: The peer's label, cleaned; a rename replaces it on this device only.
     label: Optional[str] = None
     last_seen: Optional[int] = None
+    #: The peer's ``HELLO`` platform at pairing, an ``X-PKey-Platform`` spelling. Display only.
+    platform: Optional[str] = None
 
     def __repr__(self) -> str:
         return "<LocalLinkRow %s>" % self.id
@@ -124,6 +132,8 @@ class LocalLinkRow:
         }
         if self.label is not None:
             d["label"] = self.label
+        if self.platform is not None:
+            d["platform"] = self.platform
         d["cats"] = list(self.cats)
         d["createdAt"] = self.created_at
         if self.last_seen is not None:
@@ -146,6 +156,10 @@ class LocalLinkInfo:
     last_seen: Optional[int]
     #: Advertised on the LAN (at most 8 at once). A new link is reachable already while fewer than 8 are.
     reachable: bool
+    #: The other device's platform as it reported it when you paired, one of the ``Platform`` values, or ``None``
+    #: (an older link, or a spelling that is not one). Reported by the device and unauthenticated: show it as a
+    #: glyph, never decide on it.
+    platform: Optional[str] = None
 
 
 def _parse_rows(v: Any) -> Optional[List[LocalLinkRow]]:
@@ -178,6 +192,7 @@ def _parse_rows(v: Any) -> Optional[List[LocalLinkRow]]:
             return None
         if not isinstance(r.get("reachable"), bool):
             return None
+        # Display data: a member that is not a known spelling is dropped, never an error.
         out.append(
             LocalLinkRow(
                 id=rid,
@@ -190,6 +205,7 @@ def _parse_rows(v: Any) -> Optional[List[LocalLinkRow]]:
                 reachable=r["reachable"],
                 label=label,
                 last_seen=last,
+                platform=platform_of(r.get("platform")),
             )
         )
     return out
@@ -273,7 +289,8 @@ def wipe_locals(ls: Sequence[LiveLocal]) -> None:
 
 def info_of_local(rows: Sequence[LocalLinkRow]) -> List[LocalLinkInfo]:
     return [
-        LocalLinkInfo(r.id, r.label, tuple(r.cats), r.created_at, r.last_seen, r.reachable) for r in rows
+        LocalLinkInfo(r.id, r.label, tuple(r.cats), r.created_at, r.last_seen, r.reachable, r.platform)
+        for r in rows
     ]
 
 
@@ -370,6 +387,7 @@ class LocalLinkStore:
         cats: Sequence[str],
         now: int,
         label: Optional[str] = None,
+        platform: Optional[str] = None,
         allowed: Optional[Callable[[], bool]] = None,
     ) -> Tuple[bool, str]:
         """Add a link, unless the device already holds ``MAX_LOCAL_LINKS`` or ``allowed()`` says no. Both are
@@ -401,6 +419,7 @@ class LocalLinkStore:
                     created_at=now,
                     reachable=reachable,
                     label=label,
+                    platform=platform_of(platform),
                 )
             ]
 
