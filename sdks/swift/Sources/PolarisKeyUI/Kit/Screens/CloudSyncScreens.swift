@@ -442,14 +442,18 @@ public struct CloudSyncStatusView: View {
     let onRetry: (() -> Void)?
     /// Counted bytes, 0 to 1, for a determinate bar; nil draws an indeterminate one.
     let fraction: Double?
+    /// Once per stop: asked before the Sync stopped row is announced (nil: always).
+    let claimStop: (@MainActor () -> Bool)?
     @Environment(\.dynamicTypeSize) private var dynamicType
     @Environment(\.polarisKeyStrings) private var strings
 
     public init(
         screen: KitScreen<CloudSyncStatusState>, onUnlock: @escaping () -> Void,
         onReview: @escaping () -> Void, onSignIn: (() -> Void)? = nil,
-        onRetry: (() -> Void)? = nil, fraction: Double? = nil
+        onRetry: (() -> Void)? = nil, fraction: Double? = nil,
+        claimStop: (@MainActor () -> Bool)? = nil
     ) {
+        self.claimStop = claimStop
         self.screen = screen
         self.onUnlock = onUnlock
         self.onReview = onReview
@@ -462,7 +466,8 @@ public struct CloudSyncStatusView: View {
         self.init(
             screen: model.screen, onUnlock: model.onUnlock, onReview: model.onReview,
             onSignIn: model.onSignIn, onRetry: model.onRetry,
-            fraction: model.inputs.cloudSync?.transfer?.fraction)
+            fraction: model.inputs.cloudSync?.transfer?.fraction,
+            claimStop: model.claimStopAnnouncement)
     }
 
     public var body: some View {
@@ -513,6 +518,8 @@ public struct CloudSyncStatusView: View {
     /// signed-out row is announced as it appears, as a transfer's states are.
     private func announce(_ state: CloudSyncStatusState, _ line: CopyLine) {
         guard [.transferring, .waiting, .transferFailed].contains(state) || signedOut(line) else { return }
+        // The settings view appears again and again while sync stays stopped: say it once per stop.
+        if signedOut(line), let claimStop, !claimStop() { return }
         AccessibilityNotification.Announcement(strings.string(line)).post()
     }
 

@@ -211,6 +211,28 @@ final class CloudSyncKitHostTests: XCTestCase {
         host.stop()
     }
 
+    func testSyncStoppedIsAnnouncedOncePerStop() async {
+        let fake = Fake()
+        fake.set { fake.status = SyncStatus(state: .idle, pending: 0) }
+        let host = CloudSyncKitHostModel(source: fake.source())
+        await host.start()
+        fake.get { fake.cont }?.yield(.signedOut(reason: .accountRequired, unsynced: 0))
+        await wait(host) { host.status?.screen.state == .error }
+        // The settings view appears again and again (a new row model each redraw): one announcement.
+        XCTAssertEqual(host.status?.claimStopAnnouncement?(), true)
+        host.onSignIn = {}
+        XCTAssertEqual(host.status?.claimStopAnnouncement?(), false)
+        XCTAssertEqual(host.status?.claimStopAnnouncement?(), false)
+        // The stop ends and a new one begins: announced again.
+        fake.set { fake.status = SyncStatus(state: .idle, pending: 0) }
+        fake.get { fake.cont }?.yield(.change(keys: ["a"], origin: .local))
+        await wait(host) { host.status?.screen.state == .synced }
+        fake.get { fake.cont }?.yield(.signedOut(reason: .accountRequired, unsynced: 0))
+        await wait(host) { host.status?.screen.state == .error }
+        XCTAssertEqual(host.status?.claimStopAnnouncement?(), true)
+        host.stop()
+    }
+
     func testAnOffServiceShowsNoRow() async {
         let fake = Fake()
         fake.set { fake.statusError = PolarisError(code: "product", message: "n/a") }

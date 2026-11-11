@@ -225,6 +225,9 @@ public final class CloudSyncKitHostModel {
         rebuildStatus()
     }
 
+    /// Whether this stop has been announced: one announcement per stop, not per appearance.
+    private var stopAnnounced = false
+
     private func rebuildStatus() {
         guard let state = shown else {
             status = nil
@@ -235,9 +238,16 @@ public final class CloudSyncKitHostModel {
         inputs.cloudSync = KitCloudSync(
             state: state, signedIn: state == .error && signedOut ? false : nil,
             lastSynced: state == .synced ? lastSynced.map(Self.relative) : nil)
-        status = CloudSyncStatusModel(
+        let row = CloudSyncStatusModel(
             inputs: inputs, onUnlock: { [weak self] in self?.openUnlock() },
             onReview: { [weak self] in self?.openReview() }, onSignIn: signedOut ? (onSignIn ?? ownSignIn) : nil)
+        if !(state == .error && signedOut) { stopAnnounced = false }
+        row.claimStopAnnouncement = { [weak self] in
+            guard let self, !self.stopAnnounced else { return false }
+            self.stopAnnounced = true
+            return true
+        }
+        status = row
     }
 
     /// The kit's own sign-in as the row's action, where the host has a client.
