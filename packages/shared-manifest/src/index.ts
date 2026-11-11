@@ -166,6 +166,20 @@ export {
   type KnownFormatId,
 } from "./formats.js";
 
+/** Customer channel actions (A-26): the one model of how a customer gets an app, per channel. */
+export {
+  actionClassOf,
+  actionClassOfKind,
+  channelOfKind,
+  customerActionOfKind,
+  offerPlatforms,
+  offerRank,
+  offersForPlatform,
+  type ChannelActionClass,
+  type OfferLike,
+  type ProductPlatformFact,
+} from "./channelActions.js";
+
 /**
  * Cloud Sync's catalog-side checks (the `user` blocks and the catalog `cloudSync` block, every
  * rule as it applies to `.pkey/schema`) for a catalog published outside a manifest: the console's

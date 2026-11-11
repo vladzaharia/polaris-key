@@ -108,6 +108,10 @@ export interface ChannelRow {
   arches?: Record<string, string[]>;
   /** Platform -> the outlet identity field a declared outlet must name for the platform to count. */
   platformNeeds?: Record<string, string>;
+  /** Platform -> where the channel's customer action sits among the platform's offers (lower first). */
+  offerOrder?: Record<string, number>;
+  /** Other customer offers the channel brings (SideStore adds the same source AltStore does). */
+  offerKinds?: string[];
   formats: string[];
   deliverableKinds: string[];
   customerAction: (typeof CUSTOMER_ACTIONS)[number];
@@ -234,6 +238,26 @@ export function validateTable(table: unknown): string[] {
             );
         }
     }
+    if (row.offerOrder !== undefined) {
+      const n = row.offerOrder as unknown;
+      if (!n || typeof n !== "object" || Array.isArray(n))
+        errors.push(`${at}.offerOrder: must be an object`);
+      else
+        for (const [plat, v] of Object.entries(n)) {
+          if (!strings(row.platforms) || !row.platforms.includes(plat))
+            errors.push(
+              `${at}.offerOrder: "${plat}" is not one of the platforms`,
+            );
+          if (typeof v !== "number" || !Number.isInteger(v) || v < 0)
+            errors.push(`${at}.offerOrder.${plat}: must be a whole number`);
+        }
+    }
+    if (
+      row.offerKinds !== undefined &&
+      (!strings(row.offerKinds) ||
+        row.offerKinds.some((k) => !/^[a-z][a-z0-9-]*$/.test(k)))
+    )
+      errors.push(`${at}.offerKinds: must be an array of kebab-case names`);
     const sf = row.storefront;
     if (sf !== null) {
       if (!sf || typeof sf !== "object" || typeof sf.adapter !== "string") {
@@ -306,6 +330,18 @@ export function renderManifestTs(table: ChannelTable): string {
       .map(([p, v]) => `${q(p)}: ${q(v)}`)
       .join(", ")} },`
         : ""
+    }${
+      c.offerOrder
+        ? `
+    offerOrder: { ${Object.entries(c.offerOrder)
+      .map(([p, v]) => `${q(p)}: ${v}`)
+      .join(", ")} },`
+        : ""
+    }${
+      c.offerKinds
+        ? `
+    offerKinds: ${list(c.offerKinds)},`
+        : ""
     }
     formats: ${list(c.formats)},
     deliverableKinds: ${list(c.deliverableKinds)},
@@ -354,6 +390,10 @@ export interface ChannelEntry {
   arches?: Readonly<Partial<Record<string, readonly string[]>>>;
   /** Platform -> the outlet identity field a declared outlet must name before the platform counts. */
   platformNeeds?: Readonly<Partial<Record<string, string>>>;
+  /** Platform -> where the channel's customer action sits among the platform's offers (lower first). */
+  offerOrder?: Readonly<Partial<Record<string, number>>>;
+  /** Other customer offers the channel brings (SideStore adds the same source AltStore does). */
+  offerKinds?: readonly string[];
   formats: readonly string[];
   deliverableKinds: readonly string[];
   customerAction: ChannelCustomerAction;

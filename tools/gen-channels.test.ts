@@ -128,6 +128,24 @@ describe("conformance with the wire (no new outlet kinds)", () => {
     expect(bad({ macos: [] })).toContain("non-empty");
   });
 
+  it("validateTable rejects a bad offerOrder or offerKinds", () => {
+    const row = { ...TABLE.channels[1]! };
+    const bad = (extra: Record<string, unknown>) =>
+      validateTable({ channels: [{ ...row, ...extra }] }).join("\n");
+    expect(bad({ offerOrder: { web: 1 } })).toContain(
+      "not one of the platforms",
+    );
+    expect(bad({ offerOrder: { ios: -1 } })).toContain("whole number");
+    expect(bad({ offerKinds: ["Side Store"] })).toContain("kebab-case");
+  });
+
+  it("every channel with a customer offer on a platform has an order there", () => {
+    for (const c of TABLE.channels)
+      if (c.offerOrder)
+        for (const p of Object.keys(c.offerOrder))
+          expect(c.platforms).toContain(p);
+  });
+
   it("the verb vocabulary is the storefront operations", () => {
     expect([...VERBS]).toEqual([...STOREFRONT_OPS]);
   });

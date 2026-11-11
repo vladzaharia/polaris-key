@@ -68,6 +68,10 @@ export interface ChannelEntry {
   arches?: Readonly<Partial<Record<string, readonly string[]>>>;
   /** Platform -> the outlet identity field a declared outlet must name before the platform counts. */
   platformNeeds?: Readonly<Partial<Record<string, string>>>;
+  /** Platform -> where the channel's customer action sits among the platform's offers (lower first). */
+  offerOrder?: Readonly<Partial<Record<string, number>>>;
+  /** Other customer offers the channel brings (SideStore adds the same source AltStore does). */
+  offerKinds?: readonly string[];
   formats: readonly string[];
   deliverableKinds: readonly string[];
   customerAction: ChannelCustomerAction;
@@ -87,6 +91,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "worker",
     outlet: { kind: "direct" },
     platforms: ["macos", "windows", "linux", "android", "ios"],
+    offerOrder: { ios: 50, android: 20, macos: 10, windows: 20, linux: 10 },
     formats: ["dmg", "zip", "msi", "exe", "appimage", "deb", "apk", "ipa"],
     deliverableKinds: ["app", "pack", "package"],
     customerAction: "install",
@@ -104,6 +109,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     outlet: { kind: "app-store" },
     platforms: ["ios", "macos"],
     arches: { macos: ["universal", "arm64"] },
+    offerOrder: { ios: 10, macos: 20 },
     formats: ["ipa", "pkg"],
     deliverableKinds: ["app"],
     customerAction: "open-listing",
@@ -162,6 +168,8 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "feed",
     outlet: { kind: "altstore" },
     platforms: ["ios"],
+    offerOrder: { ios: 20 },
+    offerKinds: ["sidestore"],
     formats: ["ipa"],
     deliverableKinds: ["app"],
     customerAction: "add-source",
@@ -178,6 +186,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "feed",
     outlet: { kind: "altstore-pal" },
     platforms: ["ios"],
+    offerOrder: { ios: 40 },
     formats: ["ipa"],
     deliverableKinds: ["app"],
     customerAction: "open-listing",
@@ -194,6 +203,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "worker",
     outlet: { kind: "play" },
     platforms: ["android"],
+    offerOrder: { android: 10 },
     formats: ["aab", "apk"],
     deliverableKinds: ["app", "pack"],
     customerAction: "open-listing",
@@ -251,6 +261,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "feed",
     outlet: { kind: "obtainium" },
     platforms: ["android"],
+    offerOrder: { android: 40 },
     formats: ["apk"],
     deliverableKinds: ["app"],
     customerAction: "add-source",
@@ -267,6 +278,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "feed",
     outlet: { kind: "fdroid-repo" },
     platforms: ["android"],
+    offerOrder: { android: 30 },
     formats: ["apk"],
     deliverableKinds: ["app"],
     customerAction: "add-source",
@@ -283,6 +295,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "worker",
     outlet: { kind: "ms-store" },
     platforms: ["windows"],
+    offerOrder: { windows: 10 },
     formats: ["msix", "msixbundle", "msi", "exe"],
     deliverableKinds: ["app"],
     customerAction: "open-listing",
@@ -329,6 +342,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "pr",
     outlet: { kind: "winget" },
     platforms: ["windows"],
+    offerOrder: { windows: 50 },
     formats: ["msi", "exe", "msix", "zip"],
     deliverableKinds: ["app"],
     customerAction: "run-command",
@@ -345,6 +359,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "worker",
     outlet: { kind: "steam" },
     platforms: ["windows", "macos", "linux"],
+    offerOrder: { windows: 30, macos: 40, linux: 40 },
     formats: ["depot"],
     deliverableKinds: ["app", "pack"],
     customerAction: "open-listing",
@@ -377,6 +392,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "ci",
     outlet: { kind: "itch" },
     platforms: ["windows", "macos", "linux"],
+    offerOrder: { windows: 40, macos: 50, linux: 50 },
     formats: ["zip", "tar.gz"],
     deliverableKinds: ["app"],
     customerAction: "open-listing",
@@ -393,6 +409,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "pr",
     outlet: { kind: "flathub" },
     platforms: ["linux"],
+    offerOrder: { linux: 20 },
     formats: ["flatpak"],
     deliverableKinds: ["app"],
     customerAction: "run-command",
@@ -409,6 +426,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "ci",
     outlet: { kind: "snap" },
     platforms: ["linux"],
+    offerOrder: { linux: 30 },
     formats: ["snap"],
     deliverableKinds: ["app"],
     customerAction: "run-command",
@@ -426,6 +444,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     outlet: { kind: "direct", subkind: "homebrew" },
     platforms: ["macos", "linux"],
     platformNeeds: { linux: "homebrewFormula" },
+    offerOrder: { macos: 30, linux: 60 },
     formats: ["dmg", "tar.gz", "zip"],
     deliverableKinds: ["app", "package"],
     customerAction: "run-command",
@@ -442,6 +461,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "pr",
     outlet: { kind: "direct", subkind: "scoop" },
     platforms: ["windows"],
+    offerOrder: { windows: 60 },
     formats: ["zip", "exe"],
     deliverableKinds: ["app", "package"],
     customerAction: "run-command",
