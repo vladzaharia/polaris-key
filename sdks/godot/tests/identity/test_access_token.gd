@@ -25,6 +25,9 @@ func run(t: PKeyTestContext) -> void:
 	await _failures(t)
 	await _wire_limits(t)
 	await _sign_out(t)
+	# The plan's and the exchanges' lambdas refer to this suite: drop them, or the cycle outlives the run.
+	h.plan.clear()
+	exchanges.clear()
 	h.free_server()
 
 

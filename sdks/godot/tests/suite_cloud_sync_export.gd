@@ -433,6 +433,8 @@ func _bounds(t: PKeyTestContext) -> void:
 	exporter2._deps["sleep"] = func(_s: float) -> void: exporter2.cancel()
 	var cancelled: PKeyResult = await exporter2.run(rig2["dir"].path_join("w.zip"))
 	t.check("bounds: a cancel during a wait is cancelled", not cancelled.ok and cancelled.code == &"cancelled", str(cancelled.code))
+	# The wait refers to its own exporter: drop it, or the pair outlives the suite.
+	exporter2._deps.erase("sleep")
 	_free(rig2)
 	_free(rig)
 
