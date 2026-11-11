@@ -89,20 +89,34 @@ function inputOf(row: Row): UiInput {
   return { ...input, pairedDevices: { ...list, devices } };
 }
 
+/** Draw `node` in a page of its own and wait for the kit, its fonts and a frame. */
+async function draw(
+  node: ReactNode,
+  scheme: Scheme,
+  rootPx: number,
+): Promise<HTMLElement> {
+  takeDown();
+  document.documentElement.style.fontSize = `${rootPx}px`;
+  document.body.style.margin = "0";
+  document.body.style.background = scheme === "dark" ? "#101114" : "#ffffff";
+  stage.host = document.body.appendChild(document.createElement("div"));
+  stage.root = createRoot(stage.host);
+  stage.root.render(node);
+  while (!stage.host.querySelector(".pk-root"))
+    await new Promise((r) => setTimeout(r, 20));
+  await document.fonts.ready;
+  await frame();
+  return stage.host.querySelector<HTMLElement>(".pk-root")!;
+}
+
 async function mount(
   row: Row,
   scheme: Scheme,
   rootPx: number,
   over: Partial<UiInput> = {},
 ): Promise<HTMLElement> {
-  takeDown();
-  document.documentElement.style.fontSize = `${rootPx}px`;
-  document.body.style.margin = "0";
-  document.body.style.background = scheme === "dark" ? "#101114" : "#ffffff";
   const Screen = SCREENS[row.expect.component as keyof typeof SCREENS];
-  stage.host = document.body.appendChild(document.createElement("div"));
-  stage.root = createRoot(stage.host);
-  stage.root.render(
+  const kit = await draw(
     <Screen
       input={{ ...inputOf(row), ...over } as UiInput}
       categories={["crates", "cues"]}
@@ -110,17 +124,15 @@ async function mount(
       fill
       theme={{ product: PRODUCT, colorScheme: scheme }}
     />,
+    scheme,
+    rootPx,
   );
-  while (!stage.host.querySelector(".pk-root"))
-    await new Promise((r) => setTimeout(r, 20));
-  await document.fonts.ready;
-  await frame();
   const running = document
     .getAnimations()
     .filter((a) => a.effect?.getTiming().iterations !== Infinity);
   await Promise.allSettled(running.map((a) => a.finished));
   await frame();
-  return stage.host.querySelector<HTMLElement>(".pk-root")!;
+  return kit;
 }
 
 /** The box of an element that is drawn, else null. */
@@ -459,24 +471,11 @@ function fakeDriver(rows: ReturnType<typeof link>[] = []) {
   return { driver, seen, next };
 }
 
-async function mountNode(
+const mountNode = (
   node: ReactNode,
   scheme: Scheme = "dark",
   rootPx = 16,
-): Promise<HTMLElement> {
-  takeDown();
-  document.documentElement.style.fontSize = `${rootPx}px`;
-  document.body.style.margin = "0";
-  document.body.style.background = scheme === "dark" ? "#101114" : "#ffffff";
-  stage.host = document.body.appendChild(document.createElement("div"));
-  stage.root = createRoot(stage.host);
-  stage.root.render(node);
-  while (!stage.host.querySelector(".pk-root"))
-    await new Promise((r) => setTimeout(r, 20));
-  await document.fonts.ready;
-  await frame();
-  return stage.host.querySelector<HTMLElement>(".pk-root")!;
-}
+): Promise<HTMLElement> => draw(node, scheme, rootPx);
 
 /** Wait until `test` holds, drawing frames meanwhile. */
 async function until(test: () => unknown, what: string): Promise<void> {
@@ -521,15 +520,21 @@ const devicesNode = (d: Kit.LocalLinksLike): ReactNode => (
   />
 );
 
+/** The shower's screen with its first code up, at a window size. */
+async function showing(width: number, height: number) {
+  await page.viewport(width, height);
+  const f = fakeDriver();
+  const kit = await mountNode(pairingNode(f.driver));
+  press(key(kit, "localPairing.show"));
+  await until(() => f.seen.pair, "the window");
+  f.seen.pair!.onCode(code("4812 3456"));
+  await until(() => key(kit, "a11y.linkCode"), "the code");
+  return { f, kit };
+}
+
 describe("focus and what is announced", () => {
   it("after Show a new code removes the notice, focus lands on the code", async () => {
-    await page.viewport(1280, 800);
-    const f = fakeDriver();
-    const kit = await mountNode(pairingNode(f.driver));
-    press(key(kit, "localPairing.show"));
-    await until(() => f.seen.pair, "the window");
-    f.seen.pair!.onCode(code("4812 3456"));
-    await until(() => key(kit, "a11y.linkCode"), "the code");
+    const { f, kit } = await showing(1280, 800);
     f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
     await until(() => key(kit, "localPairing.showNew"), "the notice");
     press(key(kit, "localPairing.showNew"));
@@ -696,12 +701,7 @@ describe("short windows after a notice", () => {
     [1280, 420],
   ] as const)
     it(`${width}x${height}: Cancel and Enter a code instead stay in view with the notice up`, async () => {
-      await page.viewport(width, height);
-      const f = fakeDriver();
-      const kit = await mountNode(pairingNode(f.driver));
-      press(key(kit, "localPairing.show"));
-      await until(() => f.seen.pair, "the window");
-      f.seen.pair!.onCode(code("4812 3456"));
+      const { f, kit } = await showing(width, height);
       f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
       await until(() => key(kit, "localPairing.showNew"), "the notice");
       await frame();

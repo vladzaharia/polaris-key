@@ -761,6 +761,13 @@ describe("PairedDevicesModel", () => {
     reachable: true,
     ...over,
   });
+  /** A list model over `rows`, read once. */
+  const listed = async (...rows: LocalLinkLike[]) => {
+    const f = fake({ rows });
+    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
+    await m.start();
+    return { f, m };
+  };
 
   it("re-reads on change and shows the switch column only for more than 8 or one off", async () => {
     let rows = [row("a"), row("b")];
@@ -785,9 +792,7 @@ describe("PairedDevicesModel", () => {
   });
 
   it("renames in the row, refusing a long or an empty name and keeping the text", async () => {
-    const f = fake({ rows: [row("a"), row("b")] });
-    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
-    await m.start();
+    const { f, m } = await listed(row("a"), row("b"));
     m.startRename("a");
     expect(m.snapshot.draft).toBe("Device a");
     m.setDraft("x".repeat(65));
@@ -905,9 +910,7 @@ describe("PairedDevicesModel", () => {
   });
 
   it("Cancel and a saved rename return focus to the row's menu button; Forget moves on", async () => {
-    const f = fake({ rows: [row("a"), row("b")] });
-    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
-    await m.start();
+    const { f, m } = await listed(row("a"), row("b"));
     m.startRename("a");
     m.cancelEdit();
     expect(m.snapshot.focus).toEqual({ kind: "row", id: "a" });
@@ -922,9 +925,7 @@ describe("PairedDevicesModel", () => {
   });
 
   it("an answer the host gave about a device shows with the list, and Try again names the device", async () => {
-    const f = fake({ rows: [row("a")] });
-    const m = new PairedDevicesModel({ driver: f.driver, base: BASE });
-    await m.start();
+    const { f, m } = await listed(row("a"));
     m.hostNotice = { device: "Device a", kind: "busy", id: "a" };
     expect(m.input().pairedDevices?.notice).toEqual({
       device: "Device a",
