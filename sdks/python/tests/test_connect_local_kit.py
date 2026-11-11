@@ -37,7 +37,7 @@ from polaris_key.core.headers import canonical_platform
 from polaris_key.core.peer_advert import advert_epoch, product_tag
 from polaris_key.core.peer_frame import encode_frame
 from polaris_key.core.peer_local import make_qr, pairing_instance
-from polaris_key.core.peer_mdns import MdnsAdvert
+from polaris_key.core.peer_mdns import MdnsAdvert, MdnsHandle
 
 
 @pytest.fixture(autouse=True)
@@ -592,6 +592,10 @@ def test_dials_left_reads_two_digits_keeps_nothing_and_spends_nothing(world: Wor
     assert links.dials_left("48") == 2
     assert links.dials_left("4-8 12") == 2
     assert links.dials_left(" 48 1234 56") == 2
+    # Only the first two characters that are not spaces or hyphens are read: what follows does not matter.
+    assert links.dials_left("-4 - 8" + "x" * 100_000) == 2
+    assert links.dials_left("4 " * 50_000) == 2
+    assert links.dials_left("4-" + " " * 100_000 + "a") is None
     for _ in range(5):
         links.dials_left("48")
     assert links.dials_left("48") == 2
@@ -670,6 +674,55 @@ def test_a_secret_made_after_the_join_ended_is_wiped_at_once(world: World) -> No
         return late
 
     assert not any(run(go()))
+
+
+def test_a_join_that_ended_before_its_dial_began_spends_no_dial(world: World) -> None:
+    w = world
+    src = w.b.connect.local_source()
+
+    async def go() -> Tuple[int, int]:
+        budget = lp.DialBudget()
+        j = lp.LocalJoiner(
+            src,
+            budget,
+            {"code": "4812 3456", "categories": [], "on_confirm": lambda o: None, "mono": lambda: 1000.0},
+        )
+        j._finish(LocalPairingError("peer-closed", "x"))
+        await j._dial("pkey-x", (["127.0.0.1"], 9))
+        return budget.left("48", 1000.0), j._dials
+
+    assert run(go()) == (2, 0)
+
+
+def test_a_browse_that_was_still_starting_when_the_join_ended_is_stopped(world: World) -> None:
+    w = world
+    src = w.b.connect.local_source()
+
+    async def go() -> bool:
+        stopped = asyncio.Event()
+        box: List[Any] = []
+
+        async def stop() -> None:
+            stopped.set()
+
+        class Adapter:
+            async def browse(self, on_found: Any, on_gone: Any = None) -> MdnsHandle:
+                # The join ends while the browse is being started.
+                box[0].cancel()
+                return MdnsHandle(stop)
+
+        j = lp.LocalJoiner(
+            src,
+            lp.DialBudget(),
+            {"code": "4812 3456", "categories": [], "on_confirm": lambda o: None, "mdns": Adapter()},
+        )
+        box.append(j)
+        with pytest.raises(LocalPairingError):
+            await j.run()
+        await asyncio.wait_for(stopped.wait(), 5)
+        return True
+
+    assert run(go())
 
 
 def test_a_peer_closed_carries_why_declined_by_the_other_device_by_this_person_timeout_closed(world: World) -> None:

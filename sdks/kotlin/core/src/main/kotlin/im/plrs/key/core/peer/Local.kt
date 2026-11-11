@@ -623,8 +623,18 @@ public class DialBudget {
  * nothing.
  */
 public fun dialsLeft(budget: DialBudget, text: String, t: Double): Int? {
-    val head = text.filter { it != ' ' && it != '-' }.take(2)
-    return if (head.length == 2 && head.all { it in '0'..'9' }) budget.left(head, t) else null
+    // Reads only the first two characters that are not spaces or hyphens: no copy of the rest of the text is made.
+    val head = StringBuilder(2)
+    var i = 0
+    while (head.length < 2 && i < text.length) {
+        val ch = text[i++]
+        if (ch in '0'..'9') {
+            head.append(ch)
+        } else if (ch != ' ' && ch != '-') {
+            return null
+        }
+    }
+    return if (head.length == 2) budget.left(head.toString(), t) else null
 }
 
 // -- The pairing window (section 15.12, "The pairing window") -------------------------------------

@@ -66,6 +66,7 @@ import im.plrs.key.core.peer.parseC1
 import im.plrs.key.core.peer.peerPrologue
 import im.plrs.key.core.peer.productTag
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -129,6 +130,9 @@ internal class LocalShower private constructor(
     @Volatile
     private var stopped = false
 
+    /** Completes when the window has ended all the way: the advert withdrawn, the host told, the connections closed. */
+    private val finished = CompletableDeferred<Unit>()
+
     val open: Boolean get() = !stopped
 
     fun code(): LocalCode? = synchronized(lock) { if (stopped) null else shown }
@@ -164,9 +168,12 @@ internal class LocalShower private constructor(
         expiresAt = src.now() + seconds.toLong()
     }
 
-    /** Show the first code (reason `opened`): the caller does so once the gate has been checked. */
-    fun reveal() {
-        show(LocalCodeReason.Opened)
+    /**
+     * Show the first code (reason `opened`): the caller does so once the gate has been checked. [unless] is asked inside the
+     * window's own lock, after the stopped check, so a stop that lands first shows no code.
+     */
+    fun reveal(unless: () -> Boolean = { false }) {
+        show(LocalCodeReason.Opened, unless)
     }
 
     private fun schedule(seconds: Double, fn: () -> Unit): () -> Unit {
@@ -202,11 +209,12 @@ internal class LocalShower private constructor(
         }
     }
 
-    private fun show(reason: LocalCodeReason) {
+    private fun show(reason: LocalCodeReason, unless: () -> Boolean = { false }) {
         val c = synchronized(lock) {
             val pw = password
             val qs = qrSecret
             if (stopped || pw == null || qs == null) return
+            if (unless()) return
             interrupted = 0
             interruptedAt = Double.NEGATIVE_INFINITY
             LocalCode(displayCode(nameplate, pw), makeQr(src.slug, instance, qs), nameplate, reason, expiresAt, window.state.failures)
@@ -241,12 +249,14 @@ internal class LocalShower private constructor(
     private fun applyOutcome(out: WindowOutcome, why: LocalCodeReason) {
         if (out.rotate) scope.launch { rotate(why) }
         if (out.result == WindowResult.TooManyTries) {
+            // The window ends, and the renewal floor hears how, before the host is told: a `renew()` from `onFailed` meets it.
+            val began = beginEnd(LocalWindowEnd.TooManyTries)
             try {
                 o.onFailed?.invoke(LocalPairFailure(LocalPairFailureReason.TooManyTries, null))
             } catch (e: Exception) {
                 // a host callback never ends the window
             }
-            scope.launch { shutdown(false, LocalWindowEnd.TooManyTries) }
+            if (began) scope.launch { finishEnd(false, LocalWindowEnd.TooManyTries) }
         }
     }
 
@@ -278,8 +288,21 @@ internal class LocalShower private constructor(
 
     /** Close the window: the advert, the listener and the connections ([keepSessions] spares those past the transport). */
     private suspend fun shutdown(keepSessions: Boolean, end: LocalWindowEnd?) {
+        if (!beginEnd(end)) {
+            // A renewal's `close(null)` returns once the window it replaces is gone all the way.
+            if (end == null) finished.await()
+            return
+        }
+        finishEnd(keepSessions, end)
+    }
+
+    /**
+     * The first half of an end, with no suspension: the window stops taking guesses, its nameplate and secrets go, the SDK
+     * hears how it ended (the renewal floor, the slot) and false is returned when another end got here first.
+     */
+    private fun beginEnd(end: LocalWindowEnd?): Boolean {
         synchronized(lock) {
-            if (stopped) return
+            if (stopped) return false
             stopped = true
         }
         // The expiry job is the caller of an `Expired` end: it does not cancel itself.
@@ -291,16 +314,6 @@ internal class LocalShower private constructor(
         window.close(t)
         // The next window of this product does not draw this nameplate for 300 s.
         if (nameplate != "") memory.shown(nameplate, t)
-        try {
-            server?.close()
-        } catch (e: IOException) {
-            // already closed
-        }
-        gate?.destroyPending(keepSessions)
-        val a = adv
-        adv = null
-        quiet { a?.stop() }
-        val ending = synchronized(lock) { attempts.filter { !keepSessions || it.phase != "session" } }
         // The code, the QR secret and the generators are of no use to anyone now.
         synchronized(lock) {
             qrSecret?.fill(0)
@@ -318,6 +331,29 @@ internal class LocalShower private constructor(
             },
             t,
         )
+        return true
+    }
+
+    /** The second half: the listener, the advert, the host's `onEnd` and the connections. */
+    private suspend fun finishEnd(keepSessions: Boolean, end: LocalWindowEnd?) {
+        try {
+            windDown(keepSessions, end)
+        } finally {
+            finished.complete(Unit)
+        }
+    }
+
+    private suspend fun windDown(keepSessions: Boolean, end: LocalWindowEnd?) {
+        try {
+            server?.close()
+        } catch (e: IOException) {
+            // already closed
+        }
+        gate?.destroyPending(keepSessions)
+        val a = adv
+        adv = null
+        quiet { a?.stop() }
+        val ending = synchronized(lock) { attempts.filter { !keepSessions || it.phase != "session" } }
         // The host hears the end once the advert is withdrawn and the listener has stopped.
         if (end != null) {
             try {
