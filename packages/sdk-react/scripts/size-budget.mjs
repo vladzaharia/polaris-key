@@ -77,6 +77,10 @@ const KB = 1000;
  *
  * provider+use-license 95.5 -> 98.0 KB (CI fix, 2026-11-01): measured 95.5 after the merged nearby and
  * transfer work; the lead allows the raise rather than a split.
+ *
+ * provider+use-license 98.0 -> 99.0 KB (CI fix, 2026-11-10): measured 98.02 after identity.accessToken
+ * (I-21b.1) and the local-links peer session (CC-29.8) joined the provider's engine, 21 B over.
+ * Ordinary feature growth under the owner's 2026-10-28 rule: the raise, no lazy split.
  */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),
