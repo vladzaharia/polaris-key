@@ -143,6 +143,7 @@ function drawCard(
   alpha: number,
   look: Look,
   ink = 1,
+  blur = 0,
 ): void {
   if (alpha <= 0.01) return;
   const { x0, y0, side, cell } = g;
@@ -159,8 +160,12 @@ function drawCard(
   ctx.restore();
 
   ctx.save();
-  // The dark modules fade toward the paper when the code has expired, so it cannot be scanned.
+  // The dark modules fade toward the paper and blur when the code has expired, so it cannot be
+  // scanned (a phone's decoder reads a merely faded code). The blur is in module widths, on the
+  // card's own ink: the stage behind it does not matter.
   ctx.globalAlpha = alpha * ink;
+  if (blur > 0.01 && "filter" in ctx)
+    ctx.filter = `blur(${(blur * cell * ctx.getTransform().a).toFixed(2)}px)`;
   ctx.fillStyle = COLORS.ink;
   for (let i = 0; i < g.darks.length; i += 2) {
     ctx.beginPath();
@@ -264,7 +269,7 @@ function paint(
   ctx.fillStyle = rgbaOf(COLORS.night, 0.24);
   ctx.fillRect(0, 0, S, S);
   const geometry = shownGeometry(sim, env);
-  drawCard(ctx, geometry, env.cardOpacity * env.dim, look, env.ink);
+  drawCard(ctx, geometry, env.cardOpacity * env.dim, look, env.ink, env.blur);
   const sp = spritesOf(look.tints);
   const p = sim.particles;
   ctx.globalCompositeOperation = "lighter";
@@ -293,7 +298,7 @@ function paintStill(
   ctx.globalAlpha = 1;
   ctx.fillStyle = rgbaOf(COLORS.night);
   ctx.fillRect(0, 0, S, S);
-  drawCard(ctx, g, env.cardOpacity * env.dim, look, env.ink);
+  drawCard(ctx, g, env.cardOpacity * env.dim, look, env.ink, env.blur);
   if (env.check > 0) drawCheck(ctx, look);
 }
 
