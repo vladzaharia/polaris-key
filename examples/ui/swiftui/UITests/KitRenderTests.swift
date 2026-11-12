@@ -31,6 +31,14 @@ final class KitRenderTests: XCTestCase {
     static let exempt:
         [(audit: String, element: String, contains: String, states: [String], reason: String)] = [
             (
+                "Text clipped", "text", "The camera isn", ["LocalPairing.scan.camera-busy"],
+                "The message is drawn inside the viewfinder's black square, whose own accessibility element (the camera view, with the message in its label) the audit measures it against; the render shows the four wrapped lines whole, inside the square."
+            ),
+            (
+                "Text clipped", "text", "Camera access is off", ["LocalPairing.camera-off"],
+                "The one-line label above the body sits in a stack the audit measures at its tight leading; the render shows it whole, and AX3 and landscape renders show it wrapping."
+            ),
+            (
                 "Text clipped", "field", "", [],
                 "A license key gives way in the middle at rest, keeping the prefix and the last six (UI-KITS §4.3, DL11); VoiceOver reads the whole key."
             ),
