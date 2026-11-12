@@ -23,6 +23,12 @@ public interface PolarisPairFlowActions {
     public fun retry() {}
 }
 
+/** Scan a code: the entry. */
+public interface PolarisPairScanActions {
+    /** Scan a code: opens the host's scanner (Google's sheet on the Play build). */
+    public fun scan() {}
+}
+
 /** The forms and the consent of Pair with a Code, and the host's own entries. */
 public interface PolarisPairFormActions {
     public fun pair() {}
@@ -43,7 +49,8 @@ public interface PolarisPairFormActions {
 /** Everything the pairing screen's controls do. */
 public interface PolarisLocalPairingActions :
     PolarisPairFlowActions,
-    PolarisPairFormActions {
+    PolarisPairFormActions,
+    PolarisPairScanActions {
     /** The controls that do nothing: a still. */
     public object None : PolarisLocalPairingActions
 }

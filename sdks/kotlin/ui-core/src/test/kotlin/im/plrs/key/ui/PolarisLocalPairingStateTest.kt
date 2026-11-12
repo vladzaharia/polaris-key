@@ -51,6 +51,7 @@ private class FakeLinks : PolarisLocalLinks {
     var renewCode: PolarisLocalCode? = null
     var changed: (() -> Unit)? = null
     var stops = 0
+    val joined = mutableListOf<String>()
 
     override fun localPairing() = gate
 
@@ -88,6 +89,7 @@ private class FakeLinks : PolarisLocalLinks {
     }
 
     override suspend fun join(code: String, categories: List<String>, label: String?, onConfirm: (PolarisLocalOffer) -> Unit): PolarisLocalPaired {
+        joined += code
         joinOffer?.let(onConfirm)
         joinError?.let { throw it }
         delay(50)
@@ -555,5 +557,152 @@ class PolarisLocalPairingStateTest {
         assertTrue(state.ui.value.screen().shows("pairedDevices.notFoundTitle"))
         state.report("L2", null)
         assertFalse(state.ui.value.screen().shows("pairedDevices.notFoundTitle"))
+    }
+}
+
+private class FakeScanner(var ready: Boolean = true, var next: PolarisScanResult = PolarisScanResult.Cancelled) : PolarisCodeScanner {
+    var scans = 0
+    var moduleThere = true
+
+    override suspend fun available() = ready
+
+    override suspend fun prepare() = moduleThere
+
+    override suspend fun scan(): PolarisScanResult {
+        scans++
+        return next
+    }
+}
+
+/** Scan a code (CC-29K.3): the entry only where a scanner is available, the text to join unchanged, Cancel back to choose. */
+@OptIn(ExperimentalCoroutinesApi::class)
+class PolarisLocalPairingScanTest {
+    private fun TestScope.make(links: FakeLinks, scanner: PolarisCodeScanner?) =
+        PolarisLocalPairingState(links, listOf("crates"), backgroundScope, "Studio PC", scanner = scanner)
+
+    @Test
+    fun scanLeadsOnChooseOnlyWhereAScannerIsAvailable() = runTest {
+        val with = make(FakeLinks(), FakeScanner())
+        with.start()
+        assertTrue(with.ui.value.canScan)
+        val keys = with.ui.value.screen().copy.map { it.key }
+        assertEquals(
+            listOf("localPairing.scan", "localPairing.show", "localPairing.enter"),
+            keys.filter {
+                it in
+                    setOf("localPairing.scan", "localPairing.show", "localPairing.enter")
+            },
+        )
+        assertTrue("localPairing.enter" in keys)
+        assertTrue("linkPairing.shares" in keys)
+
+        for (none in listOf(null, FakeScanner(ready = false))) {
+            val state = make(FakeLinks(), none)
+            state.start()
+            assertFalse(state.ui.value.canScan)
+            val plain = state.ui.value.screen().copy.map { it.key }
+            assertFalse("localPairing.scan" in plain)
+            assertTrue("localPairing.enter" in plain)
+        }
+    }
+
+    @Test
+    fun theScannedTextGoesToJoinUnchanged() = runTest {
+        val links = FakeLinks().also { it.joinOffer = FakeOffer() }
+        val text = "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+        val state = make(links, FakeScanner(next = PolarisScanResult.Text(text)))
+        state.start()
+        state.scan()
+        assertEquals(listOf(text), links.joined)
+        assertEquals("paired", state.ui.value.step)
+    }
+
+    @Test
+    fun cancelReturnsToChooseAndUnavailableHidesTheEntry() = runTest {
+        val scanner = FakeScanner()
+        val state = make(FakeLinks(), scanner)
+        state.start()
+        state.scan()
+        assertEquals("choose", state.ui.value.step)
+        assertTrue(state.ui.value.canScan)
+        scanner.next = PolarisScanResult.Unavailable
+        state.scan()
+        assertEquals("choose", state.ui.value.step)
+        assertFalse(state.ui.value.canScan)
+        assertFalse("localPairing.scan" in state.ui.value.screen().copy.map { it.key })
+    }
+
+    @Test
+    fun anotherAppsCodeSaysSoOnChooseAndTheEntryStays() = runTest {
+        val links = FakeLinks().also { it.joinError = PolarisLocalFailure(ErrorCode.pairingCodeFailed, "other-app") }
+        val state = make(links, FakeScanner(next = PolarisScanResult.Text("PKP1:OTHER:X:Y")))
+        state.start()
+        state.scan()
+        assertEquals("choose", state.ui.value.step)
+        assertEquals("other-app", state.ui.value.scanNotice)
+        val keys = state.ui.value.screen().copy.map { it.key }
+        assertTrue("localPairing.otherApp" in keys)
+        assertTrue("localPairing.scan" in keys)
+    }
+
+    @Test
+    fun cancelWhileWaitingGoesBackToChoose() = runTest {
+        val links = FakeLinks().also { it.joinOffer = FakeOffer() }
+        val state = make(links, FakeScanner(next = PolarisScanResult.Text("PKP1:DJDL:X:Y")))
+        state.start()
+        val job = launch { state.scan() }
+        runCurrent()
+        assertEquals("waiting", state.ui.value.step)
+        state.cancel()
+        assertEquals("choose", state.ui.value.step)
+        job.cancel()
+    }
+
+    @Test
+    fun scanInsteadFromTheFieldOpensTheScanner() = runTest {
+        val scanner = FakeScanner()
+        val state = make(FakeLinks(), scanner)
+        state.start()
+        state.enter()
+        assertTrue("localPairing.scanInstead" in state.ui.value.screen().copy.map { it.key })
+        state.toScan()
+        assertEquals(1, scanner.scans)
+        assertEquals("choose", state.ui.value.step)
+    }
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class PolarisLocalPairingScanFailureTest {
+    private fun TestScope.make(links: FakeLinks, scanner: PolarisCodeScanner) =
+        PolarisLocalPairingState(links, listOf("crates"), backgroundScope, "Studio PC", scanner = scanner)
+
+    private suspend fun TestScope.failWith(error: PolarisLocalFailure): PolarisLocalPairingState {
+        val state = make(FakeLinks().also { it.joinError = error }, FakeScanner(next = PolarisScanResult.Text("PKP1:DJDL:X:Y")))
+        state.start()
+        state.scan()
+        return state
+    }
+
+    @Test
+    fun aFailedScanStaysOnTheScanMethodWithShortWords() = runTest {
+        val notFound = failWith(PolarisLocalFailure(ErrorCode.pairingNotFound))
+        assertEquals("choose", notFound.ui.value.step)
+        assertEquals("not-found", notFound.ui.value.scanNotice)
+        assertTrue("localPairing.scanNotFound" in notFound.ui.value.screen().copy.map { it.key })
+        val stale = failWith(PolarisLocalFailure(ErrorCode.pairingCodeFailed, "wrong"))
+        assertEquals("stale", stale.ui.value.scanNotice)
+        assertEquals("choose", stale.ui.value.step)
+    }
+
+    @Test
+    fun aModuleStillDownloadingKeepsTheEntryAndSaysSo() = runTest {
+        val scanner = FakeScanner(next = PolarisScanResult.NotReady).also { it.moduleThere = false }
+        val state = make(FakeLinks(), scanner)
+        state.start()
+        assertEquals("preparing", state.ui.value.scanNotice)
+        state.scan()
+        assertEquals("not-ready", state.ui.value.scanNotice)
+        assertTrue(state.ui.value.canScan)
+        assertTrue("localPairing.scan" in state.ui.value.screen().copy.map { it.key })
     }
 }

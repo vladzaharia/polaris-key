@@ -70,6 +70,12 @@ private class FlowActions(private val state: PolarisLocalPairingState, private v
     }
 }
 
+private class ScanActions(private val state: PolarisLocalPairingState, private val scope: CoroutineScope) : PolarisPairScanActions {
+    override fun scan() {
+        scope.launch { state.toScan() }
+    }
+}
+
 private class FormActions(private val state: PolarisLocalPairingState, private val scope: CoroutineScope, private val host: PolarisPairHost) :
     PolarisPairFormActions {
     override fun pair() {
@@ -115,7 +121,8 @@ public fun PolarisLocalPairing(
     val actions = remember(state) {
         val flow = FlowActions(state, scope)
         val form = FormActions(state, scope, host)
-        object : PolarisLocalPairingActions, PolarisPairFlowActions by flow, PolarisPairFormActions by form {}
+        val scan = ScanActions(state, scope)
+        object : PolarisLocalPairingActions, PolarisPairFlowActions by flow, PolarisPairFormActions by form, PolarisPairScanActions by scan {}
     }
     PolarisLocalPairingScreen(ui, modifier, categoryLabels, actions)
 }

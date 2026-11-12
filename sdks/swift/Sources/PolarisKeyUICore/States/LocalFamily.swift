@@ -29,6 +29,9 @@ public enum LocalPairingState: String, KitStateID {
     case choose, opening, show, closed, enter, joining, confirm, waiting, paired, failed
     case networkBlocked = "network-blocked"
     case off
+    case scanPrompt = "scan-prompt"
+    case scan
+    case cameraOff = "camera-off"
     public static let component = KitComponent.localPairing
 }
 
@@ -89,6 +92,16 @@ extension KitStates {
         (categories ?? []).isEmpty ? "linkPairing.sharesNone" : "linkPairing.shares"
     }
 
+    public static func scanNoticeKey(_ n: KitLocalPairing.ScanNotice) -> String {
+        switch n {
+        case .otherApp: "localPairing.otherApp"
+        case .notFound: "localPairing.scanNotFound"
+        case .stale: "localPairing.scanStale"
+        case .notReady: "localPairing.scannerNotReady"
+        case .preparing: "localPairing.scannerPreparing"
+        }
+    }
+
     private static func lines(_ c: Ctx, _ keys: [String?], _ args: [String: CopyArgument])
         -> [CopyLine]
     {
@@ -113,17 +126,23 @@ extension KitStates {
         case .choose:
             let app = c.identity.inlineName
             let full = p.full == true
+            let scan = p.canScan == true
+            let sheet = scan && p.sheetScan == true
             return screen(
                 .choose,
                 [
-                    "localPairing.title", "localPairing.chooseBody", "localPairing.show",
-                    "localPairing.enter",
+                    "localPairing.title", "localPairing.chooseBody",
+                    sheet ? p.scanNotice.map(Self.scanNoticeKey) : nil,
+                    scan ? "localPairing.scan" : nil, "localPairing.show",
+                    scan && !sheet ? nil : "localPairing.enter",
+                    sheet && p.scanShares == true ? shares(p.categories) : nil,
                     p.prePrompt == true && !full ? "localPairing.prePrompt" : nil,
                     full ? "core.codes.local-links-full.title" : nil,
                     full ? "core.codes.local-links-full.message" : nil,
                     full ? "localPairing.pairedDevices" : nil, "common.cancel",
                 ], app.isEmpty ? [:] : ["app": .text(app)],
-                disabled: full ? ["localPairing.show", "localPairing.enter"] : [])
+                disabled: full
+                    ? [scan ? "localPairing.scan" : "localPairing.enter", "localPairing.show"] : [])
         case .opening:
             return screen(
                 .opening,
@@ -168,6 +187,32 @@ extension KitStates {
                     p.warn == true ? "localPairing.tooManyAgainBody" : nil, shown, "common.close",
                 ], ["time": .text(kitCountdown(p.cooldownLeft ?? 0))],
                 disabled: [cooling ? "localPairing.showNewIn" : nil])
+        case .scanPrompt:
+            let app = c.identity.inlineName
+            return screen(
+                .scanPrompt,
+                [
+                    "localPairing.cameraPromptTitle", "localPairing.cameraPrePrompt",
+                    "common.continue", "localPairing.enterInstead",
+                ], app.isEmpty ? [:] : ["app": .text(app)])
+        case .scan:
+            return screen(
+                .scan,
+                [
+                    "localPairing.title", "localPairing.scanBody", "a11y.cameraView",
+                    p.cameraBusy == true ? "localPairing.cameraBusy" : nil,
+                    p.scanNotice.map(Self.scanNoticeKey), shares(p.categories),
+                    "localPairing.enterInstead", "common.back",
+                ])
+        case .cameraOff:
+            return screen(
+                .cameraOff,
+                [
+                    "localPairing.title", "localPairing.cameraOffTitle",
+                    "localPairing.cameraOffBody",
+                    p.canOpenSettings == false ? nil : "localPairing.openSettings",
+                    shares(p.categories), "localPairing.enterInstead", "common.back",
+                ])
         case .enter, .joining:
             let busy = p.step == .joining
             let e = p.error
@@ -180,7 +225,9 @@ extension KitStates {
                     "localPairing.title", "localPairing.enterBody", "localPairing.codeLabel",
                     !busy && (p.entry ?? "").isEmpty ? "localPairing.codePlaceholder" : nil,
                     shares(p.categories), "localPairing.pair",
-                    busy ? "a11y.busy" : "localPairing.toShow",
+                    busy
+                        ? "a11y.busy"
+                        : (p.canScan == true ? "localPairing.scanInstead" : "localPairing.toShow"),
                     busy ? "common.cancel" : "common.back",
                     !busy && e == .wrong ? "localPairing.wrongCode" : nil,
                     !busy && (e == .wrong || e == nil) && p.triesLeft == 1

@@ -25,6 +25,7 @@ interface Row {
   name: string;
   input: UiInput;
   expect: { component: string; state: string };
+  notApplicable?: { sdks: string[] };
 }
 type Scheme = "dark" | "light";
 const SCHEMES: readonly Scheme[] = ["dark", "light"];
@@ -32,7 +33,10 @@ const matrix = matrixJson as unknown as {
   vocabulary: { defaults: Record<string, unknown> };
   local: Row[];
 };
-const ROWS = matrix.local.filter((r) => r.expect.state !== "hidden");
+const ROWS = matrix.local.filter(
+  (r) =>
+    r.expect.state !== "hidden" && !r.notApplicable?.sdks.includes("react"),
+);
 const stateOf = (r: Row): string => `${r.expect.component}.${r.expect.state}`;
 const FIRST = new Set(
   ROWS.filter((r, i) => ROWS.findIndex((o) => stateOf(o) === stateOf(r)) === i),

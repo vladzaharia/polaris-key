@@ -6,6 +6,8 @@
 
 package im.plrs.key.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
@@ -21,11 +23,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 
 private const val DIMMED = 0.5f
 
@@ -46,11 +50,33 @@ internal fun ColumnScope.PairChoose(c: PairCtx) {
         )
     }
     Spacer(Modifier.height(PolarisSpace.medium))
-    // Either device can show the code: neither way is the filled one.
+    val sheet = c.ui.sheetScan
+    // Either device can show the code: neither way is the filled one. Scan a code leads where the device can scan; typing is then a
+    // quiet link under the buttons, because Google's scanner has no screen of ours to carry it.
     Column(Modifier.fillMaxWidth().alpha(if ("localPairing.show" in c.disabled) DIMMED else 1f)) {
+        if (c.lines.text("localPairing.scan") != null) {
+            PolarisSecondaryButton(c.button("localPairing.scan"), c.actions::scan)
+            Spacer(Modifier.height(PolarisSpace.controls))
+        }
         PolarisSecondaryButton(c.button("localPairing.show"), c.actions::show)
-        Spacer(Modifier.height(PolarisSpace.controls))
-        PolarisSecondaryButton(c.button("localPairing.enter"), c.actions::enter)
+        if (!sheet && c.lines.text("localPairing.enter") != null) {
+            Spacer(Modifier.height(PolarisSpace.controls))
+            PolarisSecondaryButton(c.button("localPairing.enter"), c.actions::enter)
+        }
+    }
+    if (sheet) {
+        // What each shares comes before Google's scanner opens: reading the other device's code is this person's yes.
+        if (c.ui.scanShares) {
+            Spacer(Modifier.height(PolarisSpace.medium))
+            Shares(c.lines, c.ui.categories, c.labels)
+        }
+        c.ui.scanNotice?.let { notice ->
+            KitLocal.scanNoticeKey(notice)?.let { key ->
+                Spacer(Modifier.height(PolarisSpace.medium))
+                PairScanNotice(c.text(key), refusal = notice in setOf("other-app", "not-found", "stale"))
+            }
+        }
+        PairLink(c.button("localPairing.enter"), c.actions::enter)
     }
     c.lines.text("localPairing.prePrompt")?.let {
         Spacer(Modifier.height(PolarisSpace.controls))
@@ -116,7 +142,12 @@ internal fun ColumnScope.PairEnter(c: PairCtx) {
     if (joining) {
         PairActionRow(c.button("common.cancel"), c.actions::cancel, initialFocus = false)
     } else {
-        PairActionRow(c.button("common.back"), c.actions::back, c.button("localPairing.toShow") to c.actions::show, initialFocus = false)
+        PairActionRow(
+            c.button("common.back"),
+            c.actions::back,
+            linkFor(c, "localPairing.scanInstead", c.actions::scan) ?: (c.button("localPairing.toShow") to c.actions::show),
+            initialFocus = false,
+        )
     }
 }
 
@@ -230,4 +261,14 @@ internal fun ColumnScope.PairEnding(c: PairCtx) {
             ConnectActions(listOf(ConnectButton(c.button("common.close"), c.actions::close, focus = true)))
         }
     }
+}
+
+/** A "... instead" link when the state draws it, else null. */
+@Composable
+internal fun linkFor(c: PairCtx, key: String, action: () -> Unit): Pair<String, () -> Unit>? = if (c.lines.text(key) !=
+    null
+) {
+    c.button(key) to action
+} else {
+    null
 }

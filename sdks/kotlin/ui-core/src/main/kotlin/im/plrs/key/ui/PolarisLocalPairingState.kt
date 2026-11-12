@@ -59,6 +59,16 @@ public data class PolarisLocalPairingUi(
     val device: String? = null,
     val reason: String? = null,
     val canOpenSettings: Boolean = false,
+    /** This device can scan a code: Scan a code leads on choose and replaces the typing and showing links. */
+    val canScan: Boolean = false,
+    /** choose: why the last scan did not pair, or that the scanner is being got ready; the scan entry stays. */
+    val scanNotice: String? = null,
+    /** choose: the scanner is the host's own sheet, so typing is a link on choose. */
+    val sheetScan: Boolean = false,
+    /** scan: the camera is in use elsewhere (a host with a camera of its own draws it). */
+    val cameraBusy: Boolean = false,
+    /** choose, with [sheetScan]: what each shares comes before the sheet opens. */
+    val scanShares: Boolean = false,
     val cantConnect: Boolean = false,
     val nameError: Boolean = false,
     val max: Int = KitLocal.MAX_CONNECTABLE,
@@ -97,6 +107,11 @@ public data class PolarisLocalPairingUi(
             device?.let { put("device", JsonPrimitive(it)) }
             reason?.let { put("reason", JsonPrimitive(it)) }
             if (canOpenSettings) put("canOpenSettings", JsonPrimitive(true))
+            if (canScan && step in SCAN_STEPS) put("canScan", JsonPrimitive(true))
+            scanNotice?.let { put("scanNotice", JsonPrimitive(it)) }
+            if (sheetScan && step == "choose") put("sheetScan", JsonPrimitive(true))
+            if (cameraBusy) put("cameraBusy", JsonPrimitive(true))
+            if (scanShares && step == "choose") put("scanShares", JsonPrimitive(true))
             if (cantConnect) put("cantConnect", JsonPrimitive(true))
             if (nameError) put("nameError", JsonPrimitive("failed"))
             put("max", JsonPrimitive(max))
@@ -111,6 +126,8 @@ public data class PolarisLocalPairingUi(
     }
 }
 
+private val SCAN_STEPS = setOf("choose", "opening", "show", "enter", "scan-prompt", "scan", "camera-off")
+
 /** The pairing screens' state holder. [scope] runs the SDK calls and every mutation. */
 public class PolarisLocalPairingState(
     private val driver: PolarisLocalLinks,
@@ -123,6 +140,8 @@ public class PolarisLocalPairingState(
     private val now: () -> Double = { System.currentTimeMillis() / MILLIS_PER_SECOND },
     /** Wait [ms], then run the one-second tick; tests replace it with a manual one. */
     private val sleep: suspend (Long) -> Unit = { delay(it) },
+    /** The host's QR scanner (Google's on the Play build); null hides Scan a code. */
+    private val scanner: PolarisCodeScanner? = null,
 ) {
     private val _ui = MutableStateFlow(
         PolarisLocalPairingUi(categories = categories.toList(), prePrompt = prePrompt),
@@ -142,6 +161,8 @@ public class PolarisLocalPairingState(
     private var epoch = 0
     private var typed = ""
     private var blocked: Pair<String, String>? = null
+    private var canScan = false
+    private var scanned = false
 
     private fun ui(change: PolarisLocalPairingUi.() -> PolarisLocalPairingUi) {
         _ui.value = _ui.value.change()
@@ -163,7 +184,10 @@ public class PolarisLocalPairingState(
         } catch (e: Throwable) {
             false
         }
-        go(entryStep().copy(full = full))
+        canScan = scanner?.let { runCatching { it.available() }.getOrDefault(false) } ?: false
+        // Google's module downloads on demand: ask ahead, and say so while it does.
+        val preparing = canScan && scanner?.let { runCatching { it.prepare() }.getOrDefault(true) } == false
+        go(entryStep().copy(full = full, scanNotice = if (preparing) "preparing" else null))
     }
 
     // ── Show ─────────────────────────────────────────────────────────────────────────────────────
@@ -482,6 +506,90 @@ public class PolarisLocalPairingState(
     /** Enter a code instead, from a shown code: the window is withdrawn at once. */
     public suspend fun toEnter(): Unit = enter()
 
+    // ── Scan ─────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Scan a code: opens the host's scanner. The text goes to join unchanged; Cancel returns to choose; a scanner that is not
+     * there hides the entry from now on; another app's code says so on choose and the entry stays.
+     */
+    public suspend fun scan() {
+        val sc = scanner ?: return
+        if (!canScan || _ui.value.full || _ui.value.step != "choose") return
+        val mine = ++epoch
+        when (val result = sc.scan()) {
+            is PolarisScanResult.Text -> if (mine == epoch) join(result.text)
+
+            PolarisScanResult.Cancelled -> if (mine == epoch) go(entryStep())
+
+            // The module is still being fetched: say so, and the entry stays.
+            PolarisScanResult.NotReady -> if (mine == epoch) go(entryStep().copy(scanNotice = "not-ready"))
+
+            PolarisScanResult.Unavailable -> {
+                canScan = false
+                if (mine == epoch) go(entryStep())
+            }
+        }
+    }
+
+    /** Scan a code instead, from a shown code or the field: the window is withdrawn at once, then the scanner opens. */
+    public suspend fun toScan() {
+        if (_ui.value.step != "choose") {
+            close()
+            go(entryStep())
+        }
+        scan()
+    }
+
+    private suspend fun join(text: String) {
+        val mine = ++epoch
+        fun live() = mine == epoch
+        scanned = true
+        go(PolarisLocalPairingUi(step = "waiting", categories = categories.toList()))
+        val job = scope.launch {
+            try {
+                val link = driver.join(text, categories, label) { o ->
+                    scope.launch {
+                        if (!live()) return@launch
+                        offer = o
+                        ui { copy(categories = o.categories.toList(), device = o.label?.takeIf { it.isNotBlank() } ?: device) }
+                        // Scanning was the yes: confirm at once and wait for the other person.
+                        runCatching { o.confirm() }
+                    }
+                }
+                if (live()) stored(link)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                if (live()) scanFailed(e)
+            }
+        }
+        joinJob = job
+        job.join()
+    }
+
+    private fun scanFailed(e: Throwable) {
+        joinJob = null
+        offer = null
+        val f = e as? PolarisLocalFailure
+        when {
+            f?.code == ErrorCode.pairingCodeFailed &&
+                (f.reason == PairingCodeFailedReason.otherApp || f.reason == PairingCodeFailedReason.invalid) ->
+                go(entryStep().copy(scanNotice = "other-app"))
+
+            // Short words on choose, over Scan a code: a scanned code never lands the person in typing.
+            f?.code == ErrorCode.pairingCodeFailed -> go(entryStep().copy(scanNotice = "stale"))
+
+            f?.code == ErrorCode.pairingNotFound -> go(entryStep().copy(scanNotice = "not-found"))
+
+            f?.code == ErrorCode.peerClosed && f.reason == "cancelled" -> go(entryStep())
+
+            f?.code == ErrorCode.peerClosed ->
+                go(PolarisLocalPairingUi(step = "failed", reason = if (f.reason == "declined" || f.reason == "timeout") f.reason else "closed"))
+
+            else -> fail(e, "enter")
+        }
+    }
+
     // ── Leaving ──────────────────────────────────────────────────────────────────────────────────
 
     /** Cancel: withdraws the code, stops a join or declines a prompt, and returns one step. */
@@ -494,6 +602,12 @@ public class PolarisLocalPairingState(
                 joinJob = null
                 offer = null
                 if (o != null) runCatching { o.decline() }
+                if (scanned) {
+                    // A scanned join has no field to return to: back to choose.
+                    scanned = false
+                    go(entryStep())
+                    return
+                }
                 // Cancel stops the join, not the typing: the code is still in the field.
                 failedCode = null
                 go(PolarisLocalPairingUi(step = "enter", entry = typed))
@@ -523,6 +637,7 @@ public class PolarisLocalPairingState(
 
     private suspend fun close(bump: Boolean = true) {
         if (bump) epoch++
+        scanned = false
         cancelTick()
         val o = offer
         val w = shower
@@ -630,6 +745,9 @@ public class PolarisLocalPairingState(
             rotation = if (next.step == "show") next.rotation else prev.rotation,
             left = prev.left,
             canOpenSettings = next.canOpenSettings,
+            canScan = canScan,
+            sheetScan = canScan,
+            scanShares = canScan,
         )
     }
 

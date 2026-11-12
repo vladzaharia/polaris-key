@@ -6416,6 +6416,96 @@ msgstr "Jemand in der Nähe könnte Codes erraten."
 msgid "localPairing.openSettings"
 msgstr "Einstellungen öffnen"
 
+#. Scan a code
+#. Pair with a Code: choose: this device scans the other device's code (phones with a camera; first).
+msgid "localPairing.scan"
+msgstr "Code scannen"
+
+#. macos: Scan a Code
+msgctxt "macos"
+msgid "localPairing.scan"
+msgstr "Code scannen"
+
+#. Scan the code
+#. Pair with a Code: camera pre-prompt: the title, shown once before the system asks for the camera.
+msgid "localPairing.cameraPromptTitle"
+msgstr "Code scannen"
+
+#. Next, allow {app} to use the camera.
+#. Pair with a Code: camera pre-prompt: why the camera is needed. Arguments: {app} = the app's name.
+msgid "localPairing.cameraPrePrompt"
+msgstr "Erlauben Sie {app} als Nächstes, die Kamera zu verwenden."
+
+#. Point at the code on the other device.
+#. Pair with a Code: scan: the lede over the camera view.
+msgid "localPairing.scanBody"
+msgstr "Richten Sie die Kamera auf den Code auf dem anderen Gerät."
+
+#. Camera view
+#. Pair with a Code: scan: the camera view's accessible name.
+msgid "a11y.cameraView"
+msgstr "Kameraansicht"
+
+#. Enter the code instead
+#. Pair with a Code: scan, camera pre-prompt and camera off: the link back to typing the code.
+msgid "localPairing.enterInstead"
+msgstr "Stattdessen Code eingeben"
+
+#. macos: Enter the Code Instead
+msgctxt "macos"
+msgid "localPairing.enterInstead"
+msgstr "Stattdessen Code eingeben"
+
+#. This code is for another app.
+#. Pair with a Code: scan: a QR for another app; scanning goes on.
+msgid "localPairing.otherApp"
+msgstr "Dieser Code gehört zu einer anderen App."
+
+#. Camera access is off
+#. Pair with a Code: camera off: the title when camera access is denied.
+msgid "localPairing.cameraOffTitle"
+msgstr "Kamerazugriff ist aus"
+
+#. Allow it in Settings.
+#. Pair with a Code: camera off: where to allow it; Open Settings follows.
+msgid "localPairing.cameraOffBody"
+msgstr "Erlauben Sie ihn in den Einstellungen."
+
+#. Can’t find the other device. Check that you’re both on the same network.
+#. Pair with a Code: scan: a scanned code did not reach the other device; scanning goes on (the same words on Android's choose).
+msgid "localPairing.scanNotFound"
+msgstr "Das andere Gerät wurde nicht gefunden. Prüfen Sie, ob beide im selben Netzwerk sind."
+
+#. That code has changed. Scan the new one.
+#. Pair with a Code: scan: a scanned code is out of date; scanning goes on.
+msgid "localPairing.scanStale"
+msgstr "Dieser Code hat sich geändert. Scannen Sie den neuen."
+
+#. Can’t open the scanner yet. Try again in a moment.
+#. Pair with a Code: choose (Android): Google's scanner module is not ready yet; the scan entry stays.
+msgid "localPairing.scannerNotReady"
+msgstr "Der Scanner lässt sich noch nicht öffnen. Versuchen Sie es gleich noch einmal."
+
+#. Getting the scanner ready…
+#. Pair with a Code: choose (Android): shown while Google's scanner module downloads.
+msgid "localPairing.scannerPreparing"
+msgstr "Scanner wird vorbereitet …"
+
+#. The camera isn’t available right now.
+#. Pair with a Code: scan: the camera is in use elsewhere or interrupted (Split View); typing stays one link away.
+msgid "localPairing.cameraBusy"
+msgstr "Die Kamera ist gerade nicht verfügbar."
+
+#. Scan the code instead
+#. Pair with a Code: enter: the link to scanning.
+msgid "localPairing.scanInstead"
+msgstr "Stattdessen Code scannen"
+
+#. macos: Scan the Code Instead
+msgctxt "macos"
+msgid "localPairing.scanInstead"
+msgstr "Stattdessen Code scannen"
+
 #. Enter the code from the other device.
 #. Pair with a Code: enter: the lede.
 msgid "localPairing.enterBody"

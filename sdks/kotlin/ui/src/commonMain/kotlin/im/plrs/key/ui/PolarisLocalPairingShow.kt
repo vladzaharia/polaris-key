@@ -89,7 +89,11 @@ internal fun ColumnScope.PairShow(c: PairCtx, layout: KitLocal.Layout, tile: Foc
         PairWait(wait)
     }
     Spacer(Modifier.height(polarisWindow.section))
-    PairActionRow(c.button("common.cancel"), c.actions::cancel, c.button("localPairing.toEnter") to c.actions::enter)
+    PairActionRow(
+        c.button("common.cancel"),
+        c.actions::cancel,
+        linkFor(c, "localPairing.toScan", c.actions::scan) ?: (c.button("localPairing.toEnter") to c.actions::enter),
+    )
 }
 
 @Composable

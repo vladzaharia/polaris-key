@@ -1157,8 +1157,18 @@ public struct KitLocalPairing: Sendable, Codable, Equatable, Hashable {
         case failed
         case networkBlocked = "network-blocked"
         case off
+        case scanPrompt = "scan-prompt"
+        case scan
+        case cameraOff = "camera-off"
     }
     public enum Notice: String, Sendable, Codable { case rotated, declined, blocked, guessing }
+    public enum ScanNotice: String, Sendable, Codable {
+        case otherApp = "other-app"
+        case notFound = "not-found"
+        case stale
+        case notReady = "not-ready"
+        case preparing
+    }
     public enum Busy: String, Sendable, Codable {
         case pair
         case newCode = "new-code"
@@ -1179,6 +1189,16 @@ public struct KitLocalPairing: Sendable, Codable, Equatable, Hashable {
     public var step: Step
     public var prePrompt: Bool?
     public var full: Bool?
+    /// This device can scan a code: Scan a code leads on choose and replaces the typing and showing links.
+    public var canScan: Bool?
+    /// choose: the scanner is the host's own sheet, so typing is a link on choose.
+    public var sheetScan: Bool?
+    /// choose, with `sheetScan`: what each shares comes before the sheet opens.
+    public var scanShares: Bool?
+    /// scan (and choose with `sheetScan`): why the last scan did not pair; scanning goes on.
+    public var scanNotice: ScanNotice?
+    /// scan: the camera is in use elsewhere or interrupted.
+    public var cameraBusy: Bool?
     public var code: String?
     public var qr: String?
     public var secondsLeft: Int?
@@ -1199,7 +1219,10 @@ public struct KitLocalPairing: Sendable, Codable, Equatable, Hashable {
     public var nameError: String?
     public var max: Int?
 
-    public init(step: Step) { self.step = step }
+    public init(step: Step, canOpenSettings: Bool? = nil) {
+        self.step = step
+        self.canOpenSettings = canOpenSettings == true ? true : nil
+    }
 }
 
 /// PairedDevices (ui-matrix `local`): the list of what the person paired, and the row being edited.

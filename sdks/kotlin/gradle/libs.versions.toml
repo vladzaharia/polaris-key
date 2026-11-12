@@ -36,6 +36,10 @@ googleid = "1.2.0"
 # Block Store for :platform's play flavour (I-49.1b), an exact pin: 16.4.0 is the latest (2024-07-25) and
 # credentials-play-services-auth 1.6.0 already brings it in, so pinning changes no resolution. minSdk 21.
 playBlockstore = "16.4.0"
+# Google's code scanner for :android's play flavour (CC-29K.3, Scan a code), an exact pin: 16.1.0 is the latest stable
+# (16.0.0 before it); Google Maven's .pom for 16.1.0 is dated 2023-08-01, far past the 14-day floor. It runs in Play services
+# (its own UI, no camera permission) and needs no minCompileSdk above ours; the direct flavour never links it.
+playCodeScanner = "16.1.0"
 junit = "4.13.2"
 # WorkManager for :platform's background transfers (U-41.3), exact pin. 2.12.0 is the latest stable: published
 # 2026-09-23 to Google Maven (the .aar's Last-Modified header; 38 days old on 2026-10-31, the floor is 14), and the
@@ -96,6 +100,7 @@ androidx-browser = { module = "androidx.browser:browser", version.ref = "android
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidxCredentials" }
 androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidxCredentials" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
+play-code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version.ref = "playCodeScanner" }
 play-blockstore = { module = "com.google.android.gms:play-services-auth-blockstore", version.ref = "playBlockstore" }
 play-games = { module = "com.google.android.gms:play-services-games-v2", version.ref = "playGames" }
 play-billing = { module = "com.android.billingclient:billing", version.ref = "playBilling" }

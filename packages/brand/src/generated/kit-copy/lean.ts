@@ -248,6 +248,9 @@ export const KIT_COPY_VARIANTS: Readonly<
   "localPairing.toEnter": { macos: "Enter a Code Instead" },
   "localPairing.showNew": { macos: "Show a New Code" },
   "localPairing.showNewIn": { macos: "Show a New Code in {time}" },
+  "localPairing.scan": { macos: "Scan a Code" },
+  "localPairing.enterInstead": { macos: "Enter the Code Instead" },
+  "localPairing.scanInstead": { macos: "Scan the Code Instead" },
   "localPairing.toShow": { macos: "Show a Code Instead" },
 };
 

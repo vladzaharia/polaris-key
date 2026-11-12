@@ -58,6 +58,8 @@ interface Row {
     copy: string[];
     actions?: string[];
   };
+  /** The SDKs that draw nothing for the row (a camera scan has no web surface). */
+  notApplicable?: { sdks: string[]; reason: string };
   mustNot?: { states?: string[] };
 }
 interface ThemeRowInput {
@@ -217,6 +219,9 @@ for (const family of FAMILIES) {
         actions: [...(row.expect.actions ?? [])].sort(),
       });
       for (const s of row.mustNot?.states ?? []) expect(view.state).not.toBe(s);
+
+      // The view above is the shared rule; a surface the platform lacks draws nothing for it.
+      if (row.notApplicable?.sdks.includes("react")) return;
 
       const Component = COMPONENTS[component]!;
       expect(Component, `${component} is exported`).toBeTypeOf("function");

@@ -98,6 +98,10 @@ dependencies {
     implementation(libs.okhttp)
     // The native redirect sign-in's Custom Tab (I-15b.6). 1.8.0: 1.9.0's AuthTabIntent needs AGP 8.9.1.
     implementation(libs.androidx.browser)
+    // Scan a code (CC-29K.3): the kit's scanner seam is :ui-core's PolarisCodeScanner. The Play flavour supplies Google's code
+    // scanner over it; the direct flavour supplies none, and links no Google Play services (tools/check_flavours.sh).
+    api(project(":ui-core"))
+    "playImplementation"(libs.play.code.scanner)
 
     testImplementation(testFixtures(project(":core")))
     testImplementation(libs.junit)

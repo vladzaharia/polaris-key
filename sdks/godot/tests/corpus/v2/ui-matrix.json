@@ -17426,6 +17426,627 @@
         }
       },
       "expect": { "component": "PairedDevices", "state": "hidden", "copy": [] }
+    },
+    {
+      "name": "LocalPairing/choose: Scan a code leads where the device can scan",
+      "input": { "localPairing": { "canScan": true, "step": "choose" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "localPairing.chooseBody",
+          "localPairing.scan",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "Typing is reached from the scan screens: choose has no Enter a code beside Scan a code.",
+        "copy": ["localPairing.enter"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: Scan a code with the network prompt not yet answered",
+      "input": {
+        "localPairing": { "canScan": true, "prePrompt": true, "step": "choose" }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "localPairing.chooseBody",
+          "localPairing.prePrompt",
+          "localPairing.scan",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: no room, Scan a code drawn disabled",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "full": true,
+          "prePrompt": true,
+          "step": "choose"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "core.codes.local-links-full.message",
+          "core.codes.local-links-full.title",
+          "localPairing.chooseBody",
+          "localPairing.pairedDevices",
+          "localPairing.scan",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"],
+        "disabled": ["localPairing.scan", "localPairing.show"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: a scanner sheet of the host's own, typing is a link",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "sheetScan": true,
+          "scanShares": false,
+          "categories": ["crates", "cues"],
+          "step": "choose"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.scan",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: what each shares comes before the sheet opens",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "sheetScan": true,
+          "scanShares": true,
+          "categories": ["crates", "cues"],
+          "step": "choose"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "linkPairing.shares",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.scan",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: nothing shared before the sheet opens",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "sheetScan": true,
+          "scanShares": true,
+          "categories": [],
+          "step": "choose"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "linkPairing.sharesNone",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.scan",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: another app's code, the scan entry stays",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "sheetScan": true,
+          "scanShares": true,
+          "categories": ["crates", "cues"],
+          "scanNotice": "other-app",
+          "step": "choose"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "linkPairing.shares",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.otherApp",
+          "localPairing.scan",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: the other device was not found",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "sheetScan": true,
+          "scanShares": true,
+          "categories": ["crates", "cues"],
+          "scanNotice": "not-found",
+          "step": "choose"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "linkPairing.shares",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.scan",
+          "localPairing.scanNotFound",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: the code has changed",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "sheetScan": true,
+          "scanShares": true,
+          "categories": ["crates", "cues"],
+          "scanNotice": "stale",
+          "step": "choose"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "linkPairing.shares",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.scan",
+          "localPairing.scanStale",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: the scanner is not ready yet, the entry stays",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "sheetScan": true,
+          "scanShares": true,
+          "categories": ["crates", "cues"],
+          "scanNotice": "not-ready",
+          "step": "choose"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "linkPairing.shares",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.scan",
+          "localPairing.scannerNotReady",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/choose: the scanner is being got ready",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "sheetScan": true,
+          "scanShares": true,
+          "categories": ["crates", "cues"],
+          "scanNotice": "preparing",
+          "step": "choose"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "linkPairing.shares",
+          "localPairing.chooseBody",
+          "localPairing.enter",
+          "localPairing.scan",
+          "localPairing.scannerPreparing",
+          "localPairing.show",
+          "localPairing.title"
+        ],
+        "actions": ["cancel"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/scan-prompt: once, before the system asks for the camera",
+      "input": { "localPairing": { "canScan": true, "step": "scan-prompt" } },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "scan-prompt",
+        "copy": [
+          "common.continue",
+          "localPairing.cameraPrePrompt",
+          "localPairing.cameraPromptTitle",
+          "localPairing.enterInstead"
+        ]
+      },
+      "mustNot": {
+        "invariant": "The pre-prompt asks nothing of the camera: no view, no digits, no Pair.",
+        "copy": [
+          "a11y.cameraView",
+          "localPairing.codeLabel",
+          "localPairing.pair"
+        ]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/scan: the camera view, one quiet link to typing",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "categories": ["crates", "cues"],
+          "step": "scan"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "scan",
+        "copy": [
+          "a11y.cameraView",
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.enterInstead",
+          "localPairing.scanBody",
+          "localPairing.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A scan screen shows no digits and no Pair: a code that reads pairs, which is the person's yes.",
+        "copy": [
+          "localPairing.codeLabel",
+          "localPairing.otherApp",
+          "localPairing.pair"
+        ]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/scan: nothing shared",
+      "input": {
+        "localPairing": { "canScan": true, "categories": [], "step": "scan" }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "scan",
+        "copy": [
+          "a11y.cameraView",
+          "common.back",
+          "linkPairing.sharesNone",
+          "localPairing.enterInstead",
+          "localPairing.scanBody",
+          "localPairing.title"
+        ]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/scan: another app's code, scanning goes on",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "categories": ["crates", "cues"],
+          "scanNotice": "other-app",
+          "step": "scan"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "scan",
+        "copy": [
+          "a11y.cameraView",
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.enterInstead",
+          "localPairing.otherApp",
+          "localPairing.scanBody",
+          "localPairing.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "Another app's code is not dialled, is not an error screen and never ends the scan.",
+        "states": ["enter", "failed"],
+        "copy": ["linkPairing.failedTitle", "localPairing.notACode"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/scan: the other device was not found, scanning goes on",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "categories": ["crates", "cues"],
+          "scanNotice": "not-found",
+          "step": "scan"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "scan",
+        "copy": [
+          "a11y.cameraView",
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.enterInstead",
+          "localPairing.scanBody",
+          "localPairing.scanNotFound",
+          "localPairing.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A scanned code that fails never drops the person into typing, and never blames a code they typed.",
+        "states": ["enter"],
+        "copy": ["localPairing.notFoundTitle", "localPairing.wrongCode"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/scan: the code has changed, scanning goes on",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "categories": ["crates", "cues"],
+          "scanNotice": "stale",
+          "step": "scan"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "scan",
+        "copy": [
+          "a11y.cameraView",
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.enterInstead",
+          "localPairing.scanBody",
+          "localPairing.scanStale",
+          "localPairing.title"
+        ]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/scan: the camera is in use elsewhere",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "categories": ["crates", "cues"],
+          "cameraBusy": true,
+          "step": "scan"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "scan",
+        "copy": [
+          "a11y.cameraView",
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.cameraBusy",
+          "localPairing.enterInstead",
+          "localPairing.scanBody",
+          "localPairing.title"
+        ]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/camera-off: access denied, Open Settings and typing",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "canOpenSettings": true,
+          "categories": ["crates", "cues"],
+          "step": "camera-off"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "camera-off",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.cameraOffBody",
+          "localPairing.cameraOffTitle",
+          "localPairing.enterInstead",
+          "localPairing.openSettings",
+          "localPairing.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A denied camera is a state of its own, never a blank view.",
+        "copy": ["a11y.cameraView"]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/camera-off: nothing shared",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "canOpenSettings": true,
+          "categories": [],
+          "step": "camera-off"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "camera-off",
+        "copy": [
+          "common.back",
+          "linkPairing.sharesNone",
+          "localPairing.cameraOffBody",
+          "localPairing.cameraOffTitle",
+          "localPairing.enterInstead",
+          "localPairing.openSettings",
+          "localPairing.title"
+        ]
+      },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot", "compose"],
+        "reason": "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere."
+      }
+    },
+    {
+      "name": "LocalPairing/enter: Scan the code instead replaces Show a code instead",
+      "input": {
+        "localPairing": {
+          "canScan": true,
+          "entry": "4812 3456",
+          "categories": ["crates", "cues"],
+          "triesLeft": 2,
+          "step": "enter"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "enter",
+        "copy": [
+          "common.back",
+          "linkPairing.shares",
+          "localPairing.codeLabel",
+          "localPairing.enterBody",
+          "localPairing.pair",
+          "localPairing.scanInstead",
+          "localPairing.title"
+        ]
+      },
+      "mustNot": { "copy": ["localPairing.toShow"] },
+      "notApplicable": {
+        "sdks": ["react", "elements", "node", "python", "godot"],
+        "reason": "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere."
+      }
     }
   ],
   "localLayout": [

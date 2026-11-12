@@ -149,6 +149,9 @@ export interface Row {
   input: Obj;
   expect: Expect;
   mustNot?: MustNot;
+  /** The SDKs and kits that cannot do what the row shows. They check the view the shared rules
+   *  give and draw nothing for it (CC-29K.3: a camera scan has no web, desktop or game surface). */
+  notApplicable?: { sdks: string[]; reason: string };
 }
 export interface ThemeRow {
   name: string;
@@ -867,6 +870,8 @@ interface Opts {
   /** Copy keys of the controls the row draws disabled (`expect.disabled`). */
   disabled?: string[];
   mustNot?: Omit<MustNot, "invariant"> & { invariant?: string };
+  /** SDKs that cannot draw this row (Row.notApplicable). */
+  notApplicable?: Row["notApplicable"];
 }
 
 function authoring(S: UiMatrixSources) {
@@ -906,6 +911,7 @@ function authoring(S: UiMatrixSources) {
     if (o.actions) d.extraActions = o.actions;
     if (o.dropActions) d.dropActions = o.dropActions;
     if (o.disabled) d.expect.disabled = [...o.disabled].sort();
+    if (o.notApplicable) d.notApplicable = o.notApplicable;
     if (o.mustNot)
       d.mustNot = {
         ...o.mustNot,
@@ -3953,6 +3959,7 @@ function finish(d: Draft): Row {
       if (d.mustNot[k]?.length) m[k] = [...d.mustNot[k]!].sort();
     out.mustNot = m;
   }
+  if (d.notApplicable) out.notApplicable = d.notApplicable;
   return out;
 }
 
@@ -7212,6 +7219,270 @@ function localFamily(a: A): Draft[] {
   const list = (step: string, extra: Obj, n: Obj[]): Obj => ({
     pairedDevices: { step, devices: n, ...extra },
   });
+  // Scanning needs a camera: the SwiftUI kit on iOS and iPadOS, and Google's scanner on Compose.
+  const NATIVE = ["react", "elements", "node", "python", "godot"];
+  const SCAN_NA = {
+    sdks: NATIVE,
+    reason:
+      "A camera scan is drawn only by the native kits (SwiftUI on iOS and iPadOS, Compose with Google's scanner); the others check the view and draw nothing. Typing stays everywhere.",
+  };
+  const CAMERA_NA = {
+    sdks: [...NATIVE, "compose"],
+    reason:
+      "Google's scanner is its own sheet, so Compose has no camera screens of ours; the other native kit-less SDKs draw nothing for a scan either. Typing stays everywhere.",
+  };
+  const SHEET = {
+    canScan: true,
+    sheetScan: true,
+    scanShares: true,
+    categories: CATS,
+  };
+  const CHOOSE = [
+    "localPairing.title",
+    "localPairing.chooseBody",
+    "localPairing.scan",
+    "localPairing.show",
+    "common.cancel",
+  ];
+  const SHEET_KEYS = [...CHOOSE, "localPairing.enter", "linkPairing.shares"];
+  const sheet = (name: string, more: Obj, copy: string[], o: Opts = {}) =>
+    row(
+      `${LP}/choose: ${name}`,
+      pair("choose", { ...SHEET, ...more }),
+      LP,
+      "choose",
+      copy,
+      { notApplicable: SCAN_NA, ...o },
+    );
+  const scanned = (name: string, more: Obj, extra: string[], o: Opts = {}) =>
+    row(
+      `${LP}/scan: ${name}`,
+      pair("scan", { canScan: true, categories: CATS, ...more }),
+      LP,
+      "scan",
+      [
+        "localPairing.title",
+        "localPairing.scanBody",
+        "a11y.cameraView",
+        ...extra,
+        "linkPairing.shares",
+        "localPairing.enterInstead",
+        "common.back",
+      ],
+      { notApplicable: CAMERA_NA, ...o },
+    );
+  const NO_DIGITS = {
+    invariant:
+      "A scan screen shows no digits and no Pair: a code that reads pairs, which is the person's yes.",
+    copy: ["localPairing.pair", "localPairing.codeLabel"],
+  };
+  const camera = (name: string, cats: string[], shares: string): Draft =>
+    row(
+      `${LP}/camera-off: ${name}`,
+      pair("camera-off", {
+        canScan: true,
+        canOpenSettings: true,
+        categories: cats,
+      }),
+      LP,
+      "camera-off",
+      [
+        "localPairing.title",
+        "localPairing.cameraOffTitle",
+        "localPairing.cameraOffBody",
+        "localPairing.openSettings",
+        shares,
+        "localPairing.enterInstead",
+        "common.back",
+      ],
+      {
+        notApplicable: CAMERA_NA,
+        ...(cats.length > 0
+          ? {
+              mustNot: {
+                invariant:
+                  "A denied camera is a state of its own, never a blank view.",
+                copy: ["a11y.cameraView"],
+              },
+            }
+          : {}),
+      },
+    );
+  const scanRows = (): Draft[] => [
+    row(
+      `${LP}/choose: Scan a code leads where the device can scan`,
+      pair("choose", { canScan: true }),
+      LP,
+      "choose",
+      [...CHOOSE.slice(0, 4), "common.cancel"],
+      {
+        notApplicable: CAMERA_NA,
+        mustNot: {
+          invariant:
+            "Typing is reached from the scan screens: choose has no Enter a code beside Scan a code.",
+          copy: ["localPairing.enter"],
+        },
+      },
+    ),
+    row(
+      `${LP}/choose: Scan a code with the network prompt not yet answered`,
+      pair("choose", { canScan: true, prePrompt: true }),
+      LP,
+      "choose",
+      [...CHOOSE.slice(0, 4), "localPairing.prePrompt", "common.cancel"],
+      { notApplicable: SCAN_NA },
+    ),
+    row(
+      `${LP}/choose: no room, Scan a code drawn disabled`,
+      pair("choose", { canScan: true, full: true, prePrompt: true }),
+      LP,
+      "choose",
+      [
+        ...CHOOSE.slice(0, 4),
+        "core.codes.local-links-full.title",
+        "core.codes.local-links-full.message",
+        "localPairing.pairedDevices",
+        "common.cancel",
+      ],
+      {
+        disabled: ["localPairing.scan", "localPairing.show"],
+        notApplicable: SCAN_NA,
+      },
+    ),
+    sheet(
+      "a scanner sheet of the host's own, typing is a link",
+      { scanShares: false },
+      [...CHOOSE.slice(0, 4), "localPairing.enter", "common.cancel"],
+    ),
+    sheet("what each shares comes before the sheet opens", {}, [...SHEET_KEYS]),
+    sheet("nothing shared before the sheet opens", { categories: [] }, [
+      ...CHOOSE.slice(0, 4),
+      "localPairing.enter",
+      "linkPairing.sharesNone",
+      "common.cancel",
+    ]),
+    sheet(
+      "another app's code, the scan entry stays",
+      { scanNotice: "other-app" },
+      [...SHEET_KEYS, "localPairing.otherApp"],
+    ),
+    sheet("the other device was not found", { scanNotice: "not-found" }, [
+      ...SHEET_KEYS,
+      "localPairing.scanNotFound",
+    ]),
+    sheet("the code has changed", { scanNotice: "stale" }, [
+      ...SHEET_KEYS,
+      "localPairing.scanStale",
+    ]),
+    sheet(
+      "the scanner is not ready yet, the entry stays",
+      { scanNotice: "not-ready" },
+      [...SHEET_KEYS, "localPairing.scannerNotReady"],
+    ),
+    sheet("the scanner is being got ready", { scanNotice: "preparing" }, [
+      ...SHEET_KEYS,
+      "localPairing.scannerPreparing",
+    ]),
+    row(
+      `${LP}/scan-prompt: once, before the system asks for the camera`,
+      pair("scan-prompt", { canScan: true }),
+      LP,
+      "scan-prompt",
+      [
+        "localPairing.cameraPromptTitle",
+        "localPairing.cameraPrePrompt",
+        "common.continue",
+        "localPairing.enterInstead",
+      ],
+      {
+        notApplicable: CAMERA_NA,
+        mustNot: {
+          invariant:
+            "The pre-prompt asks nothing of the camera: no view, no digits, no Pair.",
+          copy: [
+            "a11y.cameraView",
+            "localPairing.pair",
+            "localPairing.codeLabel",
+          ],
+        },
+      },
+    ),
+    scanned("the camera view, one quiet link to typing", {}, [], {
+      mustNot: {
+        ...NO_DIGITS,
+        copy: [...NO_DIGITS.copy, "localPairing.otherApp"],
+      },
+    }),
+    row(
+      `${LP}/scan: nothing shared`,
+      pair("scan", { canScan: true, categories: [] }),
+      LP,
+      "scan",
+      [
+        "localPairing.title",
+        "localPairing.scanBody",
+        "a11y.cameraView",
+        "linkPairing.sharesNone",
+        "localPairing.enterInstead",
+        "common.back",
+      ],
+      { notApplicable: CAMERA_NA },
+    ),
+    scanned(
+      "another app's code, scanning goes on",
+      { scanNotice: "other-app" },
+      ["localPairing.otherApp"],
+      {
+        mustNot: {
+          invariant:
+            "Another app's code is not dialled, is not an error screen and never ends the scan.",
+          copy: ["localPairing.notACode", "linkPairing.failedTitle"],
+          states: ["failed", "enter"],
+        },
+      },
+    ),
+    scanned(
+      "the other device was not found, scanning goes on",
+      { scanNotice: "not-found" },
+      ["localPairing.scanNotFound"],
+      {
+        mustNot: {
+          invariant:
+            "A scanned code that fails never drops the person into typing, and never blames a code they typed.",
+          copy: ["localPairing.notFoundTitle", "localPairing.wrongCode"],
+          states: ["enter"],
+        },
+      },
+    ),
+    scanned("the code has changed, scanning goes on", { scanNotice: "stale" }, [
+      "localPairing.scanStale",
+    ]),
+    scanned("the camera is in use elsewhere", { cameraBusy: true }, [
+      "localPairing.cameraBusy",
+    ]),
+    camera(
+      "access denied, Open Settings and typing",
+      CATS,
+      "linkPairing.shares",
+    ),
+    camera("nothing shared", [], "linkPairing.sharesNone"),
+    row(
+      `${LP}/enter: Scan the code instead replaces Show a code instead`,
+      pair("enter", {
+        canScan: true,
+        entry: "4812 3456",
+        categories: CATS,
+        triesLeft: 2,
+      }),
+      LP,
+      "enter",
+      [
+        ...ENTER.filter((k) => k !== "localPairing.toShow"),
+        "localPairing.scanInstead",
+      ],
+      { notApplicable: SCAN_NA, mustNot: { copy: ["localPairing.toShow"] } },
+    ),
+  ];
   return [
     row(
       `${LP}/choose: either device can show the code`,
@@ -8053,6 +8324,7 @@ function localFamily(a: A): Draft[] {
       "hidden",
       [],
     ),
+    ...scanRows(),
   ];
 }
 
