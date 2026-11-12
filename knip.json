@@ -25,7 +25,12 @@
       "ignoreDependencies": ["jscpd"]
     },
     "tools": {
-      "entry": ["*.{ts,mjs}", "**/*.test.{ts,mjs}", "corpus/*.ts"],
+      "entry": [
+        "*.{ts,mjs}",
+        "**/*.test.{ts,mjs}",
+        "corpus/*.ts",
+        "live-peer/**/*.mjs"
+      ],
       "project": ["**/*.{ts,mjs}"]
     },
     "packages/worker": {

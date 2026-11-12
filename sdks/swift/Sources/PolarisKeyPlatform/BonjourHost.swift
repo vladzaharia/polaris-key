@@ -12,16 +12,18 @@
 //                                                     most 512); everything else is dropped in Swift
 //                                                     before it takes a table slot or an event
 //   bj_advertise_start {"slot","instance","txt":[…],"p2p"}  listen on a random port and register the advert;
-//                                                     slot "a" (default), "v" or "p": one listener each,
-//                                                     each under its own G7 limits
+//                                                     slot "a" (default), "v", "p", "q" or "l": one listener
+//                                                     each, each under its own G7 limits
 //   bj_advertise_update {"slot","instance","txt":[…]}  the next epoch or K_disc, same port
 //   bj_advertise_stop  {"slot"}?                     one slot (none: "a"); stopping "a" withdraws the contacts
 //   bj_contacts       {"adverts":[{"instance","txt"}…]} at most 8; replaces the whole contact set, registered on
 //                                                     slot a's port (none while slot a is down); the set is
 //                                                     registered again when that port changes
-//   bj_accept_tags    {"v":[h…],"p":[h…]}            at most 2 each: a result whose TXT has m=<k> and h=<tag>
+//   bj_locals         {"adverts":[{"instance","txt"}…]} at most 7; the extra `m=l` names of slot l, registered on
+//                                                     slot l's port (the first name is slot l's own advert)
+//   bj_accept_tags    {"v":[h…],"p":[h…],"q":[h…]}   at most 2 each: a result whose TXT has m=<k> and h=<tag>
 //                                                     enters the table whatever its name (same 256 rows)
-//   bj_caps                                          {"slots":1}
+//   bj_caps                                          {"slots":1,"local":1} (local: slots q and l, tag kind q, bj_locals)
 //   bj_stop_all                                      browse, every advert, the contacts and every pipe
 //
 // Pipes (CC-14b.5; ids are u32, big endian, in the binary ops):
@@ -59,7 +61,8 @@ import Foundation
         public static let maxTxtBytes = 255
         public static let maxContacts = 8
         public static let maxTags = 2
-        static let slots: Set<String> = ["a", "v", "p"]
+        static let slots: Set<String> = ["a", "v", "p", "q", "l"]
+        public static let maxLocals = 7
 
         static let ok: UInt8 = 1
         static let none: UInt8 = 0
@@ -92,7 +95,9 @@ import Foundation
         private var ports: [String: UInt16] = [:]
         private var tags: [String: [String]] = [:]
         private var contactWanted: [BonjourAdvert] = []
+        private var localWanted: [BonjourAdvert] = []
         private let contacts: BonjourContactAdverts
+        private let locals: BonjourContactAdverts
         private var endpoints: [String: BonjourEndpoint] = [:]
         private var pipes: [UInt32: PipeState] = [:]
         private var nextId: UInt32 = 0
@@ -104,7 +109,8 @@ import Foundation
             writeSeconds: TimeInterval = BonjourHost.writeSeconds,
             closeSeconds: TimeInterval = BonjourHost.closeSeconds,
             configurationCheck: (@Sendable () -> BonjourBrowseError?)? = nil,
-            contacts: BonjourContactAdverts? = nil
+            contacts: BonjourContactAdverts? = nil,
+            locals: BonjourContactAdverts? = nil
         ) {
             self.sink = sink
             self.contacts =
@@ -113,6 +119,15 @@ import Foundation
                     guard let sink,
                         let d = try? JSONSerialization.data(
                             withJSONObject: ["slot": "c", "requested": name, "got": ""], options: [.sortedKeys])
+                    else { return }
+                    sink.emitBinary("bj_withdrawn", [UInt8](d))
+                })
+            self.locals =
+                locals
+                ?? BonjourContactAdverts(onWithdrawn: { [weak sink] name in
+                    guard let sink,
+                        let d = try? JSONSerialization.data(
+                            withJSONObject: ["slot": "l", "requested": name, "got": ""], options: [.sortedKeys])
                     else { return }
                     sink.emitBinary("bj_withdrawn", [UInt8](d))
                 })
@@ -135,8 +150,9 @@ import Foundation
             ops["bj_advertise_update"] = { [self] in advertiseUpdate($0) }
             ops["bj_advertise_stop"] = { [self] in advertiseStop($0) }
             ops["bj_contacts"] = { [self] in setContacts($0) }
+            ops["bj_locals"] = { [self] in setLocals($0) }
             ops["bj_accept_tags"] = { [self] in setTags($0) }
-            ops["bj_caps"] = { _ in Array(#"{"slots":1}"#.utf8) }
+            ops["bj_caps"] = { _ in Array(#"{"slots":1,"local":1}"#.utf8) }
             ops["bj_stop_all"] = { [self] _ in stopAll() }
             ops["bj_dial"] = { [self] in dial($0) }
             ops["bj_send"] = { [self] in send($0) }
@@ -303,6 +319,7 @@ import Foundation
                     if live {
                         emit("bj_advertise", ["slot": slot, "ok": true, "port": Int(port)])
                         if slot == "a" { refreshContacts() }
+                        if slot == "l" { refreshLocals() }
                     } else {
                         l.stop()
                     }
@@ -377,6 +394,7 @@ import Foundation
             }
             l?.stop()
             if slot == "a" { contacts.stop() }
+            if slot == "l" { locals.stop() }
             return l != nil
         }
 
@@ -399,6 +417,32 @@ import Foundation
             return [Self.ok]
         }
 
+        /// Make the extra `m=l` names exactly `adverts` on slot l's port (the first name is slot l's own advert).
+        func setLocals(_ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
+            guard let o = Self.object(input), let list = o["adverts"] as? [[String: Any]],
+                list.count <= Self.maxLocals
+            else { return [Self.badInput] }
+            var adverts: [BonjourAdvert] = []
+            for item in list {
+                guard let a = Self.advert(item), !adverts.contains(where: { $0.instance == a.instance }) else {
+                    return [Self.badInput]
+                }
+                adverts.append(a)
+            }
+            lock.withLock { localWanted = adverts }
+            refreshLocals()
+            return [Self.ok]
+        }
+
+        private func refreshLocals() {
+            let (wanted, port) = lock.withLock { (localWanted, ports["l"]) }
+            if let port, !wanted.isEmpty {
+                locals.update(wanted, port: port)
+            } else {
+                locals.stop()
+            }
+        }
+
         /// Register the wanted contact set on slot a's current port, or withdraw it while slot a is down.
         private func refreshContacts() {
             let (wanted, port) = lock.withLock { (contactWanted, ports["a"]) }
@@ -414,7 +458,7 @@ import Foundation
         func setTags(_ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
             var next: [String: [String]] = [:]
             var good = false
-            if let o = Self.object(input), Set(o.keys).isSubset(of: ["v", "p"]) {
+            if let o = Self.object(input), Set(o.keys).isSubset(of: ["v", "p", "q"]) {
                 good = true
                 for (k, v) in o {
                     guard let list = v as? [String], list.count <= Self.maxTags,
@@ -442,8 +486,12 @@ import Foundation
         func stopAll() -> [UInt8] {
             _ = browseStop()
             for slot in Self.slots.sorted() { _ = stopSlot(slot) }
-            lock.withLock { contactWanted = [] }
+            lock.withLock {
+                contactWanted = []
+                localWanted = []
+            }
             contacts.stop()
+            locals.stop()
             let all = lock.withLock { () -> [PipeState] in
                 defer { pipes = [:] }
                 return Array(pipes.values)
@@ -480,6 +528,7 @@ import Foundation
         func learnPort(_ slot: String, _ port: UInt16?) {
             lock.withLock { ports[slot] = port }
             if slot == "a" { refreshContacts() }
+            if slot == "l" { refreshLocals() }
         }
 
         /// A browse row learned outside a browse (tests).

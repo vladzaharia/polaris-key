@@ -15,6 +15,12 @@ extends RefCounted
 ## everything else is dropped natively before it takes a table slot or an event. Until the first call
 ## nothing is accepted. `accept` of `browse` is applied again here, as a second check.
 ##
+## Local pairing (CC-29b.G4): slot `q` is the pairing window's advert (one listener, `m=q`), and slot `l` carries the
+## `m=l` adverts of the reachable local links (up to 8, all on slot l's one listener: the first is its own advert, the
+## rest ride `bj_locals`). Both need `capabilities().local`. `q` is a tag kind of `browse`; the `m=l` names come through
+## `set_accepted`. Any number of `browse` calls may be open at once: the native side runs one, and every call gets
+## the rows its own `accept` or tags admit (see `PKeyMdnsConsumers`).
+##
 ## Errors: a refused Local Network permission is `nearby-permission-denied` and a missing
 ## NSBonjourServices or NSLocalNetworkUsageDescription is `not-configured`, reported when the browse or
 ## the advert starts (L-11), never at launch. One browse at a time. One advert per slot: a second advert
@@ -42,30 +48,32 @@ const MAX_TAG_ROWS := 32
 const MAX_PIPES := 64
 const MAX_CONTACTS := 8
 const MAX_TAGS := 2
-const SLOTS := ["a", "v", "p"]
+const SLOTS := ["a", "v", "p", "q", "l"]
+const TAG_KINDS := ["v", "p", "q"]
+const MAX_LOCALS := 8
 
 ## The one instance of this process (`create()` with no `apple`).
 static var _shared: PKeyAppleMdns = null
 
 var _apple: PKeyApple
 var _tree: SceneTree = null
-var _on_up := Callable()
-var _on_down := Callable()
-var _accept := Callable()
-var _browsing := false
-## The a, v and p adverts: slot -> {advert, up, gen, port}.
+var _consumers := PKeyMdnsConsumers.new()
+## The a, v, p and q adverts, and slot l's first name: slot -> {advert, up, gen, port}.
 var _slots: Dictionary = {}
 ## The contact adverts, in order: {id, instance, txt}. The native side holds the same set on slot a's port.
 var _contacts: Array = []
 var _contact_seq := 0
-## The tags of the open browse: kind -> [h, h].
+## The `m=l` adverts, in order: {id, instance, txt}. The first is slot l's own advert, the rest ride `bj_locals`.
+var _locals: Array = []
+var _local_seq := 0
+## The tags of the open browses: kind -> [h, h] (the union of the consumers').
 var _tags: Dictionary = {}
+## The rows last reported by the native side, so a browse that opens later is told what is already up.
+var _last: Dictionary = {}
 var _caps: Variant = null
 var _error := ""
 var _names_sent := false
 var _frames := false
-## The instances reported up and not yet down, so a repeat is not a new peer and the table is bounded.
-var _up: Dictionary = {}
 ## The native pipes by id, each live until it closes or is released. At most MAX_PIPES.
 var _pipes: Dictionary = {}
 ## Where accepted pipes go, per slot.
@@ -105,20 +113,23 @@ func _to_string() -> String:
 
 ## {active, responder, querier, reason}, as `PKeyMdns.status()`: the OS is both.
 func status() -> Dictionary:
-	var up := _browsing or not _contacts.is_empty() or _slots.values().any(func(s): return bool(s["up"]))
+	var up := not _consumers.is_empty() or not _contacts.is_empty() or not _locals.is_empty() or _slots.values().any(func(s): return bool(s["up"]))
 	return {"active": up, "responder": up, "querier": up, "reason": _error}
 
 
-## What the native binding offers: {slots, tags}, both false for an older binding (which has slot a only).
+## What the native binding offers: {slots, tags, local}, all false for an older binding (which has slot a only);
+## `local` is slots q and l, the q tag kind and `bj_locals`.
 func capabilities() -> Dictionary:
 	if _caps == null:
 		var ok := false
+		var local := false
 		var r := _apple.cmd_bin("bj_caps", PackedByteArray())
 		if not r.is_empty():
 			var j := JSON.new()
 			if j.parse(r.get_string_from_utf8()) == OK and j.data is Dictionary:
 				ok = int((j.data as Dictionary).get("slots", 0)) >= 1
-		_caps = {"slots": ok, "tags": ok}
+				local = int((j.data as Dictionary).get("local", 0)) >= 1
+		_caps = {"slots": ok, "tags": ok, "local": ok and local}
 	return (_caps as Dictionary).duplicate()
 
 
@@ -143,7 +154,8 @@ func _unsupported(what: String) -> PKeyResult:
 
 
 ## Register the advert (or move the running one to a new name). ok with a handle that has `stop()` and
-## `update(instance, txt)`. `slot` is a (default), v, p or c; the others need `capabilities().slots`.
+## `update(instance, txt)`. `slot` is a (default), v, p, q, l or c; the others need `capabilities().slots`, and q and
+## l `capabilities().local`.
 func advertise(advert: Dictionary) -> PKeyResult:
 	var instance := str(advert.get("instance", ""))
 	var slot := str(advert.get("slot", "a"))
@@ -153,6 +165,8 @@ func advertise(advert: Dictionary) -> PKeyResult:
 	var txt: Array = advert.get("txt", []) as Array
 	if slot == "c":
 		return _advertise_contact(instance, txt)
+	if slot == "l":
+		return _advertise_local(instance, txt)
 	var body := {"slot": slot, "instance": instance, "txt": txt}
 	var s := _slot(slot)
 	var running := bool(s["up"])
@@ -175,6 +189,8 @@ func _advert_refusal(instance: String, slot: String) -> PKeyResult:
 		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "Bad slot.", {"reason": "slot"})
 	if slot != "a" and not bool(capabilities()["slots"]):
 		return _unsupported("slots")
+	if (slot == "q" or slot == "l") and not bool(capabilities()["local"]):
+		return _unsupported("local")
 	return null
 
 
@@ -194,6 +210,47 @@ func _advertise_contact(instance: String, txt: Array) -> PKeyResult:
 	return PKeyResult.success(Handle.new(self, "c", _contact_seq))
 
 
+func _advertise_local(instance: String, txt: Array) -> PKeyResult:
+	if _locals.size() >= MAX_LOCALS:
+		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "Too many local adverts.", {"reason": "locals"})
+	for c: Dictionary in _locals:
+		if c["instance"] == instance:
+			return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "That local advert is running.", {"reason": "instance_name"})
+	_local_seq += 1
+	_locals.append({"id": _local_seq, "instance": instance, "txt": txt})
+	var r := _push_locals()
+	if r != BIN_OK:
+		_locals.pop_back()
+		_push_locals()
+		return _failure(r)
+	_frame_on()
+	return PKeyResult.success(Handle.new(self, "l", _local_seq))
+
+
+## Bring slot l to `_locals`: its own advert is the first name, `bj_locals` the rest, nothing when there is none.
+func _push_locals() -> int:
+	var s := _slot("l")
+	if _locals.is_empty():
+		if bool(s["up"]):
+			_bin("bj_advertise_stop", {"slot": "l"})
+			_slots["l"] = {"advert": {}, "up": false, "gen": int(s["gen"]) + 1, "port": 0}
+		return BIN_OK
+	var first: Dictionary = _locals[0]
+	var body := {"slot": "l", "instance": first["instance"], "txt": first["txt"]}
+	var running := bool(s["up"])
+	var r := _bin("bj_advertise_update" if running else "bj_advertise_start", body)
+	if r != BIN_OK:
+		return r
+	s["advert"] = body
+	s["up"] = true
+	if not running:
+		s["gen"] = int(s["gen"]) + 1
+	var rest: Array = []
+	for c: Dictionary in _locals.slice(1):
+		rest.append({"instance": c["instance"], "txt": c["txt"]})
+	return _bin("bj_locals", {"adverts": rest})
+
+
 ## Replace the native contact set with `_contacts`.
 func _push_contacts() -> int:
 	var list: Array = []
@@ -203,30 +260,33 @@ func _push_contacts() -> int:
 
 
 ## Browse for the roster. `on_up` gets {instance, txt, hosts, port, native}; `on_down` the instance name.
-## `tags` is {"v": [h, h_prev], "p": [h, h_prev]}: a `p1-` name that `accept` refuses still enters when its
-## TXT is `m=<k>` and its `h` is in `tags[k]`. Tags need `capabilities().tags`.
+## `tags` is {"v": [h, h_prev], "p": [h, h_prev], "q": [h, h_prev]}: a `p1-` name that `accept` refuses still enters
+## when its TXT is `m=<k>` and its `h` is in `tags[k]`. Tags need `capabilities().tags`, and q `.local`. Several
+## browses may be open: each is told only what its own `accept` and tags admit. The handle also has
+## `set_accepted(names)` and `set_tags(tags)` for this browse alone.
 func browse(on_up: Callable, on_down := Callable(), accept := Callable(), tags := {}) -> PKeyResult:
-	if _browsing:
-		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "Already browsing.", {"reason": "busy"})
 	var clean := _clean_tags(tags)
 	if not clean.is_empty() and not bool(capabilities()["tags"]):
 		return _unsupported("tags")
-	var r := _bin("bj_browse_start", {"p2p": false})
-	if r != BIN_OK:
-		return _failure(r)
-	_browsing = true
-	_on_up = on_up
-	_on_down = on_down
-	_accept = accept
+	if clean.has("q") and not bool(capabilities()["local"]):
+		return _unsupported("local")
+	if _consumers.is_empty():
+		var r := _bin("bj_browse_start", {"p2p": false})
+		if r != BIN_OK:
+			return _failure(r)
+	var c := _consumers.add(on_up, on_down, accept, {})
 	if not clean.is_empty():
-		set_tags(clean)
+		c.tags = clean
+		_push_tags()
+	for d: Dictionary in _last.values():
+		_found_for(c, d)
 	_frame_on()
-	return PKeyResult.success(Handle.new(self, "", 0))
+	return PKeyResult.success(Handle.new(self, "", 0, c))
 
 
 static func _clean_tags(tags: Dictionary) -> Dictionary:
 	var out := {}
-	for k in ["v", "p"]:
+	for k in TAG_KINDS:
 		var list: Array = []
 		for h in tags.get(k, []):
 			if h is String and not (h as String).is_empty() and list.size() < MAX_TAGS:
@@ -236,21 +296,48 @@ static func _clean_tags(tags: Dictionary) -> Dictionary:
 	return out
 
 
-## Replace the tags of the open browse (the current and previous `h` of each kind). False when the native
-## side refused them; it then holds none.
-func set_tags(tags: Dictionary) -> bool:
+## Replace the tags of the open browse that holds those kinds (else the newest) with `tags` (the current and
+## previous `h` of each kind). False when the native side refused them; it then holds none.
+func set_tags(tags: Dictionary, owner: PKeyMdnsConsumers.Consumer = null) -> bool:
 	var clean := _clean_tags(tags)
+	var c := owner if owner != null else _consumers.owner_of(clean)
+	if c == null:
+		return clean.is_empty() and _tags.is_empty()
 	if clean.is_empty() and _tags.is_empty():
+		c.tags = {}
 		return true
-	var r := _bin("bj_accept_tags", clean)
-	_tags = clean if r == BIN_OK else {}
-	if r != BIN_OK and not clean.is_empty():
-		_bin("bj_accept_tags", {})
+	c.tags = clean
+	return _push_tags()
+
+
+## Send the union of the consumers' tags. A refused set clears them all natively.
+func _push_tags() -> bool:
+	var union := _consumers.tags()
+	var r := _bin("bj_accept_tags", union)
+	_tags = union if r == BIN_OK else {}
+	if r != BIN_OK:
+		if not union.is_empty():
+			_bin("bj_accept_tags", {})
+		for c: PKeyMdnsConsumers.Consumer in _consumers.all():
+			c.tags = {}
 	return r == BIN_OK
 
 
-## The instance names to report (current and previous epoch, every delivered key). Replaces the last set.
-func set_accepted(names: Array) -> bool:
+## The instance names to report (current and previous epoch, every delivered key). Replaces the last set of the
+## browse it is for (`owner`, else the first); the native side gets the names of every browse.
+func set_accepted(names: Array, owner: PKeyMdnsConsumers.Consumer = null) -> bool:
+	var c := owner if owner != null else _consumers.first()
+	if c == null:
+		return _send_names(names)
+	c.names = names.duplicate()
+	if _send_names(_consumers.names()):
+		return true
+	c.names = []
+	return false
+
+
+## Tell the native side which instance names to report.
+func _send_names(names: Array) -> bool:
 	var data := PackedByteArray()
 	for n in names:
 		data.append_array(str(n).to_utf8_buffer())
@@ -282,14 +369,12 @@ func stop() -> void:
 		(_pipes[id] as PKeyApplePipe)._on_closed("closed")
 	_pipes = {}
 	_acceptors = {}
-	_browsing = false
+	_consumers.clear()
 	_slots = {}
 	_contacts = []
+	_locals = []
 	_tags = {}
-	_on_up = Callable()
-	_on_down = Callable()
-	_accept = Callable()
-	_up = {}
+	_last = {}
 	_frame_off()
 
 
@@ -299,8 +384,10 @@ func _route(kind: String, d: Dictionary) -> void:
 			_found(d)
 		"bj_lost":
 			var name := str(d.get("instance", ""))
-			if _up.erase(name) and _on_down.is_valid():
-				_on_down.call(name)
+			_last.erase(name)
+			for c: PKeyMdnsConsumers.Consumer in _consumers.all():
+				if c.rows.erase(name) and c.on_down.is_valid():
+					c.on_down.call(name)
 		"bj_advertise":
 			var slot := str(d.get("slot", "a"))
 			if not SLOTS.has(slot):
@@ -314,9 +401,11 @@ func _route(kind: String, d: Dictionary) -> void:
 				_error = str(d.get("error", "unavailable"))
 		"bj_withdrawn":
 			# The daemon refused or removed a contact name: it is no longer registered, nor wanted.
+			var gone_name := str(d.get("requested", ""))
 			if str(d.get("slot", "")) == "c":
-				var gone_name := str(d.get("requested", ""))
 				_contacts = _contacts.filter(func(c): return c["instance"] != gone_name)
+			elif str(d.get("slot", "")) == "l":
+				_locals = _locals.filter(func(c): return c["instance"] != gone_name)
 		"bj_error":
 			_error = str(d.get("error", "unavailable"))
 		"bj_accepted":
@@ -354,7 +443,7 @@ func _accepted(d: Dictionary) -> void:
 	acceptor.call(pipe)
 
 
-## Where the pipes accepted on `slot` (a, v or p) go: Callable(pipe: PKeyApplePipe). With none, accepted
+## Where the pipes accepted on `slot` (a, v, p, q or l) go: Callable(pipe: PKeyApplePipe). With none, accepted
 ## sockets are closed. One argument, a Callable, sets slot a (the form mode a's service uses).
 func set_acceptor(slot: Variant, acceptor := Callable()) -> void:
 	if slot is Callable:
@@ -422,42 +511,45 @@ static func _id_bytes(id: int) -> PackedByteArray:
 
 func _found(d: Dictionary) -> void:
 	var name := str(d.get("instance", ""))
-	if not _browsing or not PKeyPeerAdvert.is_instance_name(name) or not _on_up.is_valid():
+	if _consumers.is_empty() or not PKeyPeerAdvert.is_instance_name(name):
 		return
 	var txt: Array = []
 	for t in d.get("txt", []):
 		if t is String and txt.size() < 8:
 			txt.append(t)
+	var row := {"instance": name, "txt": txt}
+	if _last.has(name) or _last.size() < MAX_ROWS + MAX_TAG_ROWS:
+		_last[name] = row
+	for c: PKeyMdnsConsumers.Consumer in _consumers.all():
+		_found_for(c, row)
+
+
+## Report a row to one consumer if its own filter or tags admit it (once, until it is lost).
+func _found_for(c: PKeyMdnsConsumers.Consumer, row: Dictionary) -> void:
+	var name: String = row["instance"]
+	var txt: Array = row["txt"]
+	if not c.on_up.is_valid():
+		return
 	var tag_only := false
-	if _accept.is_valid() and not bool(_accept.call(name)):
-		if not _tag_admits(txt):
+	if not c.accepts(name):
+		if not c.tag_admits(txt):
 			return
 		tag_only = true
-	if not _up.has(name) and _row_count(tag_only) >= (MAX_TAG_ROWS if tag_only else MAX_ROWS):
+	if not c.rows.has(name) and _row_count(c, tag_only) >= (MAX_TAG_ROWS if tag_only else MAX_ROWS):
 		return
-	var fresh := not _up.has(name)
-	_up[name] = tag_only
+	var fresh := not c.rows.has(name)
+	c.rows[name] = tag_only
 	if fresh:
-		_on_up.call({"instance": name, "txt": txt, "hosts": [], "host": "", "port": 0, "native": true})
+		c.on_up.call({"instance": name, "txt": txt, "hosts": [], "host": "", "port": 0, "native": true})
 
 
-## How many rows are tag-only (`true`) or roster rows (`false`).
-func _row_count(tag_only: bool) -> int:
+## How many of a consumer's rows are tag-only (`true`) or roster rows (`false`).
+static func _row_count(c: PKeyMdnsConsumers.Consumer, tag_only: bool) -> int:
 	var n := 0
-	for k in _up:
-		if bool(_up[k]) == tag_only:
+	for k in c.rows:
+		if bool(c.rows[k]) == tag_only:
 			n += 1
 	return n
-
-
-## Whether a TXT is `m=<k>` with an `h` in `_tags[k]`.
-func _tag_admits(txt: Array) -> bool:
-	for k: String in _tags.keys():
-		if txt.has("m=" + k):
-			for h: String in _tags[k]:
-				if txt.has("h=" + h):
-					return true
-	return false
 
 
 ## The last error the native side reported ("" when none): permission_denied, not_configured or unavailable.
@@ -499,19 +591,30 @@ class Handle extends RefCounted:
 	var _owner: PKeyAppleMdns
 	## "" for the browse; a, v, p or c for an advert.
 	var _slot: String
-	## An advert's generation, or a contact's id.
+	## An advert's generation, or a contact's or local advert's id.
 	var _gen: int
+	## The browse's consumer (browse handles only).
+	var _consumer: PKeyMdnsConsumers.Consumer
 
-	func _init(owner: PKeyAppleMdns, slot: String, gen: int) -> void:
+	func _init(owner: PKeyAppleMdns, slot: String, gen: int, consumer: PKeyMdnsConsumers.Consumer = null) -> void:
 		_owner = owner
 		_slot = slot
 		_gen = gen
+		_consumer = consumer
 
 	func _to_string() -> String:
 		return "PKeyAppleMdns.Handle()"
 
 	func tracked() -> int:
-		return _owner._up.size() if _owner != null and _slot.is_empty() else 0
+		return _consumer.rows.size() if _owner != null and _consumer != null else 0
+
+	## Replace the names this browse accepts (see `PKeyAppleMdns.set_accepted`).
+	func set_accepted(names: Array) -> bool:
+		return _owner != null and _consumer != null and _owner.set_accepted(names, _consumer)
+
+	## Replace the tags of this browse (see `PKeyAppleMdns.set_tags`).
+	func set_tags(tags: Dictionary) -> bool:
+		return _owner != null and _consumer != null and _owner.set_tags(tags, _consumer)
 
 	## Move the advert to a new name and TXT (the next epoch). False when it is no longer running.
 	func update(instance: String, txt: Array) -> bool:
@@ -522,19 +625,28 @@ class Handle extends RefCounted:
 			return
 		var o := _owner
 		_owner = null
-		o._handle_stop(_slot, _gen)
+		if _consumer != null:
+			o._handle_stop_browse(_consumer)
+		else:
+			o._handle_stop(_slot, _gen)
+
+
+## Rename one advert of the contact set (`c`) or the local set (`l`) and push the set.
+func _update_set(slot: String, id: int, instance: String, txt: Array) -> bool:
+	var rows: Array = _contacts if slot == "c" else _locals
+	for c: Dictionary in rows:
+		if int(c["id"]) == id:
+			c["instance"] = instance
+			c["txt"] = txt
+			return (_push_contacts() if slot == "c" else _push_locals()) == BIN_OK
+	return false
 
 
 func _handle_update(slot: String, gen: int, instance: String, txt: Array) -> bool:
 	if not PKeyPeerAdvert.is_instance_name(instance):
 		return false
-	if slot == "c":
-		for c: Dictionary in _contacts:
-			if int(c["id"]) == gen:
-				c["instance"] = instance
-				c["txt"] = txt
-				return _push_contacts() == BIN_OK
-		return false
+	if slot == "c" or slot == "l":
+		return _update_set(slot, gen, instance, txt)
 	var s := _slot(slot)
 	if int(s["gen"]) != gen or not bool(s["up"]):
 		return false
@@ -550,18 +662,38 @@ func _handle_stop(slot: String, gen: int) -> void:
 		_contacts = _contacts.filter(func(c): return int(c["id"]) != gen)
 		if _contacts.size() != before:
 			_push_contacts()
+	elif slot == "l":
+		var before_l := _locals.size()
+		_locals = _locals.filter(func(c): return int(c["id"]) != gen)
+		if _locals.size() != before_l:
+			_push_locals()
 	elif not slot.is_empty():
 		var s := _slot(slot)
 		if gen != int(s["gen"]):
 			return
 		_bin("bj_advertise_stop", {"slot": slot})
 		_slots[slot] = {"advert": {}, "up": false, "gen": gen, "port": 0}
-	else:
+	if not status()["active"]:
+		_frame_off()
+
+
+## End one browse. The last one stops the native browse and clears its tags; another leaves the rest as they
+## were, with the names and tags the others still want.
+func _handle_stop_browse(c: PKeyMdnsConsumers.Consumer) -> void:
+	if not _consumers.has(c):
+		return
+	_consumers.remove(c)
+	c.rows = {}
+	if _consumers.is_empty():
 		_apple.cmd_bin("bj_browse_stop", PackedByteArray())
-		_browsing = false
-		_up = {}
+		_last = {}
 		if not _tags.is_empty():
 			_tags = {}
 			_bin("bj_accept_tags", {})
-	if not _browsing and not status()["active"]:
+	else:
+		if not c.tags.is_empty():
+			_push_tags()
+		if not c.names.is_empty():
+			_send_names(_consumers.names())
+	if not status()["active"]:
 		_frame_off()

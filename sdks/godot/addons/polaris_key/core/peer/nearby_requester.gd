@@ -278,7 +278,8 @@ func _refresh_tags() -> void:
 	_epoch = epoch
 	_tags = [PKeyPeerAdvert.product_tag(_src["slug"], epoch), PKeyPeerAdvert.product_tag(_src["slug"], epoch - 1)]
 	if not first and _mdns.has_method("set_tags"):
-		_mdns.call("set_tags", {"v": _tags})
+		var target: Object = _browse if _browse != null and _browse.has_method("set_tags") else _mdns
+		target.call("set_tags", {"v": _tags})
 
 
 ## A native lane filters on the tags; the shared lane admits any well-formed name and the TXT is judged here.

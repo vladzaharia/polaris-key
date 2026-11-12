@@ -368,6 +368,19 @@ correctly rounded.
 `packages/worker/test/core/fingerprintCorpus.test.ts`, because the server derives the same digests
 the clients do.
 
+### The live pairing matrix
+
+The corpus proves each SDK against one signer's bytes; it cannot show that one SDK pairs with another.
+`tools/live-peer` does: it starts a driver for each SDK and has one show a code and the other join
+it (a wrong code first, then the right one, then a QR), open the link both ways, move 4 MiB with the
+hash checked, and forget, over real TCP on 127.0.0.1. The harness brokers mDNS between the drivers,
+so no multicast is needed. CI runs every ordered pair of different Linux drivers, Node, Python,
+Kotlin and Godot (twelve pairs, job `connect-live`), and the Swift driver against Node and Python on macOS (job
+`connect-live-macos`). To run one pair locally, build `@polaris-key/node`, point `PKEY_LIVE_PYTHON` at a
+Python with the SDK's dependencies, build the Kotlin or Swift driver (`tools/live-peer/README.md`), and run
+`node tools/live-peer/run.mjs --pair node:python`; the first name shows, the second joins. Adding an SDK is one driver and one row in the harness's driver
+table (`tools/live-peer/README.md`).
+
 ## The drift gate
 
 ```sh

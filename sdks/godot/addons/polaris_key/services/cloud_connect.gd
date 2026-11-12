@@ -91,7 +91,8 @@ var _lane_shared: Object = null
 
 
 ## `core` and `client` are the SDK's own; `tree` and `mono` (Callable() -> monotonic seconds) and
-## `has_feature` (Callable(String) -> bool, the engine's `OS.has_feature`) are test seams.
+## `has_feature` (Callable(String) -> bool, the engine's `OS.has_feature`) are test seams, and so is `local_links` (a
+## Dictionary of options for `local_links`, such as `lane`, `allow_loopback` and `host`).
 func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 	_core_ref = weakref(core)
 	_client = client
@@ -126,9 +127,11 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 	# `links.open_link`, and drops what a removed link left unfinished.
 	links.adopt = Callable(transfer, "attach")
 	links.removed = Callable(self, "_forget_left")
+	# `local_links` (a seam for the cross-SDK live pairing driver, tools/live-peer): options for the local links facade,
+	# such as `lane`, `allow_loopback` and `host`, over the wiring above.
 	local_links = PKeyCloudLocalLinks.new(core, client, {
 		"tree": _tree, "lane": Callable(self, "_links_lane"), "pump": Callable(self, "_links_pump"), "web": Callable(self, "_on_web"),
-	})
+	}.merged(options.get("local_links", {}), true))
 	local_links.removed = Callable(self, "_forget_left")
 	local_links.adopt = Callable(transfer, "attach")
 

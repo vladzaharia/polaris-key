@@ -12,6 +12,7 @@ extends RefCounted
 # @pkey-feature sync.files sync.files.delta sync.saves sync.records
 # @pkey-feature connect.identity connect.relay connect.links identity.redirect.native identity.link
 # @pkey-feature identity.keyreturn identity.nearby identity.restore identity.accesstoken
+# @pkey-feature connect.local
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -308,6 +309,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			out["accessToken"] = fragment.get("access_token", false) == true
 			# connect.links (WIRE-CONTRACT-V5 section 15.9): the cached gate of inter-account links.
 			out["interAccount"] = PKeyConnectClient.inter_account_of(sdk.core.discovery_manifest)
+			# connect.local (section 15.12, "Gates"): the cached gate of local pairing.
+			out["localPairing"] = PKeyPeerLocalGate.local_pairing_of(sdk.core.discovery_manifest)
 			# identity.nearby (section 12.11.5): whether the discovery just loaded names nearby approval and its routes.
 			var ep: Dictionary = fragment.get("endpoints", {})
 			out["nearby"] = true if fragment.get("nearby", false) else null

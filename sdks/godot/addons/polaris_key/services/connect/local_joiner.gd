@@ -175,9 +175,10 @@ func _start_browse() -> void:
 	)
 
 
-## A native lane filters on the tags; the shared lane admits any well-formed name and the TXT is judged here.
+## A native lane filters on the tags alone (no roster name is wanted); the shared lane admits any well-formed name and
+## the TXT is judged here.
 func _accepts(_instance: String) -> bool:
-	return true
+	return not (_o["mdns"] as Object).has_method("set_tags")
 
 
 func _step() -> void:
@@ -223,11 +224,14 @@ func _found(f: Dictionary, tags: Array) -> void:
 	for h in f.get("hosts", [f.get("host", "")]):
 		if h is String and _gate.dialable(h) and not hosts.has(h):
 			hosts.append(h)
-	if hosts.is_empty():
+	var native := bool(f.get("native", false))
+	if hosts.is_empty() and not native:
 		return
 	var instance := str(f.get("instance", ""))
 	if _plan.see(instance, tags.has(txt["h"]), str(txt["n"])):
-		_cands[instance] = {"hosts": hosts, "port": int(f.get("port", 0))}
+		_cands[instance] = {
+			"instance": instance, "hosts": hosts, "port": int(f.get("port", 0)), "native": native
+		}
 	_pump()
 
 
@@ -321,12 +325,15 @@ func _first_move(sid: PackedByteArray, c: Dictionary) -> Dictionary:
 	var ya: Variant = (
 		await _offload(func() -> Variant: return PKeyPeerCpace.share(y, gen)) if not _done else null
 	)
-	var won := (
-		await _gate.race(c["hosts"], int(c["port"]), Callable(self, "is_done"))
-		if ya != null
-		else {}
-	)
-	var pipe: PKeyPeerPipe = won.get("pipe")
+	var pipe: PKeyPeerPipe = null
+	if ya != null and bool(c.get("native", false)):
+		# The OS lane resolves and dials the advert by its name.
+		pipe = await _gate.open_native(
+			_o["mdns"] as Object, str(c["instance"]), Callable(self, "is_done")
+		)
+	elif ya != null:
+		var won := await _gate.race(c["hosts"], int(c["port"]), Callable(self, "is_done"))
+		pipe = won.get("pipe")
 	if pipe == null or _done:
 		if pipe != null:
 			pipe.abort()

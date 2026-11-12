@@ -39,6 +39,7 @@ var _gen_code := PackedByteArray()
 var _gen_qr := PackedByteArray()
 var _shown: Dictionary = {}
 var _server: TCPServer
+var _native := false
 var _gate: PKeyPeerLanGate
 var _adv: Object
 var _stopped := false
@@ -146,20 +147,28 @@ func _open() -> PKeyResult:
 			}
 		)
 	)
-	var listened := PKeyPeerLanGate.listen(str(_o.get("host", "")), 0)
-	if not listened.ok:
-		return listened
-	_server = listened.detail
+	var mdns := _o["mdns"] as Object
 	var epoch := PKeyPeerAdvert.advert_epoch(int(_src.now.call()))
 	var advert := {
 		"instance": _instance,
-		"port": _server.get_local_port(),
+		"slot": "q",
 		"txt":
 		["v=1", "m=q", "h=" + PKeyPeerAdvert.product_tag(_src.slug, epoch), "n=" + _nameplate],
 	}
-	var mdns := _o["mdns"] as Object
+	# An OS lane (the Apple one) listens itself and hands over the accepted sockets; otherwise the window listens.
+	_native = mdns.has_method("set_acceptor")
+	if _native:
+		mdns.call("set_acceptor", "q", Callable(self, "_accept_native"))
+	else:
+		var listened := PKeyPeerLanGate.listen(str(_o.get("host", "")), 0)
+		if not listened.ok:
+			return listened
+		_server = listened.detail
+		advert["port"] = _server.get_local_port()
 	var made: PKeyResult = mdns.call("advertise", advert)
 	if not made.ok:
+		if _native:
+			mdns.call("set_acceptor", "q", Callable())
 		return made
 	_adv = made.detail
 	var seconds := minf(
@@ -294,6 +303,8 @@ func _shutdown(keep_sessions: bool, end: String) -> void:
 	if _adv != null:
 		_adv.call("stop")
 		_adv = null
+	if _native:
+		(_o["mdns"] as Object).call("set_acceptor", "q", Callable())
 	for a: PKeyConnectLocalCommon.Attempt in _attempts.values():
 		if not keep_sessions or a.phase != "session":
 			_end(a, PKeyPeerSession.PEER_BYE)
@@ -340,6 +351,7 @@ func _tick() -> void:
 	if _gate != null:
 		_gate.drain(_server, Callable(self, "_on_peer"))
 		_gate.tick()
+	_expire_native(t)
 	var out := _window.tick(t)
 	if out.get("rotate", false) or out.has("result"):
 		_apply(out, "wrong-code")
@@ -367,6 +379,35 @@ func _on_peer(peer: StreamPeerTCP) -> void:
 	var key := a.get_instance_id()
 	slot.on_expire = Callable(self, "_expired").bind(key)
 	_attempts[key] = a
+
+
+## An inbound socket of the OS lane (slot q). The OS side judged the source and holds the unadmitted limits; the
+## window keeps the same bound on waiting sockets as for TCP, and times them out like `PKeyPeerLanGate` does.
+func _accept_native(pipe: PKeyPeerPipe) -> void:
+	if _stopped or not _allowed() or _waiting() >= WAITING * 2:
+		_interrupt()
+		pipe.abort()
+		return
+	var a := PKeyConnectLocalCommon.Attempt.new()
+	a.pipe = pipe
+	a.at = _mono()
+	_attempts[a.get_instance_id()] = a
+
+
+func _waiting() -> int:
+	var n := 0
+	for a: PKeyConnectLocalCommon.Attempt in _attempts.values():
+		if a.slot == null and a.link == null:
+			n += 1
+	return n
+
+
+## A native socket that has not become a session within the handshake time is closed.
+func _expire_native(t: float) -> void:
+	var window := float(_o.get("handshake_seconds", PKeyPeerLanGate.HANDSHAKE_SECONDS))
+	for a: PKeyConnectLocalCommon.Attempt in _attempts.values():
+		if _native and a.slot == null and a.link == null and t - a.at >= window:
+			_drop(a)
 
 
 func _expired(key: int) -> void:
@@ -522,6 +563,9 @@ func _on_established(info: Dictionary, key: int) -> void:
 		return
 	if a.slot != null:
 		a.slot.established()
+	elif a.pipe != null and a.pipe.has_method("admit"):
+		# The socket leaves the OS side's unadmitted limits.
+		a.pipe.call("admit")
 	a.hello = (info.get("hello", {}) as Dictionary).duplicate()
 	if a.shown or _stopped:
 		return

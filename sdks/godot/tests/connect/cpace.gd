@@ -29,6 +29,24 @@ func run(t: PKeyTestContext) -> void:
 	_handshakes(t, c)
 	_failures(t, c)
 	_misuse(t)
+	_platform_lane(t, c)
+
+
+## The same rows through the native lane this runtime selects (CryptoKit, CNG or JCA), when there is one: its
+## scalar multiplications must give the draft's and the corpus's answers, and refuse the same inputs. SHA-512 and the
+## Elligator 2 map are GDScript on every runtime, so the generators and the frames need no second run.
+func _platform_lane(t: PKeyTestContext, c: Dictionary) -> void:
+	var lane := PKeyPeerCrypto.for_platform()
+	if lane.lane_name() == "gdscript":
+		t.info("cpace: no native lane in this runtime; the GDScript lane ran every row")
+		return
+	_crypto = lane
+	t.check("cpace: the %s lane is the selected one" % lane.lane_name(), lane.known_answers_ok())
+	_shares(t, c)
+	_attempts(t, c)
+	_abort(t, c)
+	_handshakes(t, c)
+	_failures(t, c)
 
 
 func _hex(s: Variant) -> PackedByteArray:
