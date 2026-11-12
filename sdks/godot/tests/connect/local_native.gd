@@ -10,11 +10,17 @@ const Pairing := preload("res://tests/connect/pairing.gd")
 
 var _b: Base
 var _host: Node
+var _buses: Array[OsBus] = []
 
 
 class OsBus:
 	extends Pairing.Bus
 	var owners: Dictionary = {}
+
+	## `owners` names the lanes, and each lane holds its bus: cut that end too.
+	func drop() -> void:
+		owners.clear()
+		super()
 
 
 ## The end of a memory pipe an OS lane hands to an acceptor: it has a source address and counts `admit`.
@@ -96,10 +102,15 @@ func run(t: PKeyTestContext) -> void:
 	await _pair_and_open(t)
 	await _b._frames(20)
 	PKeyCloudLocalLinks.reset_budgets()
+	for bus in _buses:
+		bus.drop()
+	_buses.clear()
 	_host.queue_free()
 
 
 func _device(bus: OsBus) -> Array:
+	if not _buses.has(bus):
+		_buses.append(bus)
 	var lane := OsLane.new(bus)
 	return [_b._device(bus, true, false, {"lane": func() -> Object: return lane}), lane]
 
