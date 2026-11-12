@@ -1337,7 +1337,11 @@ func _dialogs_take_focus(t: PKeyTestContext) -> void:
 		await _tree().process_frame
 		t.check("dialog focus: %s, a pad's A never presses the game's button" % name, pressed[0] == 0, str(pressed[0]))
 		_joy_button(JOY_BUTTON_B)
-		await _tree().create_timer(0.5, true, false, true).timeout
+		# Closed, with the focus back on the game's control: await that, not a fixed wait a loaded machine can overrun.
+		for i in 600:
+			if not dialog.is_visible_in_tree() and _tree().root.gui_get_focus_owner() == game:
+				break
+			await _tree().process_frame
 		t.check("dialog focus: %s, a pad's B closes it and the game's control has the focus again" % name, not dialog.is_visible_in_tree() and _tree().root.gui_get_focus_owner() == game, "%s visible %s focus %s" % [name, dialog.is_visible_in_tree(), _tree().root.gui_get_focus_owner()])
 		_free(dialog)
 		_free(game)

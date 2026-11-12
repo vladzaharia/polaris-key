@@ -153,6 +153,7 @@ func _row(t: PKeyTestContext, row: Dictionary) -> bool:
 	elif first_stop == "" and not first.is_empty():
 		good = t.check("%s: boot() has not resolved while %s" % [name, expect["outcome"]], false, str(first))
 	t.check("row: %s" % name, good)
+	host.release()
 	boot.queue_free()
 	sdk.queue_free()
 	return good

@@ -200,8 +200,9 @@ esac
 : >"$RUN_DIR/editor/._sc_"
 ENGINE_VERSION="$("$GODOT" --version 2>/dev/null | tail -n 1)"
 # The leak gate is on for engines whose runs are clean (4.7); PKEY_TEST_LEAK_GATE=1 forces it on, 0 off. Older engines
-# also report every coroutine still suspended at exit as a leaked object (4.5.2: 11 ci suites, e.g. the boot, ui and
-# identity groups), which is not yet fixed.
+# also report every coroutine still suspended at exit as a leaked object, and a coroutine whose RefCounted object died
+# (a host, a service) never resumes: 4.5.2 still leaks in identity, connect, ui_holders_flow and the 4.6.3 ones in
+# those and the cloud_sync_* and dropin suites, so the gate stays off for them (boot, ui and updater are clean).
 case "${PKEY_TEST_LEAK_GATE:-auto}" in
   1) LEAK_GATE=1 ;;
   0) LEAK_GATE=0 ;;

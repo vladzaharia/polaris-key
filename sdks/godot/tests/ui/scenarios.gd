@@ -300,6 +300,9 @@ func gate(status: String, allow_grace: bool, err: String) -> Control:
 	add(g)
 	if status == "":
 		g.show_loading()
+		# The wait shows nothing for its first 250 ms of wall clock; the snapshot is of that quiet
+		# screen, so pin the start of the wait out of reach rather than race a slow frame.
+		g._loading_since = Time.get_ticks_msec() + 3600000
 	else:
 		var s := {"status": status}
 		if status == "grace":
@@ -1310,6 +1313,8 @@ func boot(stop: String) -> Control:
 	# machine takes to get there (no PROGRESS_AFTER_MSEC bar on a loaded machine; P1-13).
 	b.clock_msec = func() -> int: return 0
 	var host := PKeyFakeBootHost.new()
+	# The scene's boot goes away mid-work: the host ends the work it still holds while the view is alive.
+	b.tree_exiting.connect(host.release)
 	add(b)
 	b.gate.activation.set_capabilities(PKeyActivationController.capabilities(true, false, false, false))
 	b.run({"host": host, "sync_timeout_seconds": 1000, "allow_offline": stop != "offline", "required_packs": ["djdl.core"] if stop == "declined" else [], "essential_packs": []})

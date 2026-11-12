@@ -10,7 +10,9 @@ extends RefCounted
 signal changed()
 signal _answered(event: Dictionary)
 
-static var _all: Array[WeakRef] = []
+## Every host, held strongly: a suspended coroutine does not keep its object alive, so a host a test dropped while
+## work waited on it would take its answer with it, and the coroutines waiting on that work could never resume.
+static var _all: Array[PKeyFakeBootHost] = []
 
 var calls: Array = []
 ## The stage whose work is waiting for an answer, or "".
@@ -21,7 +23,7 @@ var update_result: PKeyResult = null
 
 
 func _init() -> void:
-	_all.append(weakref(self))
+	_all.append(self)
 
 
 ## Ends every wait a test left pending (a boot that was still running when its test ended): a coroutine left
@@ -29,12 +31,21 @@ func _init() -> void:
 ## Answering can start the next stage, which waits again: the caller repeats until this returns false.
 static func release_all() -> bool:
 	var any := false
-	for ref in _all:
-		var host := ref.get_ref() as PKeyFakeBootHost
-		if host != null and host.waiting_stage != "":
-			host.answer({"type": "test.released"})
+	for host in _all.duplicate():
+		if host.release():
 			any = true
+	if not any:
+		_all.clear()
 	return any
+
+
+## Ends the work waiting on this host, if any, with an event the machine ignores. Call it while the view that asked is
+## still alive: its coroutine cannot finish once the view has been freed. True when work was waiting.
+func release() -> bool:
+	if waiting_stage == "":
+		return false
+	answer({"type": "test.released"})
+	return true
 
 
 func shell(_opts: Dictionary) -> Dictionary:
