@@ -120,6 +120,12 @@ final class UIMatrixTests: XCTestCase {
         var defectsSeen: Set<String> = []
         for row in rows {
             let name = row["name"] as? String ?? "?"
+            // A row the corpus marks not applicable to this kit is not drawn by it yet.
+            if let na = row["notApplicable"] as? [String: Any],
+                (na["sdks"] as? [String] ?? []).contains("swift")
+            {
+                continue
+            }
             let expect = try XCTUnwrap(row["expect"] as? [String: Any], name)
             let component = try XCTUnwrap(
                 KitComponent(rawValue: expect["component"] as? String ?? ""), name)

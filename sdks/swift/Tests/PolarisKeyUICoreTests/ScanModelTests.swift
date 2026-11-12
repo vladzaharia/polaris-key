@@ -146,7 +146,8 @@ final class ScanModelTests: XCTestCase {
         await m.scan()
         XCTAssertTrue(scanner.running)
         scanner.sink?.yield("PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y")
-        await Task.yield()
+        // The frame reaches the model through its scan task; let that task run, then read the step.
+        for _ in 0..<400 where m.state.step == .scan { await Task.yield() }
         XCTAssertEqual(m.state.step, .waiting)
         await settle()
         XCTAssertFalse(scanner.running)
