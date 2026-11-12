@@ -464,7 +464,7 @@ enum KitPaletteResolver {
                 p.glassFill = KitPalette.glassFill(
                     solid: solid.color, onIsWhite: r.on.lowercased() == "#ffffff")
                 p.accentOn = on.color
-                p.accentFg = fg.color
+                p.accentFg = Self.headroom(fg, over: subtle, dark: dark).color
                 p.accentSubtle = subtle.color
                 p.focus = focus.color
                 p.accentIsHostTint = true
@@ -489,11 +489,51 @@ enum KitPaletteResolver {
             p.glassFill = KitPalette.glassFill(
                 solid: solid.color, onIsWhite: r.on.lowercased() == "#ffffff")
             p.accentOn = on.color
-            p.accentFg = fg.color
+            p.accentFg = Self.headroom(fg, over: subtle, dark: dark).color
             p.accentSubtle = subtle.color
             p.focus = focus.color
         }
         return p
+    }
+
+    /// The iOS light page the kit draws: the grouped page under `KitAmbient`'s 35 % wash of the accent's subtle tint.
+    /// Links under a glass primary also sit in its soft shadow, so the accent text keeps 5.0:1 here (4.5:1 at the
+    /// shadow's darkest), not just 4.5:1 on the brand's own surfaces.
+    static let linkContrastFloor = 5.0
+
+    static func headroom(_ fg: BrandColor, over subtle: BrandColor, dark: Bool) -> BrandColor {
+        #if os(iOS)
+            let applies = !dark
+        #else
+            let applies = false
+        #endif
+        return headroom(fg, over: subtle, applies: applies)
+    }
+
+    /// The darkening itself, on every platform so a test can pin it; `applies` is true on the iOS light palette.
+    static func headroom(_ fg: BrandColor, over subtle: BrandColor, applies: Bool) -> BrandColor {
+        guard applies else { return fg }
+        do {
+            func mix(_ a: Double, _ b: Double) -> Double { a * 0.65 + b * 0.35 }
+            let page = (
+                mix(242.0 / 255, subtle.red), mix(242.0 / 255, subtle.green), mix(247.0 / 255, subtle.blue)
+            )
+            func lin(_ c: Double) -> Double { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
+            func lum(_ r: Double, _ g: Double, _ b: Double) -> Double {
+                0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+            }
+            let ground = lum(page.0, page.1, page.2)
+            var scale = 1.0
+            var out = fg
+            while scale > 0.3 {
+                let l = lum(out.red, out.green, out.blue)
+                if (ground + 0.05) / (l + 0.05) >= linkContrastFloor { break }
+                scale -= 0.01
+                func byte(_ v: Double) -> UInt32 { UInt32((min(max(v * scale, 0), 1) * 255).rounded()) }
+                out = BrandColor(hex: byte(fg.red) << 16 | byte(fg.green) << 8 | byte(fg.blue))
+            }
+            return out
+        }
     }
 }
 

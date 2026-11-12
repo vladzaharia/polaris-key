@@ -3,8 +3,11 @@
 // PairedDevicesView the list. The reference is the React kit after its built UX review
 // (packages/sdk-react/src/kit/localPairing.tsx) and ui-core's models/local.ts; the words are the
 // catalog keys the state machine names (States/LocalFamily.swift). Rules kept:
-//   - the code is the largest thing on the show screen (the kit's code face, 40 pt over the title),
-//     read digit by digit, with the QR beside it from 600 pt of window and under it otherwise;
+//   - the show step is one window with two views: the code view (the digits, the kit's code face,
+//     40 pt over the title) and the QR view (the QR alone), each with one link to the other;
+//     switching never renews the code, and a new window opens on the view last chosen;
+//   - the QR view is the plain QR behind `qrCard` (one place to swap the Light Card in), in two
+//     columns in a wide, short window (UI-KITS 4.9);
 //   - no state confirms by default: focus rests on the heading, on confirm on Not now, and Pair is
 //     filled but not the Mac's Return key, so a stray key never pairs;
 //   - a control drawn but unavailable (Pair under 8 digits, Show a new code while it waits) stays
@@ -15,7 +18,7 @@
 import PolarisKeyUICore
 import SwiftUI
 
-private enum PairFocus: Hashable { case heading, notNow, code, name, tile }
+private enum PairFocus: Hashable { case heading, notNow, code, name, tile, card }
 
 /// The window the screen is drawn in, measured, for the show screen's panes.
 private struct PairWindowKey: PreferenceKey {
@@ -34,6 +37,7 @@ public struct LocalPairingView: View {
     let categoryLabels: [String: String]
     @Environment(\.polarisKeyStrings) private var strings
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicType
     @AccessibilityFocusState private var focus: PairFocus?
     @State private var window = CGSize.zero
     @State private var last: KitScreen<LocalPairingState>?
@@ -52,14 +56,15 @@ public struct LocalPairingView: View {
         let screen = live.state != nil ? live : (last ?? live)
         if let state = screen.state {
             KitScreenScaffold(
-                header: state == .scan ? false : (state != .show || layout.logo),
-                dockActions: false
+                header: state == .scan ? false : (!isShow(state) || layout.logo),
+                dockActions: false, fullWidth: inColumns(state)
             ) {
                 heading(screen, state)
             } content: {
                 content(screen, state)
             } actions: {
-                actions(screen, state)
+                // In two columns the actions sit under the words, inside the column.
+                if !inColumns(state) { actions(screen, state) }
             }
             .background(
                 GeometryReader { geo in
@@ -72,16 +77,28 @@ public struct LocalPairingView: View {
                 if live.state != nil { last = live }
             }
             .onAppear { focus = start(state) }
-            .onChange(of: screen.stateName) { _, _ in
+            .onChange(of: screen.stateName) { old, _ in
                 focus = start(state)
-                if let line = announcement(screen, state) { announce(strings.string(line)) }
+                if let line = announcement(screen, state, from: old) { announce(strings.string(line)) }
+            }
+            .onChange(of: model.state.expired) { _, gone in
+                // The title says "Code expired"; a screen reader also hears the sentence, once.
+                if gone == true { announce(strings.string("localPairing.failedExpired")) }
             }
             .onChange(of: model.rotation) { _, _ in
                 // A code that replaced the one being looked at: the notice and the new code are told in one go, apart from
                 // the action that asked for it, and the tile takes focus. The first code of a window is told with its state.
-                if let code = model.state.code, state == .show, model.replaced {
-                    announce(newCodeAnnouncement(screen, code))
-                    focus = .tile
+                if let code = model.state.code, isShow(state), model.replaced {
+                    if model.renewedFromExpired {
+                        // Show a new code from a dead window: "The code changed.", and focus goes to the stage.
+                        let said = strings.string("localPairing.rotatedBody")
+                        let digits = strings.string("a11y.newCode", ["code": .text(spelled(code))])
+                        announce(state == .show ? said + " " + digits : said)
+                        focus = state == .show ? .tile : .card
+                    } else {
+                        announce(newCodeAnnouncement(screen, state == .show ? code : nil))
+                        focus = state == .show ? .tile : .heading
+                    }
                 }
             }
             .onChange(of: model.state.nameError) { _, new in
@@ -114,6 +131,32 @@ public struct LocalPairingView: View {
         }
     }
 
+    private func isShow(_ state: LocalPairingState) -> Bool { state == .show || state == .showQr }
+
+    /// The QR view in two columns, or the scan view on a landscape phone: the words and the actions
+    /// at the start, the card or the camera at the end, with no 480 pt cap on the column.
+    private func inColumns(_ state: LocalPairingState) -> Bool {
+        (state == .showQr && qrTwoColumns) || (state == .scan && scanWide)
+    }
+
+    private var qrTwoColumns: Bool {
+        #if os(iOS)
+            // The scaffold's split arrangement (an iPad in landscape) gives the content a 480 pt pane: one column there,
+            // and at accessibility text sizes (the root text size is what the 720 pt is measured at).
+            kitQrTwoColumns(
+                width: window.width == 0 ? 390 : window.width, height: windowHeight,
+                textScale: dynamicType.isAccessibilitySize ? 2 : 1)
+                && KitArrangement.of(CGSize(width: window.width, height: windowHeight)) != .split
+        #else
+            false
+        #endif
+    }
+
+    private var windowHeight: CGFloat { window.height == 0 ? 844 : window.height }
+
+    /// A landscape phone: the camera takes the height, beside the words.
+    private var scanWide: Bool { window.width > windowHeight && windowHeight < 520 }
+
     private var layout: KitLocalPairingLayout {
         KitLocalPairingLayout.of(
             width: window.width == 0 ? 390 : window.width,
@@ -128,6 +171,7 @@ public struct LocalPairingView: View {
     @ViewBuilder private func escapeCloses(_ state: LocalPairingState) -> some View {
         if [
             .paired, .failed, .off, .networkBlocked, .closed, .enter, .confirm, .scanPrompt, .scan, .cameraOff,
+            .opening, .show, .showQr,
         ].contains(state) {
             Button("") { Task { await close(state) } }
                 .keyboardShortcut(.cancelAction)
@@ -142,12 +186,13 @@ public struct LocalPairingView: View {
         case .paired: await model.done()
         case .enter, .scanPrompt, .scan, .cameraOff: await model.backToChoose()
         case .confirm: await model.notNow()
+        case .opening, .show, .showQr: await model.cancel()
         default: await model.closeScreen()
         }
     }
 
     /// The notice's words, then the new code: "Wrong code entered. The code changed. New code 4 8 1 2 ...".
-    private func newCodeAnnouncement(_ screen: KitScreen<LocalPairingState>, _ code: String) -> String {
+    private func newCodeAnnouncement(_ screen: KitScreen<LocalPairingState>, _ code: String?) -> String {
         var parts: [String] = []
         for key in [
             "localPairing.rotatedTitle", "localPairing.notPairedWith", "localPairing.rotatedBody",
@@ -155,18 +200,23 @@ public struct LocalPairingView: View {
         ] {
             if let line = screen.line(key) { parts.append(strings.string(line)) }
         }
-        parts.append(strings.string("a11y.newCode", ["code": .text(spelled(code))]))
+        // The QR view says the change without the digits.
+        if let code { parts.append(strings.string("a11y.newCode", ["code": .text(spelled(code))])) }
         return parts.map { $0.hasSuffix(".") ? $0 : $0 + "." }.joined(separator: " ")
     }
 
     private func spelled(_ code: String) -> String { code.map(String.init).joined(separator: " ") }
 
     /// What a change of state says beyond the heading.
-    private func announcement(_ screen: KitScreen<LocalPairingState>, _ state: LocalPairingState)
-        -> CopyLine?
-    {
+    private func announcement(
+        _ screen: KitScreen<LocalPairingState>, _ state: LocalPairingState, from old: String
+    ) -> CopyLine? {
         switch state {
+        case .showQr:
+            // A switch says the new view's line; the code is never said here.
+            return screen.line("localPairing.qrBody")
         case .show:
+            if old == LocalPairingState.showQr.rawValue { return screen.line("localPairing.showBody") }
             guard let code = model.state.code else { return nil }
             return CopyLine("a11y.linkCode", ["code": .text(spelled(code))])
         case .opening: return screen.line("a11y.busy")
@@ -232,7 +282,7 @@ public struct LocalPairingView: View {
                     if let body = screen.line("localPairing.cameraPrePrompt") { KitText(body, .body) }
                 case .scan: scan(screen, style)
                 case .cameraOff: cameraOff(screen, style)
-                case .opening, .show: show(screen, state, style)
+                case .opening, .show, .showQr: show(screen, state, style)
                 case .closed: closed(screen, style)
                 case .enter, .joining: enter(screen, state, style)
                 case .confirm: confirm(screen, style)
@@ -284,22 +334,30 @@ public struct LocalPairingView: View {
         -> some View
     {
         let label = strings.string(screen.lineOrKey("a11y.cameraView"))
-        let busy = screen.line("localPairing.cameraBusy").map { strings.string($0) }
-        let h = window.height == 0 ? 844 : window.height
-        let wide = window.width > h && h < 520
-        if wide {
-            // A landscape phone: the camera takes the whole height beside the words.
+        // The interruption is the source's own word: a view that has just appeared still shows it.
+        let busy =
+            (screen.line("localPairing.cameraBusy")
+            ?? (model.scanSource?.interrupted == true ? CopyLine("localPairing.cameraBusy") : nil))
+            .map { strings.string($0) }
+        let h = windowHeight
+        if scanWide {
+            // A landscape phone: the camera takes the height beside the words, and the actions sit
+            // in that column under them, so nothing falls below the fold.
             HStack(alignment: .top, spacing: style.space(.lg)) {
-                ScanViewfinder(source: model.scanSource, label: label, side: max(160, h - 150), message: busy)
+                ScanViewfinder(source: model.scanSource, label: label, side: max(160, h - 100), message: busy)
                 VStack(alignment: .leading, spacing: style.space(.md)) {
                     scanWords(screen, style)
+                    actions(screen, .scan)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         } else {
             // Portrait: the camera is as tall as the room that is left, so the actions stay in view.
             if let body = screen.line("localPairing.scanBody") { KitText(body, .body) }
             ScanViewfinder(
-                source: model.scanSource, label: label, side: min(360, max(200, h - 420)), message: busy
+                source: model.scanSource, label: label,
+                side: min(min(360, max(200, h - 420)), max(160, (window.width == 0 ? 390 : window.width) - 48)),
+                message: busy
             )
             .frame(maxWidth: .infinity)
             scanNotice(screen, style)
@@ -345,26 +403,64 @@ public struct LocalPairingView: View {
         _ screen: KitScreen<LocalPairingState>, _ state: LocalPairingState, _ style: KitResolvedStyle
     ) -> some View {
         let opening = state == .opening
-        let panes = layout.panes == 2
-        if let body = screen.line("localPairing.showBody") { KitText(body, .body) }
-        if panes {
-            HStack(alignment: .top, spacing: style.space(.lg)) {
-                VStack(alignment: .leading, spacing: style.space(.md)) {
-                    codeTile(screen, opening, style)
-                    timeRow(screen, opening, style)
-                    showNotice(screen, style)
-                    waitingRow(screen, opening, style)
+        let gone = model.state.expired == true
+        if gone {
+            // Expired says its piece in the title: the dead stage stays, muted, and the actions are Show a new code and Cancel.
+            if state == .showQr, qrTwoColumns {
+                // The same two columns as the live view, and the buttons in the start column.
+                HStack(alignment: .top, spacing: style.space(.xl)) {
+                    actions(screen, state).frame(maxWidth: .infinity, alignment: .leading)
+                    qrCard(screen, size: qrSide(style), dimmed: true)
                 }
-                qr(screen, opening, size: layout.logo ? 184 : 160)
+            } else if state == .showQr {
+                qrCard(screen, size: qrSide(style), dimmed: true).frame(maxWidth: .infinity)
+            } else {
+                codeTile(screen, opening, style).opacity(0.5)
+            }
+        } else if state == .showQr {
+            let card = qrCard(screen, size: qrSide(style), dimmed: gone)
+            if qrTwoColumns {
+                // A laptop-sized window: the words and the buttons at the start, the card at the end.
+                HStack(alignment: .center, spacing: style.space(.xl)) {
+                    VStack(alignment: .leading, spacing: style.space(.md)) {
+                        qrWords(screen, style)
+                        actions(screen, state)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    card
+                }
+            } else {
+                if let body = screen.line("localPairing.qrBody") { KitText(body, .body) }
+                if layout.noticeBeforeQr { showNotice(screen, style) }
+                card.frame(maxWidth: .infinity)
+                timeRow(screen, false, style)
+                if !layout.noticeBeforeQr { showNotice(screen, style) }
+                waitingRow(screen, false, style)
             }
         } else {
+            if let body = screen.line("localPairing.showBody") { KitText(body, .body) }
             codeTile(screen, opening, style)
             timeRow(screen, opening, style)
-            if layout.noticeBeforeQr { showNotice(screen, style) }
-            qr(screen, opening, size: 184).frame(maxWidth: .infinity)
-            if !layout.noticeBeforeQr { showNotice(screen, style) }
+            showNotice(screen, style)
             waitingRow(screen, opening, style)
         }
+    }
+
+    /// The QR view's words in the two-column form: the line, the time, the notice, the waiting row.
+    @ViewBuilder private func qrWords(
+        _ screen: KitScreen<LocalPairingState>, _ style: KitResolvedStyle
+    ) -> some View {
+        if let body = screen.line("localPairing.qrBody") { KitText(body, .body) }
+        timeRow(screen, false, style)
+        showNotice(screen, style)
+        waitingRow(screen, false, style)
+    }
+
+    /// The QR's side: as large as the window leaves room for, never under 192 pt (12 rem).
+    private func qrSide(_ style: KitResolvedStyle) -> CGFloat {
+        let w = window.width == 0 ? 390 : window.width
+        if qrTwoColumns { return max(192, min(windowHeight - 140, 320)) }
+        return max(192, min(w - 2 * style.space(.lg), windowHeight - 380, 320))
     }
 
     /// The code in the kit's code face, the changed digits lit; a placeholder while the window opens.
@@ -448,14 +544,17 @@ public struct LocalPairingView: View {
         .opacity(opening ? 0 : 1)
     }
 
-    private func qr(_ screen: KitScreen<LocalPairingState>, _ opening: Bool, size: CGFloat) -> some View {
+    /// The QR view's card: the plain QR, in one place so the Light Card can replace it. A window that ran out fades the
+    /// dark modules toward the paper (so the dead code does not scan) and dims the card.
+    private func qrCard(_ screen: KitScreen<LocalPairingState>, size: CGFloat, dimmed: Bool) -> some View {
         Group {
-            if opening || model.qr == nil {
+            if let text = model.qr {
+                ExpiredFadeQR(text: text, label: strings.string("a11y.qrPairing"), faded: dimmed)
+                    .frame(width: size, height: size)
+                    .accessibilityFocused($focus, equals: .card)
+            } else {
                 RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.0001))
                     .frame(width: size, height: size).accessibilityHidden(true)
-            } else if let text = model.qr {
-                PolarisQRCode(text, accessibilityLabel: strings.string("a11y.qrPairing"))
-                    .frame(width: size, height: size)
             }
         }
     }
@@ -690,7 +789,10 @@ public struct LocalPairingView: View {
                             .background(Capsule().fill(style.palette.textStrong.opacity(0.09)))
                     }
                 }
+                // Placed at the whole column, so the wrap is laid out at the width it was counted at.
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .fixedSize(horizontal: false, vertical: true)
             .accessibilityElement(children: .combine)
         } else if let none = screen.line("linkPairing.sharesNone") {
             KitText(none, .body)
@@ -747,9 +849,25 @@ public struct LocalPairingView: View {
                 KitButton(line: CopyLine("common.cancel"), kind: .quiet) {
                     Task { await model.closeScreen() }
                 }
-            case .opening, .show:
+            case .opening:
                 KitButton(line: CopyLine("common.cancel"), kind: .quiet) { Task { await model.cancel() } }
-                link(screen.lineOrKey("localPairing.toEnter")) { Task { await model.toEnter() } }
+                // The link's place is held while the window opens, so nothing moves when it arrives.
+                link(CopyLine("localPairing.toQr")) {}.hidden().accessibilityHidden(true)
+            case .show, .showQr:
+                if model.state.expired == true {
+                    KitButton(
+                        line: screen.lineOrKey("localPairing.showNew"), kind: .primary,
+                        busy: model.state.busy == .newCode
+                    ) { Task { await model.showNew() } }
+                }
+                KitButton(line: CopyLine("common.cancel"), kind: .quiet) { Task { await model.cancel() } }
+                if model.state.expired != true {
+                    if state == .show {
+                        link(screen.lineOrKey("localPairing.toQr")) { model.showQr() }
+                    } else {
+                        link(screen.lineOrKey("localPairing.toCode")) { model.showCode() }
+                    }
+                }
             case .closed:
                 let cooling = disabled.contains("localPairing.showNewIn")
                 KitButton(
@@ -885,8 +1003,10 @@ private struct ScanSignals: ViewModifier {
                 if new == .paired { return .success }
                 return old == .scan && new == .waiting ? .impact(weight: .light) : nil
             }
-            .onChange(of: model.scanSource?.interrupted ?? false, initial: true) { _, busy in
-                model.setCameraBusy(busy)
+            // Only a change in the source is copied to the model: a view that appears must not wipe the
+            // state it was given.
+            .onChange(of: model.scanSource?.interrupted) { _, busy in
+                if let busy { model.setCameraBusy(busy) }
             }
     }
 }
@@ -901,5 +1021,40 @@ enum KitSettingsOpener {
                 NSWorkspace.shared.open(url)
             }
         #endif
+    }
+}
+
+/// The pairing QR, or its dead twin: after the window ran out the code is blurred past reading (more than 1.5 module widths),
+/// its ink fades to 15 % of the paper contrast and the card dims to 35 % on the stage's own night ground, so the result is the
+/// same over either page and a barcode reader finds nothing (UI-KITS 4.9). Internal so a test can decode both.
+struct ExpiredFadeQR: View {
+    let text: String
+    let label: String
+    let faded: Bool
+
+    /// The night stage the dimmed card sits on (`LIGHT_CARD` ground).
+    static let stage = Color(.sRGB, red: 5 / 255, green: 6 / 255, blue: 13 / 255, opacity: 1)
+
+    var body: some View {
+        if faded {
+            GeometryReader { geo in
+                // 37 modules with the quiet zone is the largest code the kit draws at this size: 1.5 widths and a margin.
+                let blur = geo.size.width / 37 * 2
+                ZStack {
+                    Self.stage
+                    // The blur is taken over opaque paper, so the edge stays clean; then the card dims.
+                    PolarisQRCode(text, accessibilityLabel: label)
+                        .blur(radius: blur, opaque: true)
+                        .brightness(0.85)
+                        .opacity(0.35)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.secondary.opacity(0.6), lineWidth: 1))
+            }
+            // The title says "Code expired"; a dead code is not read as a QR code.
+            .accessibilityHidden(true)
+        } else {
+            PolarisQRCode(text, accessibilityLabel: label)
+        }
     }
 }

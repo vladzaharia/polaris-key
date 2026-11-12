@@ -4,9 +4,11 @@
 // SwiftUI kit's LocalPairingView. The words are the catalog keys the state machine names (KitLocalStates.kt).
 //
 // Rules the screens keep:
-//  - the code is the largest thing on the show screen, in the kit's mono face, read digit by digit ("Pairing code 4 8 1 2 ..."), with the
-//    QR beside it from 600 dp of window at the root text size and under it otherwise ([KitLocal.layout]); a window under 480 tall drops
-//    the kit's logo, and a narrow short one scrolls one column with the notice before the QR;
+//  - the show step is one window with two views: the code view (the digits, the largest thing on the screen, in the kit's mono face, read
+//    digit by digit "Pairing code 4 8 1 2 ...") and the QR view (the QR alone, behind one swappable [PairQrCard]), each with one link to
+//    the other; switching never renews the code, a new window opens on the view last chosen, and a window that ran out stays in its view,
+//    dimmed, with Show a new code. The QR view sits in two columns in a wide, short window ([KitLocal.qrTwoColumns]); a window under 480
+//    tall drops the kit's logo, and the column scrolls with the notice before the QR;
 //  - no state confirms by default: the first focus is Not now on a consent, and Pair is filled but never the Enter key;
 //  - a control drawn but unavailable (Pair under 8 digits, Show a new code while it waits) stays pressable and answers its reason, so a
 //    screen reader never meets a dead button; its reason is its state description;
@@ -44,6 +46,10 @@ private class FlowActions(private val state: PolarisLocalPairingState, private v
     override fun enter() {
         scope.launch { state.enter() }
     }
+
+    override fun showQr() = state.showQr()
+
+    override fun showCode() = state.showCode()
 
     override fun showNew() {
         scope.launch { state.showNew() }
@@ -146,7 +152,7 @@ public fun PolarisLocalPairingScreen(
     PairAnnouncements(c, tile)
     val escape: () -> Unit = when (screen.state) {
         "paired" -> actions::done
-        "opening", "show", "confirm", "joining", "waiting" -> actions::cancel
+        "opening", "show", "show-qr", "confirm", "joining", "waiting" -> actions::cancel
         "enter" -> actions::back
         else -> actions::close
     }
@@ -157,7 +163,7 @@ public fun PolarisLocalPairingScreen(
     PolarisScaffold(modifier = host, anchor = PolarisAnchor.Top, contentAlign = TextAlign.Start) {
         // The window the scaffold lays out in: only inside it is the real size known.
         val window = polarisWindow
-        val layout = KitLocal.layout(window.width.value.toDouble(), window.height.value.toDouble(), fontScale.toDouble(), window.tv)
+        val layout = KitLocal.layout(window.height.value.toDouble(), window.tv)
         if (layout.logo) PolarisProductHeader()
         if (ui.step == "paired") PairSuccessMark()
         PolarisTitle(c.text(titleKey(ui)), key = screen.state)
@@ -166,15 +172,15 @@ public fun PolarisLocalPairingScreen(
             Spacer(Modifier.height(PolarisSpace.tight))
             PolarisBody(c.reason, textAlign = TextAlign.Start)
         }
-        PairStep(c, layout, tile, armed)
+        PairStep(c, layout, tile, armed, KitLocal.qrTwoColumns(window.width.value.toDouble(), window.height.value.toDouble(), fontScale.toDouble()))
     }
 }
 
 @Composable
-private fun ColumnScope.PairStep(c: PairCtx, layout: KitLocal.Layout, tile: FocusRequester, armed: Boolean) {
+private fun ColumnScope.PairStep(c: PairCtx, layout: KitLocal.Layout, tile: FocusRequester, armed: Boolean, qrColumns: Boolean) {
     when (c.ui.step) {
         "choose" -> PairChoose(c)
-        "opening", "show" -> PairShow(c, layout, tile)
+        "opening", "show" -> PairShow(c, layout, tile, qrColumns)
         "closed" -> PairClosed(c)
         "enter", "joining" -> PairEnter(c)
         "confirm" -> PairConfirm(c, armed)
@@ -189,19 +195,44 @@ private fun ColumnScope.PairStep(c: PairCtx, layout: KitLocal.Layout, tile: Focu
 private fun PairAnnouncements(c: PairCtx, tile: FocusRequester) {
     val ui = c.ui
     val announce = rememberPolarisAnnouncer()
-    val spokenCode = KitConnect.spellOut(ui.code.orEmpty())
-    LaunchedEffect(ui.rotation) {
-        if (ui.newCodeShown()) {
-            announce(c.lines.format("a11y.newCode", mapOf("code" to CopyArgument.Text(spokenCode))))
-            runCatching { tile.requestFocus() }
-        }
+    PairNewCodeAnnouncement(c, tile, announce)
+    // A switch says the new view's line; the first view of a window is told with its state.
+    LaunchedEffect(ui.switches) {
+        if (ui.switches > 0 && ui.step == "show") announce(c.text(if (ui.view == "qr") "localPairing.qrBody" else "localPairing.showBody"))
     }
+    // The title says "Code expired"; a screen reader also hears the sentence, once.
+    val expiredSaid = c.button("localPairing.failedExpired")
+    LaunchedEffect(ui.expired) { if (ui.expired) announce(expiredSaid) }
     LaunchedEffect(ui.error) { ui.error?.let { err -> errorKey(err)?.let { announce(c.text(it)) } } }
     LaunchedEffect(ui.notice) { if (ui.notice == "blocked") announce(c.text("localPairing.blockedTitle")) }
     LaunchedEffect(ui.step) { if (ui.step == "opening") announce(c.text("a11y.busy")) }
     // The wait is over: the person is told and focus rests on the heading's next control.
     LaunchedEffect(ui.cooldownLeft) {
         if (ui.step == "closed" && ui.cooldownLeft == 0) announce(c.text("localPairing.showNew"))
+    }
+}
+
+/**
+ * A new code that replaced the one being looked at. The code view says the notice and spells the code, and focus goes to the tile; the QR
+ * view says the change without the digits and focus rests on its heading. After a dead window, "The code changed." and the stage.
+ */
+@Composable
+private fun PairNewCodeAnnouncement(c: PairCtx, tile: FocusRequester, announce: (String) -> Unit) {
+    val ui = c.ui
+    val qr = ui.view == "qr"
+    val changedSaid = c.button("localPairing.rotatedBody")
+    val spelled = c.lines.format("a11y.newCode", mapOf("code" to CopyArgument.Text(KitConnect.spellOut(ui.code.orEmpty()))))
+    val notice = listOf("localPairing.rotatedTitle", "localPairing.notPairedWith", "localPairing.rotatedBody").mapNotNull { c.lines.text(it) }
+    LaunchedEffect(ui.rotation) {
+        if (!ui.newCodeShown()) return@LaunchedEffect
+        val said = when {
+            ui.renewedFromExpired -> if (qr) changedSaid else "$changedSaid $spelled"
+            qr -> notice.joinToString(" ")
+            else -> spelled
+        }
+        announce(said)
+        // The QR view has no tile: after a dead window the pressed button is gone, so focus goes to the card.
+        if (!qr || ui.renewedFromExpired) runCatching { tile.requestFocus() }
     }
 }
 
@@ -212,13 +243,28 @@ private fun PairSuccessMark() {
 }
 
 private fun titleKey(ui: PolarisLocalPairingUi): String = when (ui.step) {
+    "show" -> if (ui.expired) {
+        "core.codes.sign-in-expired.title"
+    } else if (ui.view == "qr") {
+        "localPairing.qrTitle"
+    } else {
+        "localPairing.title"
+    }
+
     "closed" -> "linkPairing.failedTitle"
+
     "confirm" -> if (ui.device != null) "localPairing.confirmTitle" else "localPairing.confirmUnnamed"
+
     "waiting" -> "linkPairing.waiting"
+
     "paired" -> "localPairing.pairedTitle"
+
     "failed" -> "linkPairing.failedTitle"
+
     "network-blocked" -> "core.codes.nearby-permission-denied.title"
+
     "off" -> "core.codes.local-pairing-off.title"
+
     else -> "localPairing.title"
 }
 

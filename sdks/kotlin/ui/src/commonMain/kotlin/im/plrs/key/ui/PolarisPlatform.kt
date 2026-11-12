@@ -73,6 +73,9 @@ internal expect fun decodeIcon(bytes: ByteArray, targetPx: Int = 0, maxSide: Int
 /** The widest side [decodeIcon] accepts unless told otherwise. */
 internal const val DEFAULT_ICON_MAX_SIDE: Int = 16384
 
+/** Whether `Modifier.blur` blurs here: Android from API 31 (below it the modifier does nothing), the desktop always. */
+internal expect fun blurSupported(): Boolean
+
 /** A QR code of [content]. Android draws it; the desktop draws none (D-67: the screen has the code and Copy link). */
 @Composable
 internal expect fun PolarisQr(content: String, contentDescription: String, modifier: Modifier = Modifier)

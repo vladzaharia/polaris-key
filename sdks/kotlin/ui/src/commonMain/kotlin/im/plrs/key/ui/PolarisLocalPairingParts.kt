@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -168,12 +169,15 @@ internal fun PairRing(fraction: Float, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PairActionRow(secondary: String, onSecondary: () -> Unit, link: Pair<String, () -> Unit>? = null, initialFocus: Boolean = true) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(PolarisSpace.group),
-        verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
-        itemVerticalAlignment = Alignment.CenterVertically,
-    ) {
-        PolarisSecondaryButton(secondary, onSecondary, initialFocus = initialFocus)
-        if (link != null) PairLink(link.first, link.second)
+    // An action row: the secondary hugs its label instead of filling the width, so it never reads as a third choice.
+    CompositionLocalProvider(LocalPolarisActionRow provides true) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(PolarisSpace.group),
+            verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            PolarisSecondaryButton(secondary, onSecondary, initialFocus = initialFocus)
+            if (link != null) PairLink(link.first, link.second)
+        }
     }
 }

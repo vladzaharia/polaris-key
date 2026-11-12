@@ -171,6 +171,9 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
     /// default). A screen whose actions are the choice itself (SaveConflict) turns it off: they
     /// flow with the content, so they never cover it and never reorder.
     var dockActions = true
+    /// The column takes the whole window width: a screen that lays its own two columns (the QR view
+    /// in a laptop window, the camera on a landscape phone) draws its actions in them.
+    var fullWidth = false
     @ViewBuilder let heading: () -> Heading
     @ViewBuilder let content: () -> Content
     @ViewBuilder let actions: () -> Actions
@@ -297,7 +300,7 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
                     }
                 }
                 .padding(.horizontal, style.space(.lg))
-                .frame(maxWidth: geo.size.width > 600 ? 480 : .infinity)
+                .frame(maxWidth: geo.size.width > 600 && !fullWidth ? 480 : .infinity)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: geo.size.height)
             }
@@ -355,14 +358,14 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
 extension KitScreenScaffold where Footer == EmptyView {
     init(
         hero: Bool = false, header: Bool = true, heroName: Bool = false, tier: String? = nil,
-        dockActions: Bool = true,
+        dockActions: Bool = true, fullWidth: Bool = false,
         @ViewBuilder heading: @escaping () -> Heading,
         @ViewBuilder content: @escaping () -> Content,
         @ViewBuilder actions: @escaping () -> Actions
     ) {
         self.init(
             hero: hero, header: header, heroName: heroName, tier: tier, dockActions: dockActions,
-            heading: heading, content: content,
+            fullWidth: fullWidth, heading: heading, content: content,
             actions: actions, footer: { EmptyView() })
     }
 }

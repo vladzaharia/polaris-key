@@ -10,6 +10,12 @@ public interface PolarisPairFlowActions {
 
     public fun enter() {}
 
+    /** The QR view of the open code: the window and its code are untouched. */
+    public fun showQr() {}
+
+    /** The code view again. */
+    public fun showCode() {}
+
     public fun showNew() {}
 
     public fun back() {}

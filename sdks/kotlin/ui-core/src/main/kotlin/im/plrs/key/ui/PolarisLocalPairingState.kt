@@ -46,6 +46,10 @@ public data class PolarisLocalPairingUi(
     val code: String? = null,
     val qr: String? = null,
     val secondsLeft: Int? = null,
+    /** show: which view of the window is open: `"qr"`, or null for the code. The window and its time are the same in both. */
+    val view: String? = null,
+    /** show: the window ran out and nothing renewed it; the open view stays, dimmed, with Show a new code. */
+    val expired: Boolean = false,
     val notice: String? = null,
     val busy: String? = null,
     val closedBy: String? = null,
@@ -76,12 +80,16 @@ public data class PolarisLocalPairingUi(
     val changed: List<Int> = emptyList(),
     /** show: bumps with each new code, so a renderer can restart its highlight and announce it. */
     val rotation: Int = 0,
+    /** show: bumps each time the person switches between the code and the QR, so a renderer can announce the switch. */
+    val switches: Int = 0,
     /** paired: the name field's text; Done renames when it changed. */
     val name: String = "",
     /** paired: the pairing's id. */
     val id: String? = null,
     /** show: this code replaced one the person was looking at (a wrong guess, a Not now, Show a new code). */
     val replaced: Boolean = false,
+    /** show: this code opened the next window in place of one that ran out. */
+    val renewedFromExpired: Boolean = false,
     /** The person left (Cancel on choose, Close, Done): the host closes the screen. */
     val left: Boolean = false,
 ) {
@@ -94,6 +102,8 @@ public data class PolarisLocalPairingUi(
             code?.let { put("code", JsonPrimitive(it)) }
             qr?.let { put("qr", JsonPrimitive(it)) }
             secondsLeft?.let { put("secondsLeft", JsonPrimitive(it)) }
+            view?.let { put("view", JsonPrimitive(it)) }
+            if (expired) put("expired", JsonPrimitive(true))
             notice?.let { put("notice", JsonPrimitive(it)) }
             busy?.let { put("busy", JsonPrimitive(it)) }
             closedBy?.let { put("closedBy", JsonPrimitive(it)) }
@@ -164,6 +174,14 @@ public class PolarisLocalPairingState(
     private var canScan = false
     private var scanned = false
 
+    /** The view the person last chose for the window; a new window opens on it. Forgotten when the show flow is left. */
+    private var chosenView: String? = null
+
+    /** The scanner's module is there (a prepare answered true); a scanner that then says "not ready" twice cannot run on this device. */
+    private var prepared = false
+    private var notReady = 0
+    private var prepareJob: Job? = null
+
     private fun ui(change: PolarisLocalPairingUi.() -> PolarisLocalPairingUi) {
         _ui.value = _ui.value.change()
     }
@@ -187,7 +205,34 @@ public class PolarisLocalPairingState(
         canScan = scanner?.let { runCatching { it.available() }.getOrDefault(false) } ?: false
         // Google's module downloads on demand: ask ahead, and say so while it does.
         val preparing = canScan && scanner?.let { runCatching { it.prepare() }.getOrDefault(true) } == false
+        prepared = canScan && !preparing
+        notReady = 0
         go(entryStep().copy(full = full, scanNotice = if (preparing) "preparing" else null))
+        if (preparing) watchPrepare()
+    }
+
+    /**
+     * The module is being fetched: look again every few seconds, and clear "Getting the scanner ready…" when it is there. The watch is
+     * bounded, so a device that never gets it stops asking and the entry says "not ready" on use.
+     */
+    private fun watchPrepare() {
+        val sc = scanner ?: return
+        prepareJob?.cancel()
+        prepareJob = scope.launch {
+            repeat(PREPARE_POLLS) {
+                sleep(PREPARE_POLL_MS)
+                if (runCatching { sc.prepare() }.getOrDefault(true)) {
+                    prepared = true
+                    clearPreparing()
+                    return@launch
+                }
+            }
+            clearPreparing()
+        }
+    }
+
+    private fun clearPreparing() {
+        if (_ui.value.step == "choose" && _ui.value.scanNotice == "preparing") ui { copy(scanNotice = null) }
     }
 
     // ── Show ─────────────────────────────────────────────────────────────────────────────────────
@@ -206,12 +251,14 @@ public class PolarisLocalPairingState(
 
     private suspend fun openWindow(renew: Boolean = false) {
         val renewing = renew && shower != null
+        // A window that ran out stays on screen, in its view, while the next one opens.
+        val inPlace = renew && !renewing && _ui.value.step == "show" && _ui.value.expired
         if (!renewing) epoch++
         val mine = epoch
         fun live() = mine == epoch
         // A second press while the first is answered does nothing.
-        if (renewing && _ui.value.busy != null) return
-        if (renewing) ui { copy(busy = "new-code") } else go(PolarisLocalPairingUi(step = "opening"))
+        if ((renewing || inPlace) && _ui.value.busy != null) return
+        if (renewing || inPlace) ui { copy(busy = "new-code") } else go(PolarisLocalPairingUi(step = "opening"))
         try {
             val current = shower
             if (renewing && current != null) {
@@ -264,6 +311,8 @@ public class PolarisLocalPairingState(
         go(
             PolarisLocalPairingUi(
                 step = "show",
+                // A new window opens on the view the person last chose; a rotation keeps it.
+                view = chosenView,
                 code = c.code,
                 qr = c.qr,
                 secondsLeft = maxOf(0, kotlin.math.ceil(expiresAt - now()).toInt()),
@@ -272,6 +321,7 @@ public class PolarisLocalPairingState(
                 changed = diff,
                 rotation = prev.rotation + 1,
                 replaced = prev.step == "show" || prev.step == "confirm",
+                renewedFromExpired = prev.step == "show" && prev.expired,
             ),
         )
         tick()
@@ -289,7 +339,25 @@ public class PolarisLocalPairingState(
                 tick()
             }
 
-            "expired" -> go(PolarisLocalPairingUi(step = "closed", closedBy = "expired", warn = tooMany >= 2))
+            "expired" -> {
+                val shown = _ui.value
+                if (shown.step == "show" && shown.code != null) {
+                    // The view stays, dimmed, with a new code one press away.
+                    go(
+                        PolarisLocalPairingUi(
+                            step = "show",
+                            view = shown.view,
+                            code = shown.code,
+                            qr = shown.qr,
+                            secondsLeft = 0,
+                            expired = true,
+                            rotation = shown.rotation,
+                        ),
+                    )
+                } else {
+                    go(PolarisLocalPairingUi(step = "closed", closedBy = "expired", warn = tooMany >= 2))
+                }
+            }
 
             "off" -> go(PolarisLocalPairingUi(step = "off"))
 
@@ -503,6 +571,22 @@ public class PolarisLocalPairingState(
     /** Show a code instead, from the field. */
     public suspend fun toShow(): Unit = openWindow()
 
+    /** The QR view of the open code: the code, its time and its pairing window are untouched. */
+    public fun showQr() {
+        val s = _ui.value
+        if (s.step != "show" || s.view == "qr") return
+        chosenView = "qr"
+        ui { copy(view = "qr", switches = switches + 1) }
+    }
+
+    /** The code view again. */
+    public fun showCode() {
+        val s = _ui.value
+        if (s.step != "show" || s.view != "qr") return
+        chosenView = null
+        ui { copy(view = null, switches = switches + 1) }
+    }
+
     /** Enter a code instead, from a shown code: the window is withdrawn at once. */
     public suspend fun toEnter(): Unit = enter()
 
@@ -517,12 +601,24 @@ public class PolarisLocalPairingState(
         if (!canScan || _ui.value.full || _ui.value.step != "choose") return
         val mine = ++epoch
         when (val result = sc.scan()) {
-            is PolarisScanResult.Text -> if (mine == epoch) join(result.text)
+            is PolarisScanResult.Text -> if (mine == epoch) {
+                notReady = 0
+                join(result.text)
+            }
 
             PolarisScanResult.Cancelled -> if (mine == epoch) go(entryStep())
 
-            // The module is still being fetched: say so, and the entry stays.
-            PolarisScanResult.NotReady -> if (mine == epoch) go(entryStep().copy(scanNotice = "not-ready"))
+            // The module is still being fetched: say so, and the entry stays. With the module there already, a scanner that cannot open
+            // twice running cannot run on this device: the entry goes, with no endless "try again".
+            PolarisScanResult.NotReady -> {
+                notReady++
+                if (prepared && notReady >= NOT_READY_LIMIT) {
+                    canScan = false
+                    if (mine == epoch) go(entryStep())
+                } else if (mine == epoch) {
+                    go(entryStep().copy(scanNotice = "not-ready"))
+                }
+            }
 
             PolarisScanResult.Unavailable -> {
                 canScan = false
@@ -670,6 +766,7 @@ public class PolarisLocalPairingState(
 
     /** The renderer left the composition: withdraw the code, stop a join and decline a prompt, whatever the step. */
     public fun dispose() {
+        prepareJob?.cancel()
         scope.launch { close() }
     }
 
@@ -686,7 +783,7 @@ public class PolarisLocalPairingState(
     public fun tick() {
         cancelTick()
         val s = _ui.value
-        if (s.step == "show") {
+        if (s.step == "show" && !s.expired) {
             ui { copy(secondsLeft = maxOf(0, kotlin.math.ceil(expiresAt - now()).toInt())) }
         } else if (s.step == "closed" && (s.cooldownLeft ?: 0) > 0) {
             val left = cooldownLeft()
@@ -740,9 +837,12 @@ public class PolarisLocalPairingState(
     /** Replace the screen: only what is named survives, with the categories and the rotation count kept. */
     private fun go(next: PolarisLocalPairingUi) {
         val prev = _ui.value
+        // The view is the window's: leaving the show flow forgets it.
+        if (next.step !in setOf("show", "opening", "closed")) chosenView = null
         _ui.value = next.copy(
             categories = if (next.step == "confirm" || next.categories.isNotEmpty()) next.categories else categories.toList(),
             rotation = if (next.step == "show") next.rotation else prev.rotation,
+            switches = prev.switches,
             left = prev.left,
             canOpenSettings = next.canOpenSettings,
             canScan = canScan,
@@ -758,6 +858,9 @@ public class PolarisLocalPairingState(
         const val MILLIS_PER_SECOND = 1000.0
         const val BLOCKED_AFTER = 3
         const val GROUP = 4
+        const val PREPARE_POLLS = 60
+        const val PREPARE_POLL_MS = 2000L
+        const val NOT_READY_LIMIT = 2
 
         fun digits(text: String): String = text.filter { it in '0'..'9' }.take(CODE_DIGITS)
 

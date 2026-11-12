@@ -7156,18 +7156,11 @@ function localFamily(a: A): Draft[] {
     "localPairing.toCode",
     "common.cancel",
   ];
-  // The SwiftUI and Compose kits learn the code and QR split with their own slice; until then they check the
-  // view the shared rules give and draw nothing for the QR view.
-  const QR_LATER = {
-    sdks: ["swift", "kotlin"],
-    reason:
-      "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then.",
-  };
   // The expired window and the QR view's notices are the final Light Card; the Godot kit draws the earlier states.
   const QR_FINAL = {
-    sdks: ["swift", "kotlin", "godot"],
+    sdks: ["godot"],
     reason:
-      "The expired window and the notices on the QR view are the React kit's final Light Card; the SwiftUI, Compose and Godot kits take them in a later slice and check the shared view until then.",
+      "The expired window and the notices on the QR view are the React, SwiftUI and Compose kits' final Light Card; the Godot kit takes them in a later slice and checks the shared view until then.",
   };
   const WINDOW = {
     code: "4812 3456",
@@ -7615,7 +7608,6 @@ function localFamily(a: A): Draft[] {
             ],
           },
         ),
-        notApplicable: QR_LATER,
       },
     ),
     row(
@@ -7632,7 +7624,6 @@ function localFamily(a: A): Draft[] {
         ...inv("The warning is said in the QR view too.", {
           copy: ["a11y.linkCode"],
         }),
-        notApplicable: QR_LATER,
       },
     ),
     row(
@@ -7755,7 +7746,6 @@ function localFamily(a: A): Draft[] {
         ...inv("A blocked network is said in the QR view too.", {
           copy: ["a11y.linkCode"],
         }),
-        notApplicable: QR_LATER,
       },
     ),
     row(

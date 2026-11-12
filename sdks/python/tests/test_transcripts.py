@@ -837,7 +837,7 @@ def _cloud_sync_file_step(client: PolarisKeyClient, step: Dict[str, Any]) -> Dic
     target = FileTarget(collection, args.get("id", ""))
     m = re.search(r"/upload/([^/?]+)", req["path"])
     upload_id = m.group(1) if m else ""
-    body_json = (req.get("body") or {}).get("json")
+    body_json: Any = (req.get("body") or {}).get("json")
     data = base64.b64decode(req["bodyBase64"]) if req.get("bodyBase64") else b""
     # A PUT carries the digest the recording sent. It is the body's own except where a step sends a wrong
     # one on purpose (`upload_mismatch`); the transport only encodes the hex it is given.

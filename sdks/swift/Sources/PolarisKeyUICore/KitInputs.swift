@@ -1185,6 +1185,8 @@ public struct KitLocalPairing: Sendable, Codable, Equatable, Hashable {
         case notACode = "not-a-code"
     }
     public enum Reason: String, Sendable, Codable { case declined, timeout, full, closed }
+    /// show: the window's second view. Absent is the code; the QR view is the state `show-qr`.
+    public enum View: String, Sendable, Codable { case qr }
 
     public var step: Step
     public var prePrompt: Bool?
@@ -1202,6 +1204,10 @@ public struct KitLocalPairing: Sendable, Codable, Equatable, Hashable {
     public var code: String?
     public var qr: String?
     public var secondsLeft: Int?
+    /// show: which view of the window is open; the window and its time are the same in both.
+    public var view: View?
+    /// show: the window ran out and nothing renewed it; the open view stays, dimmed, with Show a new code.
+    public var expired: Bool?
     public var notice: Notice?
     public var busy: Busy?
     public var closedBy: ClosedBy?

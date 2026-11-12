@@ -37,6 +37,20 @@ const FAMILIES := {
 }
 const SIGN_IN := ["SignIn", "SignInHandoff", "LicenseChoice"]
 
+## The rows the Godot kit does not draw yet, by name. A row the corpus marks for `godot` that is not listed
+## here fails, so the skip can never hide a row the kit draws.
+const NOT_DRAWN := [
+	"LocalPairing/show-qr: a wrong code changed it, said without the digits",
+	"LocalPairing/show-qr: the code expired, the QR stays dimmed with a new code one press away",
+	"LocalPairing/show: the code expired, the digits stay dimmed with a new code one press away",
+	"LocalPairing/show-qr: a prompt was declined, said without the digits",
+	"LocalPairing/show-qr: a new code is being opened in place after the code expired",
+]
+const NOT_DRAWN_PREFIXES := [
+	"LocalPairing/choose:", "LocalPairing/scan:", "LocalPairing/scan-prompt:", "LocalPairing/camera-off:",
+	"LocalPairing/enter: Scan the code instead",
+]
+
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	var only := ""
@@ -47,6 +61,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	if not t.check("ui-matrix.json: reads", m is Dictionary):
 		return true
 	t.check("ui-matrix.json: uiMatrixVersion is the kit's and the generated constant", m.get("uiMatrixVersion") == float(Vocabulary.UI_MATRIX_VERSION) and Vocabulary.UI_MATRIX_VERSION == PKeyConstants.UI_MATRIX_VERSION, str(m.get("uiMatrixVersion")))
+	_skips_are_listed(t, m)
 	for family in FAMILIES.keys() + ["localLayout", "theme", "i18n"]:
 		t.check("ui-matrix.json: holds the %s family" % family, m.get(family) is Array)
 	var defaults: Dictionary = m["vocabulary"]["defaults"]
@@ -116,6 +131,23 @@ func _nameless_welcome(t: PKeyTestContext, defaults: Dictionary) -> void:
 	t.check("nameless Welcome (sign-in only): a lede with no product", lede.has("common.signInToContinue") and not lede.has("welcome.ledeSignInOnly"), str(lede))
 	var named := view_for({"input": {}, "expect": {"component": "Welcome"}}, defaults)
 	t.check("a named Welcome keeps welcome.title", (named.get("copy", []) as Array).has("welcome.title"))
+
+
+## Every row marked not applicable to godot is one of the listed ones (camera and scan rows by prefix).
+func _skips_are_listed(t: PKeyTestContext, m: Dictionary) -> void:
+	var stray: Array = []
+	var seen := 0
+	for family in m.keys():
+		if not (m[family] is Array):
+			continue
+		for row in m[family]:
+			if not (row is Dictionary) or not not_applicable(row):
+				continue
+			seen += 1
+			var n := String(row["name"])
+			if not NOT_DRAWN.has(n) and not NOT_DRAWN_PREFIXES.any(func(p: String) -> bool: return n.begins_with(p)):
+				stray.append(n)
+	t.check("ui-matrix.json: only listed rows are skipped for godot (%d)" % seen, stray.is_empty() and seen > 0, str(stray))
 
 
 ## True when the corpus marks a row not applicable to this kit (`notApplicable.sdks` names `godot`).

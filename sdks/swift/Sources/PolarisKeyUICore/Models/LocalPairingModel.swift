@@ -40,6 +40,11 @@ public final class LocalPairingModel {
     public private(set) var rotation = 0
     /// show: this code replaced one the person was looking at (a wrong guess, a Not now, Show a new code).
     public private(set) var replaced = false
+    /// show: this code opened the next window in place of one that ran out.
+    public private(set) var renewedFromExpired = false
+    /// show: bumps each time the person switches between the code and the QR, so a renderer can
+    /// announce the switch (and not the first view).
+    public private(set) var switches = 0
     /// paired: the name field's text; Done renames when it changed.
     public private(set) var name = ""
     /// paired: the pairing's id.
@@ -79,6 +84,9 @@ public final class LocalPairingModel {
     static let rereadSeconds = 2.0
     /// The join in flight came from a scanned code: Cancel returns to the camera.
     @ObservationIgnored private var scanned = false
+    /// The view the person last chose for the window; a new window opens on it. Forgotten when the
+    /// show flow is left.
+    @ObservationIgnored private var chosenView: KitLocalPairing.View?
 
     private static let tooManyWrong = 5
 
@@ -170,10 +178,12 @@ public final class LocalPairingModel {
 
     private func openWindow(renew: Bool = false) async {
         let renewing = renew && shower != nil
+        // A window that ran out stays on screen, in its view, while the next one opens.
+        let inPlace = renew && !renewing && state.step == .show && state.expired == true
         if !renewing { epoch += 1 }
         let mine = epoch
         let live: @MainActor () -> Bool = { [weak self] in self?.epoch == mine }
-        if renewing {
+        if renewing || inPlace {
             if state.busy != nil { return }
             state.busy = .newCode
         } else {
@@ -221,6 +231,8 @@ public final class LocalPairingModel {
             for i in a.indices where i >= b.count || a[i] != b[i] { diff.append(i) }
         }
         var next = KitLocalPairing(step: .show)
+        // A new window opens on the view the person last chose; a rotation keeps it.
+        next.view = chosenView
         next.code = c.code
         next.qr = c.qr
         next.secondsLeft = max(0, Int((expiresAt - now()).rounded(.up)))
@@ -230,6 +242,7 @@ public final class LocalPairingModel {
         }
         rotation += 1
         replaced = prev.step == .show || prev.step == .confirm
+        renewedFromExpired = prev.step == .show && prev.expired == true
         go(next, changed: diff)
         tick()
     }
@@ -249,6 +262,18 @@ public final class LocalPairingModel {
             go(next)
             tick()
         case "expired":
+            let shown = state
+            if shown.step == .show, let code = shown.code {
+                // The view stays, dimmed, with a new code one press away.
+                var held = KitLocalPairing(step: .show)
+                held.view = shown.view
+                held.code = code
+                held.qr = shown.qr
+                held.secondsLeft = 0
+                held.expired = true
+                go(held)
+                break
+            }
             var next = KitLocalPairing(step: .closed)
             next.closedBy = .expired
             if tooMany >= 2 { next.warn = true }
@@ -469,6 +494,22 @@ public final class LocalPairingModel {
     /// Show a code instead, from the field.
     public func toShow() async { await openWindow() }
 
+    /// The QR view of the open code: the code, its time and its pairing window are untouched.
+    public func showQr() {
+        guard state.step == .show, state.view != .qr else { return }
+        chosenView = .qr
+        state.view = .qr
+        switches += 1
+    }
+
+    /// The code view again.
+    public func showCode() {
+        guard state.step == .show, state.view == .qr else { return }
+        chosenView = nil
+        state.view = nil
+        switches += 1
+    }
+
     /// Enter a code instead, from a shown code: the window is withdrawn at once.
     public func toEnter() async { await enter() }
 
@@ -545,6 +586,14 @@ public final class LocalPairingModel {
         guard state.step == .scan, joinTask == nil, !text.isEmpty else { return }
         if let last = lastRead, last.text == text, now() - last.at < Self.rereadSeconds { return }
         lastRead = (text, now())
+        // A QR that is not a pairing code of this app is said in place: the step, the camera, the
+        // focus and the haptics stay as they were.
+        switch driver.readQr(text) {
+        case .ours: break
+        case .otherApp, .invalid:
+            if state.scanNotice != .otherApp { state.scanNotice = .otherApp }
+            return
+        }
         scanned = true
         epoch += 1
         let mine = epoch
@@ -692,7 +741,7 @@ public final class LocalPairingModel {
     /// One second passed: the ring and the wait follow the clock. Public so a test drives it.
     public func tick() {
         cancelTick()
-        if state.step == .show {
+        if state.step == .show, state.expired != true {
             state.secondsLeft = max(0, Int((expiresAt - now()).rounded(.up)))
         } else if state.step == .closed, (state.cooldownLeft ?? 0) > 0 {
             let left = cooldownLeft()
@@ -752,6 +801,8 @@ public final class LocalPairingModel {
     /// Replace the screen: only what is named survives, with the categories and the cap kept.
     private func go(_ next: KitLocalPairing, changed diff: [Int] = []) {
         var s = next
+        // The view is the window's: leaving the show flow forgets it.
+        if ![.show, .opening, .closed].contains(s.step) { chosenView = nil }
         if s.categories == nil { s.categories = categories }
         if canScan, Self.scanSteps.contains(s.step) { s.canScan = true }
         s.max = state.max

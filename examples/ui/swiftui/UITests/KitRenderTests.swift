@@ -11,6 +11,7 @@
 
 import SnapshotTesting
 import UIKit
+import Vision
 import XCTest
 
 final class KitRenderTests: XCTestCase {
@@ -30,6 +31,10 @@ final class KitRenderTests: XCTestCase {
     /// the states it applies to (empty: every state).
     static let exempt:
         [(audit: String, element: String, contains: String, states: [String], reason: String)] = [
+            (
+                "Text clipped", "text", "Camera access is off", ["LocalPairing.camera-off"],
+                "The one-line label above the body sits in a stack the audit measures at its tight leading; the render shows it whole, and AX3 and landscape renders show it wrapping."
+            ),
             (
                 "Text clipped", "field", "", [],
                 "A license key gives way in the middle at rest, keeping the prefix and the last six (UI-KITS §4.3, DL11); VoiceOver reads the whole key."
@@ -188,6 +193,18 @@ final class KitRenderTests: XCTestCase {
         "ActivateDone.ready", "AddToAccount.form", "AddToAccount.waiting", "AddToAccount.email-bound",
     ]
 
+    /// Pair with a Code (CC-29K): the show step's code and QR views, the scan steps and their notices, and the camera-off and
+    /// opening steps. They render at a phone's default rows plus AX3 and landscape in both schemes (`localMatrix`).
+    static let local = [
+        "LocalPairing.choose", "LocalPairing.choose.scan", "LocalPairing.opening", "LocalPairing.show",
+        "LocalPairing.show-qr", "LocalPairing.show.expired", "LocalPairing.show-qr.expired",
+        "LocalPairing.show.rotated", "LocalPairing.scan-prompt", "LocalPairing.scan",
+        "LocalPairing.scan.other-app", "LocalPairing.scan.not-found", "LocalPairing.scan.stale",
+        "LocalPairing.scan.camera-busy", "LocalPairing.camera-off", "LocalPairing.enter",
+        "LocalPairing.enter.wrong", "LocalPairing.joining", "LocalPairing.confirm",
+        "LocalPairing.waiting", "LocalPairing.paired",
+    ]
+
     static let all = [
         "PolarisKeyGate.booting", "Welcome.default", "Welcome.default.extras",
         "Welcome.default.drift-kart", "Welcome.default.no-presentation", "Welcome.busy",
@@ -249,7 +266,7 @@ final class KitRenderTests: XCTestCase {
         "AddToAccount.added.from-settings", "AddToAccount.owned", "AddToAccount.email-bound",
         "AddToAccount.other-account", "AddToAccount.failed", "SignIn.key-done", "SignIn.attach",
         "SignIn.attach.invalid", "SignIn.added",
-    ]
+    ] + local
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.
     static let localized = ["Welcome.default", "Activate.device-limit", "SignInHandoff.code"]
@@ -287,6 +304,13 @@ final class KitRenderTests: XCTestCase {
             }
             let env = ProcessInfo.processInfo.environment
             let quick = (env["PKEY_KIT_QUICK"] ?? env["TEST_RUNNER_PKEY_KIT_QUICK"]) == "1"
+            if Self.local.contains(state), !quick {
+                // The pairing screens: large text and a landscape phone are where they were cut, so each is drawn there.
+                renders.append(try render(state, scheme: "dark", type: "AX3"))
+                renders.append(try render(state, scheme: "light", orientation: .landscapeLeft))
+                renders.append(try render(state, scheme: "dark", orientation: .landscapeLeft))
+                continue
+            }
             guard Self.full.contains(state), !quick else { continue }
             for type in ["AX3", "AX5"] {
                 renders.append(try render(state, scheme: "dark", type: type))
@@ -320,6 +344,7 @@ final class KitRenderTests: XCTestCase {
             r.audit.filter {
                 !$0.contains("nearly passed") && !$0.hasPrefix("measured ")
                     && !$0.hasPrefix("off-screen") && !$0.hasPrefix("not attributable")
+                    && !$0.hasPrefix("exempt: ")
             }
             .map { "\(r.state) \(r.scheme) \(r.type) \(r.orientation) \(r.preset): \($0)" }
         }
@@ -333,6 +358,14 @@ final class KitRenderTests: XCTestCase {
         orientation: UIDeviceOrientation = .portrait, preset: String = "polaris-key",
         locale: String? = nil
     ) throws -> Render {
+        // PKEY_KIT_SCHEME=light re-records (or checks) one scheme only: a change that cannot touch the other skips it.
+        let envScheme = ProcessInfo.processInfo.environment["PKEY_KIT_SCHEME"]
+            ?? ProcessInfo.processInfo.environment["TEST_RUNNER_PKEY_KIT_SCHEME"]
+        if let envScheme, !envScheme.isEmpty, envScheme != scheme {
+            return Render(
+                state: state, device: device, orientation: "skipped", type: type, preset: preset,
+                scheme: scheme, audit: [], voiceOver: [])
+        }
         XCUIDevice.shared.orientation = orientation
         let app = XCUIApplication()
         var args = ["-pkeyState", state, "-pkeyScheme", scheme, "-pkeyFreezeTime"]
@@ -378,7 +411,22 @@ final class KitRenderTests: XCTestCase {
             upright, state: state, name: name,
             isDefault: locale == nil && isDefaultRow(type, orientation, preset))
 
-        let layoutIssues: [String] = Self.textOutsideItsButton(app)
+        var layoutIssues: [String] = Self.textOutsideItsButton(app)
+        // A dead pairing QR must not scan: Apple's barcode reader (the camera's) finds nothing on the expired render.
+        if state.hasPrefix("LocalPairing.show-qr.expired"), let cg = upright.cgImage {
+            let request = VNDetectBarcodesRequest()
+            request.symbologies = [.qr]
+            // The simulator has no neural engine: the CPU path reads barcodes.
+            request.usesCPUOnly = true
+            do {
+                try VNImageRequestHandler(cgImage: cg).perform([request])
+                let found = (request.results ?? []).compactMap(\.payloadStringValue)
+                if !found.isEmpty { layoutIssues.append("the expired QR still decodes: \(found)") }
+            } catch {
+                // Never silent: the macOS suite decodes the same card; a reader that cannot run here is noted in the JSON.
+                layoutIssues.append("exempt: the barcode reader could not run on this runtime (\(error.localizedDescription))")
+            }
+        }
         // The audit's frames are in the app's coordinates, the upright render's.
         let scale = upright.scale
         let window = app.windows.firstMatch.frame
@@ -435,7 +483,7 @@ final class KitRenderTests: XCTestCase {
                 let floor = element.elementType == .image ? 3.0 : 4.5
                 if ratio >= floor {
                     issues.append(
-                        "measured \(String(format: "%.1f", ratio)):1 (audit said \(issue.compactDescription)) [\(type) \(label)]"
+                        "measured \(String(format: "%.2f", ratio)):1 (audit said \(issue.compactDescription)) [\(type) \(label)]"
                     )
                     return true
                 }
@@ -446,7 +494,10 @@ final class KitRenderTests: XCTestCase {
                 )
                 return true
             }
-            if !exempt {
+            if exempt {
+                // Logged, never failing: an exemption that hides a real finding must leave a trace in the JSON.
+                issues.append("exempt: \(issue.compactDescription) [\(type) \(label)]")
+            } else {
                 issues.append("\(issue.compactDescription) [\(type) \(label)]")
             }
             return true
@@ -465,10 +516,17 @@ final class KitRenderTests: XCTestCase {
         where element.exists && element.isHittable && !element.label.isEmpty {
             voiceOver.append("\(Self.typeName(element.elementType)): \(element.label)")
         }
+        // An expired pairing view keeps both buttons at every size and orientation (never a dead end).
+        var deadEnd: [String] = []
+        if state.hasPrefix("LocalPairing.show") && state.hasSuffix("expired") {
+            for button in ["Show a new code", "Cancel"] where !voiceOver.contains(where: { $0.hasSuffix(button) }) {
+                deadEnd.append("\(state) has no \(button) in the VoiceOver list")
+            }
+        }
         app.terminate()
         return Render(
             state: state, device: device, orientation: orientationName, type: type, preset: preset,
-            scheme: scheme, audit: issues, voiceOver: voiceOver)
+            scheme: scheme, audit: issues + deadEnd, voiceOver: voiceOver)
     }
 
     var baselineFailures: [String] = []

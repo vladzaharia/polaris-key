@@ -67,12 +67,7 @@ class UIMatrixPresentationTest {
             val name = row.string("name") ?: "?"
             val window = requireNotNull(row.obj("window")) { "$name: window" }
             val expect = requireNotNull(row.obj("expect")) { "$name: expect" }
-            val got = KitLocal.layout(
-                window["width"].double() ?: 0.0,
-                window["height"].double() ?: 0.0,
-                window["textScale"].double() ?: 1.0,
-                window.boolean("tv") == true,
-            )
+            val got = KitLocal.layout(window["height"].double() ?: 0.0, window.boolean("tv") == true)
             failures.compare("$name panes", expect.integer("panes"), got.panes)
             failures.compare("$name logo", expect.boolean("logo"), got.logo)
             failures.compare("$name scrolls", expect.boolean("scrolls"), got.scrolls)

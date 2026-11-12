@@ -8,6 +8,12 @@
 
 package im.plrs.key.ui
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -23,7 +29,12 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -92,6 +103,8 @@ internal fun pairingUiOf(p: JsonObject) = PolarisLocalPairingUi(
     scanShares = p.flag("scanShares"),
     cameraBusy = p.flag("cameraBusy"),
     cantConnect = p.flag("cantConnect"),
+    view = p.str("view"),
+    expired = p.flag("expired"),
     nameError = p.str("nameError") != null,
     max = p.int("max") ?: KitLocal.MAX_CONNECTABLE,
     name = p.str("device").orEmpty(),
@@ -152,9 +165,18 @@ internal object LocalCases {
                 state,
                 expect["copy"]!!.strings(),
                 expect["disabled"]?.strings().orEmpty(),
-                drawn = "compose" !in ((row["notApplicable"] as? JsonObject)?.get("sdks")?.strings().orEmpty()),
+                drawn = "compose" !in ((row["notApplicable"] as? JsonObject)?.get("sdks")?.strings().orEmpty()) && reachable(input),
             )
         }
+    }
+
+    /**
+     * A choose step that can scan without the host's sheet never occurs on Android: the state holder sets both together, because Google's
+     * scanner is its own sheet. A row for it would record a choose with no way to type, so it is not drawn.
+     */
+    private fun reachable(input: JsonObject): Boolean {
+        val p = input["localPairing"] as? JsonObject ?: return true
+        return !(p.str("step") == "choose" && p.flag("canScan") && !p.flag("sheetScan"))
     }
 
     /** The rows Compose draws. */
@@ -217,7 +239,7 @@ class LocalMatrixSnapshotTest(private val dark: Boolean) {
 }
 
 private val localSizes = listOf(
-    // The window rule: two panes from 600 wide at the root text size, no logo under 480 tall, one column that scrolls when narrow and short.
+    // The window rule: one column at every size; no logo under 480 tall, the column scrolls; the QR view splits in two from 720 wide.
     ResponsiveSize("phone-844x390", 844, 390, nativeDark = true),
     ResponsiveSize("small-landscape-640x360", 640, 360, nativeDark = false),
     ResponsiveSize("narrow-short-390x420", 390, 420, nativeDark = true),
@@ -250,6 +272,8 @@ class LocalResponsiveSnapshotTest(private val variant: SnapshotVariant) {
             "localpairing-confirm-the",
             "paireddevices-list-five",
             "localpairing-show-the-code-is",
+            "localpairing-show-qr-the-qr",
+            "localpairing-show-qr-the-code-expired",
             "paireddevices-renaming-in-the",
         )) {
             val case = LocalCases.drawn.firstOrNull { it.id.substringAfter('-').startsWith(prefix) } ?: continue
@@ -303,16 +327,89 @@ class LocalScreensTest {
     }
 
     @Test
-    fun theEnterLinkOnTheShownCodeIsNeverSqueezed() {
+    fun theLinkOnTheShownCodeIsNeverSqueezed() {
         show { PolarisLocalPairingScreen(pairing("show") { copy(code = "4812 3456", qr = "PKP1:T:X:Y", secondsLeft = 291) }) }
-        assertLinkIsWholeWords("Enter a code instead")
+        assertLinkIsWholeWords("Show a QR code")
     }
 
     @Test
-    fun theCodeIsReadDigitByDigit() {
+    fun theLinkOnTheQrViewIsNeverSqueezed() {
+        show { PolarisLocalPairingScreen(pairing("show") { copy(code = "4812 3456", qr = "PKP1:T:X:Y", secondsLeft = 291, view = "qr") }) }
+        assertLinkIsWholeWords("Show the code instead")
+    }
+
+    @Test
+    fun cancelHugsItsWordsAndIsNotAFullWidthPill() {
         show { PolarisLocalPairingScreen(pairing("show") { copy(code = "4812 3456", qr = "PKP1:T:X:Y", secondsLeft = 291) }) }
+        val cancel = rule.onNodeWithText("Cancel", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val density = rule.density.density
+        assertTrue("Cancel is ${cancel.width / density} dp wide", cancel.width / density < 200f)
+    }
+
+    @Test
+    fun theCodeViewShowsOnlyTheDigitsAndTheQrViewOnlyTheQr() {
+        var ui by mutableStateOf(pairing("show") { copy(code = "4812 3456", qr = "PKP1:T:X:Y", secondsLeft = 291) })
+        show { PolarisLocalPairingScreen(ui) }
+        val qrName = KitCopy.bundled.format("a11y.qrPairing", "en")
         rule.onNodeWithContentDescription("Pairing code 4 8 1 2   3 4 5 6").assertIsDisplayed()
-        rule.onNodeWithText("Scan or enter this code on the other device.").assertIsDisplayed()
+        rule.onNodeWithText("Enter this code on the other device.").assertIsDisplayed()
+        rule.onNodeWithContentDescription(qrName).assertDoesNotExist()
+        ui = ui.copy(view = "qr")
+        rule.waitForIdle()
+        rule.onNodeWithText("Scan to pair").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Pairing code 4 8 1 2   3 4 5 6").assertDoesNotExist()
+    }
+
+    @Test
+    fun noDrawnRowIsOneTheMatrixMarksNotApplicableForCompose() {
+        val root = requireNotNull(System.getProperty("pkey.repoRoot"))
+        val raw = Json.parseToJsonElement(File(root, "conformance/corpus/v2/ui-matrix.json").readText()) as JsonObject
+        val marked = (raw["local"] as JsonArray).mapIndexedNotNull { i, row ->
+            val sdks = ((row as JsonObject)["notApplicable"] as? JsonObject)?.get("sdks")?.strings().orEmpty()
+            if ("compose" in sdks) i else null
+        }
+        val drawnIndexes = LocalCases.drawn.map { it.id.substringBefore('-').toInt() }
+        assertTrue("rows drawn though not applicable: ${drawnIndexes.filter { it in marked }}", drawnIndexes.none { it in marked })
+        assertTrue("the scan rows are among the not-applicable ones", marked.size >= 10)
+    }
+
+    @Test
+    fun showNewCodeInTheQrViewMovesFocusToTheCard() {
+        var ui by mutableStateOf(pairing("show") { copy(code = "4812 3456", qr = "PKP1:T:X:Y", secondsLeft = 0, view = "qr", expired = true) })
+        show { PolarisLocalPairingScreen(ui) }
+        ui = ui.copy(secondsLeft = 290, expired = false, code = "5000 1111", rotation = 2, replaced = true, renewedFromExpired = true)
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription(KitCopy.bundled.format("a11y.qrPairing", "en"), useUnmergedTree = true).assertExists()
+        // The card is a focus target of its own: a request lands on it, never on nothing.
+        rule.onNode(androidx.compose.ui.test.isFocused()).assertExists()
+    }
+
+    @Test
+    fun theLinksSwitchTheViewAndAnExpiredWindowOffersAPrimaryNewCode() {
+        val pressed = mutableListOf<String>()
+        val actions = object : PolarisLocalPairingActions {
+            override fun showQr() {
+                pressed += "qr"
+            }
+
+            override fun showCode() {
+                pressed += "code"
+            }
+
+            override fun showNew() {
+                pressed += "new"
+            }
+        }
+        var ui by mutableStateOf(pairing("show") { copy(code = "4812 3456", qr = "PKP1:T:X:Y", secondsLeft = 291) })
+        show { PolarisLocalPairingScreen(ui, actions = actions) }
+        rule.onNodeWithText("Show a QR code").performClick()
+        ui = ui.copy(view = "qr")
+        rule.waitForIdle()
+        rule.onNodeWithText("Show the code instead").performClick()
+        ui = ui.copy(secondsLeft = 0, expired = true)
+        rule.waitForIdle()
+        rule.onNodeWithText("Show a new code").performClick()
+        assertEquals(listOf("qr", "code", "new"), pressed)
     }
 
     @Test
@@ -466,5 +563,139 @@ class LocalScreensKeyboardTest {
         rule.mainClock.advanceTimeBy(100)
         rule.onNodeWithText("Not now").assertIsFocused()
         rule.onNodeWithText("Pair").assertIsNotFocused()
+    }
+}
+
+/** The QR view of a window that ran out fades toward the paper: a decoder reads the live card and finds nothing on the dead one. */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w411dp-h891dp-mdpi")
+class ExpiredQrScanTest {
+    @get:Rule
+    val rule = createEmptyComposeRule()
+
+    private val text = "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+
+    /** What a camera would read off the screen: the activity's window drawn to a bitmap, then a QR decoder run over it. */
+    private fun scanned(scenario: ActivityScenario<ComponentActivity>, stretch: Boolean = false): String? {
+        lateinit var bitmap: Bitmap
+        scenario.onActivity { activity ->
+            val view = activity.window.decorView
+            bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(bitmap))
+        }
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        if (stretch) {
+            // The levels stretched to the full range, as a camera's auto-exposure would see the card.
+            val grey =
+                IntArray(pixels.size) {
+                    ((pixels[it] shr 16 and 0xff) * 299 + (pixels[it] shr 8 and 0xff) * 587 + (pixels[it] and 0xff) * 114) /
+                        1000
+                }
+            val low = grey.min()
+            val span = maxOf(grey.max() - low, 1)
+            for (i in pixels.indices) {
+                val v = (grey[i] - low) * 255 / span
+                pixels[i] = 0xff shl 24 or (v shl 16) or (v shl 8) or v
+            }
+        }
+        val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
+        // A decoder that finds no code throws one of its three not-found errors: that is "nothing scanned".
+        return runCatching { QRCodeReader().decode(BinaryBitmap(HybridBinarizer(source))).text }.getOrNull()
+    }
+
+    @Test
+    fun theExpiredQrFadesTowardThePaperAndDoesNotScan() {
+        var ui by mutableStateOf(
+            PolarisLocalPairingUi(step = "show", code = "4812 3456", qr = text, secondsLeft = 291, view = "qr", categories = listOf("crates")),
+        )
+        rule.mainClock.autoAdvance = false
+        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.setContent {
+                    MaterialTheme(colorScheme = lightColorScheme()) {
+                        PolarisTheme(branding = PolarisBranding.PolarisKey, copy = sampleCopy, darkTheme = false) {
+                            CompositionLocalProvider(LocalPolarisReduceMotion provides true) { PolarisLocalPairingScreen(ui) }
+                        }
+                    }
+                }
+            }
+            rule.mainClock.advanceTimeBy(2_600)
+            assertEquals("the live card scans", text, scanned(scenario))
+            assertEquals("the live card scans with its levels stretched", text, scanned(scenario, stretch = true))
+            ui = ui.copy(secondsLeft = 0, expired = true)
+            rule.mainClock.advanceTimeBy(2_600)
+            assertEquals("the expired card does not scan", null, scanned(scenario))
+            assertEquals("the expired card does not scan with its levels stretched", null, scanned(scenario, stretch = true))
+            rule.onNodeWithText("Code expired").assertIsDisplayed()
+        }
+    }
+}
+
+/** Below API 31 `Modifier.blur` does nothing: the expired card draws no modules at all, so zxing finds nothing, plain or stretched. */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [30], qualifiers = "w411dp-h891dp-mdpi")
+class ExpiredQrScanBelowBlurTest {
+    @get:Rule
+    val rule = createEmptyComposeRule()
+
+    private val text = "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+
+    /** What a camera would read off the screen: the activity's window drawn to a bitmap, then a QR decoder run over it. */
+    private fun scanned(scenario: ActivityScenario<ComponentActivity>, stretch: Boolean = false): String? {
+        lateinit var bitmap: Bitmap
+        scenario.onActivity { activity ->
+            val view = activity.window.decorView
+            bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(bitmap))
+        }
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        if (stretch) {
+            // The levels stretched to the full range, as a camera's auto-exposure would see the card.
+            val grey =
+                IntArray(pixels.size) {
+                    ((pixels[it] shr 16 and 0xff) * 299 + (pixels[it] shr 8 and 0xff) * 587 + (pixels[it] and 0xff) * 114) /
+                        1000
+                }
+            val low = grey.min()
+            val span = maxOf(grey.max() - low, 1)
+            for (i in pixels.indices) {
+                val v = (grey[i] - low) * 255 / span
+                pixels[i] = 0xff shl 24 or (v shl 16) or (v shl 8) or v
+            }
+        }
+        val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
+        // A decoder that finds no code throws one of its three not-found errors: that is "nothing scanned".
+        return runCatching { QRCodeReader().decode(BinaryBitmap(HybridBinarizer(source))).text }.getOrNull()
+    }
+
+    @Test
+    fun belowApi31TheExpiredCardDrawsNoModulesAndDoesNotScan() {
+        var ui by mutableStateOf(
+            PolarisLocalPairingUi(step = "show", code = "4812 3456", qr = text, secondsLeft = 291, view = "qr", categories = listOf("crates")),
+        )
+        rule.mainClock.autoAdvance = false
+        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.setContent {
+                    MaterialTheme(colorScheme = lightColorScheme()) {
+                        PolarisTheme(branding = PolarisBranding.PolarisKey, copy = sampleCopy, darkTheme = false) {
+                            CompositionLocalProvider(LocalPolarisReduceMotion provides true) { PolarisLocalPairingScreen(ui) }
+                        }
+                    }
+                }
+            }
+            rule.mainClock.advanceTimeBy(2_600)
+            assertEquals("the live card scans", text, scanned(scenario))
+            assertEquals("the live card scans with its levels stretched", text, scanned(scenario, stretch = true))
+            ui = ui.copy(secondsLeft = 0, expired = true)
+            rule.mainClock.advanceTimeBy(2_600)
+            assertEquals("the expired card does not scan", null, scanned(scenario))
+            assertEquals("the expired card does not scan with its levels stretched", null, scanned(scenario, stretch = true))
+            rule.onNodeWithText("Code expired").assertIsDisplayed()
+        }
     }
 }

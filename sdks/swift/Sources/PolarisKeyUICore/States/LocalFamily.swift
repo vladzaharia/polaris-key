@@ -27,6 +27,7 @@ public let kitCooldownSeconds = 30
 
 public enum LocalPairingState: String, KitStateID {
     case choose, opening, show, closed, enter, joining, confirm, waiting, paired, failed
+    case showQr = "show-qr"
     case networkBlocked = "network-blocked"
     case off
     case scanPrompt = "scan-prompt"
@@ -63,28 +64,32 @@ public func kitReachableFull(_ devices: [KitPairedDevice]) -> Bool {
 
 /// How the show screen lays out for a window size (UI-KITS 4.3, LocalPairing).
 public struct KitLocalPairingLayout: Sendable, Equatable {
-    /// 2: the QR sits beside the code; 1: under it.
+    /// 1 at every size: a screen shows the digits or the QR, never both. The QR view itself puts
+    /// its text beside the card in a wide, short window (`QrColumns`).
     public let panes: Int
     /// False in a window under 480 tall: it shows its own logo.
     public let logo: Bool
-    /// True when the one column is taller than the window: the window scrolls and nothing clips.
+    /// True in a window under 480 tall: the column is taller than the window, so it scrolls.
     public let scrolls: Bool
     /// True when the notice must come before the QR in a window that scrolls.
     public let noticeBeforeQr: Bool
 
-    /// Two panes from 600 pt of window at the root text size (so 200 % text keeps one column), at
-    /// any height, and always on a TV. A window under 480 tall drops the logo. A window both narrow
-    /// and short keeps one column that scrolls, with the notice before the QR.
+    /// One centred column at every size. A window under 480 tall drops the logo and scrolls, with
+    /// the notice before the QR. A TV keeps its logo.
     public static func of(width: Double, height: Double, textScale: Double = 1, tv: Bool = false)
         -> KitLocalPairingLayout
     {
-        let scale = textScale > 0 ? textScale : 1
-        let panes = tv || width / scale >= 600 ? 2 : 1
         let short = height < 480 && !tv
         return KitLocalPairingLayout(
-            panes: panes, logo: !short, scrolls: panes == 1 && short,
-            noticeBeforeQr: panes == 1 && short)
+            panes: 1, logo: !short, scrolls: short, noticeBeforeQr: short)
     }
+}
+
+/// The QR view's two columns (UI-KITS 4.9, Fit): from 720 pt of window at the root text size and
+/// 900 pt tall or less the text sits at the start and the card at the end; otherwise one column.
+public func kitQrTwoColumns(width: Double, height: Double, textScale: Double = 1) -> Bool {
+    let scale = textScale > 0 ? textScale : 1
+    return width / scale >= 720 && height <= 900
 }
 
 extension KitStates {
@@ -147,22 +152,52 @@ extension KitStates {
             return screen(
                 .opening,
                 [
-                    "localPairing.title", "localPairing.showBody", "a11y.busy",
-                    "localPairing.toEnter", "common.cancel",
+                    "localPairing.title", "localPairing.showBody", "a11y.busy", "common.cancel",
                 ])
         case .show:
-            let n = p.notice
+            // The window ran out and nothing renewed it: the view stays, dimmed, with a new code one press away.
+            let gone = p.expired == true
+            let n = gone ? nil : p.notice
             let renewing = p.busy == .newCode
             var args: [String: CopyArgument] = ["time": .text(kitCountdown(p.secondsLeft ?? 0))]
             if let code = p.code { args["code"] = .text(code.map(String.init).joined(separator: " ")) }
             if let device { args["device"] = .text(device) }
+            // Expired says it once, in the title (and to a screen reader): no instruction, no time and no switch,
+            // because both views of a dead window are dead; the next window opens on the chosen one.
+            let expiredCopy = ["core.codes.sign-in-expired.title", "localPairing.showNew", "common.cancel"]
+            let timeLines: [String] = gone ? [] : ["localPairing.expires", "localPairing.waitingDevice"]
+            if gone {
+                return screen(
+                    p.view == .qr ? .showQr : .show,
+                    expiredCopy + [
+                        p.view == .qr ? "a11y.qrPairing" : (p.code != nil ? "a11y.linkCode" : nil),
+                        renewing ? "a11y.busy" : nil,
+                    ], args, disabled: [renewing ? "localPairing.showNew" : nil])
+            }
+            if p.view == .qr {
+                // The QR alone: no digits, said or drawn. What the code view announces is announced here too.
+                return screen(
+                    .showQr,
+                    [
+                        "localPairing.qrTitle", "localPairing.qrBody", "a11y.qrPairing",
+                    ] + timeLines + [
+                        "localPairing.toCode", "common.cancel",
+                        n == .blocked ? "localPairing.blockedTitle" : nil,
+                        n == .blocked ? "localPairing.blockedBody" : nil,
+                        n == .guessing || n == .rotated ? "localPairing.rotatedTitle" : nil,
+                        n == .guessing ? "localPairing.tooManyAgainBody" : nil,
+                        n == .rotated || n == .declined ? "localPairing.rotatedBody" : nil,
+                        n == .declined ? "localPairing.notPairedWith" : nil,
+                        renewing ? "a11y.busy" : nil,
+                    ], args, disabled: [renewing ? "localPairing.showNew" : nil])
+            }
             return screen(
                 .show,
                 [
                     "localPairing.title", "localPairing.showBody",
-                    p.code != nil ? "a11y.linkCode" : nil, "a11y.qrPairing",
-                    "localPairing.expires", "localPairing.waitingDevice", "localPairing.toEnter",
-                    "common.cancel",
+                    p.code != nil ? "a11y.linkCode" : nil,
+                ] + timeLines + [
+                    "localPairing.toQr", "common.cancel",
                     n == .rotated || n == .guessing ? "localPairing.rotatedTitle" : nil,
                     n == .rotated ? "localPairing.rotatedBody" : nil,
                     n == .declined ? "localPairing.rotatedBody" : nil,

@@ -49,7 +49,8 @@ def test_links_blocking_calls_stay_coroutines() -> None:
     async def run() -> None:
         pending = _links().list()
         assert inspect.isawaitable(pending)
-        pending.close()
+        coroutine: Any = pending
+        coroutine.close()
 
     asyncio.run(run())
 
