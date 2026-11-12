@@ -1483,22 +1483,24 @@ Mockups: [web](ui-kits/shots/web-settings-light.png),
 
 #### LocalPairing (Pair with a Code)
 
-- **Which states split.** Only the show state (the code and its QR) has two panes. Choose, enter,
-  confirm, paired and every closed or failed state stay one column. Mockups:
-  `sdk.react-pair-show`, `sdk.react-pair-enter`, `sdk.react-pair-confirm` and
-  `sdk.swiftui-pair-scan`.
-- **Layout.** The title and lede span the top. Start pane: the code in the kit's code face
-  (`--pk-kit-type-code-*`, the largest text on the screen) over its time ring, then the notice, the
-  waiting row, Cancel and the quiet switch to entering. End pane: the QR, centred on the code. One
-  column: title, lede, code, time, QR, notice, waiting, Cancel. The reading and focus order is the
-  same in both.
-- **When.** Two panes in a window at least 600 dp/pt/px wide, at any height; this is wider than
-  LinkPairing's rule on purpose, because the QR is read from another device and the code beside it
-  is the person's fallback. One column under 600 wide and at 200 % text. A window under 480 tall
-  (a 768 px laptop with a title bar, a Steam Deck, a TV) drops the kit's logo, which the window
-  already shows, and keeps the QR beside the whole start pane, so nothing scrolls. TV and consoles
-  always use two panes inside the title-safe area.
-- **Godot.** `two_pane_fits()`, as above.
+- **One method per screen.** The show state is one window with two views, and a screen never shows
+  the digits and the QR together. The **code view** (the default) has the title, "Enter this code
+  on the other device.", the code in the kit's code face (`--pk-kit-type-code-*`, the largest text
+  on the screen) over its time ring, the waiting row, Cancel and one quiet link, Show a QR code. The
+  **QR view** (state `show-qr`, input `view: "qr"`) has "Scan to pair", "Point the other device's
+  camera here.", the Light Card (§4.9), the time ring, the waiting row, Cancel and one quiet link,
+  Show the code instead. Choose, enter, confirm, paired and every closed or failed state are one
+  column as before. Mockups: `sdk.react-pair-show` (the code view, as first drawn with the QR
+  beside it), `sdk.react-pair-enter`, `sdk.react-pair-confirm` and `sdk.swiftui-pair-scan`.
+- **One window.** Switching views never renews or rotates the code or moves its time. A renewal
+  while either view is open updates that view; in the QR view that is the Light Card's new-code
+  state. A window that ends or is withdrawn opens its next one on the code view.
+- **Focus and announcements.** After a switch focus moves to the new view's heading (the link is
+  never the default action), and the new view's line is announced politely.
+- **Layout.** One centred column at every size, sized to its content, and the same reading and
+  focus order. A window under 480 tall drops the kit's logo and the column scrolls, with a notice
+  before the QR. TV and consoles use the same column inside the title-safe area.
+- **Godot.** `two_pane_fits()` is not used here; the native kits follow in a later slice.
 
 ### 4.4 Accessibility (every kit)
 
@@ -1598,6 +1600,75 @@ follows `prefers-reduced-motion`, `accessibilityReduceMotion`,
 swaps instantly (S-23 D3): every duration is 0, with no opacity fade; `"none"` is the same. The
 terminal never animates when stdout is not a TTY or `CI` is set. The star never animates (BRAND
 §7.5).
+
+### 4.9 The Light Card (the pairing QR)
+
+The QR on Pair with a Code is a standard QR code presented as a **Light Card**: a nebula of light
+particles condenses into the paper of a real code, and the dark modules left on the paper are the
+code. Every kit draws the same choreography from the same constants. The source is
+`packages/ui-core/src/lightCard.ts` (pure, no DOM); its golden fixture,
+`packages/ui-core/test/fixtures/lightCard.golden.json`, pins the timeline and the geometry, and each
+port checks itself against it. Particle positions are decorative (they depend on the platform's
+`sin` and `exp`) and are never goldens. The React kit's renderer is `LightCardQr`
+(`packages/sdk-react/src/kit/lightCardQr.tsx`).
+
+**Rules.**
+
+- **Stage.** A night stage in both themes, `#05060d`, square, with the card centred at half its
+  side. Scanners need dark ink on light paper, so the card is paper whatever the theme.
+- **The code.** Error-correction level Q, a 2-module quiet zone. Round data dots (0.43 of a cell),
+  square finder patterns (a rounded ring in ink, a pale gap, an ink core) and the Polaris star in
+  the centre, over a cleared disc of 3.2 modules that level Q tolerates.
+- **Motion.** Particles drift on a flow field with swirl, then spring into the paper cells; the
+  springs are underdamped (k 82, c 10.4). Additive glow, short trails (a 24 % fade of the ground
+  each frame). The centre lands first, in order of distance; the rest orbit outside the card.
+- **The code never moves while it is readable.** Once the card has formed the modules are static.
+- **No particle crosses the card's margin.** The margin is the card plus 1.5 cells on each side.
+  Light outside the card fades to nothing over 12 units before it reaches the margin, and is moved
+  out of it if the flow carries it in.
+- **States.**
+  - **New code:** the card breaks back into light (0.45 s) and re-condenses.
+  - **Connected:** a vortex collapses to the centre (0.85 s) and blooms into a check of light.
+  - **Expired:** the orbit slows to a quarter and the card dims to 35 %.
+- **Reduce Motion.** The finished card, drawn once: no trails, swirl or orbit, no frame loop. A
+  connected card is the check, drawn still. Web: `prefers-reduced-motion` or the kit's own
+  `motion`; the others: their platform's setting (§4.8).
+- **Battery.** After 10 s of waiting the orbit drops to 30 frames a second. Nothing runs while the
+  page or window is hidden or the stage is off-screen; the run resumes where it stopped.
+- **Fit.** The stage is square and sits alone in the QR view: 20 rem, 24 rem from 768 wide (a card
+  of 160 and 192 px). A window under 480 tall draws the plain QR, which fits the short scrolling
+  column better.
+- **Accessibility.** The canvas is one image with the accessible name the plain QR had
+  (`a11y.qrPairing`). The plain QR stays as the fallback where the renderer cannot draw.
+
+**Constants** (`LIGHT_CARD`). Positions are in the 440-unit reference stage; a renderer scales by
+its stage's side over 440. Seconds unless noted.
+
+| Constant             | Value                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------- |
+| Stage, card share    | 440 units, 0.5                                                                                    |
+| QR                   | level Q, quiet 2 modules, star clearing radius 3.2 modules                                        |
+| Spring               | k 82, c 10.4 (damping of free light: `exp(-0.9 f dt)`)                                            |
+| Fixed step           | 1/60 s; at most 8 steps per frame, a longer gap is skipped                                        |
+| Particles            | one per paper cell, plus 10 %; ambient light 650 at 440 units, scaled by area, within 300 and 900 |
+| Forming              | condense starts 0.5; cells land 0.65 to 2.35; readable from 2.4                                   |
+| Landing order        | `at = start + 0.15 + 0.55 d + 0.1 r`; `d` is the cell's distance to the centre, 0 to 1            |
+| New code             | break 0.45, then re-condense with 0.6 of the forming curve already elapsed                        |
+| Connected            | vortex 0.85, check forms over 0.9, card dissolves over 0.4, done at 1.75                          |
+| Expired              | orbit 1 to 0.25 over 1.2, dim 1 to 0.35 over 1                                                    |
+| Orbit (swirl) factor | 1 normal, 2.2 in the vortex, 0.6 after a connect, 0.25 expired                                    |
+| Margin               | card plus 1.5 cells; wisps fade over 12 units                                                     |
+| Idle drop            | after 10 s of waiting, 30 fps (60 otherwise; 30 while expired)                                    |
+| Roles of colour      | ground `#05060d`; ink `#160c30`; paper `#ffffff` to `#f3eeff`; finder gap `#fbf9ff`               |
+| Glow tints           | violet `#9a5cff` (the brand's violet on dark), lavender `#c4aaff`, ice `#b0ccff`, white `#fff6ff` |
+| Seeded PRNG          | mulberry32, written out in the module; the seed is an unsigned 32-bit integer                     |
+
+**The envelope.** The timeline (`forming`, `ready`, `refreshing`, `connected`, `expired`) is driven
+by an injected time and yields, for each frame, the card opacity, the share of particles landed, the
+orbit speed, the dim level and the check progress (and the flare, the ambient glow, whether a new
+code's paper has swapped, and the frame rate). Each curve is a smoothstep over fixed durations, so
+every kit gets the same values from the same time. A new code is taken from `ready` or `expired`;
+a connection and an expiry from `ready`; any other event leaves the timeline as it was.
 
 ---
 

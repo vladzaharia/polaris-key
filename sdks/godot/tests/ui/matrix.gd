@@ -17,10 +17,53 @@ const LOCALE_TABLES := preload("res://tools/ui_matrix/locales.gd")
 ## ([left, top, right, bottom]) or null, density-independent pixels per 160 dpi on a phone or tablet
 ## (0: not mobile)]. The phones carry a status bar or notch and a home indicator, as a safe area
 ## does. The first ten are the owner's matrix; the last three are the review's additions.
-## Screens laid out in the Polaris Key look only (dark, English, German and Japanese) until their layouts
-## are tuned for a game's own theme and for 28 and 36 px type: the pairing screens (ui-matrix `local`).
-## Their states, focus walks, copy and headers are held in every look by the `ui` suite.
-const DARK_ONLY_PREFIXES := ["local."]
+## Pair with a Code and Paired devices layouts not yet tuned: [screen, look, size label] the matrix does not
+## lay out. Each is a game's own look or a very short window where the card is wider or taller than the screen
+## by a few pixels; the screen is still built, focus-walked and copy-checked there by the `ui` suite.
+const OPEN_CASES := [
+	["local.list_full", "custom", "2560x1440"],
+	["local.list_full", "custom", "3440x1440"],
+	["local.list_full", "custom", "deck canvas_items 1152x648 expand"],
+	["local.list_full", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.list_noroom", "custom", "deck canvas_items 1152x648 expand"],
+	["local.list_noroom", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.loading", "dark", "750x1334@2"],
+	["local.loading", "dark", "deck canvas_items 1152x648 expand"],
+	["local.loading", "dark", "pixel-art canvas_items 640x360 keep"],
+	["local.choose_full", "native36", "1170x2532@3"],
+	["local.empty", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.empty", "native36", "1170x2532@3"],
+	["local.list", "custom", "640x360"],
+	["local.list", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.list", "native", "640x360"],
+	["local.list", "native", "pixel-art canvas_items 640x360 keep"],
+	["local.list", "native36", "1170x2532@3"],
+	["local.list_full", "accent-dark", "640x360"],
+	["local.list_full", "accent-light", "640x360"],
+	["local.list_full", "custom", "1280x720"],
+	["local.list_full", "custom", "640x360"],
+	["local.list_full", "dark", "640x360"],
+	["local.list_full", "dark", "pixel-art canvas_items 640x360 keep"],
+	["local.list_full", "native", "2400x1080"],
+	["local.list_full", "native", "640x360"],
+	["local.list_full", "native", "pixel-art canvas_items 640x360 keep"],
+	["local.list_full", "native36", "1170x2532@3"],
+	["local.list_noroom", "accent-dark", "640x360"],
+	["local.list_noroom", "accent-light", "640x360"],
+	["local.list_noroom", "dark", "640x360"],
+	["local.list_noroom", "dark", "pixel-art canvas_items 640x360 keep"],
+	["local.list_noroom", "native", "pixel-art canvas_items 640x360 keep"],
+	["local.list_noroom", "native36", "1170x2532@3"],
+	["local.load_failed", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.off", "custom", "640x360"],
+	["local.off", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.off", "native", "640x360"],
+	["local.off", "native", "pixel-art canvas_items 640x360 keep"],
+	["local.paired", "custom", "2532x1170@3"],
+	["local.paired", "native36", "1170x2532@3"],
+	["local.paired_plain", "custom", "2532x1170@3"],
+	["local.show_rotated", "native36", "1170x2532@3"],
+]
 
 const SIZES := [
 	["640x360", Vector2i(640, 360), 1.0, null, 0.0],
@@ -99,6 +142,90 @@ const STRETCHED := [
 ## through its scroll fallback (asserted: reachable by pad) and does not promise two columns. Every other
 ## screen and look, at every size, must show its primary and its user code without scrolling.
 const TIGHT_CASES := [
+	# Pair with a Code and Paired devices (ui-matrix `local`): in these looks and sizes the primary is a scroll
+	# away, reachable by pad (asserted).
+	["local.blocked", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.blocked", "native36", "640x360"],
+	["local.confirm", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.confirm", "native36", "640x360"],
+	["local.confirm_busy", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.confirm_busy", "native36", "640x360"],
+	["local.empty", "native36", "1280x720"],
+	["local.empty", "native36", "640x360"],
+	["local.enter", "custom", "640x360"],
+	["local.enter", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.enter", "native", "pixel-art canvas_items 640x360 keep"],
+	["local.enter", "native28", "640x360"],
+	["local.enter", "native36", "1170x2532@3"],
+	["local.enter", "native36", "1280x720"],
+	["local.enter", "native36", "640x360"],
+	["local.enter_toomany", "custom", "640x360"],
+	["local.enter_toomany", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.enter_toomany", "native", "pixel-art canvas_items 640x360 keep"],
+	["local.enter_toomany", "native28", "640x360"],
+	["local.enter_toomany", "native36", "1170x2532@3"],
+	["local.enter_toomany", "native36", "1280x720"],
+	["local.enter_toomany", "native36", "1280x800"],
+	["local.enter_toomany", "native36", "640x360"],
+	["local.enter_wrong", "custom", "2532x1170@3"],
+	["local.enter_wrong", "custom", "640x360"],
+	["local.enter_wrong", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.enter_wrong", "native", "pixel-art canvas_items 640x360 keep"],
+	["local.enter_wrong", "native28", "1280x720"],
+	["local.enter_wrong", "native28", "640x360"],
+	["local.enter_wrong", "native36", "1170x2532@3"],
+	["local.enter_wrong", "native36", "1280x720"],
+	["local.enter_wrong", "native36", "1280x800"],
+	["local.enter_wrong", "native36", "640x360"],
+	["local.failed", "native36", "640x360"],
+	["local.list", "native-light", "640x360"],
+	["local.list", "native28", "640x360"],
+	["local.list", "native36", "1280x720"],
+	["local.list", "native36", "640x360"],
+	["local.list_full", "custom", "2560x1440"],
+	["local.list_full", "custom", "3440x1440"],
+	["local.list_full", "native-light", "640x360"],
+	["local.list_full", "native28", "1280x720"],
+	["local.list_full", "native28", "640x360"],
+	["local.list_full", "native36", "1280x720"],
+	["local.list_full", "native36", "640x360"],
+	["local.list_noroom", "custom", "1280x720"],
+	["local.list_noroom", "custom", "2560x1440"],
+	["local.list_noroom", "custom", "3440x1440"],
+	["local.list_noroom", "custom", "640x360"],
+	["local.list_noroom", "native", "2400x1080"],
+	["local.list_noroom", "native", "640x360"],
+	["local.list_noroom", "native-light", "640x360"],
+	["local.list_noroom", "native28", "1280x720"],
+	["local.list_noroom", "native28", "640x360"],
+	["local.list_noroom", "native36", "1280x720"],
+	["local.list_noroom", "native36", "640x360"],
+	["local.load_failed", "native36", "1280x720"],
+	["local.load_failed", "native36", "640x360"],
+	["local.loading", "dark", "pixel-art canvas_items 640x360 keep"],
+	["local.off", "native-light", "640x360"],
+	["local.off", "native28", "1280x720"],
+	["local.off", "native28", "640x360"],
+	["local.off", "native36", "1170x2532@3"],
+	["local.off", "native36", "1280x720"],
+	["local.off", "native36", "640x360"],
+	["local.paired", "custom", "640x360"],
+	["local.paired", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.paired", "native", "pixel-art canvas_items 640x360 keep"],
+	["local.paired", "native28", "640x360"],
+	["local.paired", "native36", "1280x720"],
+	["local.paired", "native36", "1280x800"],
+	["local.paired", "native36", "640x360"],
+	["local.paired_plain", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.paired_plain", "native", "pixel-art canvas_items 640x360 keep"],
+	["local.paired_plain", "native28", "640x360"],
+	["local.paired_plain", "native36", "1170x2532@3"],
+	["local.paired_plain", "native36", "1280x720"],
+	["local.paired_plain", "native36", "640x360"],
+	["local.renaming", "custom", "pixel-art canvas_items 640x360 keep"],
+	["local.renaming", "native28", "640x360"],
+	["local.renaming", "native36", "1280x720"],
+	["local.renaming", "native36", "640x360"],
 	# Activation without an account (UK-43.13): in a game's own look on a short or narrow canvas, or at 28 or
 	# 36 px type, the primary is a scroll away, reachable by pad (asserted); the Polaris Key looks fit every size.
 	["holders.add", "custom", "2532x1170@3"],
@@ -478,15 +605,24 @@ const SCREENS := [
 	["holders.add_waiting", "add_to_account", "waiting", "full"],
 	["holders.add_failed", "add_to_account", "failed", "full"],
 	["holders.added", "add_to_account", "added", "full"],
-	# Pair with a Code and Paired devices (ui-matrix `local`). Left out: the paired step with its
-	# notice, the wrong-code field in German, and a list of more than eight, which need their scroll
-	# fallback on a 640x360 window and a phone held sideways (the suites `ui` and `ui_local_screens`
-	# still run them).
+	# Pair with a Code and Paired devices (ui-matrix `local`).
 	["local.choose", "local_pairing", "choose: either device can show the code", "full"],
 	["local.opening", "local_pairing", "opening: a placeholder code tile while the window opens", "full"],
 	["local.show", "local_pairing", "show: the code is the largest text, with its time", "full"],
-	["local.show_qr", "local_pairing", "show (QR view): the same window, the QR and no digits", "full"],
+	["local.show_qr", "local_pairing", "show-qr: the QR alone, with its time and a way back to the code", "full"],
 	["local.show_rotated", "local_pairing", "show: a wrong code changed it", "full"],
+	["local.show_guessing", "local_pairing", "show-qr: someone may be guessing", "full"],
+	["local.show_qr_blocked", "local_pairing", "show-qr: pairing is being blocked", "full"],
+	["local.enter_wrong", "local_pairing", "enter: a wrong code keeps the first two digits", "full"],
+	["local.enter_toomany", "local_pairing", "enter: too many tries, an empty field that stays editable", "full"],
+	["local.confirm_busy", "local_pairing", "confirm: Pair was pressed, both controls wait for the answer", "full"],
+	["local.paired", "local_pairing", "paired: kept, but it cannot connect while 8 can", "full"],
+	["local.paired_plain", "local_pairing", "paired: the name starts as the one the device sent", "full"],
+	["local.choose_full", "local_pairing", "choose: no room, said before either button", "full"],
+	["local.list_full", "paired_devices", "list: 8 can connect and more are paired", "full"],
+	["local.list_noroom", "paired_devices", "list: no room for another, Pair with a Code waits", "full"],
+	["local.loading", "paired_devices", "loading: the first read has not answered", "full"],
+	["local.load_failed", "paired_devices", "load-failed: the record cannot be read", "full"],
 	["local.closed", "local_pairing", "closed: Too many tries, 24 seconds to wait", "full"],
 	["local.enter", "local_pairing", "enter: eight digits, Pair ready", "full"],
 	["local.confirm", "local_pairing", "confirm: the device that entered the code, named", "full"],
@@ -625,14 +761,6 @@ const MOBILE_CONTROL_DP := 48
 
 var _sc = SCENARIOS.new()
 var _translations := {}
-
-
-## Whether `screen` is laid out in `preset`.
-static func looks_apply(screen: String, preset: String) -> bool:
-	for prefix in DARK_ONLY_PREFIXES:
-		if screen.begins_with(prefix):
-			return preset == "dark"
-	return true
 
 
 ## The scenario builder for a screen entry.
@@ -1278,10 +1406,24 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 		tight = tight or cr.position.y - safe.position.y < g or safe.end.y - cr.end.y < g
 	if tight:
 		out.append("%s is within %d px of the edge: %s in %s" % [_path(view, c), PKeyUiView.GUTTER, cr, safe])
-	# The pairing screen shows a QR for the other device's camera and says so: it is not telling this phone to scan.
-	var pairing := view is PKeyLocalPairing
-	if c is Label and not pairing and (view as PKeyUiView).is_phone_device() and not (view as PKeyUiView).pad_only() and ("scan" in (c as Label).text.to_lower() or "スキャン" in (c as Label).text):
-		out.append("%s tells a phone to scan a code: \"%s\"" % [_path(view, c), (c as Label).text])
+	# A phone is never told to scan with its own camera; the QR view's title and lede say "scan" of the
+	# other device's camera, and are marked so.
+	if (
+		(c is Label or c is Button)
+		and not c.get_meta(&"pkey_scan_ok", false)
+		and (view as PKeyUiView).is_phone_device()
+		and not (view as PKeyUiView).pad_only()
+	):
+		var said: String = (c as Label).text if c is Label else (c as Button).text
+		if "scan" in said.to_lower() or "スキャン" in said:
+			out.append("%s tells a phone to scan a code: \"%s\"" % [_path(view, c), said])
+	# The pairing code is readable: its colour keeps 4.5:1 against the card it is drawn on.
+	if c is PKeyPairCode and (c as PKeyPairCode).visible:
+		var card: Variant = _card_colour(view)
+		if card is Color:
+			var ratio := _contrast((c as PKeyPairCode).ink_color(), card)
+			if ratio < 4.5:
+				out.append("%s is drawn at %.1f:1 on its card, under 4.5:1" % [_path(view, c), ratio])
 	if c is Label:
 		var l := c as Label
 		if l.text != "" and l.get_visible_line_count() < l.get_line_count():
@@ -1295,7 +1437,7 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 	if c is PKeyQrRect and (c as PKeyQrRect).texture != null:
 		var m := (view as PKeyUiView).layout_metrics()
 		# Only on a pad-only device (no browser to open), or for the offline request code.
-		if not (view as PKeyUiView).pad_only() and not _under(c, "Request") and not pairing:
+		if not (view as PKeyUiView).pad_only() and not _under(c, "Request") and not c.has_meta(&"pkey_pair_qr"):
 			out.append("%s shows a QR code, but this is not a pad-only device or the offline request" % _path(view, c))
 		var side := minf(c.size.x, c.size.y)
 		var phys := side * float(m["physical"])
@@ -1305,6 +1447,24 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 		var most := maxf(PKeyUiView.QR_MAX_SHARE * minf(screen.x, screen.y), PKeyUiView.QR_MIN_PHYSICAL / float(m["physical"]))
 		if side > most + 1.0:
 			out.append("%s is %.0f px, over %.0f (%d%% of the screen's shorter side)" % [_path(view, c), side, most, roundi(PKeyUiView.QR_MAX_SHARE * 100)])
+
+
+## The card colour a view draws its content on, or null when it is not a flat colour.
+static func _card_colour(view: Control) -> Variant:
+	var card := (view as PKeyUiView).get("_card_box") as PanelContainer
+	if card == null:
+		return null
+	var box := card.get_theme_stylebox("panel")
+	return (box as StyleBoxFlat).bg_color if box is StyleBoxFlat else null
+
+
+## WCAG contrast ratio of two colours.
+static func _contrast(a: Color, b: Color) -> float:
+	var la := a.srgb_to_linear()
+	var lb := b.srgb_to_linear()
+	var ya := 0.2126 * la.r + 0.7152 * la.g + 0.0722 * la.b
+	var yb := 0.2126 * lb.r + 0.7152 * lb.g + 0.0722 * lb.b
+	return (maxf(ya, yb) + 0.05) / (minf(ya, yb) + 0.05)
 
 
 static func _under(n: Node, name: String) -> bool:

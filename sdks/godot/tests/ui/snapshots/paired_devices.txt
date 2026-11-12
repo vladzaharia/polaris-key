@@ -1,479 +1,529 @@
 == list: five paired devices, every one can connect ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Head/Titles/Lede: Label "They connect only on the same network."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/Rename: Button "Rename" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/ForgetRow: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/Rename: Button "Rename" [focus 4]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/ForgetRow: Button "Forget" [focus 3]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/Rename: Button "Rename" [focus 6]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/ForgetRow: Button "Forget" [focus 5]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Text/Name: Label "\u2068Device 4\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Text/Meta: Label "Last seen 3 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Actions/Rename: Button "Rename" [focus 8]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Actions/ForgetRow: Button "Forget" [focus 7]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Text/Name: Label "\u2068Device 5\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Text/Meta: Label "Last seen 4 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Actions/Rename: Button "Rename" [focus 10]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Actions/ForgetRow: Button "Forget" [focus 9]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/ForgetRow: Button "Forget" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Rename: Button "Rename" [focus 3]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/ForgetRow: Button "Forget" [focus 4]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/Rename: Button "Rename" [focus 5]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/ForgetRow: Button "Forget" [focus 6]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Text/Name: Label "\u2068Device 4\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Text/Meta: Label "Last seen 3 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Actions/Rename: Button "Rename" [focus 7]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Actions/ForgetRow: Button "Forget" [focus 8]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Text/Name: Label "\u2068Device 5\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Text/Meta: Label "Last seen 4 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Actions/Rename: Button "Rename" [focus 9]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Actions/ForgetRow: Button "Forget" [focus 10]
 Card/Scroll/Frame/Actions/Pair: Button "Pair with a Code" [focus 11]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 12]
 == list: one is off, so the Can connect column shows ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Head/Titles/Lede: Label "They connect only on the same network."
-Card/Scroll/Frame/ColumnHead: Label "Can connect"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Switch: CheckButton [pressed, focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/Rename: Button "Rename" [focus 3]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/ForgetRow: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Switch: CheckButton [pressed, focus 5]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/Rename: Button "Rename" [focus 6]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/ForgetRow: Button "Forget" [focus 4]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Switch: CheckButton [pressed, focus 8]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/Rename: Button "Rename" [focus 9]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/ForgetRow: Button "Forget" [focus 7]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Text/Name: Label "\u2068Device 4\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Text/Meta: Label "Last seen 3 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Switch: CheckButton [pressed, focus 11]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Actions/Rename: Button "Rename" [focus 12]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Actions/ForgetRow: Button "Forget" [focus 10]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Text/Name: Label "\u2068Device 5\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Text/Meta: Label "Last seen 4 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Switch: CheckButton [focus 14]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Actions/Rename: Button "Rename" [focus 15]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Actions/ForgetRow: Button "Forget" [focus 13]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Switch: CheckButton [pressed, focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Rename: Button "Rename" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/ForgetRow: Button "Forget" [focus 3]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Switch: CheckButton [pressed, focus 4]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Rename: Button "Rename" [focus 5]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/ForgetRow: Button "Forget" [focus 6]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Switch: CheckButton [pressed, focus 7]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/Rename: Button "Rename" [focus 8]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/ForgetRow: Button "Forget" [focus 9]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Text/Name: Label "\u2068Device 4\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Text/Meta: Label "Last seen 3 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Switch: CheckButton [pressed, focus 10]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Actions/Rename: Button "Rename" [focus 11]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Actions/ForgetRow: Button "Forget" [focus 12]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Text/Name: Label "\u2068Device 5\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Text/Meta: Label "Last seen 4 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Switch: CheckButton [focus 13]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Actions/Rename: Button "Rename" [focus 14]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Actions/ForgetRow: Button "Forget" [focus 15]
 Card/Scroll/Frame/Actions/Pair: Button "Pair with a Code" [focus 16]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 17]
 == list: 8 can connect and more are paired ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Head/Titles/Lede: Label "They connect only on the same network."
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Glyph: TextureRect
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Title: Label "Up to 8 can connect"
-Card/Scroll/Frame/Notices/Notice0/Column/Body: Label "Turn one off to let another connect."
-Card/Scroll/Frame/ColumnHead: Label "Can connect"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Switch: CheckButton [pressed, focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/Rename: Button "Rename" [focus 3]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/ForgetRow: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Switch: CheckButton [pressed, focus 5]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/Rename: Button "Rename" [focus 6]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/ForgetRow: Button "Forget" [focus 4]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Switch: CheckButton [pressed, focus 8]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/Rename: Button "Rename" [focus 9]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/ForgetRow: Button "Forget" [focus 7]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Text/Name: Label "\u2068Device 4\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Text/Meta: Label "Last seen 3 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Switch: CheckButton [pressed, focus 11]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Actions/Rename: Button "Rename" [focus 12]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Actions/ForgetRow: Button "Forget" [focus 10]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Text/Name: Label "\u2068Device 5\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Text/Meta: Label "Last seen 4 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Switch: CheckButton [pressed, focus 14]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Actions/Rename: Button "Rename" [focus 15]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Actions/ForgetRow: Button "Forget" [focus 13]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Text/Name: Label "\u2068Device 6\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Text/Meta: Label "Last seen 5 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Switch: CheckButton [pressed, focus 17]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Actions/Rename: Button "Rename" [focus 18]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Actions/ForgetRow: Button "Forget" [focus 16]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Text/Name: Label "\u2068Device 7\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Text/Meta: Label "Last seen 6 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Switch: CheckButton [pressed, focus 20]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Actions/Rename: Button "Rename" [focus 21]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Actions/ForgetRow: Button "Forget" [focus 19]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Text/Name: Label "\u2068Device 8\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Text/Meta: Label "Last seen 7 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Switch: CheckButton [pressed, focus 23]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Actions/Rename: Button "Rename" [focus 24]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Actions/ForgetRow: Button "Forget" [focus 22]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Text/Name: Label "\u2068Device 9\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Text/Meta: Label "Last seen 8 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Switch: CheckButton [focus 26]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Actions/Rename: Button "Rename" [focus 27]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Actions/ForgetRow: Button "Forget" [focus 25]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Text/Name: Label "\u2068Device 10\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Text/Meta: Label "Last seen 9 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Switch: CheckButton [focus 29]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Actions/Rename: Button "Rename" [focus 30]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Actions/ForgetRow: Button "Forget" [focus 28]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Title: Label "Up to 8 can connect"
+Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Switch: CheckButton [pressed, focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Rename: Button "Rename" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/ForgetRow: Button "Forget" [focus 3]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Switch: CheckButton [pressed, focus 4]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Rename: Button "Rename" [focus 5]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/ForgetRow: Button "Forget" [focus 6]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Switch: CheckButton [pressed, focus 7]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/Rename: Button "Rename" [focus 8]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/ForgetRow: Button "Forget" [focus 9]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Text/Name: Label "\u2068Device 4\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Text/Meta: Label "Last seen 3 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Switch: CheckButton [pressed, focus 10]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Actions/Rename: Button "Rename" [focus 11]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Actions/ForgetRow: Button "Forget" [focus 12]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Text/Name: Label "\u2068Device 5\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Text/Meta: Label "Last seen 4 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Switch: CheckButton [pressed, focus 13]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Actions/Rename: Button "Rename" [focus 14]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Actions/ForgetRow: Button "Forget" [focus 15]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Line/Text/Name: Label "\u2068Device 6\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Line/Text/Meta: Label "Last seen 5 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Line/Switch: CheckButton [pressed, focus 16]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Actions/Rename: Button "Rename" [focus 17]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Actions/ForgetRow: Button "Forget" [focus 18]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Line/Text/Name: Label "\u2068Device 7\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Line/Text/Meta: Label "Last seen 6 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Line/Switch: CheckButton [pressed, focus 19]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Actions/Rename: Button "Rename" [focus 20]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Actions/ForgetRow: Button "Forget" [focus 21]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Line/Text/Name: Label "\u2068Device 8\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Line/Text/Meta: Label "Last seen 7 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Line/Switch: CheckButton [pressed, focus 22]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Actions/Rename: Button "Rename" [focus 23]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Actions/ForgetRow: Button "Forget" [focus 24]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Line/Text/Name: Label "\u2068Device 9\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Line/Text/Meta: Label "Last seen 8 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Line/Switch: CheckButton [focus 25]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Actions/Rename: Button "Rename" [focus 26]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Actions/ForgetRow: Button "Forget" [focus 27]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Line/Text/Name: Label "\u2068Device 10\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Line/Text/Meta: Label "Last seen 9 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Line/Switch: CheckButton [focus 28]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Actions/Rename: Button "Rename" [focus 29]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Actions/ForgetRow: Button "Forget" [focus 30]
 Card/Scroll/Frame/Actions/Pair: Button "Pair with a Code" [focus 31]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 32]
 == list: no room for another, Pair with a Code waits ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Head/Titles/Lede: Label "They connect only on the same network."
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Glyph: TextureRect
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Title: Label "No room to pair"
-Card/Scroll/Frame/Notices/Notice0/Column/Body: Label "Forget a paired device to pair another."
-Card/Scroll/Frame/Notices/Notice1/Column/Head/Glyph: TextureRect
-Card/Scroll/Frame/Notices/Notice1/Column/Head/Title: Label "Up to 8 can connect"
-Card/Scroll/Frame/Notices/Notice1/Column/Body: Label "Turn one off to let another connect."
-Card/Scroll/Frame/ColumnHead: Label "Can connect"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Switch: CheckButton [pressed, focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/Rename: Button "Rename" [focus 3]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/ForgetRow: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Switch: CheckButton [pressed, focus 5]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/Rename: Button "Rename" [focus 6]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/ForgetRow: Button "Forget" [focus 4]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Switch: CheckButton [pressed, focus 8]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/Rename: Button "Rename" [focus 9]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/ForgetRow: Button "Forget" [focus 7]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Text/Name: Label "\u2068Device 4\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Text/Meta: Label "Last seen 3 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Switch: CheckButton [pressed, focus 11]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Actions/Rename: Button "Rename" [focus 12]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L4/Line/Actions/ForgetRow: Button "Forget" [focus 10]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Text/Name: Label "\u2068Device 5\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Text/Meta: Label "Last seen 4 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Switch: CheckButton [pressed, focus 14]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Actions/Rename: Button "Rename" [focus 15]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L5/Line/Actions/ForgetRow: Button "Forget" [focus 13]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Text/Name: Label "\u2068Device 6\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Text/Meta: Label "Last seen 5 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Switch: CheckButton [pressed, focus 17]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Actions/Rename: Button "Rename" [focus 18]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L6/Line/Actions/ForgetRow: Button "Forget" [focus 16]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Text/Name: Label "\u2068Device 7\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Text/Meta: Label "Last seen 6 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Switch: CheckButton [pressed, focus 20]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Actions/Rename: Button "Rename" [focus 21]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L7/Line/Actions/ForgetRow: Button "Forget" [focus 19]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Text/Name: Label "\u2068Device 8\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Text/Meta: Label "Last seen 7 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Switch: CheckButton [pressed, focus 23]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Actions/Rename: Button "Rename" [focus 24]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L8/Line/Actions/ForgetRow: Button "Forget" [focus 22]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Text/Name: Label "\u2068Device 9\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Text/Meta: Label "Last seen 8 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Switch: CheckButton [focus 26]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Actions/Rename: Button "Rename" [focus 27]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L9/Line/Actions/ForgetRow: Button "Forget" [focus 25]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Text/Name: Label "\u2068Device 10\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Text/Meta: Label "Last seen 9 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Switch: CheckButton [focus 29]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Actions/Rename: Button "Rename" [focus 30]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L10/Line/Actions/ForgetRow: Button "Forget" [focus 28]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L11/Line/Text/Name: Label "\u2068Device 11\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L11/Line/Text/Meta: Label "Last seen 10 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L11/Line/Switch: CheckButton [focus 32]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L11/Line/Actions/Rename: Button "Rename" [focus 33]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L11/Line/Actions/ForgetRow: Button "Forget" [focus 31]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L12/Line/Text/Name: Label "\u2068Device 12\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L12/Line/Text/Meta: Label "Last seen 11 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L12/Line/Switch: CheckButton [focus 35]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L12/Line/Actions/Rename: Button "Rename" [focus 36]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L12/Line/Actions/ForgetRow: Button "Forget" [focus 34]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L13/Line/Text/Name: Label "\u2068Device 13\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L13/Line/Text/Meta: Label "Last seen 12 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L13/Line/Switch: CheckButton [focus 38]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L13/Line/Actions/Rename: Button "Rename" [focus 39]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L13/Line/Actions/ForgetRow: Button "Forget" [focus 37]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L14/Line/Text/Name: Label "\u2068Device 14\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L14/Line/Text/Meta: Label "Last seen 13 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L14/Line/Switch: CheckButton [focus 41]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L14/Line/Actions/Rename: Button "Rename" [focus 42]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L14/Line/Actions/ForgetRow: Button "Forget" [focus 40]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L15/Line/Text/Name: Label "\u2068Device 15\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L15/Line/Text/Meta: Label "Last seen 14 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L15/Line/Switch: CheckButton [focus 44]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L15/Line/Actions/Rename: Button "Rename" [focus 45]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L15/Line/Actions/ForgetRow: Button "Forget" [focus 43]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L16/Line/Text/Name: Label "\u2068Device 16\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L16/Line/Text/Meta: Label "Last seen 15 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L16/Line/Switch: CheckButton [focus 47]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L16/Line/Actions/Rename: Button "Rename" [focus 48]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L16/Line/Actions/ForgetRow: Button "Forget" [focus 46]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L17/Line/Text/Name: Label "\u2068Device 17\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L17/Line/Text/Meta: Label "Last seen 16 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L17/Line/Switch: CheckButton [focus 50]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L17/Line/Actions/Rename: Button "Rename" [focus 51]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L17/Line/Actions/ForgetRow: Button "Forget" [focus 49]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L18/Line/Text/Name: Label "\u2068Device 18\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L18/Line/Text/Meta: Label "Last seen 17 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L18/Line/Switch: CheckButton [focus 53]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L18/Line/Actions/Rename: Button "Rename" [focus 54]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L18/Line/Actions/ForgetRow: Button "Forget" [focus 52]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L19/Line/Text/Name: Label "\u2068Device 19\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L19/Line/Text/Meta: Label "Last seen 18 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L19/Line/Switch: CheckButton [focus 56]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L19/Line/Actions/Rename: Button "Rename" [focus 57]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L19/Line/Actions/ForgetRow: Button "Forget" [focus 55]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L20/Line/Text/Name: Label "\u2068Device 20\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L20/Line/Text/Meta: Label "Last seen 19 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L20/Line/Switch: CheckButton [focus 59]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L20/Line/Actions/Rename: Button "Rename" [focus 60]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L20/Line/Actions/ForgetRow: Button "Forget" [focus 58]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L21/Line/Text/Name: Label "\u2068Device 21\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L21/Line/Text/Meta: Label "Last seen 20 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L21/Line/Switch: CheckButton [focus 62]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L21/Line/Actions/Rename: Button "Rename" [focus 63]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L21/Line/Actions/ForgetRow: Button "Forget" [focus 61]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L22/Line/Text/Name: Label "\u2068Device 22\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L22/Line/Text/Meta: Label "Last seen 21 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L22/Line/Switch: CheckButton [focus 65]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L22/Line/Actions/Rename: Button "Rename" [focus 66]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L22/Line/Actions/ForgetRow: Button "Forget" [focus 64]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L23/Line/Text/Name: Label "\u2068Device 23\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L23/Line/Text/Meta: Label "Last seen 22 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L23/Line/Switch: CheckButton [focus 68]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L23/Line/Actions/Rename: Button "Rename" [focus 69]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L23/Line/Actions/ForgetRow: Button "Forget" [focus 67]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L24/Line/Text/Name: Label "\u2068Device 24\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L24/Line/Text/Meta: Label "Last seen 23 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L24/Line/Switch: CheckButton [focus 71]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L24/Line/Actions/Rename: Button "Rename" [focus 72]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L24/Line/Actions/ForgetRow: Button "Forget" [focus 70]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L25/Line/Text/Name: Label "\u2068Device 25\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L25/Line/Text/Meta: Label "Last seen 24 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L25/Line/Switch: CheckButton [focus 74]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L25/Line/Actions/Rename: Button "Rename" [focus 75]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L25/Line/Actions/ForgetRow: Button "Forget" [focus 73]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L26/Line/Text/Name: Label "\u2068Device 26\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L26/Line/Text/Meta: Label "Last seen 25 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L26/Line/Switch: CheckButton [focus 77]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L26/Line/Actions/Rename: Button "Rename" [focus 78]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L26/Line/Actions/ForgetRow: Button "Forget" [focus 76]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L27/Line/Text/Name: Label "\u2068Device 27\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L27/Line/Text/Meta: Label "Last seen 26 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L27/Line/Switch: CheckButton [focus 80]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L27/Line/Actions/Rename: Button "Rename" [focus 81]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L27/Line/Actions/ForgetRow: Button "Forget" [focus 79]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L28/Line/Text/Name: Label "\u2068Device 28\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L28/Line/Text/Meta: Label "Last seen 27 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L28/Line/Switch: CheckButton [focus 83]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L28/Line/Actions/Rename: Button "Rename" [focus 84]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L28/Line/Actions/ForgetRow: Button "Forget" [focus 82]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L29/Line/Text/Name: Label "\u2068Device 29\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L29/Line/Text/Meta: Label "Last seen 28 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L29/Line/Switch: CheckButton [focus 86]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L29/Line/Actions/Rename: Button "Rename" [focus 87]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L29/Line/Actions/ForgetRow: Button "Forget" [focus 85]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L30/Line/Text/Name: Label "\u2068Device 30\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L30/Line/Text/Meta: Label "Last seen 29 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L30/Line/Switch: CheckButton [focus 89]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L30/Line/Actions/Rename: Button "Rename" [focus 90]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L30/Line/Actions/ForgetRow: Button "Forget" [focus 88]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L31/Line/Text/Name: Label "\u2068Device 31\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L31/Line/Text/Meta: Label "Last seen 30 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L31/Line/Switch: CheckButton [focus 92]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L31/Line/Actions/Rename: Button "Rename" [focus 93]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L31/Line/Actions/ForgetRow: Button "Forget" [focus 91]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L32/Line/Text/Name: Label "\u2068Device 32\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L32/Line/Text/Meta: Label "Last seen 31 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L32/Line/Switch: CheckButton [focus 95]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L32/Line/Actions/Rename: Button "Rename" [focus 96]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L32/Line/Actions/ForgetRow: Button "Forget" [focus 94]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Title: Label "No room to pair"
+Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Switch: CheckButton [pressed, focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Rename: Button "Rename" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/ForgetRow: Button "Forget" [focus 3]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Switch: CheckButton [pressed, focus 4]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Rename: Button "Rename" [focus 5]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/ForgetRow: Button "Forget" [focus 6]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Switch: CheckButton [pressed, focus 7]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/Rename: Button "Rename" [focus 8]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/ForgetRow: Button "Forget" [focus 9]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Text/Name: Label "\u2068Device 4\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Text/Meta: Label "Last seen 3 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Line/Switch: CheckButton [pressed, focus 10]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Actions/Rename: Button "Rename" [focus 11]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L4/Actions/ForgetRow: Button "Forget" [focus 12]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Text/Name: Label "\u2068Device 5\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Text/Meta: Label "Last seen 4 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Line/Switch: CheckButton [pressed, focus 13]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Actions/Rename: Button "Rename" [focus 14]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L5/Actions/ForgetRow: Button "Forget" [focus 15]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Line/Text/Name: Label "\u2068Device 6\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Line/Text/Meta: Label "Last seen 5 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Line/Switch: CheckButton [pressed, focus 16]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Actions/Rename: Button "Rename" [focus 17]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L6/Actions/ForgetRow: Button "Forget" [focus 18]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Line/Text/Name: Label "\u2068Device 7\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Line/Text/Meta: Label "Last seen 6 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Line/Switch: CheckButton [pressed, focus 19]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Actions/Rename: Button "Rename" [focus 20]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L7/Actions/ForgetRow: Button "Forget" [focus 21]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Line/Text/Name: Label "\u2068Device 8\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Line/Text/Meta: Label "Last seen 7 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Line/Switch: CheckButton [pressed, focus 22]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Actions/Rename: Button "Rename" [focus 23]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L8/Actions/ForgetRow: Button "Forget" [focus 24]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Line/Text/Name: Label "\u2068Device 9\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Line/Text/Meta: Label "Last seen 8 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Line/Switch: CheckButton [focus 25]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Actions/Rename: Button "Rename" [focus 26]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L9/Actions/ForgetRow: Button "Forget" [focus 27]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Line/Text/Name: Label "\u2068Device 10\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Line/Text/Meta: Label "Last seen 9 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Line/Switch: CheckButton [focus 28]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Actions/Rename: Button "Rename" [focus 29]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L10/Actions/ForgetRow: Button "Forget" [focus 30]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L11/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L11/Line/Text/Name: Label "\u2068Device 11\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L11/Line/Text/Meta: Label "Last seen 10 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L11/Line/Switch: CheckButton [focus 31]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L11/Actions/Rename: Button "Rename" [focus 32]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L11/Actions/ForgetRow: Button "Forget" [focus 33]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L12/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L12/Line/Text/Name: Label "\u2068Device 12\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L12/Line/Text/Meta: Label "Last seen 11 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L12/Line/Switch: CheckButton [focus 34]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L12/Actions/Rename: Button "Rename" [focus 35]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L12/Actions/ForgetRow: Button "Forget" [focus 36]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L13/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L13/Line/Text/Name: Label "\u2068Device 13\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L13/Line/Text/Meta: Label "Last seen 12 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L13/Line/Switch: CheckButton [focus 37]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L13/Actions/Rename: Button "Rename" [focus 38]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L13/Actions/ForgetRow: Button "Forget" [focus 39]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L14/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L14/Line/Text/Name: Label "\u2068Device 14\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L14/Line/Text/Meta: Label "Last seen 13 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L14/Line/Switch: CheckButton [focus 40]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L14/Actions/Rename: Button "Rename" [focus 41]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L14/Actions/ForgetRow: Button "Forget" [focus 42]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L15/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L15/Line/Text/Name: Label "\u2068Device 15\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L15/Line/Text/Meta: Label "Last seen 14 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L15/Line/Switch: CheckButton [focus 43]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L15/Actions/Rename: Button "Rename" [focus 44]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L15/Actions/ForgetRow: Button "Forget" [focus 45]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L16/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L16/Line/Text/Name: Label "\u2068Device 16\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L16/Line/Text/Meta: Label "Last seen 15 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L16/Line/Switch: CheckButton [focus 46]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L16/Actions/Rename: Button "Rename" [focus 47]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L16/Actions/ForgetRow: Button "Forget" [focus 48]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L17/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L17/Line/Text/Name: Label "\u2068Device 17\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L17/Line/Text/Meta: Label "Last seen 16 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L17/Line/Switch: CheckButton [focus 49]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L17/Actions/Rename: Button "Rename" [focus 50]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L17/Actions/ForgetRow: Button "Forget" [focus 51]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L18/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L18/Line/Text/Name: Label "\u2068Device 18\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L18/Line/Text/Meta: Label "Last seen 17 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L18/Line/Switch: CheckButton [focus 52]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L18/Actions/Rename: Button "Rename" [focus 53]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L18/Actions/ForgetRow: Button "Forget" [focus 54]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L19/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L19/Line/Text/Name: Label "\u2068Device 19\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L19/Line/Text/Meta: Label "Last seen 18 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L19/Line/Switch: CheckButton [focus 55]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L19/Actions/Rename: Button "Rename" [focus 56]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L19/Actions/ForgetRow: Button "Forget" [focus 57]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L20/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L20/Line/Text/Name: Label "\u2068Device 20\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L20/Line/Text/Meta: Label "Last seen 19 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L20/Line/Switch: CheckButton [focus 58]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L20/Actions/Rename: Button "Rename" [focus 59]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L20/Actions/ForgetRow: Button "Forget" [focus 60]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L21/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L21/Line/Text/Name: Label "\u2068Device 21\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L21/Line/Text/Meta: Label "Last seen 20 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L21/Line/Switch: CheckButton [focus 61]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L21/Actions/Rename: Button "Rename" [focus 62]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L21/Actions/ForgetRow: Button "Forget" [focus 63]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L22/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L22/Line/Text/Name: Label "\u2068Device 22\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L22/Line/Text/Meta: Label "Last seen 21 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L22/Line/Switch: CheckButton [focus 64]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L22/Actions/Rename: Button "Rename" [focus 65]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L22/Actions/ForgetRow: Button "Forget" [focus 66]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L23/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L23/Line/Text/Name: Label "\u2068Device 23\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L23/Line/Text/Meta: Label "Last seen 22 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L23/Line/Switch: CheckButton [focus 67]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L23/Actions/Rename: Button "Rename" [focus 68]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L23/Actions/ForgetRow: Button "Forget" [focus 69]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L24/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L24/Line/Text/Name: Label "\u2068Device 24\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L24/Line/Text/Meta: Label "Last seen 23 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L24/Line/Switch: CheckButton [focus 70]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L24/Actions/Rename: Button "Rename" [focus 71]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L24/Actions/ForgetRow: Button "Forget" [focus 72]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L25/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L25/Line/Text/Name: Label "\u2068Device 25\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L25/Line/Text/Meta: Label "Last seen 24 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L25/Line/Switch: CheckButton [focus 73]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L25/Actions/Rename: Button "Rename" [focus 74]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L25/Actions/ForgetRow: Button "Forget" [focus 75]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L26/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L26/Line/Text/Name: Label "\u2068Device 26\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L26/Line/Text/Meta: Label "Last seen 25 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L26/Line/Switch: CheckButton [focus 76]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L26/Actions/Rename: Button "Rename" [focus 77]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L26/Actions/ForgetRow: Button "Forget" [focus 78]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L27/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L27/Line/Text/Name: Label "\u2068Device 27\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L27/Line/Text/Meta: Label "Last seen 26 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L27/Line/Switch: CheckButton [focus 79]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L27/Actions/Rename: Button "Rename" [focus 80]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L27/Actions/ForgetRow: Button "Forget" [focus 81]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L28/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L28/Line/Text/Name: Label "\u2068Device 28\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L28/Line/Text/Meta: Label "Last seen 27 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L28/Line/Switch: CheckButton [focus 82]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L28/Actions/Rename: Button "Rename" [focus 83]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L28/Actions/ForgetRow: Button "Forget" [focus 84]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L29/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L29/Line/Text/Name: Label "\u2068Device 29\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L29/Line/Text/Meta: Label "Last seen 28 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L29/Line/Switch: CheckButton [focus 85]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L29/Actions/Rename: Button "Rename" [focus 86]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L29/Actions/ForgetRow: Button "Forget" [focus 87]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L30/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L30/Line/Text/Name: Label "\u2068Device 30\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L30/Line/Text/Meta: Label "Last seen 29 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L30/Line/Switch: CheckButton [focus 88]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L30/Actions/Rename: Button "Rename" [focus 89]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L30/Actions/ForgetRow: Button "Forget" [focus 90]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L31/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L31/Line/Text/Name: Label "\u2068Device 31\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L31/Line/Text/Meta: Label "Last seen 30 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L31/Line/Switch: CheckButton [focus 91]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L31/Actions/Rename: Button "Rename" [focus 92]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L31/Actions/ForgetRow: Button "Forget" [focus 93]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L32/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L32/Line/Text/Name: Label "\u2068Device 32\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L32/Line/Text/Meta: Label "Last seen 31 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L32/Line/Switch: CheckButton [focus 94]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L32/Actions/Rename: Button "Rename" [focus 95]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L32/Actions/ForgetRow: Button "Forget" [focus 96]
 Card/Scroll/Frame/Actions/Pair: Button "Pair with a Code" [focus 97]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 98]
 == list: never seen, so no Last seen ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Head/Titles/Lede: Label "They connect only on the same network."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/Rename: Button "Rename" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/ForgetRow: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/Rename: Button "Rename" [focus 4]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/ForgetRow: Button "Forget" [focus 3]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/ForgetRow: Button "Forget" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Rename: Button "Rename" [focus 3]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/ForgetRow: Button "Forget" [focus 4]
 Card/Scroll/Frame/Actions/Pair: Button "Pair with a Code" [focus 5]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 6]
 == list: the app could not find a device ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Head/Titles/Lede: Label "They connect only on the same network."
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Glyph: TextureRect
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Title: Label "Can’t find \u2068Theo's laptop\u2069"
-Card/Scroll/Frame/Notices/Notice0/Column/Body: Label "Check it’s on and on the same network."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/Rename: Button "Rename" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/ForgetRow: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/Rename: Button "Rename" [focus 4]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/ForgetRow: Button "Forget" [focus 3]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/Rename: Button "Rename" [focus 6]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/ForgetRow: Button "Forget" [focus 5]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Title: Label "Can’t find \u2068Theo's laptop\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/ForgetRow: Button "Forget" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Rename: Button "Rename" [focus 3]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/ForgetRow: Button "Forget" [focus 4]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/Rename: Button "Rename" [focus 5]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/ForgetRow: Button "Forget" [focus 6]
 Card/Scroll/Frame/Actions/Pair: Button "Pair with a Code" [focus 7]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 8]
 == list: a device is busy ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Head/Titles/Lede: Label "They connect only on the same network."
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Glyph: TextureRect
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Title: Label "\u2068Theo's laptop\u2069 is busy"
-Card/Scroll/Frame/Notices/Notice0/Column/Action: Button "Try again" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/Rename: Button "Rename" [focus 3]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/ForgetRow: Button "Forget" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/Rename: Button "Rename" [focus 5]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/ForgetRow: Button "Forget" [focus 4]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/Rename: Button "Rename" [focus 7]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/ForgetRow: Button "Forget" [focus 6]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Title: Label "\u2068Theo's laptop\u2069 is busy"
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Action: Button "Try again" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Rename: Button "Rename" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/ForgetRow: Button "Forget" [focus 3]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Rename: Button "Rename" [focus 4]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/ForgetRow: Button "Forget" [focus 5]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/Rename: Button "Rename" [focus 6]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/ForgetRow: Button "Forget" [focus 7]
 Card/Scroll/Frame/Actions/Pair: Button "Pair with a Code" [focus 8]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 9]
 == list: a device is no longer paired ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Head/Titles/Lede: Label "They connect only on the same network."
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Glyph: TextureRect
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Title: Label "Not paired"
-Card/Scroll/Frame/Notices/Notice0/Column/Body: Label "That device is no longer paired with this one."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/Rename: Button "Rename" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/ForgetRow: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/Rename: Button "Rename" [focus 4]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/ForgetRow: Button "Forget" [focus 3]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/Rename: Button "Rename" [focus 6]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/ForgetRow: Button "Forget" [focus 5]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Title: Label "Not paired"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/ForgetRow: Button "Forget" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Rename: Button "Rename" [focus 3]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/ForgetRow: Button "Forget" [focus 4]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/Rename: Button "Rename" [focus 5]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/ForgetRow: Button "Forget" [focus 6]
 Card/Scroll/Frame/Actions/Pair: Button "Pair with a Code" [focus 7]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 8]
 == renaming: in the row ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/ColumnHead: Label "Can connect"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Hint: Label "Shown on this device only."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Actions/Save: Button "Save" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "Cancel" [focus 3]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Hint: Label "Shown on this device only."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Save: Button "Save" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "Cancel" [focus 3]
 == renaming: a name over 64 characters is refused ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/ColumnHead: Label "Can connect"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Problem: Label "Use 64 characters or fewer."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Hint: Label "Shown on this device only."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Actions/Save: Button "Save" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "Cancel" [focus 3]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Problem: Label "Use 64 characters or fewer."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Hint: Label "Shown on this device only."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Save: Button "Save" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "Cancel" [focus 3]
 == renaming: nothing left once cleaned ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/ColumnHead: Label "Can connect"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Problem: Label "Enter a name."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Hint: Label "Shown on this device only."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Actions/Save: Button "Save" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "Cancel" [focus 3]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Problem: Label "Enter a name."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Hint: Label "Shown on this device only."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Save: Button "Save" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "Cancel" [focus 3]
 == renaming: the store could not keep the name ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/ColumnHead: Label "Can connect"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Problem: Label "Couldn't rename \u2068Device 1\u2069. Try again."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Hint: Label "Shown on this device only."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Actions/Save: Button "Save" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "Cancel" [focus 3]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Problem: Label "Couldn't rename \u2068Device 1\u2069. Try again."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Hint: Label "Shown on this device only."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Save: Button "Save" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "Cancel" [focus 3]
 == forgetting: the store could not forget it, the question stays ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/ColumnHead: Label "Can connect"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Question: Label "Forget \u2068Device 2\u2069?"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Body: Label "To connect again, pair with a new code."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Problem: Label "Couldn’t forget \u2068Device 2\u2069. Try again."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Actions/Forget: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Actions/Cancel: Button "Cancel" [focus 2]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Question: Label "Forget \u2068Device 2\u2069?"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Body: Label "To connect again, pair with a new code."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Problem: Label "Couldn’t forget \u2068Device 2\u2069. Try again."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Forget: Button "Forget" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Cancel: Button "Cancel" [focus 2]
 == forgetting: asks inside the row ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/ColumnHead: Label "Can connect"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Question: Label "Forget \u2068Device 2\u2069?"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Body: Label "To connect again, pair with a new code."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Actions/Forget: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Actions/Cancel: Button "Cancel" [focus 2]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Question: Label "Forget \u2068Device 2\u2069?"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Body: Label "To connect again, pair with a new code."
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Forget: Button "Forget" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Cancel: Button "Cancel" [focus 2]
 == loading: the first read has not answered ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 1]
 == empty: nothing paired yet ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Message: Label "No paired devices yet."
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Side/Message: Label "No paired devices yet."
 Card/Scroll/Frame/Actions/Pair: Button "Pair with a Code" [focus 1]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 2]
 == load-failed: the record cannot be read ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Failure: Label "Couldn’t load your paired devices."
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Side/Failure: Label "Couldn’t load your paired devices."
 Card/Scroll/Frame/Actions/Retry: Button "Try again" [focus 1]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 2]
 == off: pairing is off, Rename and Forget remain ==
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Frame/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Glyph: TextureRect
-Card/Scroll/Frame/Notices/Notice0/Column/Head/Title: Label "Pairing unavailable"
-Card/Scroll/Frame/Notices/Notice0/Column/Body: Label "Pairing with a code is off for this app. Paired devices can’t connect."
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/Rename: Button "Rename" [focus 2]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L1/Line/Actions/ForgetRow: Button "Forget" [focus 1]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/Rename: Button "Rename" [focus 4]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L2/Line/Actions/ForgetRow: Button "Forget" [focus 3]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/Rename: Button "Rename" [focus 6]
-Card/Scroll/Frame/ListScroll/List/Rows/Row_L3/Line/Actions/ForgetRow: Button "Forget" [focus 5]
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Title: Label "Pairing unavailable"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/ForgetRow: Button "Forget" [focus 2]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Name: Label "\u2068Device 2\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Line/Text/Meta: Label "Last seen yesterday"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Rename: Button "Rename" [focus 3]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/ForgetRow: Button "Forget" [focus 4]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Glyph: TextureRect
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Name: Label "\u2068Device 3\u2069"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Line/Text/Meta: Label "Last seen 2 days ago"
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/Rename: Button "Rename" [focus 5]
+Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L3/Actions/ForgetRow: Button "Forget" [focus 6]
 Card/Scroll/Frame/Actions/Done: Button "Done" [focus 7]
 == hidden: Connect off ==
 <hidden>
-Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"

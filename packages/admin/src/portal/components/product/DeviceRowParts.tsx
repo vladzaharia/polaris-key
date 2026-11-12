@@ -171,10 +171,45 @@ export function RemoveTail({
 }
 
 /**
+ * A panel that opens in place under a row (the expand pattern, S-23 §6.1): focus goes to its heading
+ * as it opens, Escape calls `onEscape`, and once open the region is brought into view.
+ */
+export function InlinePanel({
+  id,
+  open,
+  headingRef,
+  onEscape,
+  children,
+}: {
+  id: string;
+  open: boolean;
+  headingRef: React.RefObject<HTMLHeadingElement | null>;
+  onEscape: () => void;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <Expand id={id} open={open} {...focusOnOpen(headingRef)}>
+      <div
+        className="pt-3"
+        onKeyDown={(e) => {
+          if (e.key !== "Escape") return;
+          e.stopPropagation();
+          onEscape();
+        }}
+      >
+        {children}
+      </div>
+    </Expand>
+  );
+}
+
+/**
  * The confirm that opens in place under a row (the expand pattern, S-23 §6.1): focus goes to its
  * heading as soon as it shows, Escape keeps the device, and once it has opened the region is
  * brought into view. Under 22rem the two buttons stack full width, Remove last (§8's sheet
- * buttons).
+ * buttons). Connected apps' Disconnect (I-21.15) reuses it with its own wording: `copy` replaces
+ * the heading, the failure line, the Keep label and the danger button's label and accessible
+ * name; `note` is one muted line under the consequences.
  */
 export function RemovePanel({
   id,
@@ -186,60 +221,75 @@ export function RemovePanel({
   removing,
   onKeep,
   onRemove,
+  copy,
+  note,
+  level = 3,
 }: {
   id: string;
   open: boolean;
   name: string;
+  /** The heading's level: 3 under a card's h2 (Devices), 4 under a group's h3 (Connected Apps). */
+  level?: 3 | 4;
   headingRef: React.RefObject<HTMLHeadingElement | null>;
-  consequences: React.ReactNode;
+  consequences?: React.ReactNode;
   error: boolean;
   removing: boolean;
   onKeep: () => void;
   onRemove: () => void;
+  copy?: {
+    title: string;
+    failed: string;
+    keep: string;
+    confirm: string;
+    confirmName: string;
+    /** One sentence in place of the consequences list. */
+    body?: string;
+  };
+  note?: string;
 }): React.ReactElement {
+  const Heading = level === 4 ? "h4" : "h3";
   return (
-    <Expand id={id} open={open} {...focusOnOpen(headingRef)}>
-      <div
-        className="pt-3"
-        onKeyDown={(e) => {
-          if (e.key !== "Escape") return;
-          e.stopPropagation();
-          onKeep();
-        }}
-      >
-        <div className="space-y-3 rounded-lg border border-danger-border bg-danger-subtle p-4 @container">
-          <h3
-            ref={headingRef}
-            tabIndex={-1}
-            className="font-medium text-fg-strong outline-none"
-          >
-            {t("locker.devices.removeAsk", { name })}
-          </h3>
+    <InlinePanel id={id} open={open} headingRef={headingRef} onEscape={onKeep}>
+      <div className="space-y-3 rounded-lg border border-danger-border bg-danger-subtle p-4 @container">
+        <Heading
+          ref={headingRef}
+          tabIndex={-1}
+          className="font-medium text-fg-strong outline-none"
+        >
+          {copy?.title ?? t("locker.devices.removeAsk", { name })}
+        </Heading>
+        {copy?.body ? (
+          <p className="text-sm text-fg">{copy.body}</p>
+        ) : (
           <ul className="list-disc space-y-1 ps-5 text-sm text-fg">
             {consequences}
           </ul>
-          {error ? (
-            <p role="alert" className="text-sm text-danger">
-              {t("devices.removeFailed", { device: name })}
-            </p>
-          ) : null}
-          <div className="flex flex-col gap-2 @[22rem]:flex-row @[22rem]:justify-end">
-            <Button variant="outline" onClick={onKeep}>
-              {t("locker.methods.keepIt")}
-            </Button>
-            {/* "Remove": the heading above already names the device; the name stays in the
+        )}
+        {note ? <p className="text-sm text-fg-muted">{note}</p> : null}
+        {error ? (
+          <p role="alert" className="text-sm text-danger">
+            {copy?.failed ?? t("devices.removeFailed", { device: name })}
+          </p>
+        ) : null}
+        <div className="flex flex-col gap-2 @[22rem]:flex-row @[22rem]:justify-end">
+          <Button variant="outline" onClick={onKeep}>
+            {copy?.keep ?? t("locker.methods.keepIt")}
+          </Button>
+          {/* "Remove": the heading above already names the device; the name stays in the
                 accessible name. */}
-            <Button
-              variant="danger"
-              aria-label={t("locker.freeDevice.removeName", { device: name })}
-              loading={removing}
-              onClick={onRemove}
-            >
-              {t("devices.remove")}
-            </Button>
-          </div>
+          <Button
+            variant="danger"
+            aria-label={
+              copy?.confirmName ??
+              t("locker.freeDevice.removeName", { device: name })
+            }
+            loading={removing}
+            onClick={onRemove}
+          >
+            {copy?.confirm ?? t("devices.remove")}
+          </Button>
         </div>
       </div>
-    </Expand>
+    </InlinePanel>
   );
 }

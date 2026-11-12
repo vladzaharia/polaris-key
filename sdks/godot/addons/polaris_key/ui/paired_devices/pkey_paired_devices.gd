@@ -29,6 +29,9 @@ const Models := preload("res://addons/polaris_key/ui/model/models.gd")
 const Local := preload("res://addons/polaris_key/ui/model/local.gd")
 const Context := preload("res://addons/polaris_key/ui/model/context.gd")
 
+## The controls of a row in the order they read.
+const ROW_ORDER := ["field", "switch", "rename", "forget", "save", "cancel"]
+
 ## `func() -> float` epoch seconds (tests); empty uses the system's.
 var now_source: Callable = Callable()
 ## Connect is off: the scene is hidden.
@@ -64,33 +67,47 @@ var _done: Button
 var _signature := ""
 var _applied_focus := ""
 var _list_off := false
+var _cols: BoxContainer
+var _side: VBoxContainer
+var _main: VBoxContainer
+var _head_margin: MarginContainer
+## The button that opened a row's edit, where focus returns when it is cancelled.
+var _prefer := "rename"
+var _skeleton: VBoxContainer
 
 
 func _build() -> void:
 	name = "PKeyPairedDevices"
 	_frame = vbox(card_panel(), "Frame", "PKeySections")
-	var head := vbox(_frame, "Head", "PKeyStack")
+	_cols = columns(_frame, "Cols")
+	_cols.set_meta(AUTO_HIDE_META, true)
+	_side = vbox(_cols, "Side", "PKeyStack")
+	var head := vbox(_side, "Head", "PKeyStack")
 	_product = product_header(head, "Product")
 	_product.card = true
 	var titles := vbox(head, "Titles", "PKeyTight")
 	_title = label(titles, "Title", "PKeyTitle")
 	_title.focus_mode = PKeyPairCode.accessibility_focus() as Control.FocusMode
 	_lede = label(titles, "Lede", "PKeyMuted")
-	loading_bar(_frame)
-	_notices = vbox(_frame, "Notices", "PKeyStack")
+	loading_bar(_side)
+	_notices = vbox(_side, "Notices", "PKeyStack")
 	for i in 3:
 		var n := PKeyPairNotice.new()
 		n.name = "Notice%d" % i
 		n.action_pressed.connect(_on_notice_action.bind(i))
 		_notices.add_child(n)
 		_notice_nodes.append(n)
-	_message = label(_frame, "Message", "PKeyMuted")
-	_error = label(_frame, "Failure", "PKeyError")
+	_message = label(_side, "Message", "PKeyMuted")
+	_error = label(_side, "Failure", "PKeyError")
 	if "accessibility_live" in _error:
 		_error.set("accessibility_live", 1)
-	_column_head = label(_frame, "ColumnHead", "PKeyMuted")
+	_main = vbox(_cols, "Main", "PKeyStack")
+	_head_margin = MarginContainer.new()
+	_head_margin.name = "ColumnHeadMargin"
+	_main.add_child(_head_margin)
+	_column_head = label(_head_margin, "ColumnHead", "PKeyMuted")
 	_column_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_list_scroll = PKeyListScroll.make(_frame, "ListScroll")
+	_list_scroll = PKeyListScroll.make(_main, "ListScroll")
 	_list_panel = PanelContainer.new()
 	_list_panel.name = "List"
 	_list_panel.theme_type_variation = "PKeyRail"
@@ -223,6 +240,9 @@ func _render() -> void:
 	if sig != _signature:
 		_signature = sig
 		_rebuild(listing, switches, copy.has("pairedDevices.reachableFullTitle"), state)
+	_show_skeleton(
+		state == "loading" and _loading_since > 0 and Time.get_ticks_msec() - _loading_since >= 300
+	)
 	_render_actions(state, args)
 	_apply_focus_request()
 
@@ -242,26 +262,25 @@ func _render_notices(state: String, copy: Array, args: Dictionary) -> void:
 			]
 		)
 	elif state == "list":
-		if copy.has("core.codes.local-links-full.title"):
-			made.append(
-				[
-					fmt.call("core.codes.local-links-full.title"),
-					fmt.call("pairedDevices.fullBody"),
-					"info",
-					"",
-					""
-				]
+		# No room to pair and eight that can connect are one notice: the cap first, then what to do.
+		var has_full := copy.has("core.codes.local-links-full.title")
+		var has_reach := copy.has("pairedDevices.reachableFullTitle")
+		if has_full or has_reach:
+			var title: String = fmt.call(
+				(
+					"core.codes.local-links-full.title"
+					if has_full
+					else "pairedDevices.reachableFullTitle"
+				)
 			)
-		if copy.has("pairedDevices.reachableFullTitle"):
-			made.append(
-				[
-					fmt.call("pairedDevices.reachableFullTitle"),
-					fmt.call("pairedDevices.reachableFullBody"),
-					"info",
-					"",
-					""
-				]
-			)
+			var body: Array = []
+			if has_full:
+				body.append(fmt.call("pairedDevices.fullBody"))
+			if has_reach:
+				if has_full:
+					body.append(fmt.call("pairedDevices.reachableFullTitle") + ".")
+				body.append(fmt.call("pairedDevices.reachableFullBody"))
+			made.append([title, " ".join(body), "info", "", ""])
 		var n: Variant = _snap.get("notice")
 		if n is Dictionary:
 			var pair: Array = Local.NOTICE.get(n.get("kind"), [])
@@ -302,6 +321,32 @@ func _render_actions(state: String, args: Dictionary) -> void:
 	_pair.set_meta(&"pkey_unavailable", unavailable.has("pairedDevices.pair"))
 	_actions.visible = state != "hidden" and not editing
 	_spacer.visible = phone_screen()
+
+
+## Three rows of the list's shape while the first read has not answered (after the DL7 delay).
+func _show_skeleton(on: bool) -> void:
+	on = (
+		on
+		and not (
+			(
+				float(layout_metrics().get("room", Vector2(0, 999)).y)
+				/ float(layout_metrics().get("scale", 1.0))
+			)
+			< 420.0
+		)
+	)
+	if on and _skeleton == null:
+		_skeleton = vbox(_main, "Skeleton", "PKeyTight")
+		_main.move_child(_skeleton, _list_scroll.get_index())
+		for i in 3:
+			var row := ColorRect.new()
+			row.name = "Row%d" % i
+			row.color = Color(1, 1, 1, 0.07)
+			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.custom_minimum_size.y = roundf(56.0 * float(layout_metrics().get("scale", 1.0)))
+			_skeleton.add_child(row)
+	if _skeleton != null:
+		_skeleton.visible = on
 
 
 func _rebuild(show: bool, switches: bool, waits: bool, state: String) -> void:
@@ -401,6 +446,9 @@ func _make_row(d: Dictionary, switches: bool, waits: bool, state: String) -> voi
 		out["cancel"] = no
 	else:
 		var line := hbox(holder, "Line")
+		var glyph := glyph_node(line, "Glyph", PKeyKitGlyphs.device(d.get("platform")))
+		glyph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		out["glyph"] = glyph
 		var text := vbox(line, "Text", "PKeyTight")
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var nm := label(text, "Name", "PKeyStrong", true)
@@ -431,6 +479,7 @@ func _make_row(d: Dictionary, switches: bool, waits: bool, state: String) -> voi
 			sw.toggled.connect(_on_switch.bind(id, sw, stuck))
 			line.add_child(sw)
 			out["switch"] = sw
+		# Rename and Forget sit on the row's line, or under it on a phone or a narrow card (`_arrange`).
 		var acts := _row_actions(line)
 		acts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var rename := _row_button(acts, "Rename", "devices.rename", id, "PKeyLink", args)
@@ -439,6 +488,7 @@ func _make_row(d: Dictionary, switches: bool, waits: bool, state: String) -> voi
 		name_for_reader(forget, "%s: %s" % [forget.text, shown])
 		out["rename"] = rename
 		out["forget"] = forget
+		out["acts"] = acts
 	_row_nodes[id] = out
 
 
@@ -465,27 +515,75 @@ func _row_button(
 
 
 func _arrange(m: Dictionary) -> void:
-	super(m)
 	var scale := float(layout_metrics()["scale"])
 	var phone := bool(layout_metrics().get("phone", false))
+	var room: Vector2 = m.get("room", Vector2(1280, 720))
+	# A short, wide window gives the card the width of two columns.
+	max_content_width = 920.0 if room.y / scale < 420.0 and room.x >= room.y * 1.4 else 640.0
+	super(m)
 	var least := roundf(56.0 * scale)
+	# Under 420 tall the title, the notices and the controls take a column beside the list.
+	var short: bool = room.y / scale < 420.0 and room.x >= room.y * 1.4
+	var state := String(model.get("state", ""))
+	var listing := _list_scroll.visible
+	set_columns(_cols, short and listing)
+	_cols.vertical = not (short and listing)
+	_side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_side.size_flags_stretch_ratio = 0.7
+	_main.size_flags_stretch_ratio = 1.3
+	_actions_placement(short and listing)
+	var narrow := phone or short or room_x() < 440.0 * scale
 	for id in _row_nodes:
 		var r: Dictionary = _row_nodes[id]
 		var line := r["holder"].get_node_or_null("Line") as BoxContainer
 		if line != null:
 			line.custom_minimum_size.y = least
-		if r.has("switch"):
-			r["switch"].size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		if r.has("glyph"):
+			size_glyph(r["glyph"], 24.0, get_theme_color("font_color", "PKeyMuted"))
+		if r.has("acts"):
+			# One line: name, meta, switch and the two links. Narrow: the links go under, as in Devices.
+			var home: Node = r["holder"] if narrow else line
+			if (r["acts"] as Node).get_parent() != home:
+				(r["acts"] as Node).reparent(home, false)
 	_notice_glyphs()
+	_show_skeleton(
+		state == "loading" and _loading_since > 0 and Time.get_ticks_msec() - _loading_since >= 300
+	)
+	_head_margin_fit(narrow)
 	PKeyListScroll.fit_buttons(self, _list_panel, _list_panel, _list_scroll)
-	_fit_inner_actions(phone)
-	var changed := _fit_list(least)
+	_fit_inner_actions(false)
+	var changed := _fit_list(least * 3.0, least)
 	fit_scrolls(available_height(), outer_view() == self and _stretches_vertically())
 	_release_offsets()
 	PKeyListScroll.resync(self)
-	_spacer.visible = phone_screen()
+	_spacer.visible = phone_screen() and state != "loading"
 	if changed:
 		PKeyUiView._resort_all(self)
+
+
+## "Can connect" sits above the switch column: its right edge is the switch's, left of the links.
+func _head_margin_fit(narrow: bool) -> void:
+	var gap := 0.0
+	for id in _row_nodes:
+		var r: Dictionary = _row_nodes[id]
+		if r.has("acts") and r.has("switch"):
+			var acts := r["acts"] as Control
+			if not narrow:
+				gap = acts.get_combined_minimum_size().x + role("inline_gap")
+			break
+	var pad := role("card_padding") * 0.0
+	_head_margin.add_theme_constant_override("margin_right", int(gap + pad + 16.0))
+
+
+## The Actions row: at the foot of the card, or in the side column when the list takes the other one.
+func _actions_placement(beside: bool) -> void:
+	var home: Node = _side if beside else _frame
+	_actions.set_meta(&"pkey_force_stack", false)
+	if _actions.get_parent() != home:
+		_actions.reparent(home, false)
+	if not beside:
+		_frame.move_child(_actions, _frame.get_child_count() - 1)
 
 
 func _notice_glyphs() -> void:
@@ -497,7 +595,7 @@ func _notice_glyphs() -> void:
 ## it shows that row alone; and on a screen too short even for that, the product's header collapses
 ## to one line (DL5: it is never removed) and the lede goes, so the edit's own primary is never
 ## below the fold.
-func _fit_list(least: float) -> bool:
+func _fit_list(rows3: float, least: float) -> bool:
 	var edited := (
 		String(_snap.get("target", "")) if model.get("state") in ["renaming", "forgetting"] else ""
 	)
@@ -506,18 +604,30 @@ func _fit_list(least: float) -> bool:
 	_product.card = true
 	_lede.visible = _lede.text != ""
 	_frame.theme_type_variation = &"PKeySections"
+	for n in _notice_nodes:
+		(n as PKeyPairNotice).set_body_hidden(false)
 	_list_off = false
+	# The list keeps three rows. It gives way in this order before the card would scroll: the lede, the
+	# logo (one line), the notice's words; then the edited row alone.
+	var steps: Array = [
+		func() -> void: _lede.visible = false,
+		func() -> void: _product.card = false,
+		func() -> void:
+			for n in _notice_nodes:
+				(n as PKeyPairNotice).set_body_hidden(true),
+	]
+	var i := 0
+	while i < steps.size() and PKeyListScroll.wanted(self, _list_scroll, _list_panel, rows3) > 0.0:
+		steps[i].call()
+		i += 1
 	if edited != "" and PKeyListScroll.wanted(self, _list_scroll, _list_panel, least) > 0.0:
 		for id in _row_nodes:
 			(_row_nodes[id]["holder"] as Control).visible = id == edited
+		_frame.theme_type_variation = &"PKeyStack"
 		if PKeyListScroll.wanted(self, _list_scroll, _list_panel, least) > 0.0:
-			_product.card = false
-			_lede.visible = false
-			_frame.theme_type_variation = &"PKeyStack"
-			if PKeyListScroll.wanted(self, _list_scroll, _list_panel, least) > 0.0:
-				_list_off = true
-				return PKeyListScroll.pass_through(_list_scroll)
-	return PKeyListScroll.apply(self, _list_scroll, _list_panel, least)
+			_list_off = true
+			return PKeyListScroll.pass_through(_list_scroll)
+	return PKeyListScroll.apply(self, _list_scroll, _list_panel, rows3)
 
 
 ## Buttons inside the list's own panel stack when they do not fit on a line.
@@ -554,7 +664,7 @@ func _layout_stale() -> bool:
 	return (
 		not _list_off
 		and PKeyListScroll.stale(
-			self, _list_scroll, _list_panel, roundf(56.0 * float(layout_metrics()["scale"]))
+			self, _list_scroll, _list_panel, roundf(168.0 * float(layout_metrics()["scale"]))
 		)
 	)
 
@@ -597,6 +707,7 @@ func _press(key: String, detail: Dictionary) -> void:
 	var id := String(detail.get("id", ""))
 	match key:
 		"devices.rename":
+			_prefer = "rename"
 			flow.start_rename(id)
 		"common.save":
 			flow.save_rename()
@@ -604,6 +715,7 @@ func _press(key: String, detail: Dictionary) -> void:
 			if _snap.get("step") == "forgetting":
 				flow.confirm_forget()
 			else:
+				_prefer = "forget"
 				flow.ask_forget(id)
 		"common.cancel":
 			flow.cancel_edit()
@@ -647,7 +759,7 @@ func _focus_row(id: String) -> void:
 	var target: Control = _title
 	if id != "" and _row_nodes.has(id):
 		var r: Dictionary = _row_nodes[id]
-		for k in ["field", "rename", "forget", "switch"]:
+		for k in ["field", _prefer, "rename", "forget", "switch"]:
 			if r.has(k) and is_focusable(r[k]):
 				target = r[k]
 				break
@@ -668,6 +780,13 @@ func _focus_row(id: String) -> void:
 
 func _process(_delta: float) -> void:
 	_tick_loading()
+	if (
+		model.get("state") == "loading"
+		and _loading_since > 0
+		and Time.get_ticks_msec() - _loading_since >= 300
+		and (_skeleton == null or not _skeleton.visible)
+	):
+		refresh_view()
 
 
 func _initial_focus() -> Control:
@@ -677,6 +796,13 @@ func _initial_focus() -> Control:
 			return r["field"]
 		if r.has("cancel") and r.has("forget"):
 			return r["cancel"]
+	# After an edit is cancelled or saved focus returns to the row, not to the screen's first control.
+	var at: Variant = _snap.get("focus")
+	if at is Dictionary and at.get("kind") == "row" and _row_nodes.has(String(at.get("id", ""))):
+		var r: Dictionary = _row_nodes[String(at["id"])]
+		for k in [_prefer, "rename", "forget", "switch"]:
+			if r.has(k) and is_focusable(r[k]):
+				return r[k]
 	if is_focusable(_retry):
 		return _retry
 	if is_focusable(_pair) and not bool(_pair.get_meta(&"pkey_unavailable", false)):
@@ -689,12 +815,57 @@ func _focus_chain() -> Array:
 	for n in _notice_nodes:
 		if (n as PKeyPairNotice).action_button() != null:
 			chain.append((n as PKeyPairNotice).action_button())
+	# Each row in the order it reads: the switch, Rename, Forget (or the field, Save, Cancel).
 	for d: Dictionary in _snap.get("devices", []):
 		var r: Dictionary = _row_nodes.get(String(d["id"]), {})
-		for k in ["field", "save", "forget", "cancel", "switch", "rename"]:
+		for k in ROW_ORDER:
 			if r.has(k) and not chain.has(r[k]):
 				chain.append(r[k])
 	return chain + [_retry, _pair, _done]
+
+
+## Up and down keep to the same control of the next row, a column at a time (the switches, then Rename,
+## then Forget, so down alone reaches every control); left and right walk the row.
+func _after_wire() -> void:
+	var rows: Array = []
+	var cols := 0
+	for d: Dictionary in _snap.get("devices", []):
+		var r: Dictionary = _row_nodes.get(String(d["id"]), {})
+		var ctls: Array = []
+		for k in ROW_ORDER:
+			if r.has(k) and is_focusable(r[k]):
+				ctls.append(r[k])
+		if not ctls.is_empty():
+			rows.append(ctls)
+			cols = maxi(cols, ctls.size())
+	var foot: Control = null
+	for b in [_retry, _pair, _done]:
+		if is_focusable(b):
+			foot = b
+			break
+	for i in rows.size():
+		var ctls: Array = rows[i]
+		for j in ctls.size():
+			var c := ctls[j] as Control
+			if j > 0:
+				c.focus_neighbor_left = c.get_path_to(ctls[j - 1])
+			if j + 1 < ctls.size():
+				c.focus_neighbor_right = c.get_path_to(ctls[j + 1])
+			if i > 0:
+				var above: Array = rows[i - 1]
+				c.focus_neighbor_top = c.get_path_to(above[mini(j, above.size() - 1)])
+			elif j > 0:
+				# The top of a column goes to the foot of the one before it.
+				var last: Array = rows[rows.size() - 1]
+				c.focus_neighbor_top = c.get_path_to(last[mini(j - 1, last.size() - 1)])
+			if i + 1 < rows.size():
+				var below: Array = rows[i + 1]
+				c.focus_neighbor_bottom = c.get_path_to(below[mini(j, below.size() - 1)])
+			elif j + 1 < ctls.size():
+				var first: Array = rows[0]
+				c.focus_neighbor_bottom = c.get_path_to(first[mini(j + 1, first.size() - 1)])
+			elif foot != null:
+				c.focus_neighbor_bottom = c.get_path_to(foot)
 
 
 ## Escape (or a pad's B) cancels an edit; elsewhere it is Done.

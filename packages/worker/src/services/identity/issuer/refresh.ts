@@ -11,7 +11,9 @@
  * failure is `invalid_grant` that spends nothing: the client is active and the issuer on (the
  * authentication above), the redirect URI and the scopes the family was issued for are still
  * registered, the account and its subject are live, and the client grant still exists and still
- * COVERS the scope (a person who changed or removed it changes what the next token carries). The new
+ * COVERS the scope (a person who changed or removed it changes what the next token carries), and
+ * the family did not start before the grant (`granted_at`: a family never outlives the consent it
+ * was issued under) or before the issuer's last turn-on (`issuerEpoch`). The new
  * tokens carry the same `sub`, `aud`, `azp` and `auth_time`, no `nonce`, and only the claims the grant
  * holds now. `scope` may narrow, never widen, and keeps `openid`.
  */
@@ -38,6 +40,7 @@ import {
   rotateRefreshToken,
 } from "./refreshRepo.js";
 import { stillRegistered } from "./registration.js";
+import { issuerEpoch } from "./served.js";
 
 const TOKEN_RE = new RegExp(ISSUER_REFRESH_TOKEN_PATTERN);
 
@@ -84,13 +87,19 @@ export async function handleRefreshGrant(
       row.accountId,
       client.clientId,
     );
+    const epoch = await issuerEpoch(db, slug);
     if (
+      epoch === null ||
+      // A family that started before the issuer was last turned on, or before the grant it
+      // rides on was given, is refused (V5 §12.13.7 rules 7 and 8).
+      row.familyStartedAt < epoch ||
       !stillRegistered(client, row.redirectUri, granted) ||
       !account ||
       account.status !== "active" ||
       !subject ||
       (await erasureVerdict(env, now, account.id)) !== "clear" ||
       !grant ||
+      row.familyStartedAt < grant.grantedAt ||
       !grantCovers(grant, scope, client.claims.required)
     )
       return oauth(400, ErrorCode.InvalidGrant);

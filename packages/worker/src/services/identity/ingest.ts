@@ -104,6 +104,69 @@ function provisioningView(
     .sort((a, b) => (String(a.claim) < String(b.claim) ? -1 : 1));
 }
 
+/** A declared client as its audit row shows it: the members the manifest owns, in key order. */
+function clientView(c: {
+  key: string;
+  name: string;
+  developerName?: string | null | undefined;
+  type: string;
+  redirectUris: readonly string[];
+  postLogoutRedirectUris: readonly string[];
+  scopes: readonly string[];
+  claimsRequired: readonly string[];
+}): Record<string, unknown> {
+  return {
+    key: c.key,
+    name: c.name,
+    developerName: c.developerName ?? null,
+    type: c.type,
+    redirectUris: c.redirectUris,
+    postLogoutRedirectUris: c.postLogoutRedirectUris,
+    scopes: c.scopes,
+    claimsRequired: c.claimsRequired,
+  };
+}
+
+/** The manifest's clients as stored now: declared ones only, so one the file dropped is not "before". */
+async function storedClientViews(
+  db: IngestContext["db"],
+  slug: string,
+): Promise<Record<string, unknown>[]> {
+  const rows = await db.all<{
+    key: string;
+    name: string;
+    developer_name: string | null;
+    type: string;
+    redirect_uris_json: string;
+    post_logout_redirect_uris_json: string;
+    scopes_json: string;
+    claims_required_json: string;
+  }>(
+    `SELECT key, name, developer_name, type, redirect_uris_json, post_logout_redirect_uris_json,
+            scopes_json, claims_required_json
+       FROM identity_clients
+      WHERE product = ? AND origin = 'manifest'
+        AND NOT (status = 'disabled' AND disabled_by = 'manifest')
+      ORDER BY key`,
+    slug,
+  );
+  return rows.map((r) =>
+    clientView({
+      key: r.key,
+      name: r.name,
+      developerName: r.developer_name,
+      type: r.type,
+      redirectUris: parseJsonOr<string[]>(r.redirect_uris_json, []),
+      postLogoutRedirectUris: parseJsonOr<string[]>(
+        r.post_logout_redirect_uris_json,
+        [],
+      ),
+      scopes: parseJsonOr<string[]>(r.scopes_json, []),
+      claimsRequired: parseJsonOr<string[]>(r.claims_required_json, []),
+    }),
+  );
+}
+
 /** The statements the old `manifestIngest` / `manifestIngestAlways` hooks returned. */
 export function identityHookStatements(
   ctx: Pick<IngestContext, "manifest" | "slug" | "now" | "enabled">,
@@ -183,6 +246,16 @@ async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
         auditSetting("identity.provisioning", before, after);
     }
     updated.push("provisioning");
+    {
+      // The registered clients (I-21.15): the console records its own changes, so the manifest's
+      // are audited here, as the declared set before and after the apply.
+      const before = await storedClientViews(ctx.db, slug);
+      const after = (manifest.identity?.clients ?? [])
+        .map(clientView)
+        .sort((a, b) => ((a.key as string) < (b.key as string) ? -1 : 1));
+      if (JSON.stringify(before) !== JSON.stringify(after))
+        auditSetting("identity.clients", before, after);
+    }
   } else {
     const oidcInsert = oidcStatement(ctx);
     if (oidcInsert) statements.push(oidcInsert);

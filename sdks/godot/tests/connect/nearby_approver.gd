@@ -94,8 +94,17 @@ class Host extends RefCounted:
 
 
 	func watch(app: PKeyPeerNearbyApprover) -> void:
-		app.notice.connect(func(n: Dictionary) -> void: notices.append(n))
-		app.stopped.connect(func(why: String) -> void: stops.append(why))
+		# Methods, not lambdas: a lambda would hold this object, and the approver holds the connection.
+		app.notice.connect(_on_notice)
+		app.stopped.connect(_on_stopped)
+
+
+	func _on_notice(n: Dictionary) -> void:
+		notices.append(n)
+
+
+	func _on_stopped(why: String) -> void:
+		stops.append(why)
 
 
 class FakeHandle extends RefCounted:
@@ -186,13 +195,25 @@ class DSide extends RefCounted:
 			"hello": {"label": label, "platform": "test", "app": SLUG},
 		}, {"pump": p_pump})
 		link = lr.detail
-		link.sas.connect(func(code: int, text: String) -> void:
-			_code = code
-			display = text)
-		link.record.connect(func(type: int, body: PackedByteArray) -> void: records.append([type, body]))
-		link.closed.connect(func(code: StringName, by_peer: bool) -> void: closes.append([code, by_peer]))
+		# Methods, not lambdas: a lambda would hold this object, which holds the link that holds the connection.
+		link.sas.connect(_on_sas)
+		link.record.connect(_on_record)
+		link.closed.connect(_on_closed)
 		p_pump.add(link)
 		link.start()
+
+
+	func _on_sas(code: int, text: String) -> void:
+		_code = code
+		display = text
+
+
+	func _on_record(type: int, body: PackedByteArray) -> void:
+		records.append([type, body])
+
+
+	func _on_closed(code: StringName, by_peer: bool) -> void:
+		closes.append([code, by_peer])
 
 
 	## Once a frame: show the code, confirm it and send the request (outside the session's own step).

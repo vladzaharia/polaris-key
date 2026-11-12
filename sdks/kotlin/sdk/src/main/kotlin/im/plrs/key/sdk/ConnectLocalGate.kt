@@ -271,24 +271,25 @@ internal class LocalSupport(private val core: CoreContext, private val options: 
 
     /**
      * The record's home: the file store in the state directory, or memory when there is no directory or the host's device
-     * keys are memory-only. Android keeps its record in a sealed store (CC-29b): a plain file there would hold the link
-     * secrets unsealed, so it is refused.
+     * keys are memory-only. A storage the host passed ([ConnectOptions.localState]) wins. Android needs one (the
+     * Keystore-sealed store `PolarisKeyAndroid.client` installs): a plain file there would hold the link secrets unsealed, so it is refused.
      */
     private suspend fun open(): DeviceKeyStorage {
         storage?.let { return it }
-        if (RuntimeFamily.isAndroid) {
-            throw PolarisException(
-                ErrorCode.invalidOptions,
-                "Local links need a sealed store on Android; they are not available on this runtime yet.",
-            )
-        }
         val dir: File? = core.store.stateDirectory
         val memory = options.deviceKeys?.persistence() == DeviceKeyPersistence.memory
-        val s = if (dir == null || memory) {
-            warnMemoryOnly()
-            InMemoryDeviceKeyStorage()
-        } else {
-            FileDeviceKeyStorage(File(dir, LOCAL_STATE_FILE), null, "pkey-connect-local-state/1".toByteArray(Charsets.UTF_8))
+        val s = options.localState ?: when {
+            RuntimeFamily.isAndroid -> throw PolarisException(
+                ErrorCode.invalidOptions,
+                "Local links need a sealed store on Android: pass ConnectOptions.localState, or use PolarisKeyAndroid.client.",
+            )
+
+            dir == null || memory -> {
+                warnMemoryOnly()
+                InMemoryDeviceKeyStorage()
+            }
+
+            else -> FileDeviceKeyStorage(File(dir, LOCAL_STATE_FILE), null, "pkey-connect-local-state/1".toByteArray(Charsets.UTF_8))
         }
         storage = s
         return s

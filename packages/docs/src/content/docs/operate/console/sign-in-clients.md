@@ -30,6 +30,8 @@ The client page shows its settings with the client id and Copy. **Edit** changes
 
 Creating, minting a secret, enabling and deleting need a sign-in from the last five minutes. So does an edit that widens a client: another type, a new redirect or sign-out address, a new scope or a new always-shared item. Renaming, narrowing, revoking a secret and disabling don't. Changing a client's type away from `web` revokes its secrets. Each write is in the product's [activity](/docs/operate/console/activity/).
 
+People can end a client themselves: **Account → Connected Apps** in Polaris Locker has **Disconnect** (the client loses access within 10 minutes) and **Change** for optional items. Each one is recorded in the product's [activity](/docs/operate/console/activity/). A disabled client stays in their list as turned off.
+
 The developer name a card shows is the client's own claim: Polaris Key checks its length and the reserved platform and store names, not who is behind it.
 
 ## Issuer keys

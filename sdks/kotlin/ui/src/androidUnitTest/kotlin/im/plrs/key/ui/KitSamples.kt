@@ -282,8 +282,8 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
             PolarisCloudSyncStatus(PolarisCloudSync.Error, onRetry = {})
         }
     },
-    // Sync stopped: a muted label with Sign in to sync on its line.
-    "cloudSyncStatus-signed-out" to {
+    // The registry's error row: Sync stopped, a muted label with Sign in to sync on its line.
+    "cloudSyncStatus-error" to {
         PolarisScreen(showLogo = false) {
             PolarisTitle("Sync Across Devices")
             Spacer(Modifier.height(16.dp))

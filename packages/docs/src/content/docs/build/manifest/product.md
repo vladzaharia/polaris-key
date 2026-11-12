@@ -385,9 +385,9 @@ Each member is a claimable setting (`identity.keyEntry.limit`, `identity.keyEntr
 
 ## Cloud Connect settings: `connect`
 
-The optional `connect:` block declares two switches of Cloud Connect. It applies only while the
+The optional `connect:` block declares three switches of Cloud Connect. It applies only while the
 `connect` service is on; declared with it off, `pkey validate` warns `connect_block_without_service`.
-A member other than `relay` or `interAccount`, or one that is not true or false, fails with
+A member other than `relay`, `interAccount` or `localPairing`, or one that is not true or false, fails with
 `invalid_connect`.
 
 ```yaml title=".pkey/product"
@@ -397,13 +397,15 @@ modules:
 connect:
   relay: true
   interAccount: false
+  localPairing: false
 ```
 
 - `relay`: whether the relay carries the product's device traffic when the local network cannot.
   On when absent.
 - `interAccount`: whether devices of different accounts may connect. Off when absent.
+- `localPairing`: whether two devices with no account may pair on one network by a code. Off when absent. It also needs the operator's `launch.localPairing` gate. See [Local Links](/docs/features/cloud-connect/local-links/).
 
-Each member is a claimable setting (`cloudConnect.relay.enabled`, `cloudConnect.interAccount`): a
+Each member is a claimable setting (`cloudConnect.relay.enabled`, `cloudConnect.interAccount`, `cloudConnect.localPairing`): a
 console change claims it until you revert it. A person's relay bytes per UTC day are the reserved
 entitlement `pkey.cloudConnect.relayBytes`, set by a tier, a license override or an add-on: 256 MiB
 when unset, 16 MiB for a device with no usable license, never more than 4 GiB. A product's relay is

@@ -484,6 +484,55 @@ describe("LocalPairingModel: the prompt", () => {
   });
 });
 
+describe("LocalPairingModel: the code and the QR are two views of one window", () => {
+  it("switches to the QR view and back without renewing or rotating", async () => {
+    const f = fake();
+    const m = await opened(f);
+    const before = m.snapshot;
+    const open = f.log.filter((l) => l === "pair").length;
+    m.showQr();
+    expect(m.view().state).toBe("show-qr");
+    expect(m.view().copy).not.toContain("a11y.linkCode");
+    expect(m.snapshot).toMatchObject({
+      code: before.code,
+      qr: before.qr,
+      rotation: before.rotation,
+      secondsLeft: before.secondsLeft,
+      switches: 1,
+    });
+    m.showCode();
+    expect(m.view().state).toBe("show");
+    expect(m.view().copy).toContain("a11y.linkCode");
+    expect(m.view().copy).not.toContain("a11y.qrPairing");
+    expect(m.snapshot.switches).toBe(2);
+    expect(f.log).not.toContain("renew");
+    expect(f.log.filter((l) => l === "pair")).toHaveLength(open);
+  });
+
+  it("a switch outside the show step does nothing", async () => {
+    const f = fake();
+    const { m } = make(f);
+    await m.start();
+    m.showQr();
+    expect(m.snapshot).toMatchObject({ step: "choose", switches: 0 });
+  });
+
+  it("keeps the view the person is on through a new code, and starts a new window on the code", async () => {
+    const f = fake();
+    const m = await opened(f);
+    m.showQr();
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    expect(m.snapshot).toMatchObject({ view: "qr", code: "4873 0691" });
+    expect(m.view().state).toBe("show-qr");
+    expect(m.snapshot.rotation).toBe(2);
+    f.seen.pair!.onEnd({ reason: "expired" });
+    await m.showNew();
+    f.seen.pair!.onCode(code("1111 2222"));
+    expect(m.snapshot.view).toBeUndefined();
+    expect(m.view().state).toBe("show");
+  });
+});
+
 describe("LocalPairingModel: slow starts", () => {
   it("Show a code goes to the opening tile at once, and a late window is withdrawn by Cancel", async () => {
     const f = fake();
@@ -964,29 +1013,29 @@ describe("PairedDevicesModel", () => {
 });
 
 describe("localPairingLayout", () => {
-  it("is two panes from 600 px at the root size, at any height, and always on a TV", () => {
-    expect(localPairingLayout({ width: 600, height: 300 })).toEqual({
-      panes: 2,
-      logo: false,
+  it("is one centred column at every size, the QR never beside the code", () => {
+    for (const w of [
+      { width: 1280, height: 800 },
+      { width: 600, height: 700 },
+      { width: 1100, height: 800, textScale: 2 },
+      { width: 900, height: 300, tv: true },
+    ])
+      expect(localPairingLayout(w).panes).toBe(1);
+  });
+
+  it("a window under 480 tall drops the logo and scrolls, the notice before the QR", () => {
+    for (const width of [390, 720])
+      expect(localPairingLayout({ width, height: 420 })).toEqual({
+        panes: 1,
+        logo: false,
+        scrolls: true,
+        noticeBeforeQr: true,
+      });
+    expect(localPairingLayout({ width: 390, height: 844 })).toEqual({
+      panes: 1,
+      logo: true,
       scrolls: false,
       noticeBeforeQr: false,
     });
-    expect(localPairingLayout({ width: 1200, height: 800 }).logo).toBe(true);
-    expect(
-      localPairingLayout({ width: 1100, height: 800, textScale: 2 }).panes,
-    ).toBe(1);
-    expect(
-      localPairingLayout({ width: 900, height: 300, tv: true }).panes,
-    ).toBe(2);
-  });
-
-  it("a window both narrow and short keeps one column that scrolls, the notice before the QR", () => {
-    expect(localPairingLayout({ width: 390, height: 420 })).toEqual({
-      panes: 1,
-      logo: false,
-      scrolls: true,
-      noticeBeforeQr: true,
-    });
-    expect(localPairingLayout({ width: 390, height: 844 }).scrolls).toBe(false);
   });
 });

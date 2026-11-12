@@ -51,12 +51,9 @@ const Models := preload("res://addons/polaris_key/ui/model/models.gd")
 const Local := preload("res://addons/polaris_key/ui/model/local.gd")
 const Context := preload("res://addons/polaris_key/ui/model/context.gd")
 
-## The two views of the show step switch with one quiet link each. The kit copy has no strings for
-## them yet (UK-67.1 adds them), so these are the closest existing keys; the wanted strings are
-## "Show a QR code" and "Show the code instead", and a body for each view ("Enter this code on the
-## other device." and "Scan this with the other device's camera.").
-const TO_QR_KEY := "part.qr.scanInstead"
-const TO_CODE_KEY := "localPairing.toShow"
+## The two views of the show step switch with one quiet link each, from the kit copy.
+const TO_QR_KEY := "localPairing.toQr"
+const TO_CODE_KEY := "localPairing.toCode"
 
 ## How faint a control drawn unavailable is (it is never disabled).
 const UNAVAILABLE_ALPHA := 0.55
@@ -103,7 +100,6 @@ var _lede: Label
 var _stage: BoxContainer
 var _left: VBoxContainer
 var _right: VBoxContainer
-var _code_block: VBoxContainer
 var _code: PKeyPairCode
 var _time_row: HBoxContainer
 var _ring: PKeyTimeRing
@@ -111,7 +107,6 @@ var _time: Label
 var _visual: Control
 var _live: VBoxContainer
 var _notice: PKeyPairNotice
-var _waiting: Label
 var _field: VBoxContainer
 var _field_label: Label
 var _entry: LineEdit
@@ -152,10 +147,8 @@ func _build() -> void:
 	_stage = columns(top, "Stage")
 	_stage.set_meta(AUTO_HIDE_META, true)
 	_left = vbox(_stage, "Left", "PKeyStack")
-	_code_block = vbox(_left, "CodeBlock", "PKeyTight")
-	_code = PKeyPairCode.new()
-	_code_block.add_child(_code)
-	_time_row = hbox(_code_block, "TimeRow")
+	# One status line: the ring, then the time and the wait, never wrapped in a narrow pane.
+	_time_row = hbox(_left, "TimeRow")
 	_ring = PKeyTimeRing.new()
 	_time_row.add_child(_ring)
 	_time = label(_time_row, "Time", "PKeyMuted")
@@ -179,6 +172,8 @@ func _build() -> void:
 	_name_error = _live_label(_name_block, "NameError", "PKeyError")
 	_name_hint = label(_name_block, "NameHint", "PKeyMuted")
 	_right = vbox(_stage, "Right", "PKeyStack")
+	_code = PKeyPairCode.new()
+	_right.add_child(_code)
 	_visual = (
 		visual_factory.call() as Control if visual_factory.is_valid() else PKeyPairVisual.new()
 	)
@@ -191,7 +186,6 @@ func _build() -> void:
 	_notice = PKeyPairNotice.new()
 	_live.add_child(_notice)
 	_notice.action_pressed.connect(_on_notice_action)
-	_waiting = label(_live, "Waiting", "PKeyMuted")
 	_spacer = spacer(_body)
 	_actions = actions_row(_body, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	for i in 3:
@@ -297,8 +291,9 @@ func input() -> Dictionary:
 
 func _screen_key() -> String:
 	var state := String(model.get("state", ""))
-	if state == "show":
-		return "show|%s" % _snap.get("view", "code")
+	if state == "show" or state == "show-qr":
+		# The same screen in both views: focus stays where the switch left it.
+		return "show"
 	return "enter" if state == "joining" else state
 
 
@@ -325,7 +320,9 @@ func _render() -> void:
 	if state == "confirm" and _prev_state != "confirm":
 		_confirm_since = _ticks()
 	var view_now := String(_snap.get("view", "code"))
-	if state == "show" and _prev_state == "show" and view_now != _prev_view and is_inside_tree():
+	var shows := state == "show" or state == "show-qr"
+	var was_shows := _prev_state == "show" or _prev_state == "show-qr"
+	if shows and was_shows and view_now != _prev_view and is_inside_tree():
 		_focus_after_switch.call_deferred()
 	_prev_view = view_now
 	_prev_state = state
@@ -350,6 +347,9 @@ func _words(state: String, copy: Array, args: Dictionary) -> void:
 			lede = "localPairing.chooseBody"
 		"opening", "show":
 			lede = "localPairing.showBody"
+		"show-qr":
+			title = "localPairing.qrTitle"
+			lede = "localPairing.qrBody"
 		"closed":
 			title = "linkPairing.failedTitle"
 			lede = (
@@ -384,19 +384,23 @@ func _words(state: String, copy: Array, args: Dictionary) -> void:
 			title = "core.codes.local-pairing-off.title"
 			lede = "core.codes.local-pairing-off.message"
 	cat_text(_title, title if copy.has(title) else "", args)
+	# The QR view's title and lede say "scan" of the other device's camera, not of this one.
+	_title.set_meta(&"pkey_scan_ok", state == "show-qr")
+	_lede.set_meta(&"pkey_scan_ok", state == "show-qr")
 	# Short on room the lede that only explains (2) goes before the card scrolls; a reason never does.
-	var explains := state in ["choose", "opening", "show", "enter", "joining"]
+	var explains := (
+		state in ["choose", "opening", "show", "show-qr", "enter", "joining", "confirm", "waiting"]
+	)
 	cat_text(
 		_lede, lede if copy.has(lede) and not (explains and squeeze_level() >= 2) else "", args
 	)
 
 
 func _render_show(state: String, copy: Array, args: Dictionary) -> void:
-	var shown := state == "show"
+	var qr_view := state == "show-qr"
+	var shown := state == "show" or qr_view
 	var placeholder := state == "opening"
-	var qr_view: bool = shown and _snap.get("view", "code") == "qr"
-	_code_block.visible = shown or placeholder
-	if shown and not qr_view:
+	if state == "show":
 		var code := String(_snap.get("code", ""))
 		_code.show_code(code, _snap.get("changed", []))
 		name_for_reader(_code, String(catalog().format("a11y.linkCode", {"code": spell_out(code)})))
@@ -405,20 +409,17 @@ func _render_show(state: String, copy: Array, args: Dictionary) -> void:
 		# view has no digits at all.
 		_code.show_code("···· ····" if placeholder else "", [])
 		name_for_reader(_code, String(catalog().format("a11y.busy")) if placeholder else "")
-	_time_row.visible = shown or placeholder
-	_ring.seconds_left = (
-		float(_snap.get("secondsLeft", 300)) if shown else float(PKeyTimeRing.WINDOW_SECONDS)
-	)
-	cat_text(
-		_time,
-		"localPairing.expires" if copy.has("localPairing.expires") or placeholder else "",
-		{"time": args.get("time", "5:00")}
-	)
-	cat_text(
-		_waiting,
-		"localPairing.waitingDevice" if (shown or placeholder) and squeeze_level() < 3 else "",
-		args
-	)
+	_time_row.visible = shown
+	_ring.seconds_left = float(_snap.get("secondsLeft", 300))
+	var status := ""
+	if shown and copy.has("localPairing.expires"):
+		status = String(
+			catalog().format("localPairing.expires", {"time": args.get("time", "5:00")})
+		)
+		if copy.has("localPairing.waitingDevice") and squeeze_level() < 3:
+			status += " · " + String(catalog().format("localPairing.waitingDevice"))
+	_time.set_meta(CATALOG_META, true)
+	show_text(_time, status)
 	var payload := String(_snap.get("qr", "")) if qr_view else ""
 	if _visual.has_method("present"):
 		_visual.call("present", payload)
@@ -458,7 +459,7 @@ func _render_field(state: String, copy: Array, args: Dictionary) -> void:
 	)
 	cat_text(
 		_field_hint,
-		hint_key if hint_key != "localPairing.triesLeft" or squeeze_level() < 4 else "",
+		hint_key if hint_key != "localPairing.triesLeft" or squeeze_level() < 3 else "",
 		args
 	)
 
@@ -512,9 +513,11 @@ func _render_notice(state: String, copy: Array, args: Dictionary) -> void:
 				title = "core.codes.local-links-full.title"
 				body = "core.codes.local-links-full.message"
 				action = "localPairing.pairedDevices"
-		"show":
+		"show", "show-qr":
 			var n: Variant = _snap.get("notice")
-			if n == "rotated" or n == "declined" or n == "guessing":
+			if state == "show-qr" and n != "blocked" and n != "guessing":
+				pass
+			elif n == "rotated" or n == "declined" or n == "guessing":
 				title = (
 					"localPairing.notPairedWith" if n == "declined" else "localPairing.rotatedTitle"
 				)
@@ -523,7 +526,7 @@ func _render_notice(state: String, copy: Array, args: Dictionary) -> void:
 					if n == "guessing"
 					else "localPairing.rotatedBody"
 				)
-				action = "localPairing.showNew"
+				action = "localPairing.showNew" if state == "show" else ""
 				glyph = "warning" if n == "guessing" else "info"
 			elif n == "blocked":
 				title = "localPairing.blockedTitle"
@@ -545,8 +548,9 @@ func _render_notice(state: String, copy: Array, args: Dictionary) -> void:
 			if copy.has("localPairing.cantConnectTitle"):
 				title = "localPairing.cantConnectTitle"
 				body = "localPairing.cantConnectBody"
-				action = "localPairing.pairedDevices"
 	_notice.show_notice(fmt.call(title), fmt.call(body), glyph, fmt.call(action))
+	# Short on room (3) the notice keeps its title and gives up its words before the card would scroll.
+	_notice.set_body_hidden(squeeze_level() >= 3)
 	_notice.set_meta(&"pkey_key", action)
 	if action == "localPairing.showNew" and (model.get("disabled", []) as Array).has(action):
 		_notice.action_button().modulate.a = UNAVAILABLE_ALPHA
@@ -564,10 +568,10 @@ func _render_actions(state: String, copy: Array, args: Dictionary) -> void:
 			links = ["common.cancel"]
 		"opening":
 			buttons = ["common.cancel"]
-		"show":
-			# One quiet link to the other view of the same window.
+		"show", "show-qr":
+			# One quiet link, always in the same slot, to the other view of the same window.
 			buttons = ["common.cancel"]
-			links = [TO_CODE_KEY if _snap.get("view", "code") == "qr" else TO_QR_KEY]
+			links = [TO_CODE_KEY if state == "show-qr" else TO_QR_KEY]
 		"closed":
 			buttons = [
 				(
@@ -624,17 +628,16 @@ func _style_slot(
 		leaves_app(b, false)
 
 
-## After a switch of view, focus moves to the new view's heading (a screen reader) or its first
-## control, which is Cancel: never the link that was pressed.
+## After a switch of view focus stays on the switch slot, which the counterpart link now fills, so a
+## second press on a pad or the keyboard switches back; a screen reader goes to the new heading.
 func _focus_after_switch() -> void:
 	if not is_instance_valid(self) or not is_inside_tree():
 		return
 	if get_tree().is_accessibility_enabled() and _title.focus_mode != Control.FOCUS_NONE:
 		_title.grab_focus()
 		return
-	var first := _first_button()
-	if first != null:
-		first.grab_focus()
+	if is_focusable(_links[0]):
+		(_links[0] as Control).grab_focus()
 
 
 func _focus_code_for_reader() -> void:
@@ -655,36 +658,43 @@ static func spell_out(code: String) -> String:
 
 
 func _arrange(m: Dictionary) -> void:
-	super(m)
 	var scale := float(m.get("scale", 1.0))
 	var room: Vector2 = m.get("room", Vector2(1280, 720))
-	_layout = Local.layout({"width": room.x / scale, "height": room.y / scale, "tv": pad_only()})
-	var state := String(model.get("state", ""))
-	# Short on room the product's header collapses to one line (DL5: it is never removed): always in a
-	# window under 480 tall, where nothing may scroll for it.
-	_product.card = bool(_layout["logo"]) and squeeze_level() < 1
-	# Two panes from 600 px of window: the facts on one side, what to do about them on the other. The
-	# QR view's QR is a pane of its own.
-	var qr_view := _visual.visible
-	# The show step follows the window rule. The other steps share a window only when it is wide and short,
-	# where a second column saves the height a single one lacks.
-	var wide_short: bool = (
-		room.x >= room.y * 1.6 and room.y / scale < 600.0 and room.x / scale >= 520.0
+	# A short, wide window gives the card the width of its two columns.
+	max_content_width = 760.0 if room.x >= room.y * 1.6 and room.y / scale < 600.0 else 520.0
+	super(m)
+	# The game's type against the kit's body (16 px at the screen's scale): a large type keeps one column.
+	var type_scale := float(get_theme_font_size("font_size", "Button")) / (16.0 * scale)
+	_layout = Local.layout(
+		{
+			"width": room.x / scale,
+			"height": room.y / scale,
+			"textScale": type_scale,
+			"tv": pad_only()
+		}
 	)
-	var two: bool = false
-	if state in ["opening", "show"]:
-		# With the QR beside it, the window rule; the code view has nothing to put beside it but the
-		# notice and the controls, which a wide and short window takes as a second column.
-		two = int(_layout["panes"]) == 2 if qr_view else wide_short
-	elif state in ["enter", "joining", "confirm", "waiting"]:
-		two = wide_short
+	var state := String(model.get("state", ""))
+	var shows := state == "show" or state == "show-qr" or state == "opening"
+	# Short on room the product's header collapses to one line (DL5: it is never removed): always in a
+	# window under 480 tall, where nothing may scroll for it. It never changes between the two views.
+	_product.card = bool(_layout["logo"]) and squeeze_level() < 1
+	# One column at every size; a second column is only a packing in a window that is wide and short, with
+	# a small type, where the single column lacks the height.
+	var wide_short: bool = (
+		room.x >= room.y * 1.6
+		and room.y / scale < 600.0
+		and room.x / (scale * maxf(type_scale, 1.0)) >= 520.0
+		and type_scale < 1.4
+	)
+	var two: bool = (
+		wide_short and (shows or state in ["enter", "joining", "confirm", "waiting", "paired"])
+	)
 	set_columns(_stage, two)
-	_live_placement(two, qr_view)
-	# Beside the QR the window's own controls sit under the time, so the screen is no taller than its QR;
-	# in the code view they sit under the notice.
-	_stack_links = state in ["opening", "show"]
-	_actions_placement(two and (wide_short or not qr_view), qr_view)
-	# Beside the controls the QR keeps to two fifths of the width, so the controls keep the rest.
+	_left.size_flags_stretch_ratio = 1.4 if state in ["enter", "joining"] else 1.0
+	_stage_order(shows, two)
+	_live_placement(two)
+	_stack_links = true
+	_actions_placement(two and shows)
 	var side := (
 		qr_side(maxf(room_x() * 0.4, QR_MIN_PHYSICAL / float(m.get("physical", 1.0))))
 		if two
@@ -692,8 +702,14 @@ func _arrange(m: Dictionary) -> void:
 	)
 	if _visual.has_method("set_side"):
 		_visual.call("set_side", side)
-	# The digits fit their half of the window beside the notice, or the whole width in one column.
-	_code.fit_to(maxf(room_x() * 0.5 - role("column_gap") if two else room_x(), 1.0))
+	# The slot holds the digits or the QR at the QR's height, so the card keeps its size across the switch.
+	_right.custom_minimum_size.y = side if shows and not two else 0.0
+	_right.alignment = BoxContainer.ALIGNMENT_CENTER if shows else BoxContainer.ALIGNMENT_BEGIN
+	# The digits fit the width of their slot; on a pad-only screen they are the hero, as large as it allows.
+	var hero := pad_only()
+	var slot := (room_x() * 0.55 - role("column_gap")) if two else room_x()
+	_code.fit_to(maxf(slot, 1.0), 160.0 * scale if hero else 0.0)
+	_code.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if hero else Control.SIZE_FILL
 	_ring.custom_minimum_size = Vector2(roundf(20.0 * scale), roundf(20.0 * scale))
 	_notice.size_glyph(self, 20.0)
 	_spacer.visible = (
@@ -706,35 +722,26 @@ func _arrange(m: Dictionary) -> void:
 	_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
-## The notice and the waiting line: beside the facts in two panes (under the QR's pane in the code
-## view, with the time in the QR view); in one column after the QR, or before it in a window that
-## scrolls (so a wrong code's notice is not left under the QR out of view).
-func _live_placement(two: bool, qr_view: bool) -> void:
-	var before: bool = bool(_layout.get("noticeBeforeQr", false))
-	var home: Node = _stage
-	if two:
-		home = _left if qr_view else _right
-	elif before:
-		home = _left
+## The slot (digits, QR) leads in one column on the show step, and follows the status beside it in two.
+func _stage_order(shows: bool, two: bool) -> void:
+	_stage.move_child(_right if shows and not two else _left, 0)
+
+
+## The notice: with the status in the left pane (below the field, or the status line).
+func _live_placement(two: bool) -> void:
+	# The paired step's notice sits beside the name field when two columns share the window.
+	var home: Node = _right if two and String(model.get("state", "")) == "paired" else _left
 	if _live.get_parent() != home:
 		_live.reparent(home, false)
-	if home == _stage:
-		_stage.move_child(_live, _stage.get_child_count() - 1)
-	else:
-		home.move_child(_live, home.get_child_count() - 1)
-	# The shares sit above the notice in the right pane.
-	if home == _right:
-		_right.move_child(_live, _right.get_child_count() - 1)
+	home.move_child(_live, home.get_child_count() - 1)
 
 
-## The window's controls: under the notice beside the QR (`beside`), else at the screen's foot.
-func _actions_placement(beside: bool, qr_view: bool) -> void:
-	var home: Node = (_left if qr_view else _right) if beside else _body
-	# In a pane the controls stack at the pane's width.
+## The window's controls: under the notice in the left pane when two columns share the window
+## (`beside`), else at the screen's foot.
+func _actions_placement(beside: bool) -> void:
+	var home: Node = _left if beside else _body
 	_actions.set_meta(&"pkey_force_stack", beside)
-	_links_row.set_meta(
-		&"pkey_force_stack", beside and _links_row.get_child_count() > 0 and _stack_links
-	)
+	_links_row.set_meta(&"pkey_force_stack", beside)
 	if _actions.get_parent() != home:
 		_actions.reparent(home, false)
 		_links_row.reparent(home, false)
@@ -807,13 +814,11 @@ func _route(key: String, state: String) -> void:
 		"localPairing.show":
 			flow.show()
 		"localPairing.toShow":
-			# On the field it opens a window; on the QR view it goes back to the code.
-			if state == "show":
-				flow.set_view("code")
-			else:
-				flow.show()
-		"part.qr.scanInstead":
+			flow.show()
+		"localPairing.toQr":
 			flow.set_view("qr")
+		"localPairing.toCode":
+			flow.set_view("code")
 		"localPairing.enter", "localPairing.toEnter":
 			flow.enter()
 		"localPairing.showNew", "localPairing.showNewIn":
@@ -846,8 +851,7 @@ func _initial_focus() -> Control:
 			# Not now first, and never Pair: Enter or a pad's A on arrival does not pair.
 			return _confirm_not_now()
 		"enter":
-			if pad_only() or is_mobile():
-				return _first_button()
+			# The field, never the unavailable Pair; focus alone does not open a phone's keyboard.
 			return _entry if is_focusable(_entry) else _first_button()
 		"joining":
 			return _first_button()
@@ -890,7 +894,7 @@ func _cancel() -> bool:
 	match String(model.get("state", "")):
 		"confirm":
 			key = "common.notNow"
-		"opening", "show", "joining", "waiting":
+		"opening", "show", "show-qr", "joining", "waiting":
 			key = "common.cancel"
 		"enter":
 			key = "common.back"

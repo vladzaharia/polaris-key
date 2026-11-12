@@ -13,7 +13,7 @@ extends RefCounted
 ##     window that ran out has none;
 ##   - the Can connect switches show only when more than 8 devices are paired or one is off.
 ##
-## `layout()` is the window rule for the show screen (UI-KITS 4.3, LocalPairing).
+## `layout()` is the window rule for the show step (UI-KITS 4.3, LocalPairing).
 
 const View := preload("res://addons/polaris_key/ui/model/view.gd")
 const Link := preload("res://addons/polaris_key/ui/model/link.gd")
@@ -112,7 +112,6 @@ static func local_pairing_view(ctx: RefCounted) -> Dictionary:
 							"localPairing.title",
 							"localPairing.showBody",
 							"a11y.busy",
-							"localPairing.toEnter",
 							"common.cancel"
 						],
 						"focus": "heading",
@@ -123,6 +122,40 @@ static func local_pairing_view(ctx: RefCounted) -> Dictionary:
 			var n: Variant = p.get("notice")
 			var renewing: bool = p.get("busy") == "new-code"
 			var guessing: bool = n == "guessing"
+			var args := {
+				"code": p.get("code"),
+				"time": Link.countdown(float(_int(p.get("secondsLeft")))),
+				"device": device
+			}
+			# The window's second view: the QR with its own title and body, and no digits.
+			if p.get("view") == "qr":
+				return (
+					View
+					. make(
+						ctx,
+						c,
+						{
+							"state": "show-qr",
+							"copy":
+							[
+								"localPairing.qrTitle",
+								"localPairing.qrBody",
+								"a11y.qrPairing",
+								"localPairing.expires",
+								"localPairing.waitingDevice",
+								"localPairing.toCode",
+								"common.cancel",
+								"localPairing.blockedTitle" if n == "blocked" else null,
+								"localPairing.blockedBody" if n == "blocked" else null,
+								"localPairing.rotatedTitle" if guessing else null,
+								"localPairing.tooManyAgainBody" if guessing else null,
+							],
+							"args": {"time": args["time"], "device": device},
+							"tone": "neutral" if n == "blocked" or guessing else null,
+							"focus": "heading",
+						}
+					)
+				)
 			return (
 				View
 				. make(
@@ -135,10 +168,9 @@ static func local_pairing_view(ctx: RefCounted) -> Dictionary:
 							"localPairing.title",
 							"localPairing.showBody",
 							"a11y.linkCode" if View.truthy(p.get("code")) else null,
-							"a11y.qrPairing",
 							"localPairing.expires",
 							"localPairing.waitingDevice",
-							"localPairing.toEnter",
+							"localPairing.toQr",
 							"common.cancel",
 							"localPairing.rotatedTitle" if n == "rotated" or guessing else null,
 							(
@@ -158,12 +190,7 @@ static func local_pairing_view(ctx: RefCounted) -> Dictionary:
 							"localPairing.showNew" if n != null and n != "blocked" else null,
 							"a11y.busy" if renewing else null,
 						],
-						"args":
-						{
-							"code": p.get("code"),
-							"time": Link.countdown(float(_int(p.get("secondsLeft")))),
-							"device": device
-						},
+						"args": args,
 						"disabled": ["localPairing.showNew"] if renewing else [],
 						"tone": "neutral" if n != null else null,
 						"focus": "heading",
@@ -625,19 +652,10 @@ static func paired_devices_view(ctx: RefCounted) -> Dictionary:
 	)
 
 
-## How the show screen lays out for a window (UI-KITS 4.3, LocalPairing): `{width, height, textScale?,
-## tv?}` in px at the root text size. Two panes from 600 px of window at the root text size (so 200 %
-## text keeps one column), at any height, and always on a TV. A window under 480 tall drops the logo.
-## A window both narrow and short keeps one column that scrolls, with the notice before the QR.
-## Answers `{panes, logo, scrolls, noticeBeforeQr}`.
+## How the show step lays out for a window (UI-KITS 4.3, LocalPairing): `{width, height, textScale?, tv?}`.
+## One centred column at every size: a screen shows the digits or the QR, never both. A window under 480
+## tall drops the logo and the column scrolls, with the notice before the QR. Answers `{panes, logo,
+## scrolls, noticeBeforeQr}`.
 static func layout(w: Dictionary) -> Dictionary:
-	var scale := float(w.get("textScale", 1.0)) if float(w.get("textScale", 0.0)) > 0.0 else 1.0
-	var tv: bool = w.get("tv") == true
-	var panes := 2 if tv or float(w["width"]) / scale >= 600.0 else 1
-	var short := float(w["height"]) < 480.0 and not tv
-	return {
-		"panes": panes,
-		"logo": not short,
-		"scrolls": panes == 1 and short,
-		"noticeBeforeQr": panes == 1 and short
-	}
+	var short: bool = float(w["height"]) < 480.0 and w.get("tv") != true
+	return {"panes": 1, "logo": not short, "scrolls": short, "noticeBeforeQr": short}

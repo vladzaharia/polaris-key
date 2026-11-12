@@ -1,4 +1,4 @@
-import type { Page } from "playwright";
+import type { Locator, Page } from "playwright";
 import { atRest } from "./atRest.js";
 import { h1, type Override } from "./portalHarness.js";
 import { REQUEST_STATES } from "./portalRequestStates.js";
@@ -30,6 +30,62 @@ import {
  * builds a state moves it from `PENDING` to `SHIPPED` (with fixtures in `portalFixtures.ts` and its
  * linux baselines), and PX-20 is done when `PENDING` is empty.
  */
+
+/** Connected apps (I-21.15): two apps of one product (one by another company, never used) and one the product turned off. */
+const APP_GETS = [
+  { item: "name", granted: true, fixed: false },
+  { item: "picture", granted: false, fixed: false },
+  { item: "email", granted: true, fixed: true },
+  { item: "entitlements", granted: true, fixed: true },
+  { item: "offline", granted: true, fixed: true },
+];
+const CONNECTED_APPS = {
+  products: [
+    {
+      product: "quill",
+      name: "Quill",
+      iconUrl: null,
+      clients: [
+        {
+          clientId: "cl_companion",
+          name: "Quill Companion",
+          developer: "Quill Studio",
+          partner: false,
+          iconUrl: null,
+          returnHost: "companion.quill.example",
+          available: true,
+          gets: APP_GETS,
+          grantedAt: FIXTURE_NOW - 40 * 86400,
+          lastUsedAt: FIXTURE_NOW - 3 * 3600,
+        },
+        {
+          clientId: "cl_maps",
+          name: "Hexside Maps with a rather long name that has to wrap",
+          developer: "Hexside Ltd",
+          partner: true,
+          iconUrl: null,
+          returnHost: null,
+          available: true,
+          gets: APP_GETS,
+          grantedAt: FIXTURE_NOW - 2 * 86400,
+          lastUsedAt: null,
+        },
+        {
+          clientId: "cl_old",
+          name: "Old Companion",
+          developer: "Quill Studio",
+          partner: false,
+          iconUrl: null,
+          returnHost: "old.quill.example",
+          available: false,
+          gets: APP_GETS,
+          grantedAt: FIXTURE_NOW - 90 * 86400,
+          lastUsedAt: FIXTURE_NOW - 60 * 86400,
+        },
+      ],
+    },
+  ],
+};
 
 export interface ShippedState {
   /** The §4 section, e.g. `"4.13"`. */
@@ -1665,6 +1721,63 @@ export const SHIPPED: ShippedState[] = [
           "Backup sign-in for Quill stops working on all your devices.",
         )
         .waitFor();
+    },
+  },
+  ...[
+    {
+      id: "account-apps",
+      title:
+        "Account: Connected apps, one by another company and one turned off",
+      ready: async (region: Locator) => {
+        await region.getByText("Quill turned this app off").waitFor();
+        await region.getByText("Not your picture").first().waitFor();
+      },
+    },
+    {
+      id: "account-apps-disconnect",
+      title: "Account: Connected apps, the Disconnect confirm open",
+      ready: async (region: Locator) => {
+        await region
+          .getByRole("button", { name: "Disconnect Quill Companion" })
+          .click();
+        await region
+          .getByText("Signing in again asks what to share.")
+          .waitFor();
+      },
+    },
+    {
+      id: "account-apps-change",
+      title: "Account: Connected apps, the Change panel open",
+      ready: async (region: Locator) => {
+        await region
+          .getByRole("button", { name: "Change what Quill Companion gets" })
+          .click();
+        await region.getByRole("button", { name: "Save" }).waitFor();
+      },
+    },
+  ].map(
+    ({ id, title, ready }): ShippedState => ({
+      // I-21.15: the apps the person signed in to with a product's account.
+      section: "4.11",
+      id,
+      title,
+      scenario: "three",
+      path: "/#/account/apps",
+      routes: { "GET /api/me/connected-apps": { body: CONNECTED_APPS } },
+      ready: (p) => ready(p.getByRole("region", { name: "Connected Apps" })),
+    }),
+  ),
+  {
+    section: "4.11",
+    id: "account-apps-error",
+    title: "Account: Connected apps, the list failed to load",
+    scenario: "three",
+    path: "/#/account/apps",
+    routes: { "GET /api/me/connected-apps": SERVER_ERROR },
+    ready: async (p) => {
+      const region = p.getByRole("region", { name: "Connected Apps" });
+      await region.getByText("Couldn't load your connected apps.").waitFor();
+      await region.getByRole("button", { name: "Try again" }).waitFor();
     },
   },
   {

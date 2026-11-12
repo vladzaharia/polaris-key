@@ -75,9 +75,11 @@ func _p_pair(offer_d: Dictionary, offer_m: Dictionary) -> Array:
 static func _counting_side(mode: String, role: String, key: Variant, extra: Dictionary, sent: Array) -> PKeyTestPeers.Peer:
 	var peer := PKeyTestPeers.Peer.new()
 	var o := extra.duplicate()
+	# The peer holds its session, which holds this callback: a weak reference keeps the three from being a cycle.
+	var weak_peer: WeakRef = weakref(peer)
 	o["send"] = func(n: PackedByteArray) -> void:
 		sent[0] += 1
-		peer.out.append(n)
+		(weak_peer.get_ref() as PKeyTestPeers.Peer).out.append(n)
 	return PKeyTestPeers.side(mode, role, key, o, peer)
 
 

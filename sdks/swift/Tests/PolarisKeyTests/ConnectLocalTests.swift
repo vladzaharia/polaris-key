@@ -1234,6 +1234,37 @@ import XCTest
             XCTAssertEqual(ends.current?.reason, .person)
         }
 
+        func testTheRevealIsDecidedInsideTheWindowSoAStopJustBeforeItShowsNoCode() async throws {
+            let dir = Directory()
+            let a = try await Device.make()
+            let store = try await a.client.connect.localLinkStore()
+            let src = LocalSource(slug: "djdl", now: { 1_700_000_000 }, allowed: { true }, store: store, notify: {})
+            func open(_ code: Latest<LocalCode>) async throws -> LocalShower {
+                try await LocalShower.start(
+                    src, pairOptions(dir, code: code), nameplates: LocalNameplates(), floors: LocalRenewFloors(),
+                    onEnd: {})
+            }
+            // The caller's condition is asked after the stopped check, inside the window: when it holds, nothing shows.
+            let held = Latest<LocalCode>()
+            let one = try await open(held)
+            await one.reveal(unless: { true })
+            XCTAssertTrue(held.history.isEmpty)
+            XCTAssertNil(one.shownCode.current)
+            await one.stop()
+            // A stop that landed first leaves a window that never shows.
+            let stoppedFirst = Latest<LocalCode>()
+            let two = try await open(stoppedFirst)
+            await two.stop()
+            await two.reveal(unless: { false })
+            XCTAssertTrue(stoppedFirst.history.isEmpty)
+            // And a window left alone shows its first code once.
+            let shown = Latest<LocalCode>()
+            let three = try await open(shown)
+            await three.reveal(unless: { false })
+            XCTAssertEqual(shown.history.count, 1)
+            await three.stop()
+        }
+
         func testAGateClearedWhileTheFirstWindowOpensShowsNoCode() async throws {
             let dir = Directory()
             let a = try await Device.make()
@@ -1297,6 +1328,45 @@ import XCTest
             _ = try await joined.value
             await until("the window ends") { ends.current != nil }
             XCTAssertEqual(ends.current?.reason, .stored)
+        }
+
+        func testARenewalFromOnFailedMeetsTheFloorAtOnce() async throws {
+            let dir = Directory()
+            let b = try await Device.make()
+            let a = try await Device.make()
+            let code = Latest<LocalCode>()
+            let ends = Latest<LocalPairEnd>()
+            let renewed = Latest<String>()
+            let box = LockedValue<LocalPairHandle?>(nil)
+            let shower = Mono()
+            // The host renews the moment it hears the fifth failed guess closed the window.
+            let handle = try await a.local.pair(
+                LocalPairOptions(
+                    categories: cats, onCode: { code.set($0) }, onConfirm: { _ in },
+                    onFailed: { f in
+                        guard f.reason == .tooManyTries, let h = box.current else { return }
+                        Task {
+                            do {
+                                _ = try await h.renew()
+                                renewed.set("renewed")
+                            } catch let e as LocalPairingError {
+                                renewed.set(e.reason.map { "\($0)" } ?? "other")
+                            } catch { renewed.set("other") }
+                        }
+                    },
+                    onEnd: { ends.set($0) }, network: FakeNet(dir), allowLoopback: true, mono: { shower.now }))
+            box.set(handle)
+            let nameplate = try XCTUnwrap(code.current).nameplate
+            let joiner = Mono()
+            for i in 0..<5 {
+                await until("code \(i) is shown") { code.history.count == i + 1 || !handle.isOpen }
+                if !handle.isOpen { break }
+                _ = await wrongGuess(b, dir, nameplate: nameplate, clock: joiner)
+            }
+            await until("the renewal is answered") { renewed.current != nil }
+            XCTAssertEqual(renewed.current, "cooldown")
+            XCTAssertFalse(handle.isOpen)
+            XCTAssertEqual(dir.count(mode: "q"), 0)
         }
 
         func testFiveWrongGuessesEndTheWindowAndStartTheCooldown() async throws {

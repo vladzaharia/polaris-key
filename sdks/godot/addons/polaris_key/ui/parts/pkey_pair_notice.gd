@@ -75,6 +75,11 @@ func show_notice(title: String, body: String, glyph := "info", action := "") -> 
 	_glyph.set_meta(&"pkey_glyph", glyph)
 
 
+## Give the words up for room (the title stays).
+func set_body_hidden(hidden: bool) -> void:
+	_body.visible = not hidden and _body.text != ""
+
+
 ## The action, for the focus chain (null while it is hidden).
 func action_button() -> Button:
 	return _action if _action.visible else null

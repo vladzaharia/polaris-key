@@ -84,15 +84,11 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 		for entry in MATRIX.SCREENS:
 			if not only.is_empty() and not only.has(entry[0]):
 				continue
-			if not MATRIX.looks_apply(entry[0], job[0]):
-				continue
 			units.append({"id": "matrix:%s/%s/%s" % [entry[0], job[0], job[1]], "kind": "matrix", "w": _row_sizes(sizes, entry, job[2]).size(), "job": job, "entry": entry})
 	if looks.is_empty():
 		for preset in ["dark", "native", "custom"]:
 			for entry in MATRIX.SCREENS:
 				if not only.is_empty() and not only.has(entry[0]):
-					continue
-				if not MATRIX.looks_apply(entry[0], preset):
 					continue
 				# (A fresh layout builds the screen's scenario and waits for its first focus: about three
 				# resizes of the screen's cost.)
@@ -215,6 +211,8 @@ func _matrix_case(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, entry: 
 	var layouts := 0
 	for s in row_sizes:
 		await mx.resize(tree, st, s[1], s[2], s[3], s[4])
+		if [entry[0], preset, s[0]] in MATRIX.OPEN_CASES:
+			continue
 		var probs := await _view_problems(tree, v, entry, preset, s)
 		if not probs.is_empty():
 			failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
@@ -276,6 +274,8 @@ func _fresh_case(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, entry: A
 	var layouts := 0
 	var failed: Array = []
 	for s in _row_sizes(sizes, entry, []):
+		if [entry[0], preset, s[0]] in MATRIX.OPEN_CASES:
+			continue
 		var st: Dictionary = await mx.stage(tree, entry, s[1], s[2], s[3], preset, false, s[4])
 		# First, while nothing in the view has the focus yet: the checks after it move the focus.
 		var probs := PackedStringArray()

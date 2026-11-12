@@ -177,6 +177,11 @@ export const COVERED_PAGES: Covered[] = [
     prose: false,
   },
   {
+    path: "packages/docs/src/content/docs/features/cloud-connect/local-links.md",
+    language: "ts",
+    prose: false,
+  },
+  {
     path: "packages/docs/src/content/docs/features/cloud-sync/collections.md",
     language: "ts",
     prose: false,

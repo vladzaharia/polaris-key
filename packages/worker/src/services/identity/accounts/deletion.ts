@@ -41,6 +41,10 @@ import { stmtSubjectEvent } from "./events.js";
 import type { AccountContext } from "./links.js";
 import { getAccountRow, stmtClearConsoleStrength } from "./repo.js";
 import { stmtDeleteTermsAcceptances } from "./terms.js";
+import {
+  stmtsDeleteAccountIssuerRows,
+  stmtsRevokeAccountRefresh,
+} from "../issuer/lifecycle.js";
 import { stmtDeleteAccountMerges } from "./mergeUndo.js";
 import { stmtDeleteInvitesOfVerifiedAddresses } from "../../../core/rbac/bindings.js";
 
@@ -170,6 +174,8 @@ async function beginErasure(
     stmtRevokeAccountRegistryTokens(accountId, now),
     // F-33: and its personal tokens.
     stmtRevokeAccountTokens(accountId, now),
+    // I-21.15: and every refresh family of a registered client (the commit deletes the rows).
+    ...stmtsRevokeAccountRefresh(accountId, now),
     {
       sql: `INSERT OR IGNORE INTO account_erasures (account_id, requested_at, next_attempt_at)
             VALUES (?, ?, ?)`,
@@ -416,6 +422,8 @@ function commitStatements(
       sql: "DELETE FROM account_product_grants WHERE account_id = ?",
       params: [accountId],
     },
+    // I-21.15: the person's decisions for registered clients and those clients' refresh families.
+    ...stmtsDeleteAccountIssuerRows(accountId),
     {
       sql: "DELETE FROM account_sessions WHERE account_id = ?",
       params: [accountId],
@@ -577,6 +585,9 @@ export async function disableAccount(
       params: [now, accountId],
     },
     stmtClearConsoleStrength(accountId),
+    // I-21.15: a disabled account's client sign-ins end with it; its grants stay, so enabling it
+    // again asks nobody twice, and a family that was revoked is never revived.
+    ...stmtsRevokeAccountRefresh(accountId, now),
   ]);
   await clearDeviceSubjects(
     db,

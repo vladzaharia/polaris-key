@@ -17,7 +17,8 @@ private let jwt = "aaaa.bbbb.cccc"
 private let tokenPath = "/djdl/identity/token"
 
 private func grant(
-    _ token: String = jwt, tokenType: String = "Bearer", issued: String = "urn:ietf:params:oauth:token-type:access_token",
+    _ token: String = jwt, tokenType: String = "Bearer",
+    issued: String = "urn:ietf:params:oauth:token-type:access_token",
     expiresIn: String = "600"
 ) -> String {
     """
@@ -74,7 +75,9 @@ final class IdentityAccessTokenTests: XCTestCase {
         now.with { $0 = 1_700_000_000 }
     }
 
-    private func discovery(accessToken: Bool = true, tokenURL: String? = "https://key.example/djdl/identity/token") -> String {
+    private func discovery(accessToken: Bool = true, tokenURL: String? = "https://key.example/djdl/identity/token")
+        -> String
+    {
         let endpoint = tokenURL.map { "\"endpoints\":{\"token\":\"\($0)\"}," } ?? ""
         return """
             {"product":"djdl","services":{"license":{"enabled":true},\
@@ -272,7 +275,11 @@ final class IdentityAccessTokenTests: XCTestCase {
         }
         let ran = ExchangeCounter()
         let kept = try await cache.get(
-            key: "B", refresh: false, now: now, exchange: { _ = ran.next(); return ("x.y.z", 600) })
+            key: "B", refresh: false, now: now,
+            exchange: {
+                _ = ran.next()
+                return ("x.y.z", 600)
+            })
         XCTAssertEqual(kept.accessToken, "aaaa.bbbb.new1")  // still held
         XCTAssertEqual(ran.next(), 1)  // nothing asked again
     }
@@ -376,7 +383,11 @@ final class IdentityAccessTokenTests: XCTestCase {
         XCTAssertEqual(late.accessToken, "aaaa.bbbb.old1")
         let ran = ExchangeCounter()
         let kept = try await cache.get(
-            key: "B", refresh: false, now: now, exchange: { _ = ran.next(); return ("x.y.z", 600) })
+            key: "B", refresh: false, now: now,
+            exchange: {
+                _ = ran.next()
+                return ("x.y.z", 600)
+            })
         XCTAssertEqual(kept.accessToken, "aaaa.bbbb.new1")  // the late answer was not kept
         XCTAssertEqual(ran.next(), 1)  // and nothing was asked again
     }
@@ -397,7 +408,11 @@ final class IdentityAccessTokenTests: XCTestCase {
         _ = try await first
         let ran = ExchangeCounter()
         _ = try await cache.get(
-            key: "k", refresh: false, now: now, exchange: { _ = ran.next(); return (jwt, 600) })
+            key: "k", refresh: false, now: now,
+            exchange: {
+                _ = ran.next()
+                return (jwt, 600)
+            })
         XCTAssertEqual(ran.next(), 2)  // it asked again
     }
 

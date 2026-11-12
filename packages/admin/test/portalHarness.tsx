@@ -2,8 +2,8 @@
  * The customer site's test harness: a fetch mock keyed by path, today's API fixtures and a
  * render helper. Fixture names are invented (PORTAL.md's mockup cast).
  */
-import { vi } from "vitest";
-import { render, type RenderResult } from "@testing-library/react";
+import { afterEach, beforeEach, vi } from "vitest";
+import { cleanup, render, type RenderResult } from "@testing-library/react";
 import { configureAxe } from "vitest-axe";
 import type {
   PortalArtifact,
@@ -476,6 +476,18 @@ export function signedIn(
     "/api/releases": { releases: [] },
     ...extra,
   };
+}
+
+/** Each test starts at the Account page with nothing stored, and leaves no mounted page or stubbed fetch. */
+export function useCleanPortal(): void {
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/#/account");
+    window.localStorage.clear();
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 }
 
 export function renderPortal(): RenderResult {

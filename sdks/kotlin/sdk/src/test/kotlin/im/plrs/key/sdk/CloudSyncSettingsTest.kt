@@ -144,7 +144,11 @@ class CloudSyncSettingsTest {
 
     /** A root store whose delete fails (a locked keystore). */
     private class LockedStorage(val inner: InMemoryDeviceKeyStorage, var failing: Boolean = true) : DeviceKeyStorage by inner {
+        /** How many times the root was asked to go. */
+        val clears = java.util.concurrent.atomic.AtomicInteger()
+
         override suspend fun clear() {
+            clears.incrementAndGet()
             if (failing) throw java.io.IOException("locked")
             inner.clear()
         }
@@ -589,6 +593,33 @@ class CloudSyncSettingsTest {
         // The store heals: the retry forgets, then the waiting person signs in.
         roots.failing = false
         first.client.cloudSync.flush()
+        eventually("the waiting person signed in after the forget") { first.client.cloudSync.status().state != SyncState.Blocked }
+        assertFalse("the stored root is gone", first.client.keyring.status().rootStored)
+        first.client.close()
+    }
+
+    @Test
+    fun aRetryThatFailsAgainKeepsTheWaitingPersonWaiting() = runBlocking {
+        val roots = LockedStorage(InMemoryDeviceKeyStorage())
+        val first = Rig(roots = roots)
+        first.signIn()
+        push403 = true
+        first.client.config.set(VOL, json(0.5))
+        first.client.cloudSync.flush()
+        eventually("blocked, with the forget owed") { first.stateFile.exists() && first.stateFile.readText().contains("\"forgetPending\":true") }
+        push403 = false
+        // Another person signs in while the stored root cannot be removed: they wait.
+        who = BOB
+        first.client.identity.subject()
+        first.client.cloudSync.flush()
+        assertEquals(SyncState.Blocked, first.client.cloudSync.status().state)
+        // The app comes back and the retry fails again: the person is still waiting.
+        val asked = roots.clears.get()
+        first.client.cloudSync.touch()
+        eventually("the retry asked the store again") { roots.clears.get() > asked }
+        // The store heals: the next retry forgets, then the waiting person signs in.
+        roots.failing = false
+        first.client.cloudSync.touch()
         eventually("the waiting person signed in after the forget") { first.client.cloudSync.status().state != SyncState.Blocked }
         assertFalse("the stored root is gone", first.client.keyring.status().rootStored)
         first.client.close()

@@ -131,8 +131,20 @@ func _run(args: PackedStringArray, at: int) -> void:
 			failed += 1
 
 	failed += await _drain()
+	await _release_boot_hosts()
+	if OS.get_environment("PKEY_TEST_SEED_LEAK") == "1":
+		# The leak gate's self-test (run_tests.sh): a RefCounted that holds itself outlives the run, so the
+		# engine reports it at exit and the step must fail.
+		var seeded := SeededLeak.new()
+		seeded.me = seeded
 	print("PKEY-TEST SUMMARY suites=%d checks=%d failed=%d" % [names.size(), checks, failed])
 	quit(1 if failed > 0 else 0)
+
+
+## What `PKEY_TEST_SEED_LEAK=1` leaks.
+class SeededLeak:
+	extends RefCounted
+	var me: SeededLeak
 
 
 ## Waits until nothing the SDK started is still running, so the engine quits with no worker task or
@@ -151,6 +163,20 @@ func _drain() -> int:
 		print("FAIL runner drain — %d worker tasks still pending after %d ms (pump %d, pack jobs %d)" % [left, DRAIN_MAX_MSEC, PKeyPeerPump.pending_total, PKeyPackJob.pending])
 		return 1
 	return 0
+
+
+## A boot a suite left running waits on its fake host for ever, and some engines report that suspended coroutine
+## as a leaked object: answer the waits until none is left.
+func _release_boot_hosts() -> void:
+	var path := "res://tests/support/fake_boot_host.gd"
+	if not ResourceLoader.exists(path):
+		return
+	var host_script: GDScript = load(path)
+	for i in 20:
+		if not host_script.release_all():
+			break
+		await process_frame
+		await process_frame
 
 
 func _run_suite(t: PKeyTestContext, name: String, extra: PackedStringArray) -> bool:

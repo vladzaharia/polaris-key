@@ -9,8 +9,6 @@ const NOW := 1700000000.0
 const LOCAL_CATEGORY_LABELS := {"crates": "Crates", "cues": "Cues"}
 ## The digits a wrong guess changed in the rotation rows.
 const LOCAL_LIT := [2, 3]
-## The state name of the QR view of the show step.
-const LOCAL_QR_VIEW := "show (QR view): the same window, the QR and no digits"
 const CONFIG := preload("res://tests/config/support.gd")
 const PRESENTATION := preload("res://tests/support/presentation_fixtures.gd")
 const NearbyApproval := preload("res://addons/polaris_key/ui/nearby/pkey_nearby_approval.gd")
@@ -158,8 +156,6 @@ func all() -> Array:
 				out.append(["local_pairing", parts[1], local_pairing.bind(String(r["name"]))])
 			else:
 				out.append(["paired_devices", parts[1], paired_devices.bind(String(r["name"]))])
-	# The show step's other view of the same open window (a view of the screen, not a matrix row).
-	out.append(["local_pairing", LOCAL_QR_VIEW, local_pairing.bind("LocalPairing/show: the code is the largest text, with its time", "qr")])
 	# ── PKeySignInDialog.
 	out.append(["sign_in", "starting", sign_in.bind("starting")])
 	out.append(["sign_in", "pending", sign_in.bind("pending")])

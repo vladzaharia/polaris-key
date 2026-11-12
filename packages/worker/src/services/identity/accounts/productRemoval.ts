@@ -15,6 +15,7 @@ import {
 } from "../../../core/accounts/subjectHooks.js";
 import { randomId } from "../../../platform/crypto.js";
 import { detachLicense } from "./claim.js";
+import { stmtsDeleteAccountIssuerRows } from "../issuer/lifecycle.js";
 import { stmtSubjectEvent } from "./events.js";
 import {
   recordSubjectErasure,
@@ -207,6 +208,8 @@ export async function completeProductRemoval(
       sql: `DELETE FROM ${t} WHERE product = ? AND subject = ?`,
       params: [product, subject],
     })),
+    // I-21.15: the account's client grants and refresh families for the product go with its subject.
+    ...stmtsDeleteAccountIssuerRows(row.account_id, product),
     ...stmtsEndSubject(row.account_id, product, subject),
   ]);
   return { removed: true };

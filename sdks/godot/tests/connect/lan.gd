@@ -194,7 +194,8 @@ class NativeMdns extends FakeMdns:
 		close_calls += 1
 
 	func dial(instance: String) -> PKeyPeerPipe:
-		var other: NativeMdns = (bus as NativeBus).by_instance.get(instance)
+		# Not typed `NativeMdns`: a class naming its own type in a method leaks its script graph at exit.
+		var other: Variant = (bus as NativeBus).by_instance.get(instance)
 		if other == null or not other.acceptor.is_valid():
 			return null
 		dialled += 1
@@ -650,6 +651,8 @@ func _native_peers(t: PKeyTestContext) -> void:
 	t.check("native: abort closes the adapter's pipes", mdns_b.close_calls == 1 and not mdns_b.acceptor.is_valid())
 	a.stop()
 	t.check("native: a graceful stop leaves them to the goodbye and clears the acceptor", mdns_a.close_calls == 0 and not mdns_a.acceptor.is_valid())
+	# The bus holds each adapter by instance and each adapter holds the bus: break the cycle.
+	bus.by_instance.clear()
 
 
 # ── the gate ─────────────────────────────────────────────────────────────────────────────────

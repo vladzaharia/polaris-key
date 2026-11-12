@@ -74,6 +74,10 @@ People see each item on the sign-in card and can decline the optional ones. A de
 
 `sub` is the person's id **for your product**: the same in every client of the product and different in another product. A partner client gets the same `sub` as your own apps, so it can recognize a person across them, and the card says so. Treat a shared name or email as a join key, not as proof of who someone is.
 
+## What people can do in Polaris Locker
+
+Under **Account → Connected Apps** a person sees each client they signed in to, what it gets, and when it was last used. They can switch the optional profile items they already decided on, and **Disconnect** a client: it loses access within 10 minutes and a new sign-in asks for consent again. A client you or the product turned off stays listed as turned off, with Disconnect only. You change none of this for them: ask them to open the page.
+
 ## The sign-in
 
 The flow is the authorization code flow with PKCE (`S256`). A `web` client sends a `nonce` too. The code lasts 60 seconds and works once.
@@ -221,7 +225,7 @@ The key set changes on a schedule: a new key is published 7 days before it signs
 
 ## Ending a sign-in
 
-A person ends a client in Polaris Locker under **Connected apps**: its refresh tokens end at once and `userinfo` refuses; an access token already issued lasts at most 10 minutes. Disabling or deleting a client in the console does the same for everyone. Turning the setting off revokes every refresh token and keeps the grants, so turning it back on asks nobody again. An end-session address is planned.
+A person ends a client in Polaris Locker under **Connected Apps**: its refresh tokens end at once and `userinfo` refuses; an access token already issued lasts at most 10 minutes. Disabling or deleting a client in the console does the same for everyone. Turning the setting off revokes every refresh token and keeps the grants, so turning it back on asks nobody again. An end-session address is planned.
 
 ## Not served
 

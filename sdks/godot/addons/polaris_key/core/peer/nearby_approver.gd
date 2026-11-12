@@ -176,12 +176,13 @@ class Approval extends RefCounted:
 	## The three codes, in the order to show them, each like `123 456`.
 	var codes: Array = []
 
-	var _owner: PKeyPeerNearbyApprover
+	## Weak: a host that keeps its approvals would otherwise keep the approver (and its sessions) alive.
+	var _owner: WeakRef
 	var _live: Live
 
 
 	func _init(owner: PKeyPeerNearbyApprover, live: Live, p_label: String, p_platform: String, p_codes: Array) -> void:
-		_owner = owner
+		_owner = weakref(owner)
 		_live = live
 		label = p_label
 		platform = p_platform
@@ -212,12 +213,17 @@ class Approval extends RefCounted:
 	## and fails with reason `mismatch`; a request that does not verify closes it and fails `invalid`. A
 	## second call answers the first one's result. A coroutine.
 	func pick(code: Variant) -> PKeyResult:
-		return await _owner._pick(_live, code)
+		var owner := _approver()
+		if owner == null:
+			return _gone()
+		return await owner._pick(_live, code)
 
 
 	## "None of these match": the session closes, nothing is delivered and no route is called.
 	func decline() -> void:
-		_owner._decline(_live)
+		var owner := _approver()
+		if owner != null:
+			owner._decline(_live)
 
 
 	## Give the answer of `nearby/approve` back; sends `VOUCH_RESULT` (rule 6). `answer`: `http` (the
@@ -227,17 +233,30 @@ class Approval extends RefCounted:
 	## {closed: true} (nothing sent; the session closed `peer_bye`). Refused (reason `not_picked`) unless
 	## the person picked the right code on this session and the request verified.
 	func finish(answer: Dictionary) -> PKeyResult:
-		return _owner._finish(_live, answer)
+		var owner := _approver()
+		return owner._finish(_live, answer) if owner != null else _gone()
 
 
 	## After `approved`: a Sync record (0x0030 to 0x003F) to D.
 	func send_record(type: int, body: PackedByteArray) -> PKeyResult:
-		return _owner._send(_live, type, body)
+		var owner := _approver()
+		return owner._send(_live, type, body) if owner != null else _gone()
 
 
 	## The host leaves: the session closes `peer_bye`. Before a pick this counts for nothing.
 	func close() -> void:
-		_owner._end(_live, PKeyPeerSession.PEER_BYE)
+		var owner := _approver()
+		if owner != null:
+			owner._end(_live, PKeyPeerSession.PEER_BYE)
+
+
+	func _approver() -> PKeyPeerNearbyApprover:
+		return _owner.get_ref() as PKeyPeerNearbyApprover
+
+
+	## The approver is gone (stopped and freed): there is no session to answer on.
+	func _gone() -> PKeyResult:
+		return PKeyResult.failure(PKeyConstants.ErrorCode.CONNECT_UNAVAILABLE, "The nearby approval is over.", {"reason": "closed"})
 
 
 ## Start advertising. The caller has checked that the device is signed in and that discovery names `nearby`;

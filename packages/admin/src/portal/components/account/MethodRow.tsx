@@ -3,7 +3,6 @@ import { Lock } from "lucide-react";
 import { t } from "../../../lib/copy.js";
 import { Button } from "../../../ui/Button.js";
 import { Expand } from "../../../ui/motion/index.js";
-import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import {
   HttpError,
@@ -29,7 +28,7 @@ import { StepUp } from "./StepUp.js";
  *   first" (`StepUp`), which removes it as soon as the person has. Focus moves to the panel's
  *   heading as it opens; **Keep Steam** closes it and hands focus back to the button.
  * - **After a removal** focus goes to the group's heading (`focusAfter`), never to `body`: the
- *   row is about to leave the list. The result is said in a toast and announced.
+ *   row is about to leave the list. The result is said in a toast (its region is the announcement).
  */
 export interface MethodRowProps {
   /** The method's id: what DELETE /api/me/methods/<id> names. */
@@ -140,7 +139,6 @@ export function MethodRow({
     remove.mutate(id, {
       onSuccess: () => {
         toast.success(doneText);
-        announce(doneText);
         // The row leaves with the refetch: focus moves first, so it never falls to `body`.
         focusAfter();
       },

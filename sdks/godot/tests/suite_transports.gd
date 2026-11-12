@@ -13,6 +13,21 @@ const S := preload("res://tests/packs/support.gd")
 const F := preload("res://tests/packs/fixtures.gd")
 const PACK := "djdl.foes"
 
+## The facade nodes the tests made: a Node is not reference counted, so the suite frees them at its end.
+static var _owned: Array[Node] = []
+
+
+static func _own(n: Node) -> Node:
+	_owned.append(n)
+	return n
+
+
+static func _free_owned() -> void:
+	for n in _owned:
+		if is_instance_valid(n):
+			n.free()
+	_owned.clear()
+
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	PKeyPackClaims.warm()
@@ -25,6 +40,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _absent(t)
 	await _planner(t)
 	await _service(t)
+	_free_owned()
 	return true
 
 
@@ -62,7 +78,7 @@ static func _engine(root: String, packs: Array, stamp_packs: Array, platform: PK
 
 
 static func _apple_facade(native: Object, p_platform := "ios") -> PKeyApple:
-	var a := PKeyApple.new()
+	var a := _own(PKeyApple.new())
 	a.platform = p_platform
 	a.native = native
 	a.timeout_s = 2.0
@@ -70,7 +86,7 @@ static func _apple_facade(native: Object, p_platform := "ios") -> PKeyApple:
 
 
 static func _android_facade(native: Object, p_platform := "android") -> PKeyAndroid:
-	var a := PKeyAndroid.new()
+	var a := _own(PKeyAndroid.new())
 	a.platform = p_platform
 	a.native = native
 	a.timeout_s = 2.0

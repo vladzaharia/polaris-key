@@ -6320,7 +6320,7 @@ msgctxt "macos"
 msgid "localPairing.pairedDevices"
 msgstr ""
 
-#. Scan or enter this code on the other device.
+#. Enter this code on the other device.
 #. Pair with a Code: show: what to do with the code.
 msgid "localPairing.showBody"
 msgstr ""
@@ -6340,14 +6340,34 @@ msgstr ""
 msgid "localPairing.waitingDevice"
 msgstr ""
 
-#. Enter a code instead
-#. Pair with a Code: show: withdraws this code and opens the field.
-msgid "localPairing.toEnter"
+#. Scan to pair
+#. Pair with a Code: QR view: the title.
+msgid "localPairing.qrTitle"
 msgstr ""
 
-#. macos: Enter a Code Instead
+#. Point the other device’s camera here.
+#. Pair with a Code: QR view: what to do with the QR.
+msgid "localPairing.qrBody"
+msgstr ""
+
+#. Show a QR code
+#. Pair with a Code: code view: the quiet link to the QR view of the same window.
+msgid "localPairing.toQr"
+msgstr ""
+
+#. macos: Show a QR Code
 msgctxt "macos"
-msgid "localPairing.toEnter"
+msgid "localPairing.toQr"
+msgstr ""
+
+#. Show the code instead
+#. Pair with a Code: QR view: the quiet link back to the code view of the same window.
+msgid "localPairing.toCode"
+msgstr ""
+
+#. macos: Show the Code Instead
+msgctxt "macos"
+msgid "localPairing.toCode"
 msgstr ""
 
 #. Wrong code entered

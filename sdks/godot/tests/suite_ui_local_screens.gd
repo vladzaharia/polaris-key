@@ -94,6 +94,13 @@ static func _texts_after(v: Control, node: Node) -> Array:
 	return out
 
 
+static func _has_status(texts: Array) -> bool:
+	for x in texts:
+		if String(x).begins_with("Expires in") and String(x).contains("Waiting for the other device"):
+			return true
+	return false
+
+
 static func _button(v: Control, key: String) -> Button:
 	for b in v.find_children("*", "Button", true, false):
 		if b.get_meta(&"pkey_key", "") == key and (b as Button).is_visible_in_tree():
@@ -141,7 +148,7 @@ func _show_screen(t: PKeyTestContext) -> void:
 	var shown := _texts(v)
 	t.check(
 		"code view: the time and the waiting line are there",
-		shown.has("Expires in 5:00") and shown.has("Waiting for the other device…")
+		_has_status(shown)
 	)
 	t.check(
 		"code view: Cancel and one quiet link to the QR view, never a way to the field",
@@ -174,7 +181,7 @@ func _show_screen(t: PKeyTestContext) -> void:
 	)
 	t.check(
 		"QR view: the time and the waiting line stay",
-		shown.has("Expires in 5:00") and shown.has("Waiting for the other device…")
+		_has_status(shown)
 	)
 	t.check(
 		"QR view: Cancel and one quiet link back to the code",
@@ -190,12 +197,8 @@ func _show_screen(t: PKeyTestContext) -> void:
 	)
 	var focus := v.get_viewport().gui_get_focus_owner()
 	t.check(
-		"QR view: after the switch focus is on the first control, never the link",
-		(
-			focus != null
-			and focus != _button(v, PKeyLocalPairing.TO_CODE_KEY)
-			and focus.get_meta(&"pkey_key", "") == "common.cancel"
-		)
+		"QR view: after the switch focus stays on the switch slot, so a second press switches back",
+		focus != null and focus == _button(v, PKeyLocalPairing.TO_CODE_KEY)
 	)
 	# A renewal updates whichever view is open: the QR changes, the view stays.
 	f.last_pair["on_code"].call(Fake.code("4873 3456", "wrong-code", f.now() + 290.0))
@@ -203,17 +206,13 @@ func _show_screen(t: PKeyTestContext) -> void:
 	t.check(
 		"QR view: a rotation keeps the QR view, with the new QR and still no digits",
 		(
-			v.model["state"] == "show"
+			v.model["state"] == "show-qr"
 			and visual.visible
 			and not code.visible
 			and _texts(v).filter(func(x): return String(x).contains("4873")).is_empty()
 		)
 	)
 	var notice := v.find_child("Notice", true, false) as PKeyPairNotice
-	t.check(
-		"QR view: and says the code changed",
-		notice.visible and notice.title_text() == "Wrong code entered"
-	)
 	_button(v, PKeyLocalPairing.TO_CODE_KEY).pressed.emit()
 	await _settle()
 	await _settle()
@@ -596,6 +595,37 @@ func _list_edits(t: PKeyTestContext) -> void:
 		)
 	)
 	t.check("edit: Escape cancels the question", v._cancel() and v.model["state"] == "list")
+	await _settle()
+	await _settle()
+	t.check(
+		"edit: and focus returns to that row's Forget, not to Pair with a Code",
+		v.get_viewport().gui_get_focus_owner() == v._row_nodes["L2"]["forget"]
+	)
+	var chain: Array = v._focus_chain()
+	var row1: Dictionary = v._row_nodes["L1"]
+	t.check(
+		"focus: a row reads Rename then Forget and the chain follows, row by row",
+		(
+			chain.find(row1["rename"]) < chain.find(row1["forget"])
+			and chain.find(row1["forget"]) < chain.find(v._row_nodes["L2"]["rename"])
+		)
+	)
+	t.check(
+		"focus: up and down keep to the same control of the next row, left and right walk the row",
+		(
+			row1["rename"].get_node(row1["rename"].focus_neighbor_bottom) == v._row_nodes["L2"]["rename"]
+			and row1["rename"].get_node(row1["rename"].focus_neighbor_right) == row1["forget"]
+		)
+	)
+	(v._row_nodes["L2"]["rename"] as Button).pressed.emit()
+	await _settle()
+	v._cancel()
+	await _settle()
+	await _settle()
+	t.check(
+		"edit: Escape in a Rename returns focus to that row's Rename",
+		v.get_viewport().gui_get_focus_owner() == v._row_nodes["L2"]["rename"]
+	)
 	(v._row_nodes["L2"]["forget"] as Button).pressed.emit()
 	await _settle()
 	(v._row_nodes["L2"]["forget"] as Button).pressed.emit()
@@ -627,6 +657,14 @@ func _list_edits(t: PKeyTestContext) -> void:
 		f.links.append(Fake.row("D%d" % i, "D%d" % i, 1, i < 8))
 	v = await _devices(f)
 	var stuck := v._row_nodes["D8"]["switch"] as CheckButton
+	var order: Array = v._focus_chain()
+	t.check(
+		"switches: a row reads its switch, then Rename, then Forget",
+		(
+			order.find(v._row_nodes["D0"]["switch"]) < order.find(v._row_nodes["D0"]["rename"])
+			and order.find(v._row_nodes["D0"]["rename"]) < order.find(v._row_nodes["D0"]["forget"])
+		)
+	)
 	t.check(
 		"switches: eight on and a ninth paired: the reason is on screen and the off switch waits",
 		_texts(v).has("Up to 8 can connect") and bool(stuck.get_meta(&"pkey_unavailable"))

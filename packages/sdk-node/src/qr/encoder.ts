@@ -1,5 +1,5 @@
 // A QR code encoder (SDK parity pass §3.12, `identity.devicecode`'s QR): ISO/IEC 18004, byte mode,
-// error-correction level M, versions 1-10 (up to 213 bytes, enough for a device-code
+// error-correction level M (or Q on request), versions 1-10 (up to 213 bytes at M, enough for a device-code
 // `verificationUriComplete`). All eight masks are scored by the standard's penalty rules and the
 // lowest wins, so the output is deterministic.
 //
@@ -27,6 +27,24 @@ const BLOCKS: readonly (readonly number[])[] = [
   [26, 4, 43, 1, 44],
 ];
 
+/** The same table at level Q (a code that can lose a patch at its centre and still read). */
+const BLOCKS_Q: readonly (readonly number[])[] = [
+  [],
+  [13, 1, 13, 0, 0],
+  [22, 1, 22, 0, 0],
+  [18, 2, 17, 0, 0],
+  [26, 2, 24, 0, 0],
+  [18, 2, 15, 2, 16],
+  [24, 4, 19, 0, 0],
+  [18, 2, 14, 4, 15],
+  [22, 4, 18, 2, 19],
+  [20, 4, 16, 4, 17],
+  [24, 6, 19, 2, 20],
+];
+
+/** Error-correction levels: M by default; Q for the Light Card presentation. */
+export type QrLevel = "M" | "Q";
+
 /** Alignment-pattern centre coordinates per version. */
 const ALIGN: readonly (readonly number[])[] = [
   [],
@@ -47,8 +65,8 @@ const N2 = 3;
 const N3 = 40;
 const N4 = 10;
 
-/** The format-information bits for error-correction level M. */
-const ECL_M_BITS = 0;
+/** The format-information bits of each level. */
+const ECL_BITS: Record<QrLevel, number> = { M: 0, Q: 3 };
 
 const EXP = new Uint8Array(512);
 const LOG = new Uint8Array(256);
@@ -73,36 +91,39 @@ export interface QrCode {
 }
 
 /** How many bytes version `v` holds at level M in byte mode. */
-export function qrCapacity(v: number): number {
-  return Math.floor((dataCodewords(v) * 8 - 4 - countBits(v)) / 8);
+export function qrCapacity(v: number, level: QrLevel = "M"): number {
+  return Math.floor((dataCodewords(v, level) * 8 - 4 - countBits(v)) / 8);
 }
 
 function countBits(v: number): number {
   return v <= 9 ? 8 : 16;
 }
 
-function dataCodewords(v: number): number {
-  const b = BLOCKS[v]!;
+function dataCodewords(v: number, level: QrLevel): number {
+  const b = (level === "Q" ? BLOCKS_Q : BLOCKS)[v]!;
   return b[1]! * b[2]! + b[3]! * b[4]!;
 }
 
 /**
  * The QR code for `text` (UTF-8, byte mode, level M): the smallest version from `minVersion`
  * that fits, the best-scoring mask unless `mask` (0-7) is forced. `null` when the text does not
- * fit version 10 (213 bytes) or an argument is out of range.
+ * fit version 10 (213 bytes at M, 151 at Q) or an argument is out of range. `level` is M unless
+ * the caller asks for Q.
  */
 export function encodeQr(
   text: string,
   minVersion = QR_MIN_VERSION,
   mask = -1,
+  level: QrLevel = "M",
 ): QrCode | null {
-  return encodeQrBytes(new TextEncoder().encode(text), minVersion, mask);
+  return encodeQrBytes(new TextEncoder().encode(text), minVersion, mask, level);
 }
 
 export function encodeQrBytes(
   data: Uint8Array,
   minVersion = QR_MIN_VERSION,
   mask = -1,
+  level: QrLevel = "M",
 ): QrCode | null {
   if (
     !Number.isInteger(minVersion) ||
@@ -115,24 +136,24 @@ export function encodeQrBytes(
     return null;
   let version = -1;
   for (let v = minVersion; v <= QR_MAX_VERSION; v++) {
-    if (data.length <= qrCapacity(v)) {
+    if (data.length <= qrCapacity(v, level)) {
       version = v;
       break;
     }
   }
   if (version < 0) return null;
-  const codewords = buildCodewords(data, version);
+  const codewords = buildCodewords(data, version, level);
   const size = version * 4 + 17;
   const modules = new Uint8Array(size * size);
   const fn = new Uint8Array(size * size);
-  drawFunctionPatterns(modules, fn, size, version);
+  drawFunctionPatterns(modules, fn, size, version, level);
   drawCodewords(modules, fn, size, codewords);
   let chosen = mask;
   if (chosen < 0) {
     let best = -1;
     for (let m = 0; m < 8; m++) {
       applyMask(modules, fn, size, m);
-      drawFormat(modules, fn, size, m);
+      drawFormat(modules, fn, size, m, level);
       const p = qrPenalty(modules, size);
       if (best < 0 || p < best) {
         best = p;
@@ -142,13 +163,17 @@ export function encodeQrBytes(
     }
   }
   applyMask(modules, fn, size, chosen);
-  drawFormat(modules, fn, size, chosen);
+  drawFormat(modules, fn, size, chosen, level);
   return { version, mask: chosen, size, modules };
 }
 
 // ── Data: bit stream, blocks, Reed-Solomon, interleave ──────────────────────────────────────
 
-function buildCodewords(data: Uint8Array, version: number): Uint8Array {
+function buildCodewords(
+  data: Uint8Array,
+  version: number,
+  level: QrLevel,
+): Uint8Array {
   const bits: number[] = [];
   const append = (value: number, count: number) => {
     for (let i = count - 1; i >= 0; i--) bits.push((value >>> i) & 1);
@@ -156,7 +181,7 @@ function buildCodewords(data: Uint8Array, version: number): Uint8Array {
   append(0b0100, 4);
   append(data.length, countBits(version));
   for (const byte of data) append(byte, 8);
-  const capacityBits = dataCodewords(version) * 8;
+  const capacityBits = dataCodewords(version, level) * 8;
   append(0, Math.min(4, capacityBits - bits.length));
   append(0, (8 - (bits.length % 8)) % 8);
   const stream: number[] = [];
@@ -166,12 +191,12 @@ function buildCodewords(data: Uint8Array, version: number): Uint8Array {
     stream.push(b);
   }
   let pad = 0xec;
-  while (stream.length < dataCodewords(version)) {
+  while (stream.length < dataCodewords(version, level)) {
     stream.push(pad);
     pad = pad === 0xec ? 0x11 : 0xec;
   }
 
-  const spec = BLOCKS[version]!;
+  const spec = (level === "Q" ? BLOCKS_Q : BLOCKS)[version]!;
   const ecLen = spec[0]!;
   const generator = rsGenerator(ecLen);
   const dataBlocks: number[][] = [];
@@ -245,6 +270,7 @@ function drawFunctionPatterns(
   fn: Uint8Array,
   size: number,
   version: number,
+  level: QrLevel,
 ): void {
   for (let i = 0; i < size; i++) {
     setFn(modules, fn, size, 6, i, i % 2 === 0);
@@ -286,7 +312,7 @@ function drawFunctionPatterns(
             Math.max(Math.abs(dx), Math.abs(dy)) !== 1,
           );
     }
-  drawFormat(modules, fn, size, 0); // reserves the area; redrawn after masking
+  drawFormat(modules, fn, size, 0, level); // reserves the area; redrawn after masking
   if (version >= 7) {
     let rem = version;
     for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1f25);
@@ -301,14 +327,15 @@ function drawFunctionPatterns(
   }
 }
 
-/** Both copies of the 15 format bits (level M, `mask`) and the dark module. */
+/** Both copies of the 15 format bits (`level`, `mask`) and the dark module. */
 function drawFormat(
   modules: Uint8Array,
   fn: Uint8Array,
   size: number,
   mask: number,
+  level: QrLevel,
 ): void {
-  const data = (ECL_M_BITS << 3) | mask;
+  const data = (ECL_BITS[level] << 3) | mask;
   let rem = data;
   for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
   const bits = ((data << 10) | rem) ^ 0x5412;

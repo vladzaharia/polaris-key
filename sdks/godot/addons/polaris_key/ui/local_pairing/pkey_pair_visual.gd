@@ -27,6 +27,8 @@ func _init() -> void:
 	_qr = PKeyQrRect.new()
 	_qr.name = "Qr"
 	_tile.add_child(_qr)
+	# The one QR the layout rules allow beside a device that is not pad-only: the other device scans it.
+	_qr.set_meta(&"pkey_pair_qr", true)
 	visible = false
 
 

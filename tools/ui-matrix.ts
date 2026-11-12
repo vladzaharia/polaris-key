@@ -149,6 +149,9 @@ export interface Row {
   input: Obj;
   expect: Expect;
   mustNot?: MustNot;
+  /** The SDKs and kits that cannot do what the row shows. They check the view the shared rules
+   *  give and draw nothing for it (CC-29K.3: a camera scan has no web, desktop or game surface). */
+  notApplicable?: { sdks: string[]; reason: string };
 }
 export interface ThemeRow {
   name: string;
@@ -867,6 +870,8 @@ interface Opts {
   /** Copy keys of the controls the row draws disabled (`expect.disabled`). */
   disabled?: string[];
   mustNot?: Omit<MustNot, "invariant"> & { invariant?: string };
+  /** SDKs that cannot draw this row (Row.notApplicable). */
+  notApplicable?: Row["notApplicable"];
 }
 
 function authoring(S: UiMatrixSources) {
@@ -906,6 +911,7 @@ function authoring(S: UiMatrixSources) {
     if (o.actions) d.extraActions = o.actions;
     if (o.dropActions) d.dropActions = o.dropActions;
     if (o.disabled) d.expect.disabled = [...o.disabled].sort();
+    if (o.notApplicable) d.notApplicable = o.notApplicable;
     if (o.mustNot)
       d.mustNot = {
         ...o.mustNot,
@@ -3953,6 +3959,7 @@ function finish(d: Draft): Row {
       if (d.mustNot[k]?.length) m[k] = [...d.mustNot[k]!].sort();
     out.mustNot = m;
   }
+  if (d.notApplicable) out.notApplicable = d.notApplicable;
   return out;
 }
 
@@ -7135,12 +7142,27 @@ function localFamily(a: A): Draft[] {
     "localPairing.title",
     "localPairing.showBody",
     "a11y.linkCode",
+    "localPairing.expires",
+    "localPairing.waitingDevice",
+    "localPairing.toQr",
+    "common.cancel",
+  ];
+  const SHOW_QR = [
+    "localPairing.qrTitle",
+    "localPairing.qrBody",
     "a11y.qrPairing",
     "localPairing.expires",
     "localPairing.waitingDevice",
-    "localPairing.toEnter",
+    "localPairing.toCode",
     "common.cancel",
   ];
+  // The SwiftUI and Compose kits learn the code and QR split with their own slice; until then they check the
+  // view the shared rules give and draw nothing for the QR view.
+  const QR_LATER = {
+    sdks: ["swift", "kotlin"],
+    reason:
+      "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then.",
+  };
   const WINDOW = {
     code: "4812 3456",
     qr: "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
@@ -7275,11 +7297,15 @@ function localFamily(a: A): Draft[] {
         "localPairing.title",
         "localPairing.showBody",
         "a11y.busy",
-        "localPairing.toEnter",
         "common.cancel",
       ],
       inv("A slow start never shows a code or a QR that is not there yet.", {
-        copy: ["a11y.linkCode", "a11y.qrPairing", "localPairing.expires"],
+        copy: [
+          "a11y.linkCode",
+          "a11y.qrPairing",
+          "localPairing.expires",
+          "localPairing.toQr",
+        ],
       }),
     ),
     row(
@@ -7288,9 +7314,69 @@ function localFamily(a: A): Draft[] {
       LP,
       "show",
       SHOW,
-      inv("A shown code never has a Copy button and no countdown of tries.", {
-        copy: ["localPairing.triesLeft", "localPairing.showNewIn"],
-      }),
+      inv(
+        "The code view never shows the QR, and a shown code never has a Copy button or a countdown of tries.",
+        {
+          copy: [
+            "a11y.qrPairing",
+            "localPairing.qrTitle",
+            "localPairing.triesLeft",
+            "localPairing.showNewIn",
+          ],
+        },
+      ),
+    ),
+    row(
+      `${LP}/show-qr: the QR alone, with its time and a way back to the code`,
+      pair("show", { ...WINDOW, view: "qr" }),
+      LP,
+      "show-qr",
+      SHOW_QR,
+      {
+        ...inv(
+          "The QR view never shows the digits, and a switch of view never renews the window.",
+          {
+            copy: [
+              "a11y.linkCode",
+              "localPairing.title",
+              "localPairing.showBody",
+              "localPairing.toQr",
+              "localPairing.showNewIn",
+            ],
+          },
+        ),
+        notApplicable: QR_LATER,
+      },
+    ),
+    row(
+      `${LP}/show-qr: someone may be guessing`,
+      pair("show", { ...WINDOW, view: "qr", notice: "guessing" }),
+      LP,
+      "show-qr",
+      [
+        ...SHOW_QR,
+        "localPairing.rotatedTitle",
+        "localPairing.tooManyAgainBody",
+      ],
+      {
+        ...inv("The warning is said in the QR view too.", {
+          copy: ["a11y.linkCode"],
+        }),
+        notApplicable: QR_LATER,
+      },
+    ),
+    row(
+      `${LP}/show-qr: pairing is being blocked`,
+      pair("show", { ...WINDOW, view: "qr", notice: "blocked" }),
+      LP,
+      "show-qr",
+      [...SHOW_QR, "localPairing.blockedTitle", "localPairing.blockedBody"],
+      {
+        ...inv("A blocked network is said in the QR view too.", {
+          copy: ["a11y.linkCode"],
+        }),
+        notApplicable: QR_LATER,
+      },
     ),
     row(
       `${LP}/show: a wrong code changed it`,
@@ -8063,69 +8149,42 @@ function localLayoutRows(): LayoutRow[] {
     window: LayoutRow["window"],
     expect: LayoutRow["expect"],
   ): LayoutRow => ({ name, window, expect });
-  const two = {
-    panes: 2,
+  const one = {
+    panes: 1,
     logo: true,
     scrolls: false,
     noticeBeforeQr: false,
   } as const;
+  const shortOne = {
+    panes: 1,
+    logo: false,
+    scrolls: true,
+    noticeBeforeQr: true,
+  } as const;
   return [
-    r("wide: two panes, the kit's logo", { width: 1280, height: 800 }, two),
     r(
-      "600 wide is the first width with two panes",
-      { width: 600, height: 700 },
-      two,
+      "wide: one centred column, the kit's logo",
+      { width: 1280, height: 800 },
+      one,
     ),
+    r("600 wide: still one column", { width: 600, height: 700 }, one),
+    r("599 wide: one column", { width: 599, height: 700 }, one),
     r(
-      "599 wide is one column",
-      { width: 599, height: 700 },
-      {
-        panes: 1,
-        logo: true,
-        scrolls: false,
-        noticeBeforeQr: false,
-      },
-    ),
-    r(
-      "200 % text keeps one column in a window that is 1100 wide",
+      "200 % text in a window that is 1100 wide: one column",
       { width: 1100, height: 800, textScale: 2 },
-      {
-        panes: 1,
-        logo: true,
-        scrolls: false,
-        noticeBeforeQr: false,
-      },
+      one,
     ),
     r(
-      "short and wide (720 by 420): two panes, no logo, no scroll",
+      "short and wide (720 by 420): one column that scrolls, no logo, the notice before the QR",
       { width: 720, height: 420 },
-      {
-        panes: 2,
-        logo: false,
-        scrolls: false,
-        noticeBeforeQr: false,
-      },
+      shortOne,
     ),
     r(
       "narrow and short (390 by 420): one column that scrolls, the notice before the QR",
       { width: 390, height: 420 },
-      {
-        panes: 1,
-        logo: false,
-        scrolls: true,
-        noticeBeforeQr: true,
-      },
+      shortOne,
     ),
-    r(
-      "a TV is always two panes",
-      { width: 480, height: 360, tv: true },
-      {
-        panes: 2,
-        logo: true,
-        scrolls: false,
-        noticeBeforeQr: false,
-      },
-    ),
+    r("a TV is one column too", { width: 480, height: 360, tv: true }, one),
   ];
 }
 

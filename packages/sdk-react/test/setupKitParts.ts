@@ -37,3 +37,9 @@ beforeAll(() => {
     ] as Set<string> | undefined
   )?.clear();
 });
+
+// jsdom has no canvas and logs "not implemented" from getContext; answer what a runtime that cannot
+// draw answers, null, so the Light Card falls back to the plain QR without the noise.
+if (typeof HTMLCanvasElement !== "undefined")
+  HTMLCanvasElement.prototype.getContext = (() =>
+    null) as unknown as typeof HTMLCanvasElement.prototype.getContext;

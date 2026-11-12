@@ -289,7 +289,6 @@ func attach(session: PKeyConnectSession) -> void:
 	var write := session.attach_xfer(Callable(wire, "on_record"))
 	if not write.is_valid():
 		return
-	wire.hub = self
 	wire.store = _get_store()
 	var store := wire.store
 	var partials: Array = []
@@ -337,12 +336,14 @@ func attach(session: PKeyConnectSession) -> void:
 	wire.receiving = store != null
 	_wires[session.get_instance_id()] = wire
 	wire.endpoint.bind(machine)
-	session.closed.connect(_on_session_closed.bind(wire))
+	# The session holds this connection and the wire holds the session: a weak wire keeps them from being a cycle.
+	session.closed.connect(_on_session_closed.bind(weakref(wire)))
 	session.flush_xfer()
 
 
-func _on_session_closed(_code: StringName, _by_peer: bool, wire: Wire) -> void:
-	if wire.endpoint != null:
+func _on_session_closed(_code: StringName, _by_peer: bool, wire_ref: WeakRef) -> void:
+	var wire := wire_ref.get_ref() as Wire
+	if wire != null and wire.endpoint != null:
 		wire.endpoint.closed()
 
 
@@ -432,7 +433,9 @@ func _worker(work: Callable) -> Variant:
 func _on_ask(wire: Wire, ask: Dictionary) -> void:
 	var id: String = ask["id"]
 	var s := wire.session
-	var offer := PKeyTransferOffer.new(id, int(ask["size"]), func(o: PKeyTransferOffer, to: String, overwrite: bool) -> void: _answer(wire, o, to, overwrite))
+	# A method bound to a weak wire, not a lambda: the host keeps its offers, and an offer that held the hub and the
+	# wire (which holds the hub's store) would keep them alive for as long as the host keeps the offer.
+	var offer := PKeyTransferOffer.new(id, int(ask["size"]), Callable(self, "_answer_weak").bind(weakref(wire)))
 	offer.name = String(ask.get("name", ""))
 	offer.type = String(ask.get("type", ""))
 	offer.category = String(ask.get("cat", ""))
@@ -447,6 +450,12 @@ func _on_ask(wire: Wire, ask: Dictionary) -> void:
 		offer.decline()
 		return
 	_handler.call(offer)
+
+
+func _answer_weak(offer: PKeyTransferOffer, to: String, overwrite: bool, wire_ref: WeakRef) -> void:
+	var wire := wire_ref.get_ref() as Wire
+	if wire != null:
+		_answer(wire, offer, to, overwrite)
 
 
 func _answer(wire: Wire, offer: PKeyTransferOffer, to: String, overwrite: bool) -> void:
@@ -575,7 +584,6 @@ static func _check_options(o: Dictionary) -> PKeyResult:
 ## The state of Direct Transfer on one session. Everything here is touched on the main thread, except that a
 ## worker reads `receiving` through the machine's handler.
 class Wire extends RefCounted:
-	var hub: PKeyCloudTransfer
 	var session: PKeyConnectSession
 	var peer_key := PackedByteArray()
 	var store: PKeyTransferStore

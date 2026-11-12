@@ -65,6 +65,8 @@ COMPONENTS: Tuple[str, ...] = (
     "Toast",
     "SaveConflict",
     "LinkPairing",
+    "LocalPairing",
+    "PairedDevices",
     "TransferOffer",
 )
 

@@ -99,6 +99,8 @@ const VERBS: Record<string, string> = {
   "identity.client.continue": "continued a sign-in to a client",
   "identity.client.signin": "signed in to a client",
   "identity.client.token": "was issued a token by a client",
+  "identity.client.disconnect": "disconnected a client",
+  "identity.client.change": "changed what a client gets",
   "license.tier": "changed the tier of license",
   "device.attest": "attested device",
   "device.attest.rejected": "rejected the attestation of device",

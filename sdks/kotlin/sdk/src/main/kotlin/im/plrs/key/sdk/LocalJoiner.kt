@@ -191,10 +191,33 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
             // A QR's generator is made before anything is dialled.
             val qs = qrSecret
             val qi = qrInstance
-            if (qs != null && qi != null) qrGen = cpaceGenerator(cpacePrsQr(qs), ci, requireNotNull(pairingSid(qi)))
+            if (qs != null && qi != null) {
+                // Held under the lock, and wiped at once when the join is already over.
+                val g = cpaceGenerator(cpacePrsQr(qs), ci, requireNotNull(pairingSid(qi)))
+                keep(g)
+                synchronized(lock) { qrGen = g }
+            }
             val epoch = advertEpoch(src.now())
             val tags = listOf(epoch, epoch - 1).map { productTag(src.slug, it) }
-            browse = mdns.browse({ f -> found(f, tags) }, { synchronized(lock) { cands.remove(it) } }, { isInstanceName(it) })
+            val handle = mdns.browse({ f -> found(f, tags) }, { synchronized(lock) { cands.remove(it) } }, { isInstanceName(it) })
+            // A join that ended while the browse was starting stops it here: finish had no handle to stop.
+            val over = synchronized(lock) {
+                if (done) {
+                    true
+                } else {
+                    browse = handle
+                    false
+                }
+            }
+            if (over) {
+                try {
+                    handle.stop()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // best effort
+                }
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -314,17 +337,22 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
 
     /** One dial. It ends the plan's turn as before-C2, after-C2 or transport. */
     private suspend fun dial(instance: String, c: Candidate) {
-        synchronized(lock) { dials++ }
         val t = o.mono()
         val np = nameplate
-        if (np != null) {
-            // Taken in one step when the dial is made, so joins that overlap (on any thread) cannot multiply the dials.
-            if (!budget.takeIfAllowed(np, t, 1).allowed) {
-                ended(DialOutcome.Budget)
-                synchronized(lock) { browseOver = true }
-                return
+        // A join that ended before its dial began spends nothing; otherwise the dial is counted and taken in one step when it is
+        // made, so joins that overlap (on any thread) cannot multiply the dials.
+        val spent = synchronized(lock) {
+            if (done) return
+            dials++
+            if (np != null && !budget.takeIfAllowed(np, t, 1).allowed) {
+                plan.ended(DialOutcome.Budget)
+                browseOver = true
+                true
+            } else {
+                false
             }
         }
+        if (spent) return
         val sid = pairingSid(instance)
         if (sid == null) {
             ended(DialOutcome.BeforeC2)
@@ -510,13 +538,14 @@ internal class LocalJoiner(private val src: LocalSource, private val budget: Dia
     }
 
     private fun finish(err: Exception?, ok: LocalPaired? = null) {
+        val b: MdnsHandle?
         synchronized(lock) {
             if (done) return
             done = true
+            b = browse
+            browse = null
         }
         cancelTimer?.cancel()
-        val b = browse
-        browse = null
         scope.launch {
             try {
                 b?.stop()

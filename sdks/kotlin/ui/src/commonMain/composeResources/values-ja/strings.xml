@@ -2362,16 +2362,23 @@
     <string name="localPairing_pairedDevices">ペアリング済みのデバイス</string>
     <string name="localPairing_pairedDevices__macos">ペアリング済みのデバイス</string>
     <!-- Pair with a Code: show: what to do with the code. -->
-    <string name="localPairing_showBody">もう一方のデバイスでこのコードをスキャンするか入力してください。</string>
+    <string name="localPairing_showBody">もう一方のデバイスでこのコードを入力してください。</string>
     <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
     <string name="a11y_qrPairing">ペアリングコードを含む QR コード</string>
     <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
     <string name="localPairing_expires">有効期限まで %1$s</string>
     <!-- Pair with a Code: show: shown while the code is open. -->
     <string name="localPairing_waitingDevice">もう一方のデバイスを待っています…</string>
-    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
-    <string name="localPairing_toEnter">代わりにコードを入力</string>
-    <string name="localPairing_toEnter__macos">代わりにコードを入力</string>
+    <!-- Pair with a Code: QR view: the title. -->
+    <string name="localPairing_qrTitle">スキャンしてペアリング</string>
+    <!-- Pair with a Code: QR view: what to do with the QR. -->
+    <string name="localPairing_qrBody">もう一方のデバイスのカメラをここに向けてください。</string>
+    <!-- Pair with a Code: code view: the quiet link to the QR view of the same window. -->
+    <string name="localPairing_toQr">QRコードを表示</string>
+    <string name="localPairing_toQr__macos">QRコードを表示</string>
+    <!-- Pair with a Code: QR view: the quiet link back to the code view of the same window. -->
+    <string name="localPairing_toCode">代わりにコードを表示</string>
+    <string name="localPairing_toCode__macos">代わりにコードを表示</string>
     <!-- Pair with a Code: show: after a wrong guess. -->
     <string name="localPairing_rotatedTitle">間違ったコードが入力されました</string>
     <!-- Pair with a Code: show: the code is new now. -->

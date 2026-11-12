@@ -692,7 +692,7 @@ describe("product page on today's data (PX-04)", () => {
         "DELETE /api/licenses/nightfall/lic_nightfall/devices/d2",
       ),
     );
-    expect(await screen.findByText("Studio PC was removed")).toBeTruthy();
+    expect(await screen.findByText(/^Studio PC was removed/)).toBeTruthy();
     // The row is gone; focus goes to the Devices heading (the page's h1 is off screen from a
     // long list), never body (FLOWS.md P-7).
     const devicesHeading = screen.getByRole("heading", {

@@ -67,7 +67,7 @@ func plain() -> String:
 func _draw_runs() -> void:
 	clear()
 	_style()
-	var light := get_theme_color("font_color", "PKeyLink")
+	var light := _theme_color("PKeyLink", ink_color())
 	for i in _text.length():
 		var on := lit.has(i)
 		if on:
@@ -77,6 +77,17 @@ func _draw_runs() -> void:
 		if on:
 			pop()
 			pop()
+
+
+## The code's own colour: the theme's `PKeyCode` when it has one (the kit looks), else the plain text
+## colour of a Label in this theme (a game's own look has no PKeyCode type, and the engine's fallback is
+## black).
+func ink_color() -> Color:
+	return _theme_color("PKeyCode", get_theme_color("font_color", "Label"))
+
+
+func _theme_color(type: String, fallback: Color) -> Color:
+	return get_theme_color("font_color", type) if has_theme_color("font_color", type) else fallback
 
 
 func _notification(what: int) -> void:
@@ -90,7 +101,7 @@ func _style() -> void:
 	_styling = true
 	var font := get_theme_font("font", "PKeyCode")
 	var size := _fit_size if _fit_size > 0 else get_theme_font_size("font_size", "PKeyCode")
-	add_theme_color_override(&"default_color", get_theme_color("font_color", "PKeyCode"))
+	add_theme_color_override(&"default_color", ink_color())
 	if font != null:
 		add_theme_font_override(&"normal_font", font)
 		add_theme_font_override(&"bold_font", font)
@@ -100,13 +111,14 @@ func _style() -> void:
 
 
 ## Step the type down (to 14) until the code fits `room` on one line; the theme's size comes back when
-## it does.
-func fit_to(room: float) -> void:
+## it does. With `grow` above the theme's size the code is made as large as `grow` and the room allow
+## (the hero of a screen read across the room).
+func fit_to(room: float, grow := 0.0) -> void:
 	if _text == "":
 		return
 	var natural := get_theme_font_size("font_size", "PKeyCode")
 	var font := get_theme_font("font", "PKeyCode")
-	var size := natural
+	var size := maxi(natural, int(grow))
 	while size > 14 and font.get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > room:
 		size -= 2
 	var want := 0 if size == natural else size

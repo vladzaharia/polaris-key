@@ -569,15 +569,21 @@ class DialBudget:
         return LOCAL_DIAL_BUDGET - int(self.check(nameplate, t)["used"])
 
 
-_TWO_DIGITS = re.compile(r"[0-9]{2}")
-
 
 def dials_left(budget: DialBudget, text: str, t: float) -> Optional[int]:
     """The dials left for the nameplate a person has typed so far: ``None`` unless the text, with ASCII spaces and
     hyphens removed, starts with two ASCII digits. It reads those two digits only, keeps nothing and spends
     nothing."""
-    m = _TWO_DIGITS.match(text.replace(" ", "").replace("-", ""))
-    return None if m is None else budget.left(m.group(0), t)
+    head = ""
+    for ch in text:
+        if ch == " " or ch == "-":
+            continue
+        if ch not in "0123456789":
+            return None
+        head += ch
+        if len(head) == 2:
+            return budget.left(head, t)
+    return None
 
 
 # -- The pairing window (§15.12, "The pairing window") ----------------------------------------------
