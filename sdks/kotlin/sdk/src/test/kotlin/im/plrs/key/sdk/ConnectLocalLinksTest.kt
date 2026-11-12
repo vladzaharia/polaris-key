@@ -13,6 +13,11 @@ import im.plrs.key.core.PolarisException
 import im.plrs.key.core.peer.MAX_LIVE_LOCAL_ADVERTS
 import im.plrs.key.core.peer.MAX_LOCAL_LINKS
 import im.plrs.key.core.peer.SessionEvent
+import im.plrs.key.core.peer.lan.MdnsAdapter
+import im.plrs.key.core.peer.lan.MdnsAdvert
+import im.plrs.key.core.peer.lan.MdnsFound
+import im.plrs.key.core.peer.lan.MdnsHandle
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -28,6 +33,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ConnectLocalLinksTest : ConnectLanBase() {
     private val devs = ArrayList<Dev>()
@@ -346,6 +352,50 @@ class ConnectLocalLinksTest : ConnectLanBase() {
         assertEquals("hello", String(runBlocking { inbound.receive(5000) }.body))
         until { a.touched.isNotEmpty() && b.touched.isNotEmpty() }
         runBlocking { s.close() }
+    }
+
+    /** What NsdManager does: a name the browse does not accept when it appears is dropped, and a new browse hears every service again. */
+    private class NsdLike(private val inner: Network) : MdnsAdapter {
+        override suspend fun advertise(advert: MdnsAdvert): MdnsHandle = inner.advertise(advert)
+
+        override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle =
+            inner.browse({ f -> if (accept(f.instance)) onUp(f) }, onDown, accept)
+    }
+
+    @Test
+    fun aPeerThatAdvertisedBeforeThisDeviceTookTheLinkInIsStillFound() {
+        val net = Network()
+        val nsd = NsdLike(net)
+        val a = Dev(net)
+        val b = Dev(net)
+        val takenIn = CompletableDeferred<Unit>()
+        val hold = AtomicBoolean(false)
+        fun start(d: Dev, slow: Boolean) {
+            val s = LanSource(
+                load = { throw LanException(LanErrorReason.no_identity, "no account") },
+                now = { System.currentTimeMillis() / 1000 },
+                slug = "djdl",
+                // A's list is read late once the hold is on: B has advertised by then.
+                locals = {
+                    if (slow && hold.get()) takenIn.await()
+                    d.src.live()
+                },
+                onLocals = d.src.onChange,
+                localAllowed = { d.gate },
+            )
+            val l = runBlocking { LanService.startLocal(s, LanOptions(mdns = nsd, host = "127.0.0.1", allowLoopback = true)) }
+            d.lan = l
+            runBlocking { d.links.attach(l) }
+        }
+        start(a, slow = true)
+        start(b, slow = false)
+        hold.set(true)
+        val (la, lb) = pairUp(a, b)
+        // B advertises under the link while A's list is still unread.
+        until { synchronized(net.adverts) { net.adverts.values.any { "m=l" in it.txt } } }
+        assertTrue(a.lan!!.localPeerIds().isEmpty())
+        takenIn.complete(Unit)
+        until { a.lan!!.localPeerIds().contains(la.id) && b.lan!!.localPeerIds().contains(lb.id) }
     }
 
     @Test

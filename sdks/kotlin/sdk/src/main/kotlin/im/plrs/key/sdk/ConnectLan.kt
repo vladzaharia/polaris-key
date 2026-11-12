@@ -776,6 +776,19 @@ internal class LanService private constructor(
         )
     }
 
+    /**
+     * Start the browse again. The browse drops a name it does not yet accept, and the OS reports a service once per
+     * browse, so a peer that advertised before this device took in the link (or the next epoch's names) would never be
+     * seen; a new browse is told of every service on the network again.
+     */
+    private suspend fun rebrowse() {
+        val old = browseHandle ?: return
+        if (stopped) return
+        browseHandle = null
+        quiet { old.stop() }
+        if (!stopped) startBrowse()
+    }
+
     /** The names of the held identity for the epoch of [now]; built once, then reused. Null before an identity is held. */
     private fun nameIndex(now: Long, ident: PeerSource? = held?.source ?: names?.second): BrowseIndex? {
         val id = ident ?: return null
@@ -1065,6 +1078,7 @@ internal class LanService private constructor(
             val table = HashSet<String>()
             for (l in next.take(MAX_LOCAL_LINKS)) for (back in 0..1) if (epoch - back >= 0) table += localInstance(l.secret, l.peerKey, epoch - back)
             localNames = LocalNames(epoch, table)
+            if (table.isNotEmpty()) rebrowse()
         }
         wipeLocals(old)
         pruneServes()
