@@ -47,7 +47,9 @@
             return (request.results ?? []).compactMap(\.payloadStringValue)
         }
 
-        private func payloads(faded: Bool, ground: Color, scale: CGFloat = 2, stretch: Bool = false) throws -> [String] {
+        private func payloads(
+            faded: Bool, ground: Color, scale: CGFloat = 2, stretch: Bool = false
+        ) throws -> [String] {
             let view = ExpiredFadeQR(text: text, label: "QR", faded: faded)
                 .frame(width: 320, height: 320)
                 .padding(40)
@@ -79,14 +81,17 @@
                 XCTAssertEqual(try payloads(faded: true, ground: ground, scale: 1), [], "\(name) at 1x")
                 // And with the levels stretched to the full range (a camera's auto-exposure).
                 XCTAssertEqual(try payloads(faded: true, ground: ground, stretch: true), [], "\(name) stretched")
-                XCTAssertEqual(try payloads(faded: true, ground: ground, scale: 1, stretch: true), [], "\(name) stretched at 1x")
+                let small = try payloads(faded: true, ground: ground, scale: 1, stretch: true)
+                XCTAssertEqual(small, [], "\(name) stretched at 1x")
             }
         }
 
         /// 5.0:1 for every accent on the washed page, so a link keeps 4.5:1 in the glass primary's shadow.
         func testTheLightLinkColourKeepsFiveToOneOnTheDrawnPage() {
             func lin(_ c: Double) -> Double { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
-            func lum(_ r: Double, _ g: Double, _ b: Double) -> Double { 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b) }
+            func lum(_ r: Double, _ g: Double, _ b: Double) -> Double {
+                0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+            }
             for hex: UInt32 in [0x23786e, 0x2f8f83, 0x5b8def, 0xd07a00, 0x7a2fff, 0x3a8a3a] {
                 let subtle = BrandColor(hex: 0xe6f1ef)
                 let out = KitPaletteResolver.headroom(BrandColor(hex: hex), over: subtle, applies: true)
@@ -96,7 +101,9 @@
                 let ratio = (page + 0.05) / (lum(out.red, out.green, out.blue) + 0.05)
                 XCTAssertGreaterThanOrEqual(ratio, 5.0, String(hex, radix: 16))
             }
-            XCTAssertEqual(KitPaletteResolver.headroom(BrandColor(hex: 0x23786e), over: BrandColor(hex: 0xe6f1ef), applies: false).hex, 0x23786e)
+            let untouched = KitPaletteResolver.headroom(
+                BrandColor(hex: 0x23786e), over: BrandColor(hex: 0xe6f1ef), applies: false)
+            XCTAssertEqual(untouched.hex, 0x23786e)
         }
     }
 #endif
