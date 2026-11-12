@@ -76,7 +76,7 @@
     },
     "sdks/godot/addons/polaris_key/core/sync/ring.gd": {
       "gdlint:class-definitions-order": 1,
-      "gdlint:max-line-length": 2,
+      "gdlint:max-line-length": 1,
       "gdlint:max-public-methods": 1,
       "gdlint:max-returns": 2
     },

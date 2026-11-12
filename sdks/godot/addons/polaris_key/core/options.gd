@@ -100,6 +100,14 @@ var device_keys: Object = null
 ## sealer (Linux), in an engine-encrypted file that is obfuscation, NOT protection: any code running as
 ## the same user can derive its key. A vault made with `encrypted = false` is refused (`invalid-options`).
 var ring_vault: PKeySyncRingVault = null
+## The backup store the root goes to (a PKeyPlatformBackup). Not an export. Null: the platform's own, or none.
+var ring_backup: PKeyPlatformBackup = null
+## Back the Cloud Sync root up to the platform store (iCloud Keychain on Apple, Block Store on Android) so a
+## new or restored device of the same person unlocks before the recovery code is asked for. On by default;
+## false stops reading and writing it (a removal still works). Linux, Windows and web have no such store.
+var cloud_sync_root_backup := true
+## The Keychain access group of that backup item (Apple); "" is the app's own default group.
+var cloud_sync_backup_access_group := ""
 ## Where Cloud Connect keeps its roster, certificate and K_disc (`PKeyConnectState`, D-7). Null: the
 ## product's own record under `store_root`, sealed by the platform key where a native lane exists.
 ## Not an export: tests pass a scratch or memory one.
