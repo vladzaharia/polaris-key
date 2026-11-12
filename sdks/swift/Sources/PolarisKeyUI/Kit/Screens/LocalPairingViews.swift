@@ -789,6 +789,8 @@ public struct LocalPairingView: View {
                             .background(Capsule().fill(style.palette.textStrong.opacity(0.09)))
                     }
                 }
+                // Placed at the whole column, so the wrap is laid out at the width it was counted at.
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityElement(children: .combine)
@@ -1040,13 +1042,17 @@ struct ExpiredFadeQR: View {
                 let blur = geo.size.width / 37 * 2
                 ZStack {
                     Self.stage
+                    // The blur is taken over opaque paper, so the edge stays clean; then the card dims.
                     PolarisQRCode(text, accessibilityLabel: label)
-                        .blur(radius: blur)
+                        .blur(radius: blur, opaque: true)
                         .brightness(0.85)
                         .opacity(0.35)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.secondary.opacity(0.6), lineWidth: 1))
             }
+            // The title says "Code expired"; a dead code is not read as a QR code.
+            .accessibilityHidden(true)
         } else {
             PolarisQRCode(text, accessibilityLabel: label)
         }

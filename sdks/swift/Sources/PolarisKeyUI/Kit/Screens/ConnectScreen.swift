@@ -55,15 +55,22 @@ struct KitWrap: Layout {
         }
     }
 
-    private func arrange(_ width: CGFloat, _ subviews: Subviews) -> (size: CGSize, origins: [CGPoint]) {
+    /// A pill wraps only when it overruns the width by more than half a point: the width a stack hands the second pass is
+    /// the pixel-rounded one, a fraction under the row's exact width, and a strict test would break the last pill onto a row
+    /// the height never counted.
+    static let wrapTolerance: CGFloat = 0.5
+
+    /// Where each item goes: rows from left to right, wrapping at `width`. The one place both passes use.
+    static func flow(
+        sizes: [CGSize], width: CGFloat, spacing: CGFloat
+    ) -> (size: CGSize, origins: [CGPoint]) {
         var origins: [CGPoint] = []
         var x: CGFloat = 0
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
         var widest: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
-            if x > 0, x + size.width > width {
+        for size in sizes {
+            if x > 0, x + size.width > width + wrapTolerance {
                 x = 0
                 y += rowHeight + spacing
                 rowHeight = 0
@@ -74,6 +81,11 @@ struct KitWrap: Layout {
             widest = max(widest, x - spacing)
         }
         return (CGSize(width: widest, height: y + rowHeight), origins)
+    }
+
+    private func arrange(_ width: CGFloat, _ subviews: Subviews) -> (size: CGSize, origins: [CGPoint]) {
+        let sizes = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)) }
+        return Self.flow(sizes: sizes, width: width, spacing: spacing)
     }
 }
 

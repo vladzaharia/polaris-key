@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -164,15 +165,22 @@ internal fun PairQrCard(c: PairCtx, size: Dp, dimmed: Boolean, focus: FocusReque
     if (qr == null) {
         Spacer(Modifier.size(size))
     } else {
-        Box(Modifier.size(size).alpha(if (dimmed) DIMMED else 1f).focusRequester(focus).focusable()) {
+        // A standing stop for no key: the card is only the target of the programmatic focus after a renewal from expired.
+        val target = c.ui.renewedFromExpired
+        val outline = if (dimmed) Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium) else Modifier
+        Box(
+            Modifier.size(size).alpha(if (dimmed) DIMMED else 1f).then(outline).then(if (dimmed) Modifier.clearAndSetSemantics {} else Modifier)
+                .focusRequester(focus)
+                .focusProperties { canFocus = target }.focusable(),
+        ) {
             if (dimmed && !blurSupported()) {
                 // Below API 31 the blur does nothing, so a dead code draws no modules at all: the dimmed paper alone says it is gone.
-                val name = c.text("a11y.qrPairing")
-                Box(Modifier.size(size).background(QR_PAPER).clearAndSetSemantics { contentDescription = name })
+                Box(Modifier.size(size).background(QR_PAPER).clearAndSetSemantics {})
             } else {
                 // A dead code is blurred past reading (two module widths of a 37-module card) as well as faded and dimmed, so a decoder
-                // finds nothing even when its levels are stretched.
-                PolarisQr(qr, c.text("a11y.qrPairing"), Modifier.size(size).then(if (dimmed) Modifier.blur(size / QR_MODULES * 2) else Modifier))
+                // finds nothing even when its levels are stretched. The title says "Code expired": the card is hidden from screen readers.
+                val modifier = Modifier.size(size).then(if (dimmed) Modifier.blur(size / QR_MODULES * 2) else Modifier)
+                PolarisQr(qr, c.text("a11y.qrPairing"), modifier)
                 // The paper over the ink: dark modules end at 4 % of their strength.
                 if (dimmed) Box(Modifier.size(size).background(QR_PAPER.copy(alpha = FADE_PAPER)).clearAndSetSemantics {})
             }
