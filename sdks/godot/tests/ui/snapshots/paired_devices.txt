@@ -33,7 +33,6 @@ Card/Scroll/Frame/Actions/Done: Button "Done" [focus 12]
 Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
@@ -72,7 +71,6 @@ Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u206
 Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
 Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Glyph: TextureRect
 Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Title: Label "Up to 8 can connect"
-Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
@@ -141,7 +139,6 @@ Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u206
 Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
 Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Glyph: TextureRect
 Card/Scroll/Frame/Cols/Side/Notices/Notice0/Column/Head/Title: Label "No room to pair"
-Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Glyph: TextureRect
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Name: Label "\u2068Device 1\u2069"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Line/Text/Meta: Label "Last seen today"
@@ -424,7 +421,6 @@ Card/Scroll/Frame/Actions/Done: Button "Done" [focus 8]
 Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Hint: Label "Shown on this device only."
@@ -434,7 +430,6 @@ Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "
 Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Problem: Label "Use 64 characters or fewer."
@@ -445,7 +440,6 @@ Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "
 Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Problem: Label "Enter a name."
@@ -456,7 +450,6 @@ Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "
 Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Caption: Label "Device name"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Name: LineEdit "Device 1" [focus 1]
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Problem: Label "Couldn't rename \u2068Device 1\u2069. Try again."
@@ -467,7 +460,6 @@ Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L1/Actions/Cancel: Button "
 Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Question: Label "Forget \u2068Device 2\u2069?"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Body: Label "To connect again, pair with a new code."
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Problem: Label "Couldn’t forget \u2068Device 2\u2069. Try again."
@@ -477,7 +469,6 @@ Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Cancel: Button "
 Card/Scroll/Frame/Cols/Side/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Cols/Side/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Cols/Side/Head/Titles/Title: Label "Paired devices"
-Card/Scroll/Frame/Cols/Main/ColumnHeadMargin/ColumnHead: Label "Can connect"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Question: Label "Forget \u2068Device 2\u2069?"
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Body: Label "To connect again, pair with a new code."
 Card/Scroll/Frame/Cols/Main/ListScroll/List/Rows/Row_L2/Actions/Forget: Button "Forget" [focus 1]

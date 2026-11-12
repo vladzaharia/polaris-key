@@ -211,8 +211,6 @@ func _matrix_case(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, entry: 
 	var layouts := 0
 	for s in row_sizes:
 		await mx.resize(tree, st, s[1], s[2], s[3], s[4])
-		if [entry[0], preset, s[0]] in MATRIX.OPEN_CASES:
-			continue
 		var probs := await _view_problems(tree, v, entry, preset, s)
 		if not probs.is_empty():
 			failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
@@ -274,8 +272,6 @@ func _fresh_case(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, entry: A
 	var layouts := 0
 	var failed: Array = []
 	for s in _row_sizes(sizes, entry, []):
-		if [entry[0], preset, s[0]] in MATRIX.OPEN_CASES:
-			continue
 		var st: Dictionary = await mx.stage(tree, entry, s[1], s[2], s[3], preset, false, s[4])
 		# First, while nothing in the view has the focus yet: the checks after it move the focus.
 		var probs := PackedStringArray()

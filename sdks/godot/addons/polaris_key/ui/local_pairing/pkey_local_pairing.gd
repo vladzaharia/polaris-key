@@ -224,6 +224,18 @@ func _bleeds() -> bool:
 	return true
 
 
+## A short landscape window cannot spare a card's padding: the page is the card, as on a phone held
+## sideways.
+func side_bleed() -> bool:
+	if super():
+		return true
+	if outer_view() != self:
+		return false
+	var m := layout_metrics()
+	var room: Vector2 = m.get("room", Vector2(1280, 720))
+	return room.y < 430.0 and room.x >= room.y * 1.4
+
+
 func _opens_at_top() -> bool:
 	return true
 
@@ -473,10 +485,14 @@ func _render_shares(copy: Array) -> void:
 	_shares.visible = head != ""
 	cat_text(_shares_head, head)
 	var lines: Array = []
+	var names: Array = []
 	if head == "linkPairing.shares":
 		for id in _snap.get("categories", []):
-			lines.append("• " + PKeyUiTheme.isolate(String(category_labels.get(id, id))))
-	_shares_list.text = "\n".join(lines)
+			var shown := PKeyUiTheme.isolate(String(category_labels.get(id, id)))
+			names.append(shown)
+			lines.append("• " + shown)
+	# Short on room the categories read on one line.
+	_shares_list.text = (", ".join(names) if squeeze_level() >= 1 else "\n".join(lines))
 	_shares_list.visible = not lines.is_empty()
 
 
@@ -664,7 +680,8 @@ func _arrange(m: Dictionary) -> void:
 	max_content_width = 760.0 if room.x >= room.y * 1.6 and room.y / scale < 600.0 else 520.0
 	super(m)
 	# The game's type against the kit's body (16 px at the screen's scale): a large type keeps one column.
-	var type_scale := float(get_theme_font_size("font_size", "Button")) / (16.0 * scale)
+	# (The kit's own body is never under 14 px, so a small screen's smaller scale is not a larger type.)
+	var type_scale := float(get_theme_font_size("font_size", "Button")) / maxf(16.0 * scale, 14.0)
 	_layout = Local.layout(
 		{
 			"width": room.x / scale,
@@ -683,7 +700,7 @@ func _arrange(m: Dictionary) -> void:
 	var wide_short: bool = (
 		room.x >= room.y * 1.6
 		and room.y / scale < 600.0
-		and room.x / (scale * maxf(type_scale, 1.0)) >= 520.0
+		and room.x / (scale * maxf(type_scale, 1.0)) >= 440.0
 		and type_scale < 1.4
 	)
 	var two: bool = (
@@ -693,8 +710,8 @@ func _arrange(m: Dictionary) -> void:
 	_left.size_flags_stretch_ratio = 1.4 if state in ["enter", "joining"] else 1.0
 	_stage_order(shows, two)
 	_live_placement(two)
-	_stack_links = true
-	_actions_placement(two and shows)
+	_stack_links = shows
+	_actions_placement(two)
 	var side := (
 		qr_side(maxf(room_x() * 0.4, QR_MIN_PHYSICAL / float(m.get("physical", 1.0))))
 		if two
@@ -714,7 +731,21 @@ func _arrange(m: Dictionary) -> void:
 	_notice.size_glyph(self, 20.0)
 	_spacer.visible = (
 		phone_screen()
-		and state in ["confirm", "enter", "joining", "paired", "closed", "failed", "choose"]
+		and (
+			state
+			in [
+				"confirm",
+				"enter",
+				"joining",
+				"paired",
+				"closed",
+				"failed",
+				"choose",
+				"opening",
+				"show",
+				"show-qr"
+			]
+		)
 	)
 	_body.theme_type_variation = &"PKeyTight" if squeeze_level() >= 2 else &"PKeySections"
 	tighten_gap(_body, squeeze_level() >= 3)
@@ -739,9 +770,13 @@ func _live_placement(two: bool) -> void:
 ## The window's controls: under the notice in the left pane when two columns share the window
 ## (`beside`), else at the screen's foot.
 func _actions_placement(beside: bool) -> void:
-	var home: Node = _left if beside else _body
-	_actions.set_meta(&"pkey_force_stack", beside)
-	_links_row.set_meta(&"pkey_force_stack", beside)
+	# In two columns the controls follow what the person is asked to read, in the right column; the QR
+	# view's slot is the right column, so its controls go under the status on the left.
+	var home: Node = _body
+	if beside:
+		home = _left if _visual.visible else _right
+	_actions.set_meta(&"pkey_force_stack", beside and _stack_links)
+	_links_row.set_meta(&"pkey_force_stack", beside and _stack_links)
 	if _actions.get_parent() != home:
 		_actions.reparent(home, false)
 		_links_row.reparent(home, false)

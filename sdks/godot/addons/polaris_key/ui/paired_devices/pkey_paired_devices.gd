@@ -128,12 +128,24 @@ func _bleeds() -> bool:
 	return true
 
 
+## A short landscape window cannot spare a card's padding: the page is the card, as on a phone held
+## sideways.
+func side_bleed() -> bool:
+	if super():
+		return true
+	if outer_view() != self:
+		return false
+	var m := layout_metrics()
+	var room: Vector2 = m.get("room", Vector2(1280, 720))
+	return room.y < 430.0 and room.x >= room.y * 1.4
+
+
 func _opens_at_top() -> bool:
 	return true
 
 
 func squeeze_max() -> int:
-	return 3
+	return 4
 
 
 func _exit_tree() -> void:
@@ -234,6 +246,7 @@ func _render() -> void:
 			_snap.get("forgetError"),
 			_snap.get("draft"),
 			switches,
+			squeeze_level() >= 2,
 			copy.has("pairedDevices.reachableFullTitle")
 		]
 	)
@@ -325,16 +338,7 @@ func _render_actions(state: String, args: Dictionary) -> void:
 
 ## Three rows of the list's shape while the first read has not answered (after the DL7 delay).
 func _show_skeleton(on: bool) -> void:
-	on = (
-		on
-		and not (
-			(
-				float(layout_metrics().get("room", Vector2(0, 999)).y)
-				/ float(layout_metrics().get("scale", 1.0))
-			)
-			< 420.0
-		)
-	)
+	on = on and float((layout_metrics().get("room", Vector2(0, 999)) as Vector2).y) >= 430.0
 	if on and _skeleton == null:
 		_skeleton = vbox(_main, "Skeleton", "PKeyTight")
 		_main.move_child(_skeleton, _list_scroll.get_index())
@@ -423,7 +427,7 @@ func _make_row(d: Dictionary, switches: bool, waits: bool, state: String) -> voi
 		if "accessibility_live" in line:
 			line.set("accessibility_live", 1)
 		var hint := label(holder, "Hint", "PKeyMuted")
-		cat_text(hint, "localPairing.nameHint", args)
+		cat_text(hint, "localPairing.nameHint" if squeeze_level() < 2 else "", args)
 		var acts := _row_actions(holder)
 		out["save"] = _row_button(acts, "Save", "common.save", id, "PKeyPrimary", args)
 		out["cancel"] = _row_button(acts, "Cancel", "common.cancel", id, "", args)
@@ -519,11 +523,11 @@ func _arrange(m: Dictionary) -> void:
 	var phone := bool(layout_metrics().get("phone", false))
 	var room: Vector2 = m.get("room", Vector2(1280, 720))
 	# A short, wide window gives the card the width of two columns.
-	max_content_width = 920.0 if room.y / scale < 420.0 and room.x >= room.y * 1.4 else 640.0
+	max_content_width = 920.0 if room.y < 430.0 and room.x >= 760.0 else 640.0
 	super(m)
 	var least := roundf(56.0 * scale)
 	# Under 420 tall the title, the notices and the controls take a column beside the list.
-	var short: bool = room.y / scale < 420.0 and room.x >= room.y * 1.4
+	var short: bool = room.y < 430.0 and room.x >= 760.0
 	var state := String(model.get("state", ""))
 	var listing := _list_scroll.visible
 	set_columns(_cols, short and listing)
@@ -533,7 +537,7 @@ func _arrange(m: Dictionary) -> void:
 	_side.size_flags_stretch_ratio = 0.7
 	_main.size_flags_stretch_ratio = 1.3
 	_actions_placement(short and listing)
-	var narrow := phone or short or room_x() < 440.0 * scale
+	var narrow := phone or room.y < 430.0 or room_x() < 440.0 * scale
 	for id in _row_nodes:
 		var r: Dictionary = _row_nodes[id]
 		var line := r["holder"].get_node_or_null("Line") as BoxContainer
@@ -547,6 +551,13 @@ func _arrange(m: Dictionary) -> void:
 			if (r["acts"] as Node).get_parent() != home:
 				(r["acts"] as Node).reparent(home, false)
 	_notice_glyphs()
+	# At the tightest the title steps down to the body's heading size.
+	if squeeze_level() >= 3:
+		_title.add_theme_font_size_override(
+			&"font_size", int(get_theme_font_size("font_size", "Button") * 1.5)
+		)
+	else:
+		_title.remove_theme_font_size_override(&"font_size")
 	_show_skeleton(
 		state == "loading" and _loading_since > 0 and Time.get_ticks_msec() - _loading_since >= 300
 	)
@@ -601,17 +612,22 @@ func _fit_list(rows3: float, least: float) -> bool:
 	)
 	for id in _row_nodes:
 		(_row_nodes[id]["holder"] as Control).visible = true
-	_product.card = true
-	_lede.visible = _lede.text != ""
-	_frame.theme_type_variation = &"PKeySections"
+	# Short on room (the squeeze) the logo collapses to one line, the lede goes, the notices keep their
+	# titles only and the gaps close, before anything scrolls.
+	var squeeze := squeeze_level()
+	_product.card = squeeze < 1
+	_lede.visible = _lede.text != "" and squeeze < 1
+	_frame.theme_type_variation = &"PKeyTight" if squeeze >= 2 else &"PKeySections"
+	_side.theme_type_variation = &"PKeyTight" if squeeze >= 2 else &"PKeyStack"
 	for n in _notice_nodes:
-		(n as PKeyPairNotice).set_body_hidden(false)
+		(n as PKeyPairNotice).set_body_hidden(squeeze >= 2)
 	_list_off = false
 	# The list keeps three rows. It gives way in this order before the card would scroll: the lede, the
 	# logo (one line), the notice's words; then the edited row alone.
 	var steps: Array = [
 		func() -> void: _lede.visible = false,
 		func() -> void: _product.card = false,
+		func() -> void: _column_head.visible = false,
 		func() -> void:
 			for n in _notice_nodes:
 				(n as PKeyPairNotice).set_body_hidden(true),
@@ -620,14 +636,20 @@ func _fit_list(rows3: float, least: float) -> bool:
 	while i < steps.size() and PKeyListScroll.wanted(self, _list_scroll, _list_panel, rows3) > 0.0:
 		steps[i].call()
 		i += 1
+	# "Can connect" over a row being edited or asked about would head nothing.
+	if edited != "":
+		_column_head.visible = false
 	if edited != "" and PKeyListScroll.wanted(self, _list_scroll, _list_panel, least) > 0.0:
 		for id in _row_nodes:
 			(_row_nodes[id]["holder"] as Control).visible = id == edited
-		_frame.theme_type_variation = &"PKeyStack"
+		_frame.theme_type_variation = &"PKeyTight"
 		if PKeyListScroll.wanted(self, _list_scroll, _list_panel, least) > 0.0:
 			_list_off = true
 			return PKeyListScroll.pass_through(_list_scroll)
-	return PKeyListScroll.apply(self, _list_scroll, _list_panel, rows3)
+	# Whatever room is left is the list's, down to a row and a half: the controls under it stay on screen.
+	return PKeyListScroll.apply(
+		self, _list_scroll, _list_panel, least * (1.0 if squeeze_level() >= 3 else 1.5)
+	)
 
 
 ## Buttons inside the list's own panel stack when they do not fit on a line.
@@ -664,7 +686,7 @@ func _layout_stale() -> bool:
 	return (
 		not _list_off
 		and PKeyListScroll.stale(
-			self, _list_scroll, _list_panel, roundf(168.0 * float(layout_metrics()["scale"]))
+			self, _list_scroll, _list_panel, roundf(56.0 * float(layout_metrics()["scale"]))
 		)
 	)
 

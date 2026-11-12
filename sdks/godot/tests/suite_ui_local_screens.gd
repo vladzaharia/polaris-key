@@ -497,7 +497,7 @@ func _list(t: PKeyTestContext) -> void:
 	t.check(
 		"list: one off brings the Can connect column and a switch per row",
 		(
-			_texts(v).has("Can connect")
+			(v.find_child("ColumnHead", true, false) as Label).text == "Can connect"
 			and v.find_children("Switch", "CheckButton", true, false).size() == 3
 		)
 	)
