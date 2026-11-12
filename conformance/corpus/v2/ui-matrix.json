@@ -15353,14 +15353,18 @@
           "a11y.busy",
           "common.cancel",
           "localPairing.showBody",
-          "localPairing.title",
-          "localPairing.toEnter"
+          "localPairing.title"
         ],
         "actions": ["cancel"]
       },
       "mustNot": {
         "invariant": "A slow start never shows a code or a QR that is not there yet.",
-        "copy": ["a11y.linkCode", "a11y.qrPairing", "localPairing.expires"]
+        "copy": [
+          "a11y.linkCode",
+          "a11y.qrPairing",
+          "localPairing.expires",
+          "localPairing.toQr"
+        ]
       }
     },
     {
@@ -15378,19 +15382,137 @@
         "state": "show",
         "copy": [
           "a11y.linkCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.showBody",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"]
       },
       "mustNot": {
-        "invariant": "A shown code never has a Copy button and no countdown of tries.",
-        "copy": ["localPairing.showNewIn", "localPairing.triesLeft"]
+        "invariant": "The code view never shows the QR, and a shown code never has a Copy button or a countdown of tries.",
+        "copy": [
+          "a11y.qrPairing",
+          "localPairing.qrTitle",
+          "localPairing.showNewIn",
+          "localPairing.triesLeft"
+        ]
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: the QR alone, with its time and a way back to the code",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.toCode",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "The QR view never shows the digits, and a switch of view never renews the window.",
+        "copy": [
+          "a11y.linkCode",
+          "localPairing.showBody",
+          "localPairing.showNewIn",
+          "localPairing.title",
+          "localPairing.toQr"
+        ]
+      },
+      "notApplicable": {
+        "sdks": ["swift", "kotlin"],
+        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: someone may be guessing",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "notice": "guessing",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.expires",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.rotatedTitle",
+          "localPairing.toCode",
+          "localPairing.tooManyAgainBody",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "The warning is said in the QR view too.",
+        "copy": ["a11y.linkCode"]
+      },
+      "notApplicable": {
+        "sdks": ["swift", "kotlin"],
+        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then."
+      }
+    },
+    {
+      "name": "LocalPairing/show-qr: pairing is being blocked",
+      "input": {
+        "localPairing": {
+          "code": "4812 3456",
+          "qr": "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+          "secondsLeft": 291,
+          "view": "qr",
+          "notice": "blocked",
+          "step": "show"
+        }
+      },
+      "expect": {
+        "component": "LocalPairing",
+        "state": "show-qr",
+        "copy": [
+          "a11y.qrPairing",
+          "common.cancel",
+          "localPairing.blockedBody",
+          "localPairing.blockedTitle",
+          "localPairing.expires",
+          "localPairing.qrBody",
+          "localPairing.qrTitle",
+          "localPairing.toCode",
+          "localPairing.waitingDevice"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "A blocked network is said in the QR view too.",
+        "copy": ["a11y.linkCode"]
+      },
+      "notApplicable": {
+        "sdks": ["swift", "kotlin"],
+        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then."
       }
     },
     {
@@ -15410,7 +15532,6 @@
         "copy": [
           "a11y.linkCode",
           "a11y.newCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.rotatedBody",
@@ -15418,7 +15539,7 @@
           "localPairing.showBody",
           "localPairing.showNew",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"]
@@ -15447,7 +15568,6 @@
           "a11y.busy",
           "a11y.linkCode",
           "a11y.newCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.rotatedBody",
@@ -15455,7 +15575,7 @@
           "localPairing.showBody",
           "localPairing.showNew",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"],
@@ -15484,7 +15604,6 @@
         "copy": [
           "a11y.linkCode",
           "a11y.newCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.notPairedWith",
@@ -15492,7 +15611,7 @@
           "localPairing.showBody",
           "localPairing.showNew",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"]
@@ -15519,14 +15638,13 @@
         "state": "show",
         "copy": [
           "a11y.linkCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.blockedBody",
           "localPairing.blockedTitle",
           "localPairing.expires",
           "localPairing.showBody",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.waitingDevice"
         ],
         "actions": ["cancel"]
@@ -15549,14 +15667,13 @@
         "copy": [
           "a11y.linkCode",
           "a11y.newCode",
-          "a11y.qrPairing",
           "common.cancel",
           "localPairing.expires",
           "localPairing.rotatedTitle",
           "localPairing.showBody",
           "localPairing.showNew",
           "localPairing.title",
-          "localPairing.toEnter",
+          "localPairing.toQr",
           "localPairing.tooManyAgainBody",
           "localPairing.waitingDevice"
         ],
@@ -18051,27 +18168,27 @@
   ],
   "localLayout": [
     {
-      "name": "wide: two panes, the kit's logo",
+      "name": "wide: one centred column, the kit's logo",
       "window": { "width": 1280, "height": 800 },
       "expect": {
-        "panes": 2,
+        "panes": 1,
         "logo": true,
         "scrolls": false,
         "noticeBeforeQr": false
       }
     },
     {
-      "name": "600 wide is the first width with two panes",
+      "name": "600 wide: still one column",
       "window": { "width": 600, "height": 700 },
       "expect": {
-        "panes": 2,
+        "panes": 1,
         "logo": true,
         "scrolls": false,
         "noticeBeforeQr": false
       }
     },
     {
-      "name": "599 wide is one column",
+      "name": "599 wide: one column",
       "window": { "width": 599, "height": 700 },
       "expect": {
         "panes": 1,
@@ -18081,7 +18198,7 @@
       }
     },
     {
-      "name": "200 % text keeps one column in a window that is 1100 wide",
+      "name": "200 % text in a window that is 1100 wide: one column",
       "window": { "width": 1100, "height": 800, "textScale": 2 },
       "expect": {
         "panes": 1,
@@ -18091,13 +18208,13 @@
       }
     },
     {
-      "name": "short and wide (720 by 420): two panes, no logo, no scroll",
+      "name": "short and wide (720 by 420): one column that scrolls, no logo, the notice before the QR",
       "window": { "width": 720, "height": 420 },
       "expect": {
-        "panes": 2,
+        "panes": 1,
         "logo": false,
-        "scrolls": false,
-        "noticeBeforeQr": false
+        "scrolls": true,
+        "noticeBeforeQr": true
       }
     },
     {
@@ -18111,10 +18228,10 @@
       }
     },
     {
-      "name": "a TV is always two panes",
+      "name": "a TV is one column too",
       "window": { "width": 480, "height": 360, "tv": true },
       "expect": {
-        "panes": 2,
+        "panes": 1,
         "logo": true,
         "scrolls": false,
         "noticeBeforeQr": false

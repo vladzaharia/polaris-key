@@ -6303,10 +6303,10 @@ msgctxt "macos"
 msgid "localPairing.pairedDevices"
 msgstr "페어링된 기기"
 
-#. Scan or enter this code on the other device.
+#. Enter this code on the other device.
 #. Pair with a Code: show: what to do with the code.
 msgid "localPairing.showBody"
-msgstr "다른 기기에서 이 코드를 스캔하거나 입력하세요."
+msgstr "다른 기기에서 이 코드를 입력하세요."
 
 #. QR code with the pairing code
 #. Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code.
@@ -6323,15 +6323,35 @@ msgstr "{time} 후 만료"
 msgid "localPairing.waitingDevice"
 msgstr "다른 기기를 기다리는 중…"
 
-#. Enter a code instead
-#. Pair with a Code: show: withdraws this code and opens the field.
-msgid "localPairing.toEnter"
-msgstr "대신 코드 입력"
+#. Scan to pair
+#. Pair with a Code: QR view: the title.
+msgid "localPairing.qrTitle"
+msgstr "스캔하여 페어링"
 
-#. macos: Enter a Code Instead
+#. Point the other device’s camera here.
+#. Pair with a Code: QR view: what to do with the QR.
+msgid "localPairing.qrBody"
+msgstr "다른 기기의 카메라를 여기에 향하세요."
+
+#. Show a QR code
+#. Pair with a Code: code view: the quiet link to the QR view of the same window.
+msgid "localPairing.toQr"
+msgstr "QR 코드 표시"
+
+#. macos: Show a QR Code
 msgctxt "macos"
-msgid "localPairing.toEnter"
-msgstr "대신 코드 입력"
+msgid "localPairing.toQr"
+msgstr "QR 코드 표시"
+
+#. Show the code instead
+#. Pair with a Code: QR view: the quiet link back to the code view of the same window.
+msgid "localPairing.toCode"
+msgstr "대신 코드 표시"
+
+#. macos: Show the Code Instead
+msgctxt "macos"
+msgid "localPairing.toCode"
+msgstr "대신 코드 표시"
 
 #. Wrong code entered
 #. Pair with a Code: show: after a wrong guess.

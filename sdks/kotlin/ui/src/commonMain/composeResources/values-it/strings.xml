@@ -2388,16 +2388,23 @@
     <string name="localPairing_pairedDevices">Dispositivi associati</string>
     <string name="localPairing_pairedDevices__macos">Dispositivi associati</string>
     <!-- Pair with a Code: show: what to do with the code. -->
-    <string name="localPairing_showBody">Scansiona o inserisci questo codice sull’altro dispositivo.</string>
+    <string name="localPairing_showBody">Inserisci questo codice sull’altro dispositivo.</string>
     <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
     <string name="a11y_qrPairing">Codice QR con il codice di associazione</string>
     <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
     <string name="localPairing_expires">Scade tra %1$s</string>
     <!-- Pair with a Code: show: shown while the code is open. -->
     <string name="localPairing_waitingDevice">In attesa dell’altro dispositivo…</string>
-    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
-    <string name="localPairing_toEnter">Inserisci invece un codice</string>
-    <string name="localPairing_toEnter__macos">Inserisci invece un codice</string>
+    <!-- Pair with a Code: QR view: the title. -->
+    <string name="localPairing_qrTitle">Scansiona per associare</string>
+    <!-- Pair with a Code: QR view: what to do with the QR. -->
+    <string name="localPairing_qrBody">Inquadra qui con la fotocamera dell’altro dispositivo.</string>
+    <!-- Pair with a Code: code view: the quiet link to the QR view of the same window. -->
+    <string name="localPairing_toQr">Mostra un codice QR</string>
+    <string name="localPairing_toQr__macos">Mostra un codice QR</string>
+    <!-- Pair with a Code: QR view: the quiet link back to the code view of the same window. -->
+    <string name="localPairing_toCode">Mostra invece il codice</string>
+    <string name="localPairing_toCode__macos">Mostra invece il codice</string>
     <!-- Pair with a Code: show: after a wrong guess. -->
     <string name="localPairing_rotatedTitle">Codice inserito errato</string>
     <!-- Pair with a Code: show: the code is new now. -->

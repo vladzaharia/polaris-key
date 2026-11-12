@@ -2375,16 +2375,23 @@
     <string name="localPairing_pairedDevices">Paired devices</string>
     <string name="localPairing_pairedDevices__macos">Paired Devices</string>
     <!-- Pair with a Code: show: what to do with the code. -->
-    <string name="localPairing_showBody">Scan or enter this code on the other device.</string>
+    <string name="localPairing_showBody">Enter this code on the other device.</string>
     <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
     <string name="a11y_qrPairing">QR code with the pairing code</string>
     <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
     <string name="localPairing_expires">Expires in %1$s</string>
     <!-- Pair with a Code: show: shown while the code is open. -->
     <string name="localPairing_waitingDevice">Waiting for the other device…</string>
-    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
-    <string name="localPairing_toEnter">Enter a code instead</string>
-    <string name="localPairing_toEnter__macos">Enter a Code Instead</string>
+    <!-- Pair with a Code: QR view: the title. -->
+    <string name="localPairing_qrTitle">Scan to pair</string>
+    <!-- Pair with a Code: QR view: what to do with the QR. -->
+    <string name="localPairing_qrBody">Point the other device’s camera here.</string>
+    <!-- Pair with a Code: code view: the quiet link to the QR view of the same window. -->
+    <string name="localPairing_toQr">Show a QR code</string>
+    <string name="localPairing_toQr__macos">Show a QR Code</string>
+    <!-- Pair with a Code: QR view: the quiet link back to the code view of the same window. -->
+    <string name="localPairing_toCode">Show the code instead</string>
+    <string name="localPairing_toCode__macos">Show the Code Instead</string>
     <!-- Pair with a Code: show: after a wrong guess. -->
     <string name="localPairing_rotatedTitle">Wrong code entered</string>
     <!-- Pair with a Code: show: the code is new now. -->

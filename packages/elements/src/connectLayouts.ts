@@ -53,6 +53,7 @@ export const CONNECT_LAYOUTS: Readonly<Record<ConnectScreenName, Layout>> = {
     controls: [],
     titles: [
       "localPairing.title",
+      "localPairing.qrTitle",
       "linkPairing.failedTitle",
       "localPairing.confirmTitle",
       "localPairing.confirmUnnamed",
@@ -73,7 +74,8 @@ export const CONNECT_LAYOUTS: Readonly<Record<ConnectScreenName, Layout>> = {
       "a11y.qrPairing",
       "localPairing.expires",
       "localPairing.waitingDevice",
-      "localPairing.toEnter",
+      "localPairing.toQr",
+      "localPairing.toCode",
       "localPairing.rotatedTitle",
       "localPairing.rotatedBody",
       "localPairing.notPairedWith",

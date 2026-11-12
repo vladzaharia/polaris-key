@@ -11,6 +11,7 @@ export {
   QR_MAX_VERSION,
   QR_MIN_VERSION,
   type QrCode,
+  type QrLevel,
 } from "./encoder.js";
 
 const QUIET = 2;

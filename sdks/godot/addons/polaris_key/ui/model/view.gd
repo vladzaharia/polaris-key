@@ -47,6 +47,9 @@ static func actions_for(copy: Array, extra: Array = []) -> Array:
 ##   extraActions  actions with no copy key of their own (`replace-in-browser`)
 ##   disabledActions  actions of a control drawn disabled: its label is copy, but the view does not
 ##                 offer the action
+##   disabled      the copy keys of controls drawn but not available now (never a disabled node, so
+##                 focus and the reason stay reachable); the view carries them sorted under
+##                 `disabled` only when there are any
 ##   args          null values are dropped
 ##   keyArgs       the arguments one key takes instead of `args` ({key: {name: value}}), nulls dropped
 ##   primary, tone, errorSlot, link, qr
@@ -92,6 +95,10 @@ static func make(ctx: RefCounted, component: String, spec: Dictionary) -> Dictio
 	var qr = spec.get("qr")
 	if qr == null:
 		qr = link.get("qr", false) if link is Dictionary else false
+	var unavailable := {}
+	for k in spec.get("disabled", []):
+		if k is String and not (k as String).is_empty():
+			unavailable[k] = true
 	var out := {
 		"component": component,
 		"state": spec["state"],
@@ -110,6 +117,10 @@ static func make(ctx: RefCounted, component: String, spec: Dictionary) -> Dictio
 	}
 	if not key_args.is_empty():
 		out["keyArgs"] = key_args
+	if not unavailable.is_empty():
+		var sorted_keys: Array = unavailable.keys()
+		sorted_keys.sort()
+		out["disabled"] = sorted_keys
 	return out
 
 

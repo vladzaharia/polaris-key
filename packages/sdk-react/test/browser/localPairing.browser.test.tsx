@@ -247,80 +247,78 @@ describe("text scales with the root font", () => {
   });
 });
 
-// UI-KITS 4.3, LocalPairing: two panes from 600 px of window at any height, one column under and at
-// 200 % text; a window under 480 tall drops the kit's logo and, wide, never scrolls; narrow and
-// short, the column scrolls with the notice before the QR.
+// UI-KITS 4.3, LocalPairing: one centred column at every size, the digits or the QR and never both;
+// a window under 480 tall drops the kit's logo and the column scrolls, with the notice before the QR.
 describe("the show screen's window rule", () => {
   const find = (part: string): Row => ROWS.find((r) => r.name.includes(part))!;
   const SHOW = "the code is the largest";
+  const SHOW_QR = "the QR alone";
   const noLogo = (kit: HTMLElement): void =>
     expect(
       drawn(kit.querySelector('[data-part="header"]')),
       "the logo shows",
     ).toBeNull();
   const CASES = [
-    { label: "1280x800", width: 1280, height: 800, rootPx: 16, panes: 2 },
-    { label: "600x700", width: 600, height: 700, rootPx: 16, panes: 2 },
-    { label: "599x700", width: 599, height: 700, rootPx: 16, panes: 1 },
-    { label: "1100x800@200", width: 1100, height: 800, rootPx: 32, panes: 1 },
+    { label: "1280x800", width: 1280, height: 800, rootPx: 16 },
+    { label: "600x700", width: 600, height: 700, rootPx: 16 },
+    { label: "599x700", width: 599, height: 700, rootPx: 16 },
+    { label: "1100x800@200", width: 1100, height: 800, rootPx: 32 },
   ];
   for (const c of CASES)
     for (const scheme of SCHEMES)
-      it(`${c.label} ${scheme}: ${c.panes} pane(s)`, async () => {
+      it(`${c.label} ${scheme}: one column, one method`, async () => {
         await page.viewport(c.width, c.height);
-        const kit = await mount(find(SHOW), scheme, c.rootPx);
-        expect(columns(kit.querySelector(".pair-show"))).toBe(c.panes);
-        const code = kit.querySelector(".pair-code")!.getBoundingClientRect();
-        const qr = kit.querySelector(".qr")!.getBoundingClientRect();
-        if (c.panes === 2) {
-          expect(qr.left, "beside").toBeGreaterThanOrEqual(code.right - 0.5);
-          const block = kit
-            .querySelector(".pair-codeblock")!
-            .getBoundingClientRect();
-          const apart = qr.top + qr.height / 2 - (block.top + block.height / 2);
-          expect(
-            Math.abs(apart),
-            "the QR is centred on the code",
-          ).toBeLessThanOrEqual(2);
-        } else
-          expect(qr.top, "under").toBeGreaterThanOrEqual(code.bottom - 0.5);
+        const code = await mount(find(SHOW), scheme, c.rootPx);
+        expect(columns(code.querySelector(".pair-show"))).toBe(1);
+        expect(code.querySelector(".qr"), "no QR in the code view").toBeNull();
+        expect(code.querySelector('[data-key="a11y.linkCode"]')).not.toBeNull();
         noSideways();
-        // The reading order is the same in both layouts.
+        // The reading order: the code, the waiting row, then Cancel and the one quiet link.
         const order = [
           "a11y.linkCode",
-          "a11y.qrPairing",
           "localPairing.waitingDevice",
           "common.cancel",
-          "localPairing.toEnter",
+          "localPairing.toQr",
         ];
-        const all = [...kit.querySelectorAll("*")];
+        const all = [...code.querySelectorAll("*")];
         const at = order.map((k) =>
           all.findIndex((e) => e.getAttribute("data-key") === k),
         );
         expect(at).toEqual([...at].sort((x, y) => x - y));
+        expect(at.every((i) => i >= 0)).toBe(true);
         await shoot("window.show", `${c.label}-${scheme}`);
+
+        const qr = await mount(find(SHOW_QR), scheme, c.rootPx);
+        expect(columns(qr.querySelector(".pair-show"))).toBe(1);
+        expect(
+          qr.querySelector('[data-key="a11y.linkCode"]'),
+          "no digits in the QR view",
+        ).toBeNull();
+        await until(() => qr.querySelector(".qr canvas, .qr svg"), "the QR");
+        const box = qr.querySelector(".qr")!.getBoundingClientRect();
+        const wait = qr
+          .querySelector('[data-key="localPairing.waitingDevice"]')!
+          .getBoundingClientRect();
+        expect(
+          wait.top,
+          "the waiting row is under the QR",
+        ).toBeGreaterThanOrEqual(box.bottom - 0.5);
+        // Centred in its column.
+        const col = qr.querySelector(".pair-show")!.getBoundingClientRect();
+        expect(
+          Math.abs(box.left + box.width / 2 - (col.left + col.width / 2)),
+        ).toBeLessThanOrEqual(2);
+        noSideways();
+        await shoot("window.show-qr", `${c.label}-${scheme}`);
       });
 
   for (const scheme of SCHEMES)
-    it(`720x420 ${scheme}: no logo, side by side, no scroll`, async () => {
+    it(`720x420 ${scheme}: no logo, one column that scrolls`, async () => {
       await page.viewport(720, 420);
       const kit = await mount(find(SHOW), scheme, 16);
       noLogo(kit);
-      expect(columns(kit.querySelector(".pair-show"))).toBe(2);
-      expect(
-        document.documentElement.scrollHeight,
-        "the window scrolls",
-      ).toBeLessThanOrEqual(document.documentElement.clientHeight + 1);
-      for (const k of [
-        "common.cancel",
-        "localPairing.toEnter",
-        "localPairing.waitingDevice",
-      ])
-        expect(
-          kit.querySelector(`[data-key="${k}"]`)!.getBoundingClientRect()
-            .bottom,
-          k,
-        ).toBeLessThanOrEqual(innerHeight + 0.5);
+      expect(columns(kit.querySelector(".pair-show"))).toBe(1);
+      noSideways();
       expect(await axeFindings(kit)).toEqual([]);
       await shoot("window.show", `720x420-${scheme}`);
     });
@@ -328,35 +326,36 @@ describe("the show screen's window rule", () => {
   for (const scheme of SCHEMES)
     it(`390x420 ${scheme}: one column that scrolls, the notice before the QR`, async () => {
       await page.viewport(390, 420);
-      const kit = await mount(find("a wrong code changed it"), scheme, 16);
+      const kit = await mount(find("pairing is being blocked"), scheme, 16);
       noLogo(kit);
       expect(columns(kit.querySelector(".pair-show"))).toBe(1);
       const notice = kit.querySelector(".pair-notice")!.getBoundingClientRect();
       expect(notice.bottom, "the notice is above the QR").toBeLessThanOrEqual(
         kit.querySelector(".qr")!.getBoundingClientRect().top + 0.5,
       );
-      // The wrong-code notice is told by a live region that is in the page before it, so it is
-      // announced where it is out of view; the region holds the words, never the action.
-      const said = kit.querySelector(
-        '[role="status"] [data-key="a11y.newCode"]',
-      );
-      expect(said?.textContent).toContain("4 8 1 2");
-      expect(
-        kit
-          .querySelector('[data-key="localPairing.showNew"]')
-          ?.closest('[role="status"]'),
-      ).toBeNull();
       noSideways();
       expect(await axeFindings(kit)).toEqual([]);
-      await shoot("window.show", `390x420-${scheme}`);
+      await shoot("window.show-qr", `390x420-${scheme}`);
     });
 
-  it("a TV is always two panes", async () => {
+  it("a wrong code is told by a live region that is in the page before it", async () => {
+    await page.viewport(390, 844);
+    const kit = await mount(find("a wrong code changed it"), "dark", 16);
+    const said = kit.querySelector('[role="status"] [data-key="a11y.newCode"]');
+    expect(said?.textContent).toContain("4 8 1 2");
+    expect(
+      kit
+        .querySelector('[data-key="localPairing.showNew"]')
+        ?.closest('[role="status"]'),
+    ).toBeNull();
+  });
+
+  it("a TV is one column too", async () => {
     await page.viewport(900, 540);
     const kit = await mount(find(SHOW), "dark", 16, {
       platform: { os: "android", formFactor: "tv" },
     });
-    expect(columns(kit.querySelector(".pair-show"))).toBe(2);
+    expect(columns(kit.querySelector(".pair-show"))).toBe(1);
   });
 });
 
@@ -443,6 +442,8 @@ function fakeDriver(rows: ReturnType<typeof link>[] = []) {
     rename: async () => true,
     remove: async () => true,
   };
+  /** How often the window was opened and renewed. */
+  const calls = { pair: 0, renew: 0 };
   const driver: Kit.LocalLinksLike = {
     localPairing: () => true,
     list: async () => rows,
@@ -453,16 +454,20 @@ function fakeDriver(rows: ReturnType<typeof link>[] = []) {
     dialsLeft: () => null,
     pair: async (o) => {
       seen.pair = o;
+      calls.pair++;
       return {
         open: true,
         stop: async () => undefined,
-        renew: async () => ({
-          code: "5512 0000",
-          qr: "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
-          reason: "opened",
-          expiresAt: NOW + 300,
-          failures: 0,
-        }),
+        renew: async () => (
+          calls.renew++,
+          {
+            code: "5512 0000",
+            qr: "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+            reason: "opened",
+            expiresAt: NOW + 300,
+            failures: 0,
+          }
+        ),
         code: () => null,
       };
     },
@@ -471,7 +476,7 @@ function fakeDriver(rows: ReturnType<typeof link>[] = []) {
       return next.join();
     },
   };
-  return { driver, seen, next };
+  return { driver, seen, next, calls };
 }
 
 const mountNode = (
@@ -546,6 +551,79 @@ async function showing(width: number, height: number) {
   await until(() => key(kit, "a11y.linkCode"), "the code");
   return { f, kit };
 }
+
+describe("the code and the QR are two views of one window", () => {
+  const heading = (kit: HTMLElement) =>
+    kit.querySelector<HTMLElement>('[data-part="title"]')!;
+  const digits = (kit: HTMLElement) =>
+    key(kit, "a11y.linkCode")?.getAttribute("aria-label") ?? null;
+
+  it("shows the digits alone, then the QR alone, in the same window", async () => {
+    const { f, kit } = await showing(1280, 800);
+    expect(kit.querySelector(".qr"), "no QR with the digits").toBeNull();
+    expect(key(kit, "localPairing.toEnter")).toBeNull();
+    const before = digits(kit);
+    const opened = f.seen.pair;
+    press(key(kit, "localPairing.toQr"));
+    await until(() => key(kit, "localPairing.toCode"), "the QR view");
+    expect(digits(kit), "no digits with the QR").toBeNull();
+    await until(() => kit.querySelector(".qr canvas, .qr svg"), "the QR");
+    expect(key(kit, "localPairing.toQr")).toBeNull();
+    expect(f.seen.pair, "the same window").toBe(opened);
+    press(key(kit, "localPairing.toCode"));
+    await until(() => key(kit, "a11y.linkCode"), "the code view");
+    expect(digits(kit), "the same code").toBe(before);
+    expect(kit.querySelector(".qr")).toBeNull();
+    expect(f.calls).toEqual({ pair: 1, renew: 0 });
+  });
+
+  it("moves focus to the new view's heading and says the new view politely", async () => {
+    const { kit } = await showing(1280, 800);
+    press(key(kit, "localPairing.toQr"));
+    await until(() => key(kit, "localPairing.toCode"), "the QR view");
+    await until(
+      () => document.activeElement === heading(kit),
+      "focus on the QR view's heading",
+    );
+    expect(heading(kit).getAttribute("data-key")).toBe("localPairing.qrTitle");
+    const note = [...kit.querySelectorAll('[role="status"]')].find((e) =>
+      e.textContent?.includes("camera"),
+    );
+    await until(
+      () =>
+        [...kit.querySelectorAll('[role="status"]')].some((e) =>
+          e.textContent?.includes("camera"),
+        ),
+      "the announcement",
+    );
+    void note;
+    expect(
+      document.activeElement?.getAttribute("data-key"),
+      "the link is not the default action",
+    ).not.toBe("localPairing.toCode");
+    press(key(kit, "localPairing.toCode"));
+    await until(() => key(kit, "a11y.linkCode"), "the code view");
+    await until(
+      () => document.activeElement === heading(kit),
+      "focus on the code view's heading",
+    );
+    expect(heading(kit).getAttribute("data-key")).toBe("localPairing.title");
+  });
+
+  it("a renewal while the QR is open updates the QR view and keeps it", async () => {
+    const { f, kit } = await showing(1280, 800);
+    press(key(kit, "localPairing.toQr"));
+    await until(() => key(kit, "localPairing.toCode"), "the QR view");
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    await frame();
+    await frame();
+    expect(key(kit, "localPairing.toCode"), "still the QR view").not.toBeNull();
+    expect(digits(kit), "still no digits").toBeNull();
+    press(key(kit, "localPairing.toCode"));
+    await until(() => key(kit, "a11y.linkCode"), "the code view");
+    expect(digits(kit)).toContain("4 8 7 3");
+  });
+});
 
 describe("focus and what is announced", () => {
   it("after Show a new code removes the notice, focus lands on the code", async () => {
@@ -814,29 +892,8 @@ describe("the paired list's menu", () => {
   });
 });
 
-// A short window keeps the way out of a notice in the first view: Cancel and the link share a row
-// and, side by side, sit under the code, so a wrong-code notice does not push them below the fold.
-describe("short windows after a notice", () => {
-  for (const [width, height] of [
-    [720, 420],
-    [1280, 420],
-  ] as const)
-    it(`${width}x${height}: Cancel and Enter a code instead stay in view with the notice up`, async () => {
-      const { f, kit } = await showing(width, height);
-      f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
-      await until(() => key(kit, "localPairing.showNew"), "the notice");
-      await frame();
-      for (const k of [
-        "common.cancel",
-        "localPairing.toEnter",
-        "localPairing.showNew",
-      ])
-        expect(
-          key(kit, k)!.getBoundingClientRect().bottom,
-          `${k} below the fold`,
-        ).toBeLessThanOrEqual(innerHeight + 0.5);
-    });
-
+// A short window is one column that scrolls; the field screen still shows Pair whole.
+describe("short windows", () => {
   it("1280x420: the field screen shows Pair whole", async () => {
     await page.viewport(1280, 420);
     const f = fakeDriver();

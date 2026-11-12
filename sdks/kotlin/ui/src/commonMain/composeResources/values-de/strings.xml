@@ -2375,16 +2375,23 @@
     <string name="localPairing_pairedDevices">Gekoppelte Geräte</string>
     <string name="localPairing_pairedDevices__macos">Gekoppelte Geräte</string>
     <!-- Pair with a Code: show: what to do with the code. -->
-    <string name="localPairing_showBody">Scannen oder geben Sie diesen Code auf dem anderen Gerät ein.</string>
+    <string name="localPairing_showBody">Geben Sie diesen Code auf dem anderen Gerät ein.</string>
     <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
     <string name="a11y_qrPairing">QR-Code mit dem Kopplungscode</string>
     <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
     <string name="localPairing_expires">Läuft ab in %1$s</string>
     <!-- Pair with a Code: show: shown while the code is open. -->
     <string name="localPairing_waitingDevice">Warten auf das andere Gerät …</string>
-    <!-- Pair with a Code: show: withdraws this code and opens the field. -->
-    <string name="localPairing_toEnter">Stattdessen Code eingeben</string>
-    <string name="localPairing_toEnter__macos">Stattdessen Code eingeben</string>
+    <!-- Pair with a Code: QR view: the title. -->
+    <string name="localPairing_qrTitle">Zum Koppeln scannen</string>
+    <!-- Pair with a Code: QR view: what to do with the QR. -->
+    <string name="localPairing_qrBody">Richten Sie die Kamera des anderen Geräts hierauf.</string>
+    <!-- Pair with a Code: code view: the quiet link to the QR view of the same window. -->
+    <string name="localPairing_toQr">QR-Code anzeigen</string>
+    <string name="localPairing_toQr__macos">QR-Code anzeigen</string>
+    <!-- Pair with a Code: QR view: the quiet link back to the code view of the same window. -->
+    <string name="localPairing_toCode">Stattdessen den Code anzeigen</string>
+    <string name="localPairing_toCode__macos">Stattdessen den Code anzeigen</string>
     <!-- Pair with a Code: show: after a wrong guess. -->
     <string name="localPairing_rotatedTitle">Falscher Code eingegeben</string>
     <!-- Pair with a Code: show: the code is new now. -->

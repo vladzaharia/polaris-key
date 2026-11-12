@@ -19,6 +19,9 @@ const COMPONENTS := [
 ## screens they are not in COMPONENTS; `Models.view_of` answers them.
 const HOLDER_SCREENS := ["ActivateDone", "AddToAccount"]
 
+## The two screens Pair with a Code adds (the `local` family); `Models.view_of` answers them.
+const LOCAL_SCREENS := ["LocalPairing", "PairedDevices"]
+
 ## The reserved state of a component its service turns off: the drop-in renders nothing.
 const HIDDEN := "hidden"
 
