@@ -3,7 +3,7 @@ title: "Platform sign-in setup"
 description: "Register the Google, Apple, Game Center and Play Games clients that automatic sign-in checks, and where each value goes."
 type: "how-to"
 status: "shipped"
-lastReviewed: "2026-11-01"
+lastReviewed: "2026-11-11"
 sidebar:
   order: 9
 ---
@@ -53,7 +53,7 @@ On the web the page needs a Content-Security-Policy line: `connect-src https://a
 2. Set `apple.teamId` to your 10-character team id.
 3. List each bundle id that signs in in `apple.bundleIds`. Bundle ids from your App Store and TestFlight outlets are added for you.
 
-Apple gives each developer team its own identifier for a person, so an Apple link works only in that team's apps. A person who signs in with Apple in another developer's app is a different account there.
+Apple gives each developer team its own identifier for a person, so an Apple link made in your app works only in your team's apps. In another developer's app the person has no link until they sign in the regular way. Game Center and Play Games work the same: see [Where a method reaches](/docs/features/sign-in/accounts/#where-a-method-reaches).
 
 App Review guideline 4.8 asks an app that offers another company's sign-in to offer an equivalent privacy-preserving one too. Sign in with Apple meets it, so if you ship Google sign-in on iOS, ship Apple too.
 
@@ -63,6 +63,10 @@ Game sign-in has its own platform switch, `launch.gameSignIn`, which stays off u
 
 - **Game Center.** Set `gameCenter: true`. It uses the Apple team id and bundle ids above.
 - **Play Games.** Set `playGames.applicationId` (the Play Console application id) and `playGames.serverClientId`. The server credential's client secret goes in the console under **Keys & secrets**, never in the manifest. The Kotlin SDK needs the `polaris-key-games` artifact.
+
+## Steam
+
+Steam has no sign-in inside your app. People sign in with Steam on the Polaris Locker sign-in card, which the operator sets up once under **Platform → Connections**, and that sign-in reaches every product. A Steam purchase reaches your app through [Commerce](/docs/features/commerce/), not through sign-in.
 
 ## Check it
 

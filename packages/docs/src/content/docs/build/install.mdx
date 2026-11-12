@@ -3,7 +3,7 @@ title: "Install the SDKs and the CLI"
 description: "Route the Polaris Key feed for your package manager, then install the pkey CLI and your SDK."
 type: "how-to"
 sdks: ["node", "react", "python", "swift", "kotlin", "godot"]
-lastReviewed: "2026-10-22"
+lastReviewed: "2026-11-11"
 ---
 
 import Requires from "../../../components/docs/Requires.astro";
@@ -30,6 +30,7 @@ The platform's feeds are public: no account and no token.
 1. **CLI** Route the `@polaris-key` scope to the feed and install the CLI.
 2. **CLI** Pick your SDK, route its feed, and install it.
 3. **CLI** Run `pkey help`.
+4. **CLI** Run `pkey login` to sign the CLI in to the console. See [Sign in the CLI](#sign-in-the-cli).
 
 ### The CLI
 
@@ -57,6 +58,16 @@ You should see the CLI's commands. In a Node project, run it as `npx pkey help` 
 ```sh title="Terminal"
 pkey help
 ```
+
+## Sign in the CLI
+
+Commands that act on your products in the console, such as `pkey bundle` and `pkey listing import`, need a sign-in:
+
+```sh title="Terminal"
+pkey login
+```
+
+It shows a code and opens the console's approval page. Check that the code matches, then approve. pkey keeps a personal token (`pkeyp_…`, 7 days) in your operating system's credential store and never prints it. `pkey whoami` shows who is signed in, and `pkey logout` ends the sign-in. In CI, `pkey login` refuses to run: set `PKEY_ADMIN_TOKEN` instead. The [CLI reference](/docs/reference/cli/) names the token each command accepts.
 
 ## Notes by client
 

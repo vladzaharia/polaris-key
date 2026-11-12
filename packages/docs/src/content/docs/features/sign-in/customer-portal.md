@@ -2,7 +2,7 @@
 title: "Polaris Locker"
 description: "The account surface customers use across your products: sign-in methods, library, devices, downloads, the activate link and per-product settings."
 type: "concept"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-11"
 sidebar:
   order: 6
 ---
@@ -21,9 +21,12 @@ The login card on `polaris.locker` is the only place a Locker account's credenti
 
 - **Connections.** Upstream OpenID Connect providers. `/login` starts the seeded platform connection, and `/login/sso/<id>` starts any other active platform connection whose audience covers customers. A flow is single-use and bound to the browser that started it. The redirect URI is `<origin>/callback` for every connection. Operators sign in to the console through a separate client.
 - **Email code and magic link.** One email carries a 6-digit code and a link. The link's landing page consumes nothing, so a mail scanner can't burn it, and its button posts the token back. A link opened on another device only confirms the asking browser's flow; it never signs the other device in. The answer is identical whether or not the address is known.
+- **Google, Apple and Steam.** The operator registers one client for each, for the whole deployment. A provider with a missing value is not offered.
 - **Passkeys.** A passkey is an account sign-in method, platform-wide and independent of any product's Identity toggle. It signs in only to the account it was added to. Passkeys enroll only after the account has a verified email.
 - **Work and school addresses.** An address whose domain is DNS-verified by an active platform connection goes to that organization's sign-in. Matching is exact: `example.edu` never routes `students.example.edu`. A connection can be enforced, which refuses email codes for the domain.
 - **The email gate.** On a provider's first sign-in, while the account has no confirmed email, or when a product's terms version isn't accepted yet, a gate opens before any account or session exists. An address the provider vouches for passes without a code: Apple's, or a Google address that is `@gmail.com`, `@googlemail.com` or in the token's `hd` domain. A typed address gets a code. If the address belongs to another account, the gate offers a join and never joins silently: the person proves both accounts in the same browser.
+
+Which products each method reaches, and how a person joins two accounts, is in [Accounts and recovery](/docs/features/sign-in/accounts/).
 
 Every `returnTo` must be same-origin and may not target `/manage`, so a link can't pivot a visitor into the console.
 
@@ -76,18 +79,19 @@ Every email is from Polaris Key (`PORTAL_EMAIL_FROM`) and names the product and 
 | New device signed in  | Every verified address |
 | Account deleted       | Every verified address |
 
-## App sign-in settings
+## Polaris Locker settings
 
-Each product has Locker settings, edited on **App sign-in**. They default on for a product that never wrote a row: `portalEnabled` and `discoverEnabled`. These default off:
+Each product's Locker settings are on **Settings → Polaris Locker**. It is a Core page, so they apply whether or not Identity is on.
 
-- `keyReissueEnabled`: customers may replace a license's key from Locker.
-- `claimByKey`: a license that carries an email may be added by anyone holding its key. Off is the safe default: such a license joins only an account that verified that email. A license already in an account never moves by its key either way.
+- **Show _Product_ in Polaris Locker** (`portalEnabled`, on by default). Off hides the product's licenses, page and downloads in every library. Licenses and sign-in keep working. **Sign-in → App sign-in** has the same switch.
+- **A key adds its license to whoever enters it** (`claimByKey`, off by default). Off is the safe default: a license that carries an email joins only an account that verified that email. A license already in an account never moves by its key either way.
+- **Branding**: the developer name, a tint color for light and for dark, the website, and the support URL and email that Locker's help card shows.
+
+`discoverEnabled` (on by default) lets Discover offer the product. `keyReissueEnabled` is stored, but Locker has no key reissue to offer yet.
 
 Email codes and passkeys are always on, platform single sign-on is on while a connection signs customers in, and adding a license by key is always on. There are no per-product switches for them. A domain's owner turns the email methods off for that domain's addresses by enforcing it under **Platform → Connections**. Downloads follow the product's Release service. Automatic linking has no switch either. It derives from the issuer that vouched for the license's address: on for the platform issuer, off for a product's own custom issuer, because a tenant-controlled provider's `email` and `sub` are outside the platform's trust boundary. The issuer class is recorded on the license when its address is written, so editing `oidc.provider` later can't turn a tenant-minted license into one that auto-links.
 
 Only addresses Locker proved (a magic link it sent, or `email_verified: true` from the platform issuer) can drive a link, and only a platform-issuer subject can match a license's `sub`.
-
-The Polaris Locker card on **App sign-in** holds the Locker switch and key reissue.
 
 ### Polaris Locker listing
 

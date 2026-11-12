@@ -2,7 +2,7 @@
 title: "Sign-in"
 description: "Let people sign in to your app with a Polaris Locker account, a work provider or a code, and send them to Polaris Locker for their licenses and devices."
 type: "overview"
-lastReviewed: "2026-11-01"
+lastReviewed: "2026-11-11"
 sidebar:
   order: 1
 ---
@@ -11,7 +11,7 @@ import CardGrid from "../../../../components/docs/CardGrid.astro";
 import Requires from "../../../../components/docs/Requires.astro";
 import { LinkCard } from "@astrojs/starlight/components";
 
-Sign-in proves who a person is to one product and turns that into a license and a device token. It also runs Polaris Locker, where people manage their licenses and devices.
+People sign in to your app with their Polaris Locker account, and the app gets a device token.
 
 <Requires features={["sign-in"]} role="Product admin" />
 
@@ -21,13 +21,23 @@ Sign-in proves who a person is to one product and turns that into a license and 
   <LinkCard
     title="Add sign-in to your app"
     href="/docs/features/sign-in/add-sign-in/"
-    description="A sign-in path for your SDK and for your server."
+    description="For your SDK and your server."
+  />
+  <LinkCard
+    title="Sign in with your product"
+    href="/docs/features/sign-in/sign-in-with-product/"
+    description="OpenID Connect provider."
   />
 </CardGrid>
 
 ## Concepts
 
 <CardGrid>
+  <LinkCard
+    title="Accounts and recovery"
+    href="/docs/features/sign-in/accounts/"
+    description="Methods, recovery, deletion."
+  />
   <LinkCard
     title="Automatic sign-in"
     href="/docs/features/sign-in/automatic/"
@@ -46,7 +56,12 @@ Sign-in proves who a person is to one product and turns that into a license and 
   <LinkCard
     title="Device flow"
     href="/docs/features/sign-in/device-flow/"
-    description="For a client with no browser redirect."
+    description="No browser redirect needed."
+  />
+  <LinkCard
+    title="Nearby approval"
+    href="/docs/features/sign-in/nearby/"
+    description="One tap, same network."
   />
   <LinkCard
     title="Web redirect"
@@ -56,7 +71,7 @@ Sign-in proves who a person is to one product and turns that into a license and 
   <LinkCard
     title="Native redirect"
     href="/docs/features/sign-in/native-redirect/"
-    description="Desktop and mobile apps, through the system browser."
+    description="Desktop and mobile, system browser."
   />
   <LinkCard
     title="Browser sessions"
@@ -66,7 +81,7 @@ Sign-in proves who a person is to one product and turns that into a license and 
   <LinkCard
     title="Polaris Locker"
     href="/docs/features/sign-in/customer-portal/"
-    description="The account surface customers use."
+    description="What people see."
   />
 </CardGrid>
 
@@ -81,7 +96,7 @@ Sign-in proves who a person is to one product and turns that into a license and 
   <LinkCard
     title="Sign-in handoff"
     href="/docs/build/ui/components/sign-in-handoff/"
-    description="The code and QR screen for a client with no browser."
+    description="The code and QR screen."
   />
 </CardGrid>
 
@@ -91,7 +106,7 @@ Sign-in proves who a person is to one product and turns that into a license and 
   <LinkCard
     title="Polaris Locker API"
     href="/docs/reference/portal-api/"
-    description="Every Polaris Locker route and its gates."
+    description="Every route and its gates."
   />
 </CardGrid>
 
@@ -101,7 +116,7 @@ Sign-in proves who a person is to one product and turns that into a license and 
   <LinkCard
     title="Troubleshoot sign-in"
     href="/docs/features/sign-in/troubleshooting/"
-    description="Causes and fixes by error code."
+    description="By error code."
   />
 </CardGrid>
 

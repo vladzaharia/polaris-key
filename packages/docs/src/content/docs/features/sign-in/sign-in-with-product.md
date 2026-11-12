@@ -4,7 +4,7 @@ description: "Make your product an OpenID Connect provider: register a client, s
 type: "how-to"
 services: ["identity"]
 status: "shipped"
-lastReviewed: "2026-11-10"
+lastReviewed: "2026-11-11"
 sidebar:
   order: 10
 ---
@@ -53,12 +53,12 @@ A product has at most 20 clients. A client from `.pkey/product` is edited there;
 
 The console shows these under the switch. Point your OpenID Connect library at the discovery address and it finds the rest.
 
-| Name      | Address                                                |
-| --------- | ------------------------------------------------------ |
-| Issuer    | `https://key.plrs.im/<product>/identity`               |
-| Discovery | `<issuer>/.well-known/openid-configuration`            |
-| Keys      | `<issuer>/jwks`                                        |
-| Endpoints | `<issuer>/authorize`, `/token`, `/userinfo`, `/revoke` |
+| Name      | Address                                                                |
+| --------- | ---------------------------------------------------------------------- |
+| Issuer    | `https://key.plrs.im/<product>/identity`                               |
+| Discovery | `<issuer>/.well-known/openid-configuration`                            |
+| Keys      | `<issuer>/jwks`                                                        |
+| Endpoints | `<issuer>/authorize`, `/token`, `/userinfo`, `/revoke`, `/end-session` |
 
 ## What a client gets
 
@@ -225,7 +225,9 @@ The key set changes on a schedule: a new key is published 7 days before it signs
 
 ## Ending a sign-in
 
-A person ends a client in Polaris Locker under **Connected Apps**: its refresh tokens end at once and `userinfo` refuses; an access token already issued lasts at most 10 minutes. Disabling or deleting a client in the console does the same for everyone. Turning the setting off revokes every refresh token and keeps the grants, so turning it back on asks nobody again. An end-session address is planned.
+A person ends a client in Polaris Locker under **Connected Apps**: its refresh tokens end at once and `userinfo` refuses; an access token already issued lasts at most 10 minutes. Disabling or deleting a client in the console does the same for everyone. Turning the setting off revokes every refresh token and keeps the grants, so turning it back on asks nobody again.
+
+To sign a person out of your site, send their browser to `<issuer>/end-session` with `id_token_hint` (or `client_id`), a `post_logout_redirect_uri` from the client's `postLogoutRedirectUris` and your `state`. Polaris Locker asks whether to sign out of Polaris Locker too, and either answer returns the browser to your address with `state`. Signing out ends only that browser's Polaris Locker session: refresh tokens and consent stay. An address you didn't register shows an error page and never redirects.
 
 ## Not served
 

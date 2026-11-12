@@ -3,7 +3,7 @@ title: "Get help with an app"
 description: "Who to ask about an app, a store purchase, or your account."
 type: "help"
 status: "shipped"
-lastReviewed: "2026-10-11"
+lastReviewed: "2026-11-11"
 sidebar:
   order: 4
 ---
@@ -46,6 +46,8 @@ Locker does not have a published public help address. Fix these yourself:
 - A sign-in code that did not arrive or has expired: [Your sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
 - A security email that worries you: [Secure your account](/docs/help/secure-your-account/).
 - Erase your account: [Delete your account](/docs/help/delete-account/).
+- No way to sign in left: Locker can't open your account or recover it. Make a new account, then
+  ask each app's developer to move your license to it. Have your receipt or order ready.
 
 For an app's features, billing, or refund, use the developer or store.
 
