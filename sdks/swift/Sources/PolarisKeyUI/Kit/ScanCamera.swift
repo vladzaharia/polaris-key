@@ -177,11 +177,12 @@ struct ScanViewfinder: View {
                     .font(.body)
                     .foregroundStyle(Color.white)
                     .multilineTextAlignment(.center)
-                    .padding(40)
+                    .minimumScaleFactor(0.8)
+                    .padding(16)
             }
         }
-        .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: side, maxHeight: side)
+        // A fixed square: a flexible frame shares the screen's spare height with the scaffold's spacer and collapses.
+        .frame(width: side, height: side)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(message.map { "\(label). \($0)" } ?? label)

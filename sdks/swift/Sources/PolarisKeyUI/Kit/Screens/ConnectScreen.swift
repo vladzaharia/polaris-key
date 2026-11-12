@@ -37,7 +37,11 @@ struct KitWrap: Layout {
     var spacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        arrange(proposal.width ?? .infinity, subviews).size
+        // Asked for its ideal size it answers with the widest pill, not one endless row: placed narrower it
+        // wraps, and a height for one row would let the second row spill onto what follows.
+        if let width = proposal.width, width.isFinite { return arrange(width, subviews).size }
+        let widest = subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
+        return arrange(widest, subviews).size
     }
 
     func placeSubviews(

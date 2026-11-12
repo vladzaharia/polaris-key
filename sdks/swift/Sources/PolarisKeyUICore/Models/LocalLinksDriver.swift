@@ -158,9 +158,9 @@ public struct LocalLinksDriver: Sendable {
 
 #if canImport(Network)
     extension LocalLinksDriver {
-        /// The driver over `client.cloudConnect.localLinks`. `product` is this app's product slug: with
-        /// it a scanned QR is sorted before the join (another app's code is said in place).
-        public static func links(_ links: LocalLinks, product: String? = nil) -> LocalLinksDriver {
+        /// The driver over `client.cloudConnect.localLinks`. A scanned QR is sorted before the join, by the client's own
+        /// product: another app's code is said in place.
+        public static func links(_ links: LocalLinks) -> LocalLinksDriver {
             LocalLinksDriver(
                 localPairing: { links.localPairing() },
                 list: {
@@ -214,11 +214,10 @@ public struct LocalLinksDriver: Sendable {
                     } catch { throw mapLocalError(error) }
                 },
                 readQr: { text in
-                    guard let own = product?.lowercased(), !own.isEmpty else { return .ours }
-                    switch PeerLocal.parseQr(text, own: own) {
-                    case .ok: return .ours
-                    case .otherApp: return .otherApp
-                    case .invalid: return .invalid
+                    switch links.readQr(text) {
+                    case .thisProduct: return .ours
+                    case .otherProduct: return .otherApp
+                    case .notACode: return .invalid
                     }
                 })
         }

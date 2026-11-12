@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -54,6 +55,7 @@ private val QR_SIZE_SHORT = 192.dp
 // The card is never under 192 dp (12 rem); in two columns it takes the room the height leaves.
 private val QR_SIZE_WIDE = 240.dp
 private const val DIMMED = 0.35f
+private const val QR_MODULES = 37
 private const val FADE_PAPER = 0.96f
 private val QR_PAPER = Color.White // polaris-lint: allow-colour (the QR's paper is white in every theme, so a scanner can read it)
 private val TILE_MIN_HEIGHT = 72.dp
@@ -81,7 +83,7 @@ internal fun ColumnScope.PairShow(c: PairCtx, layout: KitLocal.Layout, tile: Foc
         Spacer(Modifier.height(PolarisSpace.medium))
         if (qrView) {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                PairQrCard(c, if (layout.logo) QR_SIZE else QR_SIZE_SHORT, dimmed = true)
+                PairQrCard(c, if (layout.logo) QR_SIZE else QR_SIZE_SHORT, dimmed = true, tile)
             }
         } else {
             PairCodeTile(c, opening = false, tile)
@@ -115,12 +117,12 @@ internal fun ColumnScope.PairShow(c: PairCtx, layout: KitLocal.Layout, tile: Foc
                 Spacer(Modifier.height(PolarisSpace.medium))
                 PairShowActions(c, qrView = true)
             }
-            PairQrCard(c, QR_SIZE_WIDE, dimmed = false)
+            PairQrCard(c, QR_SIZE_WIDE, dimmed = false, tile)
         }
     } else {
         if (layout.noticeBeforeQr) PairShowNotice(c)
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            PairQrCard(c, if (layout.logo) QR_SIZE else QR_SIZE_SHORT, dimmed = false)
+            PairQrCard(c, if (layout.logo) QR_SIZE else QR_SIZE_SHORT, dimmed = false, tile)
         }
         PairTime(c, opening = false)
         if (!layout.noticeBeforeQr) PairShowNotice(c)
@@ -157,13 +159,15 @@ private fun PairShowActions(c: PairCtx, qrView: Boolean) {
  * the paper (so the dead code does not scan) and dims the card.
  */
 @Composable
-internal fun PairQrCard(c: PairCtx, size: Dp, dimmed: Boolean) {
+internal fun PairQrCard(c: PairCtx, size: Dp, dimmed: Boolean, focus: FocusRequester) {
     val qr = c.ui.qr
     if (qr == null) {
         Spacer(Modifier.size(size))
     } else {
-        Box(Modifier.size(size).alpha(if (dimmed) DIMMED else 1f)) {
-            PolarisQr(qr, c.text("a11y.qrPairing"), Modifier.size(size))
+        Box(Modifier.size(size).alpha(if (dimmed) DIMMED else 1f).focusRequester(focus).focusable()) {
+            // A dead code is blurred past reading (two module widths of a 37-module card) as well as faded and dimmed, so a decoder
+            // finds nothing even when its levels are stretched.
+            PolarisQr(qr, c.text("a11y.qrPairing"), Modifier.size(size).then(if (dimmed) Modifier.blur(size / QR_MODULES * 2) else Modifier))
             // The paper over the ink: dark modules end at 4 % of their strength.
             if (dimmed) Box(Modifier.size(size).background(QR_PAPER.copy(alpha = FADE_PAPER)).clearAndSetSemantics {})
         }

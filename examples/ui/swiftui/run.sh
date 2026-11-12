@@ -7,6 +7,7 @@
 #   IOS=26.5                   the simulator runtime (default 26.5, the one the baselines are recorded on)
 #   PKEY_KIT_ONLY=Welcome.default,SignIn.methods run.sh   only these states
 #   PKEY_KIT_QUICK=1 run.sh    each state in both schemes only (no AX, landscape or native)
+#   PKEY_KIT_SCHEME=light      render (and record) one scheme only
 #   run.sh --open              generate the project and open it in Xcode
 #   run.sh --mac               build the macOS sample and run KitRenderMacTests on this Mac (UK-08.2)
 #   run.sh --mac --build-only  build the Mac sample and its UI tests (build-for-testing); needs no
@@ -91,7 +92,7 @@ xcrun simctl status_bar "$DEVICE" override --time "9:41" --dataNetwork wifi --wi
   2>/dev/null || true
 TEST_RUNNER_PKEY_KIT_SHOTS="$SHOTS" TEST_RUNNER_PKEY_KIT_ONLY="${PKEY_KIT_ONLY:-}" \
   TEST_RUNNER_PKEY_KIT_QUICK="${PKEY_KIT_QUICK:-0}" TEST_RUNNER_PKEY_KIT_DEVICE="$LABEL" \
-  TEST_RUNNER_PKEY_KIT_EXTRA_ARGS="${PKEY_KIT_EXTRA_ARGS:-}" \
+  TEST_RUNNER_PKEY_KIT_EXTRA_ARGS="${PKEY_KIT_EXTRA_ARGS:-}" TEST_RUNNER_PKEY_KIT_SCHEME="${PKEY_KIT_SCHEME:-}" \
   TEST_RUNNER_PKEY_KIT_BASELINES="${PKEY_KIT_BASELINES:-}" TEST_RUNNER_PKEY_KIT_RECORD="${PKEY_KIT_RECORD:-0}" \
   xcodebuild test \
   -project "$HERE/TidewaterKit.xcodeproj" -scheme TidewaterKit \

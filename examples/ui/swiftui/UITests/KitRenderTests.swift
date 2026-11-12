@@ -11,6 +11,7 @@
 
 import SnapshotTesting
 import UIKit
+import Vision
 import XCTest
 
 final class KitRenderTests: XCTestCase {
@@ -30,10 +31,6 @@ final class KitRenderTests: XCTestCase {
     /// the states it applies to (empty: every state).
     static let exempt:
         [(audit: String, element: String, contains: String, states: [String], reason: String)] = [
-            (
-                "Text clipped", "text", "The camera isn", ["LocalPairing.scan.camera-busy"],
-                "The message is drawn inside the viewfinder's black square, whose own accessibility element (the camera view, with the message in its label) the audit measures it against; the render shows the four wrapped lines whole, inside the square."
-            ),
             (
                 "Text clipped", "text", "Camera access is off", ["LocalPairing.camera-off"],
                 "The one-line label above the body sits in a stack the audit measures at its tight leading; the render shows it whole, and AX3 and landscape renders show it wrapping."
@@ -347,6 +344,7 @@ final class KitRenderTests: XCTestCase {
             r.audit.filter {
                 !$0.contains("nearly passed") && !$0.hasPrefix("measured ")
                     && !$0.hasPrefix("off-screen") && !$0.hasPrefix("not attributable")
+                    && !$0.hasPrefix("exempt: ")
             }
             .map { "\(r.state) \(r.scheme) \(r.type) \(r.orientation) \(r.preset): \($0)" }
         }
@@ -360,6 +358,14 @@ final class KitRenderTests: XCTestCase {
         orientation: UIDeviceOrientation = .portrait, preset: String = "polaris-key",
         locale: String? = nil
     ) throws -> Render {
+        // PKEY_KIT_SCHEME=light re-records (or checks) one scheme only: a change that cannot touch the other skips it.
+        let envScheme = ProcessInfo.processInfo.environment["PKEY_KIT_SCHEME"]
+            ?? ProcessInfo.processInfo.environment["TEST_RUNNER_PKEY_KIT_SCHEME"]
+        if let envScheme, !envScheme.isEmpty, envScheme != scheme {
+            return Render(
+                state: state, device: device, orientation: "skipped", type: type, preset: preset,
+                scheme: scheme, audit: [], voiceOver: [])
+        }
         XCUIDevice.shared.orientation = orientation
         let app = XCUIApplication()
         var args = ["-pkeyState", state, "-pkeyScheme", scheme, "-pkeyFreezeTime"]
@@ -405,7 +411,15 @@ final class KitRenderTests: XCTestCase {
             upright, state: state, name: name,
             isDefault: locale == nil && isDefaultRow(type, orientation, preset))
 
-        let layoutIssues: [String] = Self.textOutsideItsButton(app)
+        var layoutIssues: [String] = Self.textOutsideItsButton(app)
+        // A dead pairing QR must not scan: Apple's barcode reader (the camera's) finds nothing on the expired render.
+        if state.hasPrefix("LocalPairing.show-qr.expired"), let cg = upright.cgImage {
+            let request = VNDetectBarcodesRequest()
+            request.symbologies = [.qr]
+            try VNImageRequestHandler(cgImage: cg).perform([request])
+            let found = (request.results ?? []).compactMap(\.payloadStringValue)
+            if !found.isEmpty { layoutIssues.append("the expired QR still decodes: \(found)") }
+        }
         // The audit's frames are in the app's coordinates, the upright render's.
         let scale = upright.scale
         let window = app.windows.firstMatch.frame
@@ -462,7 +476,7 @@ final class KitRenderTests: XCTestCase {
                 let floor = element.elementType == .image ? 3.0 : 4.5
                 if ratio >= floor {
                     issues.append(
-                        "measured \(String(format: "%.1f", ratio)):1 (audit said \(issue.compactDescription)) [\(type) \(label)]"
+                        "measured \(String(format: "%.2f", ratio)):1 (audit said \(issue.compactDescription)) [\(type) \(label)]"
                     )
                     return true
                 }
@@ -473,7 +487,10 @@ final class KitRenderTests: XCTestCase {
                 )
                 return true
             }
-            if !exempt {
+            if exempt {
+                // Logged, never failing: an exemption that hides a real finding must leave a trace in the JSON.
+                issues.append("exempt: \(issue.compactDescription) [\(type) \(label)]")
+            } else {
                 issues.append("\(issue.compactDescription) [\(type) \(label)]")
             }
             return true
@@ -492,10 +509,17 @@ final class KitRenderTests: XCTestCase {
         where element.exists && element.isHittable && !element.label.isEmpty {
             voiceOver.append("\(Self.typeName(element.elementType)): \(element.label)")
         }
+        // An expired pairing view keeps both buttons at every size and orientation (never a dead end).
+        var deadEnd: [String] = []
+        if state.hasPrefix("LocalPairing.show") && state.hasSuffix("expired") {
+            for button in ["Show a new code", "Cancel"] where !voiceOver.contains(where: { $0.hasSuffix(button) }) {
+                deadEnd.append("\(state) has no \(button) in the VoiceOver list")
+            }
+        }
         app.terminate()
         return Render(
             state: state, device: device, orientation: orientationName, type: type, preset: preset,
-            scheme: scheme, audit: issues, voiceOver: voiceOver)
+            scheme: scheme, audit: issues + deadEnd, voiceOver: voiceOver)
     }
 
     var baselineFailures: [String] = []

@@ -44,6 +44,11 @@ import PolarisKeyCore
     private let dialCooldownJitterSeconds = 2.0
     private let dialBackoffCapSeconds = 60.0
 
+    /// What a scanned QR's text is for this product (`LocalLinks.readQr`).
+    package enum LocalQrRead: Sendable, Equatable {
+        case thisProduct, otherProduct, notACode
+    }
+
     public final class LocalLinks: Sendable {
         let core: LocalLinksCore
 
@@ -77,6 +82,16 @@ import PolarisKeyCore
         /// nil until the text (spaces and hyphens ignored) starts with two digits. It reads those two digits, keeps
         /// nothing and spends nothing.
         public func dialsLeft(_ text: String) -> Int? { core.dialsLeft(text) }
+
+        /// What a scanned QR's text is for this product, judged locally (nothing is dialled or spent): a pairing code of
+        /// this product's, another product's, or no pairing code at all.
+        package func readQr(_ text: String) -> LocalQrRead {
+            switch PeerLocal.parseQr(text, own: core.connect.core.product) {
+            case .ok: return .thisProduct
+            case .otherApp: return .otherProduct
+            case .invalid: return .notACode
+            }
+        }
 
         /// Called after the links or the gate changed: a pairing was stored, a link was renamed, forgotten, re-marked
         /// or seen, or the `localPairing` answer flipped. It carries no data: read `list()` and `localPairing()`

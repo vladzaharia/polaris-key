@@ -165,7 +165,7 @@ internal object LocalCases {
                 state,
                 expect["copy"]!!.strings(),
                 expect["disabled"]?.strings().orEmpty(),
-                drawn = "kotlin" !in ((row["notApplicable"] as? JsonObject)?.get("sdks")?.strings().orEmpty()) && reachable(input),
+                drawn = "compose" !in ((row["notApplicable"] as? JsonObject)?.get("sdks")?.strings().orEmpty()) && reachable(input),
             )
         }
     }
@@ -361,6 +361,30 @@ class LocalScreensTest {
     }
 
     @Test
+    fun noDrawnRowIsOneTheMatrixMarksNotApplicableForCompose() {
+        val root = requireNotNull(System.getProperty("pkey.repoRoot"))
+        val raw = Json.parseToJsonElement(File(root, "conformance/corpus/v2/ui-matrix.json").readText()) as JsonObject
+        val marked = (raw["local"] as JsonArray).mapIndexedNotNull { i, row ->
+            val sdks = ((row as JsonObject)["notApplicable"] as? JsonObject)?.get("sdks")?.strings().orEmpty()
+            if ("compose" in sdks) i else null
+        }
+        val drawnIndexes = LocalCases.drawn.map { it.id.substringBefore('-').toInt() }
+        assertTrue("rows drawn though not applicable: ${drawnIndexes.filter { it in marked }}", drawnIndexes.none { it in marked })
+        assertTrue("the scan rows are among the not-applicable ones", marked.size >= 10)
+    }
+
+    @Test
+    fun showNewCodeInTheQrViewMovesFocusToTheCard() {
+        var ui by mutableStateOf(pairing("show") { copy(code = "4812 3456", qr = "PKP1:T:X:Y", secondsLeft = 0, view = "qr", expired = true) })
+        show { PolarisLocalPairingScreen(ui) }
+        ui = ui.copy(secondsLeft = 290, expired = false, code = "5000 1111", rotation = 2, replaced = true, renewedFromExpired = true)
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription(KitCopy.bundled.format("a11y.qrPairing", "en"), useUnmergedTree = true).assertExists()
+        // The card is a focus target of its own: a request lands on it, never on nothing.
+        rule.onNode(androidx.compose.ui.test.isFocused()).assertExists()
+    }
+
+    @Test
     fun theLinksSwitchTheViewAndAnExpiredWindowOffersAPrimaryNewCode() {
         val pressed = mutableListOf<String>()
         val actions = object : PolarisLocalPairingActions {
@@ -553,7 +577,7 @@ class ExpiredQrScanTest {
     private val text = "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
 
     /** What a camera would read off the screen: the activity's window drawn to a bitmap, then a QR decoder run over it. */
-    private fun scanned(scenario: ActivityScenario<ComponentActivity>): String? {
+    private fun scanned(scenario: ActivityScenario<ComponentActivity>, stretch: Boolean = false): String? {
         lateinit var bitmap: Bitmap
         scenario.onActivity { activity ->
             val view = activity.window.decorView
@@ -562,6 +586,20 @@ class ExpiredQrScanTest {
         }
         val pixels = IntArray(bitmap.width * bitmap.height)
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        if (stretch) {
+            // The levels stretched to the full range, as a camera's auto-exposure would see the card.
+            val grey =
+                IntArray(pixels.size) {
+                    ((pixels[it] shr 16 and 0xff) * 299 + (pixels[it] shr 8 and 0xff) * 587 + (pixels[it] and 0xff) * 114) /
+                        1000
+                }
+            val low = grey.min()
+            val span = maxOf(grey.max() - low, 1)
+            for (i in pixels.indices) {
+                val v = (grey[i] - low) * 255 / span
+                pixels[i] = 0xff shl 24 or (v shl 16) or (v shl 8) or v
+            }
+        }
         val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
         // A decoder that finds no code throws one of its three not-found errors: that is "nothing scanned".
         return runCatching { QRCodeReader().decode(BinaryBitmap(HybridBinarizer(source))).text }.getOrNull()
@@ -585,9 +623,11 @@ class ExpiredQrScanTest {
             }
             rule.mainClock.advanceTimeBy(2_600)
             assertEquals("the live card scans", text, scanned(scenario))
+            assertEquals("the live card scans with its levels stretched", text, scanned(scenario, stretch = true))
             ui = ui.copy(secondsLeft = 0, expired = true)
             rule.mainClock.advanceTimeBy(2_600)
             assertEquals("the expired card does not scan", null, scanned(scenario))
+            assertEquals("the expired card does not scan with its levels stretched", null, scanned(scenario, stretch = true))
             rule.onNodeWithText("Code expired").assertIsDisplayed()
         }
     }

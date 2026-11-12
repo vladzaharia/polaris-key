@@ -37,6 +37,7 @@ public struct LocalPairingView: View {
     let categoryLabels: [String: String]
     @Environment(\.polarisKeyStrings) private var strings
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicType
     @AccessibilityFocusState private var focus: PairFocus?
     @State private var window = CGSize.zero
     @State private var last: KitScreen<LocalPairingState>?
@@ -140,7 +141,12 @@ public struct LocalPairingView: View {
 
     private var qrTwoColumns: Bool {
         #if os(iOS)
-            kitQrTwoColumns(width: window.width == 0 ? 390 : window.width, height: windowHeight)
+            // The scaffold's split arrangement (an iPad in landscape) gives the content a 480 pt pane: one column there,
+            // and at accessibility text sizes (the root text size is what the 720 pt is measured at).
+            kitQrTwoColumns(
+                width: window.width == 0 ? 390 : window.width, height: windowHeight,
+                textScale: dynamicType.isAccessibilitySize ? 2 : 1)
+                && KitArrangement.of(CGSize(width: window.width, height: windowHeight)) != .split
         #else
             false
         #endif
@@ -165,6 +171,7 @@ public struct LocalPairingView: View {
     @ViewBuilder private func escapeCloses(_ state: LocalPairingState) -> some View {
         if [
             .paired, .failed, .off, .networkBlocked, .closed, .enter, .confirm, .scanPrompt, .scan, .cameraOff,
+            .opening, .show, .showQr,
         ].contains(state) {
             Button("") { Task { await close(state) } }
                 .keyboardShortcut(.cancelAction)
@@ -179,6 +186,7 @@ public struct LocalPairingView: View {
         case .paired: await model.done()
         case .enter, .scanPrompt, .scan, .cameraOff: await model.backToChoose()
         case .confirm: await model.notNow()
+        case .opening, .show, .showQr: await model.cancel()
         default: await model.closeScreen()
         }
     }
@@ -347,7 +355,9 @@ public struct LocalPairingView: View {
             // Portrait: the camera is as tall as the room that is left, so the actions stay in view.
             if let body = screen.line("localPairing.scanBody") { KitText(body, .body) }
             ScanViewfinder(
-                source: model.scanSource, label: label, side: min(360, max(200, h - 420)), message: busy
+                source: model.scanSource, label: label,
+                side: min(min(360, max(200, h - 420)), max(160, (window.width == 0 ? 390 : window.width) - 48)),
+                message: busy
             )
             .frame(maxWidth: .infinity)
             scanNotice(screen, style)
@@ -396,7 +406,13 @@ public struct LocalPairingView: View {
         let gone = model.state.expired == true
         if gone {
             // Expired says its piece in the title: the dead stage stays, muted, and the actions are Show a new code and Cancel.
-            if state == .showQr {
+            if state == .showQr, qrTwoColumns {
+                // The same two columns as the live view, and the buttons in the start column.
+                HStack(alignment: .top, spacing: style.space(.xl)) {
+                    actions(screen, state).frame(maxWidth: .infinity, alignment: .leading)
+                    qrCard(screen, size: qrSide(style), dimmed: true)
+                }
+            } else if state == .showQr {
                 qrCard(screen, size: qrSide(style), dimmed: true).frame(maxWidth: .infinity)
             } else {
                 codeTile(screen, opening, style).opacity(0.5)
@@ -774,6 +790,7 @@ public struct LocalPairingView: View {
                     }
                 }
             }
+            .fixedSize(horizontal: false, vertical: true)
             .accessibilityElement(children: .combine)
         } else if let none = screen.line("linkPairing.sharesNone") {
             KitText(none, .body)
@@ -1005,17 +1022,33 @@ enum KitSettingsOpener {
     }
 }
 
-/// The pairing QR, or its dead twin: after the window ran out the dark modules fade toward the paper and the card dims, so the
-/// expired code does not scan (UI-KITS 4.9). Internal so a test can render both and try to decode them.
+/// The pairing QR, or its dead twin: after the window ran out the code is blurred past reading (more than 1.5 module widths),
+/// its ink fades to 15 % of the paper contrast and the card dims to 35 % on the stage's own night ground, so the result is the
+/// same over either page and a barcode reader finds nothing (UI-KITS 4.9). Internal so a test can decode both.
 struct ExpiredFadeQR: View {
     let text: String
     let label: String
     let faded: Bool
 
+    /// The night stage the dimmed card sits on (`LIGHT_CARD` ground).
+    static let stage = Color(.sRGB, red: 5 / 255, green: 6 / 255, blue: 13 / 255, opacity: 1)
+
     var body: some View {
-        PolarisQRCode(text, accessibilityLabel: label)
-            // Lifting the brightness takes the dark modules toward the paper (they end at 4 % of their strength).
-            .brightness(faded ? 0.96 : 0)
-            .opacity(faded ? 0.35 : 1)
+        if faded {
+            GeometryReader { geo in
+                // 37 modules with the quiet zone is the largest code the kit draws at this size: 1.5 widths and a margin.
+                let blur = geo.size.width / 37 * 2
+                ZStack {
+                    Self.stage
+                    PolarisQRCode(text, accessibilityLabel: label)
+                        .blur(radius: blur)
+                        .brightness(0.85)
+                        .opacity(0.35)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        } else {
+            PolarisQRCode(text, accessibilityLabel: label)
+        }
     }
 }

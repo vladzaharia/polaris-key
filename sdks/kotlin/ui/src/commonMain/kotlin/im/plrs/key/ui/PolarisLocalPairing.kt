@@ -231,7 +231,8 @@ private fun PairNewCodeAnnouncement(c: PairCtx, tile: FocusRequester, announce: 
             else -> spelled
         }
         announce(said)
-        if (!qr) runCatching { tile.requestFocus() }
+        // The QR view has no tile: after a dead window the pressed button is gone, so focus goes to the card.
+        if (!qr || ui.renewedFromExpired) runCatching { tile.requestFocus() }
     }
 }
 
