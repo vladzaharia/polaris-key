@@ -13,10 +13,6 @@ import im.plrs.key.core.PolarisException
 import im.plrs.key.core.peer.MAX_LIVE_LOCAL_ADVERTS
 import im.plrs.key.core.peer.MAX_LOCAL_LINKS
 import im.plrs.key.core.peer.SessionEvent
-import im.plrs.key.core.peer.lan.MdnsAdapter
-import im.plrs.key.core.peer.lan.MdnsAdvert
-import im.plrs.key.core.peer.lan.MdnsFound
-import im.plrs.key.core.peer.lan.MdnsHandle
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -352,14 +348,6 @@ class ConnectLocalLinksTest : ConnectLanBase() {
         assertEquals("hello", String(runBlocking { inbound.receive(5000) }.body))
         until { a.touched.isNotEmpty() && b.touched.isNotEmpty() }
         runBlocking { s.close() }
-    }
-
-    /** What NsdManager does: a name the browse does not accept when it appears is dropped, and a new browse hears every service again. */
-    private class NsdLike(private val inner: Network) : MdnsAdapter {
-        override suspend fun advertise(advert: MdnsAdvert): MdnsHandle = inner.advertise(advert)
-
-        override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle =
-            inner.browse({ f -> if (accept(f.instance)) onUp(f) }, onDown, accept)
     }
 
     @Test

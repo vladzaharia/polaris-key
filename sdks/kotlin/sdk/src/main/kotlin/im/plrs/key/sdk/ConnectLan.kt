@@ -257,6 +257,7 @@ internal class LanService private constructor(
     private var adv: MdnsHandle? = null
     private var advName = ""
     private var browseHandle: MdnsHandle? = null
+    private var browseKey = ""
     private var cancelEpoch: (() -> Unit)? = null
     private val idLock = Mutex()
     private val rotateLock = Mutex()
@@ -753,6 +754,7 @@ internal class LanService private constructor(
             // Local links: their names rotate with the epoch too.
             loadLocals()
             advertLocals(epoch)
+            rebrowseIfNamesMoved()
             val next = (epoch + 1) * ADVERT_EPOCH_SECONDS - src.now()
             cancelEpoch?.invoke()
             val timer = o.timer ?: ::defaultTimer
@@ -769,6 +771,7 @@ internal class LanService private constructor(
     }
 
     private suspend fun startBrowse() {
+        browseKey = namesKey()
         browseHandle = mdns.browse(
             { f -> scope.launch { quiet { found(f) } } },
             { gone(it) },
@@ -776,14 +779,22 @@ internal class LanService private constructor(
         )
     }
 
+    /** What the browse's accept filter works from: the epoch, the account's keys and roster, the contacts and the local links. */
+    private fun namesKey(): String {
+        val id = held?.source ?: names?.second
+        val account = id?.let { "${it.ringEpoch}|${it.discovery.current.contentHashCode()}|${it.discovery.previous?.contentHashCode()}|${it.roster}" }
+        return "${advertEpoch(src.now())}|$account|$contactsSig|$localsSig"
+    }
+
     /**
-     * Start the browse again. The browse drops a name it does not yet accept, and the OS reports a service once per
-     * browse, so a peer that advertised before this device took in the link (or the next epoch's names) would never be
-     * seen; a new browse is told of every service on the network again.
+     * Start the browse again when the names it accepts have moved (a link or contact was taken in, the roster or the
+     * discovery key changed, the epoch turned). The browse drops a name it does not yet accept, and the OS reports a
+     * service once per browse, so a peer that advertised first would never be seen; a new browse is told of every
+     * service on the network again. Called with the reload lock held.
      */
-    private suspend fun rebrowse() {
+    private suspend fun rebrowseIfNamesMoved() {
         val old = browseHandle ?: return
-        if (stopped) return
+        if (stopped || namesKey() == browseKey) return
         browseHandle = null
         quiet { old.stop() }
         if (!stopped) startBrowse()
@@ -936,10 +947,11 @@ internal class LanService private constructor(
             // which can fail when there is no account.
             loadLocals()
             advertLocals(advertEpoch(src.now()))
-            if (!account || localOnly || stopped) return
-            loadContacts()
-            if (stopped) return
-            advertContacts(identity(false), advertEpoch(src.now()))
+            if (account && !localOnly && !stopped) {
+                loadContacts()
+                if (!stopped) advertContacts(identity(false), advertEpoch(src.now()))
+            }
+            rebrowseIfNamesMoved()
         }
     }
 
@@ -1078,7 +1090,6 @@ internal class LanService private constructor(
             val table = HashSet<String>()
             for (l in next.take(MAX_LOCAL_LINKS)) for (back in 0..1) if (epoch - back >= 0) table += localInstance(l.secret, l.peerKey, epoch - back)
             localNames = LocalNames(epoch, table)
-            if (table.isNotEmpty()) rebrowse()
         }
         wipeLocals(old)
         pruneServes()

@@ -161,6 +161,20 @@ class ConnectLanTest : ConnectLanBase() {
     }
 
     @Test
+    fun aPeerThatAdvertisedBeforeTheRosterNamedItIsStillFound() = runBlocking {
+        val w = World()
+        w.start(w.b)
+        var roster = listOf(idA)
+        // A browses like the OS does: B is not on A's roster yet, so its name is refused and not reported again.
+        val a = w.start(w.a, src = w.source(w.a, onLoad = { w.peerSource(w.a, roster = roster) }), mdns = NsdLike(w.net))
+        until { w.net.names().size == 2 }
+        assertTrue(a.peers().none { it.deviceId == idB })
+        roster = listOf(idA, idB)
+        a.storedFromWorker()
+        until { a.peers().any { it.deviceId == idB } }
+    }
+
+    @Test
     fun forgedAndUnrelatedAdvertsAreDropped() = runBlocking {
         val w = World()
         val la = w.start(w.a)
