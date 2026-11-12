@@ -559,6 +559,11 @@
       "verdict": "pass",
       "date": "2026-11-10",
       "evidence": "BUILT UX review (lead notes, kept locally)"
+    },
+    "A-26": {
+      "verdict": "pass",
+      "date": "2026-11-12",
+      "evidence": "BUILT UX review: customer channel actions on the download page and the portal; no blocking item left after the fix rounds"
     }
   }
 }
