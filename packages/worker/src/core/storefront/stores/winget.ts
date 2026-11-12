@@ -62,7 +62,7 @@ const OPS: Readonly<Record<StorefrontOp, Support>> = {
 
 export const WINGET_ADAPTER: StorefrontAdapter = {
   id: "winget",
-  label: "winget",
+  label: "WinGet",
   outletKinds: ["winget"],
   credential: null,
   gate: null,
