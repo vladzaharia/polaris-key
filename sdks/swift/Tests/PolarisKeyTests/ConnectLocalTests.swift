@@ -301,7 +301,8 @@ import XCTest
             XCTAssertEqual(listB.first?.platform, pairingPlatformName)
             XCTAssertTrue(PLATFORM_VALUES.contains(pairingPlatformName))
             await until("the window closes after a link") { !handle.isOpen }
-            XCTAssertEqual(dir.count(mode: "q"), 0)
+            // The window is marked closed first; the advert is withdrawn after it.
+            await until("the pairing advert is withdrawn") { dir.count(mode: "q") == 0 }
             return (listA[0].id, listB[0].id)
         }
 
@@ -431,9 +432,10 @@ import XCTest
                             allowLoopback: true))
                 } catch {}
             }
-            await until("the fifth failure closes the window") { !handle.isOpen }
+            // The window is marked closed first; the host hears of the failure and the advert goes after it.
+            await until("the fifth failure closes the window") { !handle.isOpen && failed.current != nil }
             XCTAssertEqual(failed.current?.reason, .tooManyTries)
-            XCTAssertEqual(dir.count(mode: "q"), 0)
+            await until("the pairing advert is withdrawn") { dir.count(mode: "q") == 0 }
         }
 
         func testTheDialBudgetSpansJoinsForOneCode() async throws {
@@ -1388,7 +1390,7 @@ import XCTest
             await until("the renewal is answered") { renewed.current != nil }
             XCTAssertEqual(renewed.current, "cooldown")
             XCTAssertFalse(handle.isOpen)
-            XCTAssertEqual(dir.count(mode: "q"), 0)
+            await until("the pairing advert is withdrawn") { dir.count(mode: "q") == 0 }
         }
 
         func testFiveWrongGuessesEndTheWindowAndStartTheCooldown() async throws {
