@@ -1,3 +1,4 @@
+import { sourceName } from "../src/portal/copy/getIt.js";
 import { describe, expect, it } from "vitest";
 import type { PortalProduct } from "../src/portal/api.js";
 import type { QuickAction } from "../src/portal/model/library.js";
@@ -14,7 +15,7 @@ import {
   syncStorage,
   withSeats,
 } from "../src/portal/model/product.js";
-import { buildLibrary } from "../src/portal/model/library.js";
+import { buildLibrary, storeActionLabel } from "../src/portal/model/library.js";
 import { resolveHash } from "../src/portal/router.js";
 import { breakPoints } from "../src/portal/components/product/InstallSources.js";
 import {
@@ -238,7 +239,8 @@ describe("not_hosted reads where to get it (§0.6 P3, §11.2)", () => {
       ]);
     const WIN = { os: "windows", phone: false } as const;
     expect(shape(getItFromDownloads(d, WIN))).toEqual([
-      ["windows", ["w"], ["scoop", "winget"]],
+      // The catalogue's order for Windows (winget before Scoop), the same as the download page.
+      ["windows", ["w"], ["winget", "scoop"]],
       ["macos", ["m"], ["homebrew"]],
       // A platform with sources and no files gets a group of its own.
       ["ios", [], ["altstore"]],
@@ -262,6 +264,134 @@ describe("not_hosted reads where to get it (§0.6 P3, §11.2)", () => {
     expect(pack(getItFromDownloads({ ...d, stores: [] }, MAC))).toBe(
       "Get it from the developer",
     );
+  });
+
+  it("a Mac app with a CLI offers the download, the Mac App Store and Homebrew together; an arm64 build offers no x64 file (A-26)", () => {
+    const appStore = storeLink({
+      kind: "app-store",
+      label: "App Store",
+      platforms: ["ios", "macos"],
+    });
+    const brew = installSource({
+      kind: "homebrew",
+      label: "Homebrew",
+      command: "brew install --cask x",
+      platforms: ["macos"],
+    });
+    const d = {
+      ...downloadsView(
+        "x",
+        [dlFile({ artifactId: "m", platform: "macos", arch: "arm64" })],
+        { stores: [appStore] },
+      ),
+      installSources: [brew],
+    };
+    const m = getItFromDownloads(d, MAC)!;
+    const mac = m.groups.find((g) => g.platform === "macos")!;
+    expect(
+      mac.rows.map((r) => [r.artifact.artifactId, r.artifact.arch]),
+    ).toEqual([["m", "arm64"]]);
+    expect(mac.sources.map((s) => s.kind)).toEqual(["homebrew"]);
+    expect(m.stores.map((s) => s.platforms)).toEqual([["ios", "macos"]]);
+  });
+
+  it('lists the device\'s own stores first in "Also yours on", and tells two Homebrew rows apart (A-26)', () => {
+    const d = downloadsView(
+      "x",
+      [dlFile({ artifactId: "w", platform: "windows" })],
+      {
+        stores: [
+          storeLink({
+            kind: "app-store",
+            label: "App Store",
+            platforms: ["ios"],
+          }),
+          storeLink({
+            kind: "play",
+            label: "Google Play",
+            platforms: ["android"],
+          }),
+          storeLink({
+            kind: "ms-store",
+            label: "Microsoft Store",
+            platforms: ["windows"],
+          }),
+        ],
+      },
+    );
+    const m = getItFromDownloads(d, { os: "windows", phone: false })!;
+    expect(m.stores.map((s) => s.kind)).toEqual([
+      "ms-store",
+      "app-store",
+      "play",
+    ]);
+    expect(sourceName({ kind: "homebrew", label: "Homebrew (app)" })).toBe(
+      "Homebrew (app)",
+    );
+    expect(sourceName({ kind: "homebrew", label: "Homebrew" })).toBe(
+      "Homebrew",
+    );
+  });
+
+  it("ranks the stores that serve the device's OS first, by the link's platforms (A-26b)", () => {
+    const d = downloadsView(
+      "x",
+      [dlFile({ artifactId: "m", platform: "macos" })],
+      {
+        stores: [
+          storeLink({
+            kind: "app-store",
+            label: "App Store",
+            platforms: ["ios"],
+          }),
+          storeLink({ kind: "steam", label: "Steam", platforms: ["macos"] }),
+          storeLink({
+            kind: "app-store",
+            label: "Mac App Store",
+            platforms: ["macos"],
+          }),
+        ],
+      },
+    );
+    const mac = getItFromDownloads(d, MAC)!;
+    expect(mac.stores.map((s) => s.label)).toEqual([
+      "Mac App Store",
+      "Steam",
+      "App Store",
+    ]);
+    const phone = getItFromDownloads(d, { os: "ios", phone: true })!;
+    expect(phone.stores.map((s) => s.label)[0]).toBe("App Store");
+  });
+
+  it('says "the Mac App Store" where the Mac store is the action or the source (A-26b)', () => {
+    const mac = storeLink({
+      kind: "app-store",
+      label: "Mac App Store",
+      platforms: ["macos"],
+    });
+    expect(storeActionLabel(mac)).toBe("Get it on the Mac App Store");
+    expect(
+      storeActionLabel(
+        storeLink({
+          kind: "app-store",
+          label: "App Store",
+          platforms: ["ios"],
+        }),
+      ),
+    ).toBe("Get it on the App Store");
+    expect(storeActionLabel(storeLink({ kind: "steam", label: "Steam" }))).toBe(
+      "Get it on Steam",
+    );
+    expect(elsewhereFor("macos", { stores: [mac] }).label).toBe(
+      "Get it from the Mac App Store",
+    );
+    expect(
+      elsewhereFor("macos", {
+        stores: [
+          storeLink({ kind: "steam", label: "Steam", platforms: ["macos"] }),
+        ],
+      }).label,
+    ).toBe("Get it from Steam");
   });
 
   it("on a phone, leads with what installs on it; otherwise there is nothing to lead with (P0-48)", () => {

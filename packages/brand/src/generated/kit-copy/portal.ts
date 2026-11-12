@@ -815,6 +815,8 @@ export type PortalCopyKey =
   | "locker.get.coverUpTo"
   | "locker.get.coverFrom"
   | "locker.get.coverAll"
+  | "locker.offer.storeThe"
+  | "locker.offer.getFromStoreThe"
   | "locker.offer.getFromStore"
   | "locker.download.title"
   | "locker.download.titleVersion"

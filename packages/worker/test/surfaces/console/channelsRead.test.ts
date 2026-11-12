@@ -200,7 +200,7 @@ describe("the channels read (A-20.4)", () => {
     expect(body.platforms.map((p: { platform: string }) => p.platform)).toEqual(
       ["windows"],
     );
-    expect(row(body, "winget").label).toBe("winget");
+    expect(row(body, "winget").label).toBe("WinGet");
     expect(row(body, "winget").delivery.state).toBe("not_set_up");
   });
 
@@ -318,7 +318,7 @@ describe("the one-product summary (A-20.4)", () => {
     const winget = one.channels.find((c: { id: string }) => c.id === "winget");
     expect(winget).toEqual({
       id: "winget",
-      label: "winget",
+      label: "WinGet",
       inScope: true,
       delivery: "not_set_up",
       notUsing: false,

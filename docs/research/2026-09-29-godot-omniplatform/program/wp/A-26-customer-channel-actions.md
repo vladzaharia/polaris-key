@@ -83,6 +83,8 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 ## Steps
 
+Built 2026-11-11: the model is `packages/shared-manifest/src/channelActions.ts`, driven by `offerOrder` / `offerKinds` on the catalogue (`tools/channels.json`); no new route and no wire change. Code correction: the page and the hook had their own `PRIORITY` table and hard-coded store platforms (App Store was iOS only); both now come from the model. The React kit (SP-12) imports the same exports and is not changed here. The Screen acceptance rows are for the BUILT UX review: the Get it layout is unchanged.
+
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
@@ -94,11 +96,11 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] A macOS app with a CLI shows the download, the Mac App Store link and Homebrew steps together
-- [ ] An arm64-only build shows no x64 download or installer to customers
-- [ ] Portal and download page agree (one model)
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] A macOS app with a CLI shows the download, the Mac App Store link and Homebrew steps together
+- [x] An arm64-only build shows no x64 download or installer to customers
+- [x] Portal and download page agree (one model)
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

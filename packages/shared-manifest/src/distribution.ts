@@ -183,7 +183,11 @@ export interface ManifestOutletIdentity {
   bundleId?: string;
   /** `testflight`: the join code of the public TestFlight link (`testflight.apple.com/join/<code>`). */
   publicLink?: string;
-  /** `altstore` / `altstore-pal` / `obtainium` / `fdroid-repo`: an artifact-map `id` (P2-04). */
+  /**
+   * `altstore` / `altstore-pal` / `obtainium` / `fdroid-repo`: an artifact-map `id` (P2-04). On
+   * `app-store`: the Mac build (a `pkg`) that goes to the Mac App Store, kept out of the direct
+   * downloads (A-26b).
+   */
   artifact?: string;
   /** `altstore-pal`: the AltStore PAL marketplace id. */
   marketplaceId?: string;
@@ -293,7 +297,7 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
     "scoop",
     "scoopBucket",
   ],
-  "app-store": ["appleId", "bundleId"],
+  "app-store": ["appleId", "bundleId", "artifact"],
   testflight: ["appleId", "bundleId", "publicLink"],
   altstore: ["artifact", "bundleId"],
   "altstore-pal": ["artifact", "bundleId", "marketplaceId"],

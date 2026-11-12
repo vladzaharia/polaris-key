@@ -59,7 +59,24 @@ export const ARTIFACTS = [
   match: match!,
 }));
 
-export function appDeclaration() {
+export type DemoArtifact = (typeof ARTIFACTS)[number];
+
+/** A Mac build for the A-26b cases: `id`, arch and format; the file name follows. */
+export function macBuild(
+  id: string,
+  arch: string,
+  format: string,
+): DemoArtifact {
+  return {
+    id,
+    platform: "macos",
+    arch,
+    format,
+    match: `Diceroll-*-macos-${id}.${format}`,
+  };
+}
+
+export function appDeclaration(extra: readonly DemoArtifact[] = []) {
   const res = parseManifest({
     product: JSON.stringify({
       slug: SLUG,
@@ -81,7 +98,7 @@ export function appDeclaration() {
             kind: "app",
             versioning: { scheme: "semver", buildNumber: "descriptor" },
             channels: { beta: { includes: ["stable"] } },
-            artifacts: ARTIFACTS,
+            artifacts: [...ARTIFACTS, ...extra],
           },
         },
       },
@@ -206,8 +223,9 @@ export async function publish(
   version: string,
   channel: string,
   at: number,
+  artifacts: readonly DemoArtifact[] = ARTIFACTS,
 ) {
-  const builds = ARTIFACTS.map((a) => {
+  const builds = artifacts.map((a) => {
     const name = a.match.replace("*", version);
     const bytes = bytesFor(name);
     const meta = metadataFor(a.id, version);
@@ -327,6 +345,10 @@ export async function setup(
     access?: string;
     consoleOrigin?: string | null;
     blobOrigin?: string;
+    /** Extra builds on every release (A-26b: a Mac `pkg`). */
+    extraArtifacts?: readonly DemoArtifact[];
+    /** Extra identity fields for the App Store outlet (`artifact`: the Mac build it names). */
+    appStore?: Record<string, unknown>;
   } = {},
 ): Promise<World> {
   const db = makeTestDb();
@@ -340,9 +362,17 @@ export async function setup(
     SLUG,
   );
   await seedDeliveryAccess(db, SLUG, opts.access ?? "public");
-  await db.batch(manifestDeliverableStatements(SLUG, appDeclaration(), NOW));
+  await db.batch(
+    manifestDeliverableStatements(
+      SLUG,
+      appDeclaration(opts.extraArtifacts),
+      NOW,
+    ),
+  );
   const listing = opts.listing ?? LISTING;
-  for (const [id, kind, identity] of OUTLETS)
+  for (const [id, kind, base] of OUTLETS) {
+    const identity =
+      kind === "app-store" ? { ...base, ...opts.appStore } : base;
     await db.run(
       `INSERT INTO dist_outlets
          (product, outlet_id, kind, identity_json, listing_json, created_at, modified_at)
@@ -355,6 +385,7 @@ export async function setup(
       NOW,
       NOW,
     );
+  }
   const env = makeEnv(new KvMock(), [SLUG]);
   env.BLOB_ORIGIN = opts.blobOrigin ?? BYTES;
   if (opts.consoleOrigin !== null)
@@ -365,7 +396,10 @@ export async function setup(
   env.PLATFORM_ADMIN_GROUP = "platform-admins";
   const w = { env, db };
   for (const [version, channel, at] of RELEASES)
-    await publish(w, version, channel, at);
+    await publish(w, version, channel, at, [
+      ...ARTIFACTS,
+      ...(opts.extraArtifacts ?? []),
+    ]);
   await yankRelease(db, SLUG, "app@1.1.1", "bad build", "admin:u1", NOW);
   await rollout(w, "altstore", "app@1.2.0", 10000, "halted");
   await rollout(w, "direct", "app@1.2.0", 2500, "paused");

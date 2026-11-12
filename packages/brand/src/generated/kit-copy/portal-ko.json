@@ -800,6 +800,8 @@
   "locker.get.coverUpTo": "{max}까지",
   "locker.get.coverFrom": "{min} 이상",
   "locker.get.coverAll": "모든 버전",
+  "locker.offer.storeThe": "{store}에서 받기",
+  "locker.offer.getFromStoreThe": "{store}에서 받기",
   "locker.offer.getFromStore": "{store}에서 받기",
   "locker.download.title": "{product} 다운로드",
   "locker.download.titleVersion": "{product} {version} 다운로드",

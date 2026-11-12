@@ -55,6 +55,20 @@ Each channel in scope has one of four states:
 
 The read model is `GET /manage/api/products/<slug>/distribution/channels`, the same data the product summary carries as `platforms` and `channels`. A credential appears in it only as a yes or no, never as a key or an id.
 
+## What a customer is offered
+
+The public download page and the Polaris Locker product page offer the same actions, from one model built on the channel catalogue. Each channel is one of three kinds to the customer:
+
+| Kind   | Means                                                                 | Examples                                       |
+| ------ | --------------------------------------------------------------------- | ---------------------------------------------- |
+| File   | A build served here, downloaded.                                      | Polaris Locker                                 |
+| Store  | A listing someone else hosts, opened.                                 | App Store, Google Play, Steam, Flathub, winget |
+| Source | Served from the product's own feeds or tap: add it, or run its steps. | AltStore, F-Droid, Obtainium, Homebrew, Scoop  |
+
+On a computer, a build this product hosts comes first and the stores follow; on a phone the platform's store leads. Install sources sit in the same order on the page and in the portal. In the portal, the owner's file comes first, then **Other ways to install**, then **Also yours on** with the device's own stores first.
+
+A store carries a platform only when the product ships a build the store takes there, and the store's outlet names it. The Mac App Store takes a `universal` or `arm64` `pkg`: name it on the outlet with `artifact`, as an AltStore outlet names its `ipa`. That build is not offered as a direct download. A `pkg` you ship directly stays a download and earns no store row, and so does a `dmg`. The row reads **Mac App Store**, beside the download and the Homebrew steps. When a product has both a Homebrew cask and a formula, they read **Homebrew (app)** and **Homebrew (command-line tool)**.
+
 ## The chain: release ← distribution ← update
 
 The release, distribution and update services split everything a product delivers — its app and and its content packs —

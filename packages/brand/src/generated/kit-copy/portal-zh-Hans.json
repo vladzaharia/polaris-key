@@ -800,6 +800,8 @@
   "locker.get.coverUpTo": "最高 {max}",
   "locker.get.coverFrom": "{min} 及更高",
   "locker.get.coverAll": "所有版本",
+  "locker.offer.storeThe": "在 {store} 获取",
+  "locker.offer.getFromStoreThe": "从 {store} 获取",
   "locker.offer.getFromStore": "从 {store} 获取",
   "locker.download.title": "下载 {product}",
   "locker.download.titleVersion": "下载 {product} {version}",

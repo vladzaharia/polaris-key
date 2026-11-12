@@ -23,6 +23,7 @@ import {
   isSignInLicense,
   normalisePlatform,
   shortOrigin,
+  takesArticle,
   type OriginFacts,
   tierLabel,
   type DeviceInHand,
@@ -31,6 +32,7 @@ import {
   type Presentation,
   type QuickAction,
 } from "./library.js";
+import { offerRank } from "@polaris-key/manifest";
 import { t } from "../../lib/copy.js";
 import { platformConsumerName } from "../../lib/vocab/platforms.js";
 
@@ -223,6 +225,13 @@ export interface ElsewhereContext {
   website?: string | null;
 }
 
+/** A store's rank for a device: its catalogue order when its link serves the OS, else last. */
+function ownRank(s: PortalStoreLink, os: PlatformKey | null): number {
+  return os && s.platforms.some((p) => normalisePlatform(p) === os)
+    ? offerRank(s.kind, os)
+    : Number.MAX_SAFE_INTEGER;
+}
+
 function httpsOrNull(url: string | null | undefined): string | null {
   return typeof url === "string" && /^https:\/\//.test(url) ? url : null;
 }
@@ -244,7 +253,12 @@ export function elsewhereFor(
     ) ?? null;
   if (store)
     return {
-      label: t("locker.offer.getFromStore", { store: store.label }),
+      label: t(
+        takesArticle(store.label)
+          ? "locker.offer.getFromStoreThe"
+          : "locker.offer.getFromStore",
+        { store: store.label },
+      ),
       href: store.url,
     };
   const who = ctx.developer ?? t("license.developerFallback");
@@ -418,7 +432,8 @@ function groupRows(rows: FileRowModel[]): PlatformGroup[] {
  * Each install source under its platform, after that platform's files (P0-48, §2.5 "all
  * applicable ones per platform"): a platform with sources and no files gets a group of its own,
  * so a Mac user reads Homebrew under macOS and never an iPhone source without its OS. The
- * device's own OS comes first; Extras stays last.
+ * device's own OS comes first; Extras stays last. Within a platform, sources follow the
+ * catalogue's `offerOrder`, the same order the public download page uses (A-26).
  */
 function placeSources(
   groups: PlatformGroup[],
@@ -442,6 +457,13 @@ function placeSources(
       }
       if (!g.sources.some((x) => x.id === s.id)) g.sources.push(s);
     }
+  // A platform's sources in the catalogue's order for it: the download page's order (A-26).
+  for (const g of out)
+    if (g.platform)
+      g.sources.sort(
+        (a, b) =>
+          offerRank(a.kind, g.platform!) - offerRank(b.kind, g.platform!),
+      );
   const rank = (g: PlatformGroup) =>
     g.platform === null
       ? GROUP_ORDER.length + 1
@@ -615,7 +637,11 @@ export function getItFromDownloads(
     installSourcesOf(d),
     device.os,
   );
-  const stores = d.stores.filter((s) => s.live && httpsOrNull(s.url));
+  // The stores that serve the device's OS first (by the link's platforms), in the catalogue's
+  // order for it; the rest keep the Worker's order (A-26).
+  const stores = d.stores
+    .filter((s) => s.live && httpsOrNull(s.url))
+    .sort((a, b) => ownRank(a, device.os) - ownRank(b, device.os));
   const headline = rec ? recommended[0]?.release : undefined;
   return {
     release: headline ?? {

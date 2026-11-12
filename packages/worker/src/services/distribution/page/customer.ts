@@ -65,9 +65,13 @@ import {
   STORE_KINDS,
   storeLink,
   storeState,
+  namedBuilds,
+  storeBoundBuildIds,
+  storeVariants,
   type PageAction,
   type StoreKind,
 } from "./model.js";
+import { productPlatforms } from "../facts.js";
 import { feedOriginOf } from "./index.js";
 // The download page's own escaper (`render.ts`), so the portal's QR label matches the page's.
 import { escapeHtmlDecimalApostrophe as esc } from "../../../platform/html.js";
@@ -213,6 +217,13 @@ export async function customerDownloads(
     Math.min(CUSTOMER_MAX_RELEASES, Math.floor(q.limit) || 1),
   );
 
+  const slug = ctx.product.slug;
+  const declared = (await listOutlets(ctx.db, slug))
+    .filter((o) => o.removed_at === null)
+    .map(feedOutlet);
+  // A build a store outlet names as its own (the Mac App Store's `pkg`) is not a download.
+  const bound = storeBoundBuildIds(declared);
+
   const releases: CustomerRelease[] = [];
   for (const r of history.releases) {
     if (releases.length >= limit) break;
@@ -223,6 +234,7 @@ export async function customerDownloads(
     const files = sortFiles(
       (await catalog.artifacts(r.releaseId))
         .filter(isUserFacing)
+        .filter((a) => a.buildId === null || !bound.has(a.buildId))
         .map((a) =>
           customerFile(
             r,
@@ -244,16 +256,27 @@ export async function customerDownloads(
     });
   }
 
-  const slug = ctx.product.slug;
   const stores: CustomerStoreLink[] = [];
-  const outlets = (await listOutlets(ctx.db, slug))
-    .filter((o) => o.removed_at === null)
-    .map(feedOutlet)
-    .filter((o) => (STORE_KINDS as readonly string[]).includes(o.kind));
+  const outlets = declared.filter((o) =>
+    (STORE_KINDS as readonly string[]).includes(o.kind),
+  );
   if (outlets.length) {
     const state = await storeState(ctx.db, slug);
+    const facts = (
+      await productPlatforms({
+        db: ctx.db,
+        product: slug,
+        hooks: ctx.hooks,
+        now: Math.floor(Date.now() / 1000),
+      })
+    ).platforms;
     for (const outlet of outlets) {
-      const link = storeLink(outlet.kind as StoreKind, outlet.identity);
+      const link = storeLink(
+        outlet.kind as StoreKind,
+        outlet.identity,
+        facts,
+        await namedBuilds(catalog, history.releases, declared, outlet.kind),
+      );
       if (!link) continue;
       const live = state.live.get(outlet.id);
       const held = state.held.get(outlet.id);
@@ -262,19 +285,21 @@ export async function customerDownloads(
         .find(
           (r) => !r.yanked && !held?.has(r.releaseId) && live?.has(r.releaseId),
         );
-      stores.push({
-        id: `${outlet.kind}:${outlet.id}`,
-        kind: outlet.kind,
-        outletId: outlet.id,
-        platforms: [...link.platforms],
-        label: link.label,
-        url: link.url,
-        deepLink: link.deepLink,
-        command: link.command,
-        activateUrl: outlet.kind === "steam" ? STEAM_ACTIVATE_URL : null,
-        live: release !== undefined,
-        version: release?.version ?? null,
-      });
+      storeVariants(outlet.kind as StoreKind, link).forEach((v, i) =>
+        stores.push({
+          id: `${outlet.kind}:${outlet.id}${i === 0 ? "" : `:${v.platforms[0]}`}`,
+          kind: outlet.kind,
+          outletId: outlet.id,
+          platforms: [...v.platforms],
+          label: v.label,
+          url: v.url,
+          deepLink: v.deepLink,
+          command: v.command,
+          activateUrl: outlet.kind === "steam" ? STEAM_ACTIVATE_URL : null,
+          live: release !== undefined,
+          version: release?.version ?? null,
+        }),
+      );
     }
     stores.sort(
       (a, b) =>

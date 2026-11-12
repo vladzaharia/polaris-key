@@ -800,6 +800,8 @@
   "locker.get.coverUpTo": "Até {max}",
   "locker.get.coverFrom": "{min} e posteriores",
   "locker.get.coverAll": "Todas as versões",
+  "locker.offer.storeThe": "Baixe em {store}",
+  "locker.offer.getFromStoreThe": "Obter em {store}",
   "locker.offer.getFromStore": "Obter em {store}",
   "locker.download.title": "Baixar {product}",
   "locker.download.titleVersion": "Baixar {product} {version}",

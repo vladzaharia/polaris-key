@@ -49,6 +49,12 @@ import {
   HOMEBREW_TAP_PATTERN,
   NUMERIC_ID_PATTERN,
   channelLabel,
+  channelOfKind,
+  labelOn,
+  offerPlatforms,
+  offersForPlatform,
+  type NamedBuild,
+  type ProductPlatformFact,
 } from "@polaris-key/manifest";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -79,6 +85,7 @@ import {
   type PagePlatform,
 } from "../../../core/platformDetect.js";
 import { QR_MAX_VERSION, qrCapacity } from "../../../core/qr.js";
+import { productPlatforms } from "../facts.js";
 
 /** The model's own version: bumped when a field changes meaning (SDKs read this document). */
 export const DOWNLOAD_MODEL_VERSION = 1;
@@ -423,17 +430,6 @@ const STORES_AND_SOURCES_DISJOINT: [
 void EVERY_ACTION_KIND_SORTED;
 void STORES_AND_SOURCES_DISJOINT;
 
-/** The order actions are offered in, per platform: the first present is the primary. */
-const PRIORITY: Readonly<Record<PagePlatform, readonly ActionKind[]>> = {
-  ios: ["app-store", "altstore", "sidestore", "altstore-pal", "download"],
-  android: ["play", "download", "fdroid", "obtainium"],
-  macos: ["download", "homebrew", "steam", "itch"],
-  windows: ["ms-store", "download", "steam", "itch", "winget", "scoop"],
-  linux: ["download", "flathub", "snap", "steam", "itch"],
-};
-
-const DESKTOP: PagePlatform[] = ["windows", "macos", "linux"];
-
 /** A build's arch preference when the visitor's is unknown (a universal build first). */
 export const ARCH_PREFERENCE: Readonly<
   Record<PagePlatform, readonly string[]>
@@ -584,14 +580,110 @@ export async function storeState(db: Db, product: string): Promise<StoreState> {
   return { live, held };
 }
 
+// ── Builds an outlet names as its own (A-26b) ────────────────────────────────────────────────
+
+/**
+ * `identity.artifact` on an `app-store` outlet is the Mac build (a `pkg`) that goes to the Mac App
+ * Store, the way an AltStore outlet names its `ipa`. It is the evidence for the store row and is
+ * kept out of the direct downloads; a `pkg` signed for direct download is not named, so it stays a
+ * download and earns no store row.
+ */
+interface OutletLike {
+  kind: string;
+  identity: Record<string, unknown>;
+}
+
+/** The build ids the store outlets name as their own: never offered as a direct download. */
+export function storeBoundBuildIds(
+  outlets: readonly OutletLike[],
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const o of outlets)
+    if (
+      (STORE_KINDS as readonly string[]).includes(o.kind) &&
+      typeof o.identity.artifact === "string"
+    )
+      ids.add(o.identity.artifact);
+  return ids;
+}
+
+/** The named builds of one outlet kind, found among the releases' builds. */
+export async function namedBuilds(
+  catalog: Pick<ReleaseCatalog, "builds">,
+  releases: readonly { releaseId: string; yanked: boolean }[],
+  outlets: readonly OutletLike[],
+  kind: string,
+): Promise<NamedBuild[]> {
+  const want = new Set(
+    outlets
+      .filter((o) => o.kind === kind && typeof o.identity.artifact === "string")
+      .map((o) => o.identity.artifact as string),
+  );
+  const out: NamedBuild[] = [];
+  if (want.size === 0) return out;
+  for (const r of releases) {
+    if (r.yanked) continue;
+    for (const b of await catalog.builds(r.releaseId))
+      if (want.has(b.buildId) && b.platform !== null)
+        out.push({ platform: b.platform, arch: b.arch, format: b.format });
+  }
+  return out;
+}
+
 /** A store outlet's link (and the platforms it serves), or `null` when its identity is unusable. */
 export function storeLink(
   kind: StoreKind,
   identity: Record<string, unknown>,
+  product: readonly ProductPlatformFact[] = [],
+  named: readonly NamedBuild[] = [],
+): StoreLink | null {
+  const link = storeLinkOf(kind, identity, product, named);
+  return link && link.platforms.length > 0 ? link : null;
+}
+
+export type StoreLink = Pick<
+  PageAction,
+  "label" | "url" | "deepLink" | "command" | "platforms"
+>;
+
+/**
+ * A store link as one entry per name the channel goes by on its platforms: the App Store for the
+ * iPhone and the Mac App Store for the Mac (`labelOn`), the same page under each name.
+ */
+export function storeVariants(kind: StoreKind, link: StoreLink): StoreLink[] {
+  const groups = new Map<string, PagePlatform[]>();
+  for (const p of link.platforms) {
+    const label = labelOn(kind, p);
+    groups.set(label, [...(groups.get(label) ?? []), p]);
+  }
+  if (groups.size <= 1) return [link];
+  return [...groups].map(([label, platforms]) => ({
+    ...link,
+    label,
+    platforms,
+  }));
+}
+
+function storeLinkOf(
+  kind: StoreKind,
+  identity: Record<string, unknown>,
+  /** What the product ships (`productPlatforms`): with it a store carries every platform the
+   *  catalogue says it serves and the product has (the Mac App Store beside the iPhone's). */
+  product: readonly ProductPlatformFact[] = [],
+  /** The builds the outlet names as its own (`namedBuilds`): the store row's evidence. */
+  built: readonly NamedBuild[] = [],
 ): Pick<
   PageAction,
   "label" | "url" | "deepLink" | "command" | "platforms"
 > | null {
+  // The platforms are the catalogue's: those the product has and the channel takes there. A
+  // product whose platforms are known and fit none has no link (the unchecked platforms are
+  // claimed only when nothing is known).
+  const serve = (): PagePlatform[] =>
+    offerPlatforms(channelOfKind(kind)!, product, built).filter(
+      (p): p is PagePlatform =>
+        (PAGE_PLATFORMS as readonly string[]).includes(p),
+    );
   switch (kind) {
     case "app-store": {
       const id = idOf(identity.appleId, NUMERIC_ID_PATTERN, 20);
@@ -601,7 +693,7 @@ export function storeLink(
             url: `https://apps.apple.com/app/id${id}`,
             deepLink: null,
             command: null,
-            platforms: ["ios"],
+            platforms: serve(),
           }
         : null;
     }
@@ -613,7 +705,7 @@ export function storeLink(
             url: `https://play.google.com/store/apps/details?id=${encodeURIComponent(id)}`,
             deepLink: null,
             command: null,
-            platforms: ["android"],
+            platforms: serve(),
           }
         : null;
     }
@@ -625,7 +717,7 @@ export function storeLink(
             url: `https://apps.microsoft.com/detail/${encodeURIComponent(id)}`,
             deepLink: `ms-windows-store://pdp/?productid=${encodeURIComponent(id)}`,
             command: null,
-            platforms: ["windows"],
+            platforms: serve(),
           }
         : null;
     }
@@ -637,7 +729,7 @@ export function storeLink(
             url: `https://store.steampowered.com/app/${id}/`,
             deepLink: `steam://store/${id}`,
             command: null,
-            platforms: DESKTOP,
+            platforms: serve(),
           }
         : null;
     }
@@ -653,7 +745,7 @@ export function storeLink(
         url: `https://${user}.itch.io/${encodeURIComponent(m[2]!)}`,
         deepLink: null,
         command: null,
-        platforms: DESKTOP,
+        platforms: serve(),
       };
     }
     case "flathub": {
@@ -664,7 +756,7 @@ export function storeLink(
             url: `https://flathub.org/apps/${encodeURIComponent(id)}`,
             deepLink: null,
             command: `flatpak install flathub ${id}`,
-            platforms: ["linux"],
+            platforms: serve(),
           }
         : null;
     }
@@ -676,7 +768,7 @@ export function storeLink(
             url: `https://snapcraft.io/${id}`,
             deepLink: null,
             command: `sudo snap install ${id}`,
-            platforms: ["linux"],
+            platforms: serve(),
           }
         : null;
     }
@@ -688,7 +780,7 @@ export function storeLink(
             url: null,
             deepLink: null,
             command: `winget install --id ${id} --exact`,
-            platforms: ["windows"],
+            platforms: serve(),
           }
         : null;
     }
@@ -751,8 +843,11 @@ export async function buildDownloadModel(
     ? `${ctx.consoleOrigin}/${slug}/distribution`
     : null;
   const seenUrls = new Set<string>();
+  const storeBound = storeBoundBuildIds(outlets);
   const addBuilds = (entries: readonly RenderEntry[], outletId: string) => {
     for (const e of entries) {
+      // A build an outlet names as its own (the Mac App Store's `pkg`) is not a direct download.
+      if (storeBound.has(e.buildId)) continue;
       const b = pageBuild(e, outletId);
       if (b && !seenUrls.has(b.url)) {
         seenUrls.add(b.url);
@@ -775,6 +870,7 @@ export async function buildDownloadModel(
     });
 
   let state: StoreState | null = null;
+  let facts: ProductPlatformFact[] | null = null;
   for (const outlet of outlets) {
     switch (outlet.kind) {
       case "direct": {
@@ -787,6 +883,17 @@ export async function buildDownloadModel(
             // an iOS build cannot (it goes through AltStore or a store), unless named.
             PAGE_PLATFORMS.filter((p) => p !== "ios");
         const formulaPlatforms: PagePlatform[] = [];
+        // An outlet with a cask and a formula offers two Homebrew steps: each is named by what it
+        // installs, the app first.
+        const brewBoth =
+          idOf(outlet.identity.homebrewCask, HOMEBREW_CASK_PATTERN) !== null &&
+          idOf(outlet.identity.homebrewFormula, HOMEBREW_FORMULA_PATTERN) !==
+            null &&
+          idOf(outlet.identity.homebrewTap, HOMEBREW_TAP_PATTERN) !== null;
+        const brewLabel = (what: "app" | "tool"): string =>
+          brewBoth
+            ? `${channelLabel("homebrew")} (${what === "app" ? "app" : "command-line tool"})`
+            : channelLabel("homebrew");
         for (const platform of offered) {
           const sel = await one(outlet, platform, { allBuilds: true });
           if (!sel?.entries.length) continue;
@@ -821,7 +928,7 @@ export async function buildDownloadModel(
                 kind: "homebrew",
                 outletId: outlet.id,
                 platforms: ["macos"],
-                label: channelLabel("homebrew"),
+                label: brewLabel("app"),
                 url: null,
                 deepLink: null,
                 command: `brew install --cask ${tapped(cask)}`,
@@ -848,7 +955,7 @@ export async function buildDownloadModel(
                   kind: "homebrew",
                   outletId: outlet.id,
                   platforms: formulaPlatforms,
-                  label: channelLabel("homebrew"),
+                  label: brewLabel("tool"),
                   url: null,
                   deepLink: null,
                   command: `brew install ${tap.replace("/homebrew-", "/")}/${formula}`,
@@ -994,7 +1101,20 @@ export async function buildDownloadModel(
 
       default: {
         if (!(STORE_KINDS as readonly string[]).includes(outlet.kind)) break;
-        const link = storeLink(outlet.kind as StoreKind, outlet.identity);
+        facts ??= (
+          await productPlatforms({
+            db: ctx.db,
+            product: slug,
+            hooks,
+            now: Math.floor(Date.now() / 1000),
+          })
+        ).platforms;
+        const link = storeLink(
+          outlet.kind as StoreKind,
+          outlet.identity,
+          facts,
+          await namedBuilds(catalog, history.releases, outlets, outlet.kind),
+        );
         if (!link) break;
         state ??= await storeState(ctx.db, slug);
         const live = state.live.get(outlet.id);
@@ -1006,14 +1126,19 @@ export async function buildDownloadModel(
               !r.yanked && !held?.has(r.releaseId) && live?.has(r.releaseId),
           );
         if (!release) break;
-        actions.push(
-          action({
-            kind: outlet.kind as StoreKind,
-            outletId: outlet.id,
-            ...link,
-            qr: null,
-            version: release.version,
-          }),
+        storeVariants(outlet.kind as StoreKind, link).forEach((v, i) =>
+          actions.push(
+            action(
+              {
+                kind: outlet.kind as StoreKind,
+                outletId: outlet.id,
+                ...v,
+                qr: null,
+                version: release.version,
+              },
+              i === 0 ? "" : `:${v.platforms[0]}`,
+            ),
+          ),
         );
       }
     }
@@ -1061,16 +1186,8 @@ export async function buildDownloadModel(
 
   const platforms: PagePlatformGroup[] = [];
   for (const platform of PAGE_PLATFORMS) {
-    const mine = actions.filter((a) => a.platforms.includes(platform));
-    const rank = (k: ActionKind) => {
-      const i = PRIORITY[platform].indexOf(k);
-      return i < 0 ? PRIORITY[platform].length : i;
-    };
-    mine.sort(
-      (a, b) =>
-        rank(a.kind) - rank(b.kind) ||
-        (a.outletId < b.outletId ? -1 : a.outletId > b.outletId ? 1 : 0),
-    );
+    // The catalogue's order for the platform (`offerOrder`), the same the portal uses.
+    const mine = offersForPlatform(actions, platform);
     const platformBuilds = builds.filter((b) => b.platform === platform);
     if (!mine.length && !platformBuilds.length) continue;
     platforms.push({
