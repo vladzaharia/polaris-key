@@ -151,6 +151,9 @@ func all() -> Array:
 	var local_rows = PKeyTestFixtures.read_json(MATRIX_PATH)
 	if local_rows is Dictionary:
 		for r in local_rows.get("local", []):
+			var na = r.get("notApplicable")
+			if na is Dictionary and (na.get("sdks", []) as Array).has("godot"):
+				continue
 			var parts := String(r["name"]).split("/", true, 1)
 			if parts[0] == "LocalPairing":
 				out.append(["local_pairing", parts[1], local_pairing.bind(String(r["name"]))])

@@ -15511,8 +15511,8 @@
         "copy": ["a11y.linkCode", "a11y.newCode", "localPairing.showNew"]
       },
       "notApplicable": {
-        "sdks": ["swift", "kotlin"],
-        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then."
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The expired window and the notices on the QR view are the React kit's final Light Card; the SwiftUI, Compose and Godot kits take them in a later slice and check the shared view until then."
       }
     },
     {
@@ -15550,8 +15550,8 @@
         ]
       },
       "notApplicable": {
-        "sdks": ["swift", "kotlin"],
-        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then."
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The expired window and the notices on the QR view are the React kit's final Light Card; the SwiftUI, Compose and Godot kits take them in a later slice and check the shared view until then."
       }
     },
     {
@@ -15588,8 +15588,8 @@
         ]
       },
       "notApplicable": {
-        "sdks": ["swift", "kotlin"],
-        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then."
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The expired window and the notices on the QR view are the React kit's final Light Card; the SwiftUI, Compose and Godot kits take them in a later slice and check the shared view until then."
       }
     },
     {
@@ -15626,8 +15626,8 @@
         "copy": ["a11y.linkCode", "a11y.newCode"]
       },
       "notApplicable": {
-        "sdks": ["swift", "kotlin"],
-        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then."
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The expired window and the notices on the QR view are the React kit's final Light Card; the SwiftUI, Compose and Godot kits take them in a later slice and check the shared view until then."
       }
     },
     {
@@ -15657,8 +15657,8 @@
         "disabled": ["localPairing.showNew"]
       },
       "notApplicable": {
-        "sdks": ["swift", "kotlin"],
-        "reason": "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then."
+        "sdks": ["swift", "kotlin", "godot"],
+        "reason": "The expired window and the notices on the QR view are the React kit's final Light Card; the SwiftUI, Compose and Godot kits take them in a later slice and check the shared view until then."
       }
     },
     {

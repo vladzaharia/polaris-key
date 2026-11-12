@@ -63,15 +63,14 @@ class OsLane:
 
 	func dial(instance: String) -> PKeyPeerPipe:
 		var owner: Dictionary = (bus as OsBus).owners.get(instance, {})
+		# The owning lane is another instance of this class: held untyped, so the class names no cycle with itself.
+		var owner_lane = owner.get("lane")
 		var acceptor: Callable = (
-			(owner["lane"] as OsLane).acceptors.get(owner["slot"], Callable())
-			if not owner.is_empty()
-			else Callable()
+			owner_lane.acceptors.get(owner["slot"], Callable()) if owner_lane != null else Callable()
 		)
 		if not acceptor.is_valid():
 			return null
 		var shared := PKeyPeerMemoryPipe.Shared.new()
-		var owner_lane: OsLane = owner["lane"]
 		var inbound := Remote.new(shared, 1)
 		inbound.address = source
 		owner_lane.accepted.append({"slot": owner["slot"], "pipe": inbound})

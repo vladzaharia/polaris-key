@@ -118,9 +118,16 @@ func _nameless_welcome(t: PKeyTestContext, defaults: Dictionary) -> void:
 	t.check("a named Welcome keeps welcome.title", (named.get("copy", []) as Array).has("welcome.title"))
 
 
-func _components(t: PKeyTestContext, family: String, rows: Array, defaults: Dictionary) -> void:
+## True when the corpus marks a row not applicable to this kit (`notApplicable.sdks` names `godot`).
+static func not_applicable(row: Dictionary) -> bool:
+	var na = row.get("notApplicable")
+	return na is Dictionary and (na.get("sdks", []) as Array).has("godot")
+
+
+func _components(t: PKeyTestContext, family: String, all_rows: Array, defaults: Dictionary) -> void:
 	var feature: String = FAMILIES[family]
 	var ran := 0
+	var rows: Array = all_rows.filter(func(r: Dictionary) -> bool: return not not_applicable(r))
 	for row in rows:
 		var name := "ui-matrix.json %s (%s): %s" % [family, feature, row["name"]]
 		var view := view_for(row, defaults)

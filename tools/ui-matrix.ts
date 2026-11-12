@@ -7163,6 +7163,12 @@ function localFamily(a: A): Draft[] {
     reason:
       "The code and QR views are split in the React kit first (UK-67); the SwiftUI and Compose kits take the split in a later slice and check the shared view until then.",
   };
+  // The expired window and the QR view's notices are the final Light Card; the Godot kit draws the earlier states.
+  const QR_FINAL = {
+    sdks: ["swift", "kotlin", "godot"],
+    reason:
+      "The expired window and the notices on the QR view are the React kit's final Light Card; the SwiftUI, Compose and Godot kits take them in a later slice and check the shared view until then.",
+  };
   const WINDOW = {
     code: "4812 3456",
     qr: "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
@@ -7639,7 +7645,7 @@ function localFamily(a: A): Draft[] {
         ...inv("The QR view says a changed code without saying the digits.", {
           copy: ["a11y.linkCode", "a11y.newCode", "localPairing.showNew"],
         }),
-        notApplicable: QR_LATER,
+        notApplicable: QR_FINAL,
       },
     ),
     row(
@@ -7667,7 +7673,7 @@ function localFamily(a: A): Draft[] {
             ],
           },
         ),
-        notApplicable: QR_LATER,
+        notApplicable: QR_FINAL,
       },
     ),
     row(
@@ -7695,7 +7701,7 @@ function localFamily(a: A): Draft[] {
             ],
           },
         ),
-        notApplicable: QR_LATER,
+        notApplicable: QR_FINAL,
       },
     ),
     row(
@@ -7713,7 +7719,7 @@ function localFamily(a: A): Draft[] {
         ...inv("The QR view says a declined prompt without the digits.", {
           copy: ["a11y.linkCode", "a11y.newCode"],
         }),
-        notApplicable: QR_LATER,
+        notApplicable: QR_FINAL,
       },
     ),
     row(
@@ -7736,7 +7742,7 @@ function localFamily(a: A): Draft[] {
       ],
       {
         disabled: ["localPairing.showNew"],
-        notApplicable: QR_LATER,
+        notApplicable: QR_FINAL,
       },
     ),
     row(
