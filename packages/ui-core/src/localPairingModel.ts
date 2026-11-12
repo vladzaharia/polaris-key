@@ -138,6 +138,9 @@ export interface LocalPairingSnapshot extends LocalPairingInput {
   /** show: bumps each time the person switches between the code and the QR view, so a renderer
    *  can announce the switch (and not the first view). */
   switches: number;
+  /** show: how many times the QR view has been revealed in this pairing session (the card forms
+   *  on the first and is shown formed on the later ones). */
+  qrReveals: number;
   /** paired: the name field's text; `Done` renames when it changed. */
   name: string;
   /** paired: the pairing's id. */
@@ -187,6 +190,8 @@ export class LocalPairingModel {
   private failedCode: string | null = null;
   /** The label of the last device that reached the prompt, for "Not paired with …". */
   private lastDevice: string | null = null;
+  /** The view the person last chose; a new window opens on it. */
+  private chosenView: "qr" | undefined;
   /** Bumped when a screen's session ends, so a late callback from an old one is dropped. */
   private epoch = 0;
   /** What the person typed when Pair was pressed, so Cancel returns to it. */
@@ -211,6 +216,7 @@ export class LocalPairingModel {
         changed: [],
         rotation: 0,
         switches: 0,
+        qrReveals: 0,
         name: "",
         left: false,
         max: MAX_CONNECTABLE,
@@ -230,6 +236,7 @@ export class LocalPairingModel {
       changed: _changed,
       rotation: _rotation,
       switches: _switches,
+      qrReveals: _qrReveals,
       name: _name,
       id: _id,
       left: _left,
@@ -278,9 +285,12 @@ export class LocalPairingModel {
     const epoch = renewing ? this.epoch : ++this.epoch;
     const live = (): boolean => epoch === this.epoch;
     const driver = this.o.driver;
-    if (renewing) {
+    const was = this.store.get();
+    // A window that ran out stays on screen while the next one opens, in the same view.
+    const inPlace = renew && !renewing && was.step === "show" && was.expired;
+    if (renewing || inPlace) {
       // A second press while the first is answered does nothing.
-      if (this.store.get().busy) return;
+      if (was.busy) return;
       this.set({ busy: "new-code" });
     } else {
       // The code tile is there at once, as a placeholder, while the window opens.
@@ -339,10 +349,8 @@ export class LocalPairingModel {
     this.go(
       {
         step: "show",
-        // The window is one window: a rotation keeps the view the person is on.
-        ...(!opened && prev.step === "show" && prev.view
-          ? { view: prev.view }
-          : {}),
+        // A new window opens on the view the person last chose; a rotation keeps it.
+        ...(this.chosenView ? { view: this.chosenView } : {}),
         code: c.code,
         qr: c.qr,
         secondsLeft: Math.max(0, Math.ceil(c.expiresAt - this.now())),
@@ -351,7 +359,11 @@ export class LocalPairingModel {
           ? { device: this.lastDevice }
           : {}),
       },
-      { changed, rotation: prev.rotation + 1 },
+      {
+        changed,
+        rotation: prev.rotation + 1,
+        qrReveals: opened ? (this.chosenView ? 1 : 0) : prev.qrReveals,
+      },
     );
     this.tick();
   }
@@ -373,13 +385,27 @@ export class LocalPairingModel {
         });
         this.tick();
         break;
-      case LocalWindowEnd.expired:
+      case LocalWindowEnd.expired: {
+        const shown = this.store.get();
+        if (shown.step === "show" && shown.code) {
+          // The view stays, dimmed, with a new code one press away.
+          this.go({
+            step: "show",
+            ...(shown.view ? { view: shown.view } : {}),
+            code: shown.code,
+            qr: shown.qr,
+            secondsLeft: 0,
+            expired: true,
+          });
+          break;
+        }
         this.go({
           step: "closed",
           closedBy: "expired",
           ...(this.tooMany >= 2 ? { warn: true } : {}),
         });
         break;
+      }
       case LocalWindowEnd.off:
         this.go({ step: "off" });
         break;
@@ -645,15 +671,21 @@ export class LocalPairingModel {
   /** The QR view of the open code: the code, its time and its pairing window are untouched. */
   showQr(): void {
     const s = this.store.get();
-    if (s.step === "show" && s.view !== "qr")
-      this.set({ view: "qr", switches: s.switches + 1 });
+    if (s.step !== "show" || s.view === "qr") return;
+    this.chosenView = "qr";
+    this.set({
+      view: "qr",
+      switches: s.switches + 1,
+      qrReveals: s.qrReveals + 1,
+    });
   }
 
   /** The code view again. */
   showCode(): void {
     const s = this.store.get();
-    if (s.step === "show" && s.view === "qr")
-      this.set({ view: undefined, switches: s.switches + 1 });
+    if (s.step !== "show" || s.view !== "qr") return;
+    this.chosenView = undefined;
+    this.set({ view: undefined, switches: s.switches + 1 });
   }
 
   // ── Leaving ───────────────────────────────────────────────────────────────────────────────────
@@ -809,12 +841,16 @@ export class LocalPairingModel {
     next: LocalPairingInput,
     extra: Partial<LocalPairingSnapshot> = {},
   ): void {
+    // The view is the window's: leaving the show flow forgets it.
+    if (!["show", "opening", "closed"].includes(next.step))
+      this.chosenView = undefined;
     this.store.set((s) => ({
       categories: s.categories,
       max: s.max,
       changed: [],
       rotation: s.rotation,
       switches: s.switches,
+      qrReveals: s.qrReveals,
       name: "",
       left: s.left,
       ...next,

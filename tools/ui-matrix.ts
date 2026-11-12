@@ -7630,6 +7630,116 @@ function localFamily(a: A): Draft[] {
       },
     ),
     row(
+      `${LP}/show-qr: a wrong code changed it, said without the digits`,
+      pair("show", { ...WINDOW, view: "qr", notice: "rotated" }),
+      LP,
+      "show-qr",
+      [...SHOW_QR, "localPairing.rotatedTitle", "localPairing.rotatedBody"],
+      {
+        ...inv("The QR view says a changed code without saying the digits.", {
+          copy: ["a11y.linkCode", "a11y.newCode", "localPairing.showNew"],
+        }),
+        notApplicable: QR_LATER,
+      },
+    ),
+    row(
+      `${LP}/show-qr: the code expired, the QR stays dimmed with a new code one press away`,
+      pair("show", { ...WINDOW, view: "qr", secondsLeft: 0, expired: true }),
+      LP,
+      "show-qr",
+      [
+        "core.codes.sign-in-expired.title",
+        "a11y.qrPairing",
+        "localPairing.showNew",
+        "common.cancel",
+      ],
+      {
+        ...inv(
+          "An expired window is never waiting: no time left, no waiting row.",
+          {
+            copy: [
+              "localPairing.expires",
+              "localPairing.waitingDevice",
+              "localPairing.title",
+              "localPairing.qrTitle",
+              "localPairing.toQr",
+              "localPairing.toCode",
+            ],
+          },
+        ),
+        notApplicable: QR_LATER,
+      },
+    ),
+    row(
+      `${LP}/show: the code expired, the digits stay dimmed with a new code one press away`,
+      pair("show", { ...WINDOW, secondsLeft: 0, expired: true }),
+      LP,
+      "show",
+      [
+        "core.codes.sign-in-expired.title",
+        "a11y.linkCode",
+        "localPairing.showNew",
+        "common.cancel",
+      ],
+      {
+        ...inv(
+          "An expired window is never waiting: no time left, no waiting row.",
+          {
+            copy: [
+              "localPairing.expires",
+              "localPairing.waitingDevice",
+              "localPairing.title",
+              "localPairing.qrTitle",
+              "localPairing.toQr",
+              "localPairing.toCode",
+            ],
+          },
+        ),
+        notApplicable: QR_LATER,
+      },
+    ),
+    row(
+      `${LP}/show-qr: a prompt was declined, said without the digits`,
+      pair("show", {
+        ...WINDOW,
+        view: "qr",
+        notice: "declined",
+        device: "LAPTOP-7QH3RX",
+      }),
+      LP,
+      "show-qr",
+      [...SHOW_QR, "localPairing.notPairedWith", "localPairing.rotatedBody"],
+      {
+        ...inv("The QR view says a declined prompt without the digits.", {
+          copy: ["a11y.linkCode", "a11y.newCode"],
+        }),
+        notApplicable: QR_LATER,
+      },
+    ),
+    row(
+      `${LP}/show-qr: a new code is being opened in place after the code expired`,
+      pair("show", {
+        ...WINDOW,
+        view: "qr",
+        secondsLeft: 0,
+        expired: true,
+        busy: "new-code",
+      }),
+      LP,
+      "show-qr",
+      [
+        "core.codes.sign-in-expired.title",
+        "a11y.qrPairing",
+        "localPairing.showNew",
+        "common.cancel",
+        "a11y.busy",
+      ],
+      {
+        disabled: ["localPairing.showNew"],
+        notApplicable: QR_LATER,
+      },
+    ),
+    row(
       `${LP}/show-qr: pairing is being blocked`,
       pair("show", { ...WINDOW, view: "qr", notice: "blocked" }),
       LP,

@@ -62,3 +62,8 @@ export function encodeQrLevelQ(
   }
   return qr.encodeQr(data, 1, -1, "Q");
 }
+
+/** True once the QR encoder has loaded (a null from it then means the text cannot be encoded). */
+export function qrLoaded(): boolean {
+  return qr !== null;
+}

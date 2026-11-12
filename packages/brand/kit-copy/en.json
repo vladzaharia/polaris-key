@@ -9784,7 +9784,7 @@
     "a11y.qrPairing": {
       "value": "QR code with the pairing code",
       "role": "a11y",
-      "note": "Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code."
+      "note": "Pair with a Code: Screen reader label; never shown. Names the QR in the QR view."
     },
     "localPairing.expires": {
       "value": "Expires in {time}",

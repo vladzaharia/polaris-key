@@ -944,6 +944,25 @@ export function qrCode(
   );
 }
 
+/** The Light Card's stage before it can draw: an empty night stage of its final size, so the column
+ *  never jumps and the plain QR is never a stand-in while the card loads. */
+export function lightCardStage(c: KitCtx, key: "a11y.qrPairing"): ReactNode {
+  return (
+    <figure
+      className="qr"
+      data-part="qr"
+      data-key={key}
+      data-lightcard=""
+      data-pending=""
+      tabIndex={-1}
+      role="img"
+      aria-label={plain(c, key)}
+    >
+      <span className="stage-fill" />
+    </figure>
+  );
+}
+
 /** The address beside a code, with Copy (DL14: the text and Copy carry the same link). */
 export function copyAddress(c: KitCtx): ReactNode {
   if (!c.view.copy.includes("a11y.copyAddress")) return null;

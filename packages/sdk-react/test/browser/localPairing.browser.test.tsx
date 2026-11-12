@@ -9,7 +9,15 @@
 // with the notice before the QR in a narrow short one. PKEY_KIT_SHOTS=<dir> writes each render to
 // <dir>/react.local.<scene>/<size>-<scheme>.png.
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import { createRoot, type Root } from "react-dom/client";
 import { commands, page, userEvent } from "vitest/browser";
 import type { ReactNode } from "react";
@@ -289,7 +297,9 @@ describe("the show screen's window rule", () => {
         await shoot("window.show", `${c.label}-${scheme}`);
 
         const qr = await mount(find(SHOW_QR), scheme, c.rootPx);
-        expect(columns(qr.querySelector(".pair-show"))).toBe(1);
+        // A laptop window (720 or more wide, under 900 tall) puts the stage beside the text.
+        const beside = c.width >= 720 && c.height < 900 && c.rootPx === 16;
+        expect(columns(qr.querySelector(".card"))).toBe(beside ? 2 : 1);
         expect(
           qr.querySelector('[data-key="a11y.linkCode"]'),
           "no digits in the QR view",
@@ -299,17 +309,90 @@ describe("the show screen's window rule", () => {
         const wait = qr
           .querySelector('[data-key="localPairing.waitingDevice"]')!
           .getBoundingClientRect();
-        expect(
-          wait.top,
-          "the waiting row is under the QR",
-        ).toBeGreaterThanOrEqual(box.bottom - 0.5);
-        // Centred in its column.
-        const col = qr.querySelector(".pair-show")!.getBoundingClientRect();
-        expect(
-          Math.abs(box.left + box.width / 2 - (col.left + col.width / 2)),
-        ).toBeLessThanOrEqual(2);
+        if (beside) {
+          expect(
+            box.left,
+            "the stage is beside the text",
+          ).toBeGreaterThanOrEqual(wait.right - 0.5);
+          expect(
+            qr
+              .querySelector('[data-key="common.cancel"]')!
+              .getBoundingClientRect().bottom,
+            "Cancel is in the first view",
+          ).toBeLessThanOrEqual(innerHeight + 0.5);
+        } else {
+          expect(
+            wait.top,
+            "the waiting row is under the QR",
+          ).toBeGreaterThanOrEqual(box.bottom - 0.5);
+          // As wide as the title's column, centred in it, never under 12 rem of card.
+          const col = qr.querySelector(".pair-show")!.getBoundingClientRect();
+          expect(
+            Math.abs(box.left + box.width / 2 - (col.left + col.width / 2)),
+          ).toBeLessThanOrEqual(2);
+          if (box.width < 380)
+            expect(
+              box.width,
+              "the stage fills the column",
+            ).toBeGreaterThanOrEqual(col.width - 1);
+        }
         noSideways();
         await shoot("window.show-qr", `${c.label}-${scheme}`);
+      });
+
+  // The laptop windows the UX review measured: the QR view keeps Cancel and the switch link in the
+  // first view.
+  const LAPTOPS = [
+    [1366, 657],
+    [1280, 720],
+    [1024, 600],
+    [960, 540],
+    [1440, 900],
+    [844, 390],
+    [390, 420],
+  ] as const;
+  for (const [width, height] of LAPTOPS)
+    for (const scheme of SCHEMES)
+      it(`${width}x${height} ${scheme}: the expired QR view keeps Show a new code and Cancel in view, centred or beside`, async () => {
+        await page.viewport(width, height);
+        const kit = await mount(find("the QR stays dimmed"), scheme, 16);
+        await until(() => kit.querySelector(".qr canvas, .qr svg"), "the QR");
+        for (const k of ["common.cancel", "localPairing.showNew"])
+          expect(
+            kit.querySelector(`[data-key="${k}"]`)!.getBoundingClientRect()
+              .bottom,
+            `${k} below the fold`,
+          ).toBeLessThanOrEqual(innerHeight + 0.5);
+        expect(
+          kit.querySelector('[data-key="localPairing.toCode"]'),
+        ).toBeNull();
+        if (width >= 720 && height >= 540 && height <= 900)
+          expect(
+            document.documentElement.scrollHeight,
+            "the window scrolls",
+          ).toBeLessThanOrEqual(document.documentElement.clientHeight + 1);
+        await shoot("window.show-qr-expired", `${width}x${height}-${scheme}`);
+      });
+
+  for (const [width, height] of LAPTOPS)
+    for (const scheme of SCHEMES)
+      it(`${width}x${height} ${scheme}: the QR view keeps Cancel and the way back in view`, async () => {
+        await page.viewport(width, height);
+        const kit = await mount(find(SHOW_QR), scheme, 16);
+        await until(() => kit.querySelector(".qr canvas, .qr svg"), "the QR");
+        for (const k of ["common.cancel", "localPairing.toCode"])
+          expect(
+            kit.querySelector(`[data-key="${k}"]`)!.getBoundingClientRect()
+              .bottom,
+            `${k} below the fold`,
+          ).toBeLessThanOrEqual(innerHeight + 0.5);
+        noSideways();
+        if (width >= 720 && height >= 540)
+          expect(
+            document.documentElement.scrollHeight,
+            "the window scrolls",
+          ).toBeLessThanOrEqual(document.documentElement.clientHeight + 1);
+        await shoot("window.show-qr", `laptop-${width}x${height}-${scheme}`);
       });
 
   for (const scheme of SCHEMES)
@@ -340,7 +423,7 @@ describe("the show screen's window rule", () => {
 
   it("a wrong code is told by a live region that is in the page before it", async () => {
     await page.viewport(390, 844);
-    const kit = await mount(find("a wrong code changed it"), "dark", 16);
+    const kit = await mount(find("show: a wrong code changed it"), "dark", 16);
     const said = kit.querySelector('[role="status"] [data-key="a11y.newCode"]');
     expect(said?.textContent).toContain("4 8 1 2");
     expect(
@@ -505,7 +588,8 @@ const keydown = (el: Element, k: string): void => {
 };
 const code = (c: string, reason = "opened") => ({
   code: c,
-  qr: "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y",
+  // Each code has its own QR, the same length as a real one.
+  qr: `PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:${c.replace(" ", "").padEnd(16, "X")}`,
   reason,
   expiresAt: NOW + 300,
   failures: 0,
@@ -622,6 +706,178 @@ describe("the code and the QR are two views of one window", () => {
     press(key(kit, "localPairing.toCode"));
     await until(() => key(kit, "a11y.linkCode"), "the code view");
     expect(digits(kit)).toContain("4 8 7 3");
+  });
+});
+
+describe("the QR view: expiry, announcements and the first reveal", () => {
+  const SEAM = Symbol.for("polaris-key.lightCard.seam");
+  const paints: { phase: string }[] = [];
+  const clk = { t: 0 };
+  beforeEach(() => {
+    paints.length = 0;
+    clk.t = 0;
+    (globalThis as Record<symbol, unknown>)[SEAM] = {
+      clock: () => clk.t,
+      seed: 7,
+      onPaint: (p: { phase: string }) => paints.push(p),
+    };
+  });
+  afterEach(() => {
+    delete (globalThis as Record<symbol, unknown>)[SEAM];
+  });
+  /** Wait for a condition while the run's own clock advances a frame at a time. */
+  const tickUntil = async (test: () => unknown, what: string): Promise<void> =>
+    until(() => {
+      clk.t += 1 / 60;
+      return test();
+    }, what);
+  const said = (kit: HTMLElement): string =>
+    [...kit.querySelectorAll('[role="status"]')]
+      .map((e) => e.textContent ?? "")
+      .join(" | ");
+  async function inQr(width = 1280, height = 1000) {
+    const s = await showing(width, height);
+    press(key(s.kit, "localPairing.toQr"));
+    await until(() => key(s.kit, "localPairing.toCode"), "the QR view");
+    await until(() => s.kit.querySelector(".qr canvas"), "the card");
+    // The card forms in 2.4 s of the run's own clock.
+    clk.t = 3;
+    await until(() => paints.at(-1)?.phase === "ready", "the formed card");
+    return s;
+  }
+
+  it("says pairing is blocked, as the code view does", async () => {
+    const { f, kit } = await inQr();
+    f.seen.pair!.onInterrupted(3);
+    await until(
+      () => said(kit).includes("Pairing is being blocked"),
+      "the announcement",
+    );
+    expect(said(kit)).toContain("Try another network");
+  });
+
+  it("says a wrong code changed it, without the digits", async () => {
+    const { f, kit } = await inQr();
+    f.seen.pair!.onCode(code("4873 0691", "wrong-code"));
+    await until(
+      () => said(kit).includes("Wrong code entered"),
+      "the announcement",
+    );
+    expect(said(kit)).toContain("The code changed");
+    expect(said(kit)).not.toMatch(/4 8 7 3/);
+  });
+
+  it("says someone may be guessing after five wrong codes", async () => {
+    const { f, kit } = await inQr();
+    for (let i = 0; i < 5; i++)
+      f.seen.pair!.onCode(code(`48${i}3 0691`, "wrong-code"));
+    await until(() => said(kit).includes("Wrong code entered"), "the warning");
+    expect(said(kit)).toMatch(/guess|Too many|nearby/i);
+  });
+
+  it("keeps the QR view when the code expires, dimmed, with Show a new code in place", async () => {
+    const { f, kit } = await inQr();
+    f.seen.pair!.onEnd({ reason: "expired" });
+    await until(
+      () => key(kit, "localPairing.failedExpired"),
+      "the expired line",
+    );
+    expect(kit.querySelector(".qr canvas"), "still the card").not.toBeNull();
+    // Said once: the title names the state, with no instruction, no switch and no time row.
+    expect(
+      kit.querySelector<HTMLElement>('[data-part="title"]')!.textContent,
+    ).toBe("Code expired");
+    expect(key(kit, "localPairing.qrBody")).toBeNull();
+    expect(key(kit, "localPairing.toCode")).toBeNull();
+    expect(key(kit, "localPairing.expires")).toBeNull();
+    expect(
+      [...kit.querySelectorAll("*")].filter(
+        (e) => e.children.length === 0 && e.textContent === "The code expired.",
+      ),
+    ).toHaveLength(1);
+    expect(key(kit, "localPairing.waitingDevice")).toBeNull();
+    const again = key(kit, "localPairing.showNew")!;
+    expect(again.getAttribute("data-variant")).toBe("primary");
+    await tickUntil(
+      () => paints.at(-1)?.phase === "expired",
+      "the dimmed card",
+    );
+    // Pressing it opens the next window in the same view, and the card forms again.
+    press(again);
+    await until(() => f.calls.pair === 2, "the next window");
+    f.seen.pair!.onCode(code("1111 2222"));
+    // The pressed button is gone: focus goes to the stage, and the change is said.
+    await until(
+      () => document.activeElement === kit.querySelector(".qr"),
+      "focus on the stage",
+    );
+    await until(
+      () => said(kit).includes("The code changed"),
+      "the announcement",
+    );
+    await tickUntil(
+      () => !key(kit, "localPairing.failedExpired"),
+      "the new code",
+    );
+    expect(key(kit, "localPairing.toCode"), "the QR view").not.toBeNull();
+    expect(
+      key(kit, "a11y.linkCode")?.getAttribute("aria-label") ?? null,
+    ).toBeNull();
+    await tickUntil(
+      () => paints.at(-1)?.phase === "refreshing",
+      "the new code's break",
+    );
+  });
+
+  it("settles an expired card to one still frame: the loop stops", async () => {
+    const { f, kit } = await inQr();
+    f.seen.pair!.onEnd({ reason: "expired" });
+    await tickUntil(() => paints.at(-1)?.phase === "expired", "expired");
+    for (let i = 0; i < 150; i++) {
+      clk.t += 1 / 60;
+      await frame();
+    }
+    const parked = paints.length;
+    for (let i = 0; i < 30; i++) {
+      clk.t += 1 / 60;
+      await frame();
+    }
+    expect(paints.length, "paints after it settled").toBe(parked);
+    expect(kit.querySelector(".qr canvas")).not.toBeNull();
+  });
+
+  it("expires in place on the code view too, digits kept", async () => {
+    const { f, kit } = await showing(1280, 800);
+    f.seen.pair!.onEnd({ reason: "expired" });
+    await until(
+      () => key(kit, "localPairing.failedExpired"),
+      "the expired line",
+    );
+    expect(key(kit, "a11y.linkCode")).not.toBeNull();
+    expect(key(kit, "localPairing.showNew")).not.toBeNull();
+    expect(key(kit, "localPairing.waitingDevice")).toBeNull();
+  });
+
+  it("has the card chunk ready before the first switch: an empty stage, never the plain QR", async () => {
+    const { kit } = await showing(1280, 1000);
+    press(key(kit, "localPairing.toQr"));
+    await until(() => key(kit, "localPairing.toCode"), "the QR view");
+    // From the first frame of the QR view there is a stage, and no plain QR (an svg) at any time.
+    expect(kit.querySelector(".qr svg"), "the plain QR").toBeNull();
+    expect(kit.querySelector(".qr[data-lightcard]")).not.toBeNull();
+    await until(() => kit.querySelector(".qr canvas"), "the card");
+    expect(kit.querySelector(".qr svg")).toBeNull();
+  });
+
+  it("forms on the first reveal only; coming back shows the formed card at once", async () => {
+    const { kit } = await inQr();
+    press(key(kit, "localPairing.toCode"));
+    await until(() => key(kit, "a11y.linkCode"), "the code view");
+    paints.length = 0;
+    press(key(kit, "localPairing.toQr"));
+    await until(() => kit.querySelector(".qr canvas"), "the card");
+    await until(() => paints.length > 0, "the first paint");
+    expect(paints[0]!.phase).toBe("ready");
   });
 });
 

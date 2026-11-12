@@ -54,6 +54,7 @@ export const CONNECT_LAYOUTS: Readonly<Record<ConnectScreenName, Layout>> = {
     titles: [
       "localPairing.title",
       "localPairing.qrTitle",
+      "core.codes.sign-in-expired.title",
       "linkPairing.failedTitle",
       "localPairing.confirmTitle",
       "localPairing.confirmUnnamed",

@@ -129,57 +129,81 @@ export function localPairingView(
         focus: "heading",
       });
     case "show": {
-      const n = p.notice;
+      // The window ran out and nothing renewed it: the view stays, dimmed, and offers a new code.
+      const gone = p.expired === true;
+      const n = gone ? undefined : p.notice;
       const renewing = p.busy === "new-code";
-      // The window's second view: the QR with its own title and body, and no digits.
+      const timeLines = gone
+        ? []
+        : ["localPairing.expires", "localPairing.waitingDevice"];
+      // Expired says it once, in the title and to a screen reader: no instruction, no time, and no
+      // switch (both views of a dead window are dead; the next opens on the chosen one).
+      const expiredCopy = [
+        "core.codes.sign-in-expired.title",
+        "localPairing.showNew",
+        "common.cancel",
+      ];
+      // The window's second view: the QR with its own title and body, and no digits. What the code
+      // view announces is announced here too, without the digits.
       if (p.view === "qr")
         return makeView(ctx, C, {
           state: "show-qr",
-          copy: [
-            "localPairing.qrTitle",
-            "localPairing.qrBody",
-            "a11y.qrPairing",
-            "localPairing.expires",
-            "localPairing.waitingDevice",
-            "localPairing.toCode",
-            "common.cancel",
-            n === "blocked" && "localPairing.blockedTitle",
-            n === "blocked" && "localPairing.blockedBody",
-            n === "guessing" && "localPairing.rotatedTitle",
-            n === "guessing" && "localPairing.tooManyAgainBody",
-          ],
+          copy: gone
+            ? [...expiredCopy, "a11y.qrPairing", renewing && "a11y.busy"]
+            : [
+                "localPairing.qrTitle",
+                "localPairing.qrBody",
+                "a11y.qrPairing",
+                ...timeLines,
+                "localPairing.toCode",
+                "common.cancel",
+                n === "blocked" && "localPairing.blockedTitle",
+                n === "blocked" && "localPairing.blockedBody",
+                (n === "guessing" || n === "rotated") &&
+                  "localPairing.rotatedTitle",
+                n === "guessing" && "localPairing.tooManyAgainBody",
+                (n === "rotated" || n === "declined") &&
+                  "localPairing.rotatedBody",
+                n === "declined" && "localPairing.notPairedWith",
+                renewing && "a11y.busy",
+              ],
           args: { time: countdown(p.secondsLeft ?? 0), device },
+          disabled: [renewing && "localPairing.showNew"],
+          ...(gone ? { primary: "localPairing.showNew" } : {}),
           tone: n === "blocked" || n === "guessing" ? "neutral" : null,
           focus: "heading",
         });
       return makeView(ctx, C, {
         state: "show",
-        copy: [
-          "localPairing.title",
-          "localPairing.showBody",
-          p.code && "a11y.linkCode",
-          "localPairing.expires",
-          "localPairing.waitingDevice",
-          "localPairing.toQr",
-          "common.cancel",
-          (n === "rotated" || n === "guessing") && "localPairing.rotatedTitle",
-          n === "rotated" && "localPairing.rotatedBody",
-          n === "declined" && "localPairing.rotatedBody",
-          n === "declined" && "localPairing.notPairedWith",
-          (n === "rotated" || n === "declined" || n === "guessing") &&
-            "a11y.newCode",
-          n === "blocked" && "localPairing.blockedTitle",
-          n === "blocked" && "localPairing.blockedBody",
-          n === "guessing" && "localPairing.tooManyAgainBody",
-          n && n !== "blocked" && "localPairing.showNew",
-          renewing && "a11y.busy",
-        ],
+        copy: gone
+          ? [...expiredCopy, p.code && "a11y.linkCode", renewing && "a11y.busy"]
+          : [
+              "localPairing.title",
+              "localPairing.showBody",
+              p.code && "a11y.linkCode",
+              ...timeLines,
+              "localPairing.toQr",
+              "common.cancel",
+              (n === "rotated" || n === "guessing") &&
+                "localPairing.rotatedTitle",
+              n === "rotated" && "localPairing.rotatedBody",
+              n === "declined" && "localPairing.rotatedBody",
+              n === "declined" && "localPairing.notPairedWith",
+              (n === "rotated" || n === "declined" || n === "guessing") &&
+                "a11y.newCode",
+              n === "blocked" && "localPairing.blockedTitle",
+              n === "blocked" && "localPairing.blockedBody",
+              n === "guessing" && "localPairing.tooManyAgainBody",
+              n && n !== "blocked" && "localPairing.showNew",
+              renewing && "a11y.busy",
+            ],
         args: {
           code: p.code,
           time: countdown(p.secondsLeft ?? 0),
           device,
         },
         disabled: [renewing && "localPairing.showNew"],
+        ...(gone ? { primary: "localPairing.showNew" } : {}),
         tone: n ? "neutral" : null,
         focus: "heading",
       });

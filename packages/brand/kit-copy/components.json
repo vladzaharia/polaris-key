@@ -1776,6 +1776,7 @@
         },
         "show": {
           "copy": [
+            "core.codes.sign-in-expired.title",
             "localPairing.title",
             "localPairing.showBody",
             "a11y.linkCode",
@@ -1796,6 +1797,7 @@
         },
         "show-qr": {
           "copy": [
+            "core.codes.sign-in-expired.title",
             "localPairing.qrTitle",
             "localPairing.qrBody",
             "a11y.qrPairing",
@@ -1803,10 +1805,14 @@
             "localPairing.waitingDevice",
             "localPairing.toCode",
             "localPairing.rotatedTitle",
+            "localPairing.rotatedBody",
+            "localPairing.notPairedWith",
+            "localPairing.showNew",
             "localPairing.blockedTitle",
             "localPairing.blockedBody",
             "localPairing.tooManyAgainBody",
-            "common.cancel"
+            "common.cancel",
+            "a11y.busy"
           ]
         },
         "closed": {

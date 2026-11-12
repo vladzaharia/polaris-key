@@ -14,6 +14,10 @@ import {
   ROLE,
   advance,
   cardGeometry,
+  cardShareFor,
+  lightCardColors,
+  mixHex,
+  rankFade,
   checkPoints,
   connect,
   createLightCardSim,
@@ -43,9 +47,12 @@ const ENVELOPE_KEYS = [
   "cardOpacity",
   "orbit",
   "dim",
+  "ink",
+  "blur",
   "check",
   "flare",
   "ambient",
+  "density",
   "swapped",
   "frameRate",
 ] as const;
@@ -267,6 +274,78 @@ describe("timeline against the golden envelope", () => {
       cardOpacity: 0,
       check: 1,
     });
+  });
+});
+
+describe("size, colours and a view that comes back", () => {
+  it("floors the card at 192 px, never over 0.8 of the stage", () => {
+    expect(cardShareFor(384)).toBe(0.5);
+    expect(cardShareFor(350)).toBeCloseTo(192 / 350, 9);
+    expect(cardShareFor(320)).toBeCloseTo(0.6, 9);
+    expect(cardShareFor(200)).toBe(0.8);
+    expect(cardShareFor(0)).toBe(0.5);
+    const q = qrOf(golden.rows);
+    expect(cardGeometry(q, 0.6).side).toBeCloseTo(264, 9);
+    expect(cardGeometry(q, 0.6).half).toBeGreaterThan(cardGeometry(q).half);
+  });
+
+  it("fades the dark modules toward the paper while the code expires", () => {
+    const tl = dispatchTimeline(createTimeline(0), "expired", 5);
+    const at = (t: number) => envelopeAt(tl, t).ink;
+    const blur = (t: number) => envelopeAt(tl, t).blur;
+    expect(blur(5)).toBe(0);
+    expect(blur(6)).toBe(LIGHT_CARD.blurExpired);
+    expect(LIGHT_CARD.blurExpired).toBeGreaterThanOrEqual(1.5);
+    expect(at(5)).toBe(1);
+    expect(at(5.5)).toBeLessThan(1);
+    expect(at(6)).toBeCloseTo(LIGHT_CARD.inkExpired, 9);
+    expect(at(60)).toBeCloseTo(LIGHT_CARD.inkExpired, 9);
+    // A new code brings the ink back as the card breaks.
+    const again = dispatchTimeline(tl, "newCode", 9);
+    expect(envelopeAt(again, 9).ink).toBeCloseTo(LIGHT_CARD.inkExpired, 9);
+    expect(envelopeAt(again, 9.45).ink).toBe(1);
+    expect(envelopeAt(again, 9.45).blur).toBe(0);
+  });
+
+  it("takes the product's accent for the glow and leaves violet the default", () => {
+    expect(lightCardColors().tints).toEqual(LIGHT_CARD.colors.tints);
+    expect(lightCardColors("nonsense").tints).toEqual(LIGHT_CARD.colors.tints);
+    const c = lightCardColors("#E8553D");
+    expect(c.tints[0]).toBe("#e8553d");
+    expect(c.tints[1]).toBe(mixHex("#e8553d", "#ffffff", 0.45));
+    expect(c.tints[3]).toBe(LIGHT_CARD.colors.tints[3]);
+    expect(c.cardGlow).toBe("rgba(232,85,61,0.55)");
+    // The ink and the paper are not the accent's.
+    expect(LIGHT_CARD.colors.ink).toBe("#160c30");
+  });
+
+  it("thins the ambient light after the idle drop and not before", () => {
+    const tl = createTimeline(0);
+    expect(envelopeAt(tl, 12.3).density).toBe(1);
+    expect(envelopeAt(tl, 14.5).density).toBe(LIGHT_CARD.idleDensity);
+    expect(rankFade(7, 1)).toBe(1);
+    const kept = Array.from({ length: 1000 }, (_, i) =>
+      rankFade(i, 0.5),
+    ).filter((v) => v > 0);
+    expect(kept.length / 1000).toBeGreaterThan(0.45);
+    expect(kept.length / 1000).toBeLessThan(0.65);
+  });
+
+  it("starts ready, already formed, when the view comes back", () => {
+    const s = createLightCardSim({
+      qr: qrOf(golden.rows),
+      seed: 7,
+      now: 0,
+      count: 900,
+      settled: true,
+    });
+    expect(simEnvelope(s)).toMatchObject({ phase: "ready", cardOpacity: 1 });
+    const p = s.particles;
+    const cells = shownGeometry(s).lights.length / 3;
+    for (let i = 0; i < cells; i++) expect(p.x[i]).toBe(p.tx[i]);
+    // A renewal still breaks and re-forms.
+    const other = qrOf(golden.rows.map((r) => [...r].reverse().join("")));
+    expect(newCode(s, other)).toBe(true);
   });
 });
 

@@ -1490,16 +1490,33 @@ Mockups: [web](ui-kits/shots/web-settings-light.png),
   **QR view** (state `show-qr`, input `view: "qr"`) has "Scan to pair", "Point the other device's
   camera here.", the Light Card (§4.9), the time ring, the waiting row, Cancel and one quiet link,
   Show the code instead. Choose, enter, confirm, paired and every closed or failed state are one
-  column as before. Mockups: `sdk.react-pair-show` (the code view, as first drawn with the QR
-  beside it), `sdk.react-pair-enter`, `sdk.react-pair-confirm` and `sdk.swiftui-pair-scan`.
+  column as before. The reference for both views is the built React show step
+  (`packages/sdk-react/src/kit/localPairing.tsx`); the mockup `sdk.react-pair-show` is
+  **superseded** by it (it draws the digits and the QR together) and is not redrawn. Mockups
+  `sdk.react-pair-enter`, `sdk.react-pair-confirm` and `sdk.swiftui-pair-scan` stand.
 - **One window.** Switching views never renews or rotates the code or moves its time. A renewal
   while either view is open updates that view; in the QR view that is the Light Card's new-code
-  state. A window that ends or is withdrawn opens its next one on the code view.
+  state. A window that ends or is withdrawn opens its next one on the view the person last chose, and
+  Cancel forgets the choice.
+- **Expired.** A window that runs out keeps the open view on screen: the QR view keeps the card,
+  dimmed, its dark modules blurred and faded so the dead code does not scan, and the orbit
+  slowed to a stop (one still frame, no animation); the code view keeps the digits, muted. The
+  title becomes "Code expired" (`core.codes.sign-in-expired.title`) and says it once: no
+  instruction line, no time row, no switch link; a screen reader hears "The code expired." once.
+  Show a new code is the one filled control, with Cancel, centred in a column. It opens the next
+  window in place and in the same view (the card breaks into light and forms again), moves focus to
+  the stage and says "The code changed." The closed step's "Couldn't pair" answers only a window
+  that never showed a code, or Too many tries.
 - **Focus and announcements.** After a switch focus moves to the new view's heading (the link is
   never the default action), and the new view's line is announced politely.
-- **Layout.** One centred column at every size, sized to its content, and the same reading and
-  focus order. A window under 480 tall drops the kit's logo and the column scrolls, with a notice
-  before the QR. TV and consoles use the same column inside the title-safe area.
+- **Layout.** One centred column, sized to its content, with the same reading and focus order. The
+  QR view is two columns in a window at least 45 rem (720 dp at the root size, so 200 % text keeps
+  one column) wide and 900 tall or less: the stage beside the title, line, time row, waiting row and
+  buttons, top-aligned, the stage `clamp(240px, the window height less 176px, 384px)`. That is still
+  one method per screen. Cancel and the switch link are in the first view at 1366 by 657, 1280 by
+  720, 1024 by 600, 960 by 540, 1440 by 900, 844 by 390 and 390 by 420. A window under 480 tall drops
+  the kit's logo, tightens its spacing and scrolls where it must, with a notice before the QR. TV
+  and consoles use the same layout inside the title-safe area.
 - **Godot.** `two_pane_fits()` is not used here; the native kits follow in a later slice.
 
 ### 4.4 Accessibility (every kit)
@@ -1626,6 +1643,27 @@ port checks itself against it. Particle positions are decorative (they depend on
 - **No particle crosses the card's margin.** The margin is the card plus 1.5 cells on each side.
   Light outside the card fades to nothing over 12 units before it reaches the margin, and is moved
   out of it if the flow carries it in.
+- **Expired in place.** The card dims to 35 % and the orbit slows, the view stays, and Show a new
+  code is offered in place (§4.3). Opening the next window breaks the card into light and forms it
+  again, in the same view.
+- **First reveal only.** The card forms the first time the QR view is shown in a window. Coming back
+  to it in the same window shows the formed card at once, the light already orbiting. A renewal
+  still breaks and re-forms. The renderer's chunk is loaded while the code view is up, and until the
+  card can draw the stage is empty and night, never the plain QR.
+- **Product identity.** The look is Polaris's by default and the product's when the host's theme
+  supplies it, as everywhere in the kit. The glow tints and the card's halo come from the product
+  accent: the accent, the accent mixed 45 % toward white, the accent mixed 50 % toward ice
+  `#b0ccff`, and white; the Polaris violet when there is no product accent. The centre carries the
+  product's mark when one is given, the Polaris star otherwise. The ink and the paper never change:
+  the code stays dark on light whatever the accent.
+- **An expired code must not scan.** On expiry: blur >= 1.5 module widths + ink <= 15 % of the paper
+  contrast + dim, all over the same second, drawn on the card itself so the stage behind it does
+  not matter, in both themes. A fade alone is not enough: a phone's decoder reads a faint, sharp
+  code that jsQR misses. Every kit's port proves it with a platform-grade decoder (Apple Vision,
+  ML Kit or Chromium's `BarcodeDetector`) on the live card (reads) and the expired card (reads
+  nothing, also with the card's own levels stretched to the full range as auto-exposure does), and
+  keeps a weaker decoder as a second check.
+- **Idle.** After the 10 s idle drop the ambient light thins to half its particles.
 - **States.**
   - **New code:** the card breaks back into light (0.45 s) and re-condenses.
   - **Connected:** a vortex collapses to the centre (0.85 s) and blooms into a check of light.
@@ -1635,33 +1673,38 @@ port checks itself against it. Particle positions are decorative (they depend on
   `motion`; the others: their platform's setting (§4.8).
 - **Battery.** After 10 s of waiting the orbit drops to 30 frames a second. Nothing runs while the
   page or window is hidden or the stage is off-screen; the run resumes where it stopped.
-- **Fit.** The stage is square and sits alone in the QR view: 20 rem, 24 rem from 768 wide (a card
-  of 160 and 192 px). A window under 480 tall draws the plain QR, which fits the short scrolling
-  column better.
+- **Fit.** The stage is square, `min(100%, 384px)` at every width (in px, not rem: an image does not grow with the text size), with the kit's group radius
+  (16 px) and, in dark, a 1 px inner edge. The card is half the stage and never under 12 rem
+  (192 px): where half of the stage is smaller, the card's share grows (to at most 0.8). The light
+  fades out over the outer 8 % of the stage rather than being cut at its edge. In a laptop window
+  (see 4.3) the stage sits beside the text. A window under 480 tall draws the plain QR, which fits
+  the short layout better.
 - **Accessibility.** The canvas is one image with the accessible name the plain QR had
   (`a11y.qrPairing`). The plain QR stays as the fallback where the renderer cannot draw.
 
 **Constants** (`LIGHT_CARD`). Positions are in the 440-unit reference stage; a renderer scales by
 its stage's side over 440. Seconds unless noted.
 
-| Constant             | Value                                                                                             |
-| -------------------- | ------------------------------------------------------------------------------------------------- |
-| Stage, card share    | 440 units, 0.5                                                                                    |
-| QR                   | level Q, quiet 2 modules, star clearing radius 3.2 modules                                        |
-| Spring               | k 82, c 10.4 (damping of free light: `exp(-0.9 f dt)`)                                            |
-| Fixed step           | 1/60 s; at most 8 steps per frame, a longer gap is skipped                                        |
-| Particles            | one per paper cell, plus 10 %; ambient light 650 at 440 units, scaled by area, within 300 and 900 |
-| Forming              | condense starts 0.5; cells land 0.65 to 2.35; readable from 2.4                                   |
-| Landing order        | `at = start + 0.15 + 0.55 d + 0.1 r`; `d` is the cell's distance to the centre, 0 to 1            |
-| New code             | break 0.45, then re-condense with 0.6 of the forming curve already elapsed                        |
-| Connected            | vortex 0.85, check forms over 0.9, card dissolves over 0.4, done at 1.75                          |
-| Expired              | orbit 1 to 0.25 over 1.2, dim 1 to 0.35 over 1                                                    |
-| Orbit (swirl) factor | 1 normal, 2.2 in the vortex, 0.6 after a connect, 0.25 expired                                    |
-| Margin               | card plus 1.5 cells; wisps fade over 12 units                                                     |
-| Idle drop            | after 10 s of waiting, 30 fps (60 otherwise; 30 while expired)                                    |
-| Roles of colour      | ground `#05060d`; ink `#160c30`; paper `#ffffff` to `#f3eeff`; finder gap `#fbf9ff`               |
-| Glow tints           | violet `#9a5cff` (the brand's violet on dark), lavender `#c4aaff`, ice `#b0ccff`, white `#fff6ff` |
-| Seeded PRNG          | mulberry32, written out in the module; the seed is an unsigned 32-bit integer                     |
+| Constant             | Value                                                                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Stage, card share    | 440 units, 0.5                                                                                                                      |
+| QR                   | level Q, quiet 2 modules, star clearing radius 3.2 modules                                                                          |
+| Spring               | k 82, c 10.4 (damping of free light: `exp(-0.9 f dt)`)                                                                              |
+| Fixed step           | 1/60 s; at most 8 steps per frame, a longer gap is skipped                                                                          |
+| Particles            | one per paper cell, plus 10 %; ambient light 650 at 440 units, scaled by area, within 300 and 900                                   |
+| Forming              | condense starts 0.5; cells land 0.65 to 2.35; readable from 2.4                                                                     |
+| Landing order        | `at = start + 0.15 + 0.55 d + 0.1 r`; `d` is the cell's distance to the centre, 0 to 1                                              |
+| New code             | break 0.45, then re-condense with 0.6 of the forming curve already elapsed                                                          |
+| Connected            | vortex 0.85, check forms over 0.9, card dissolves over 0.4, done at 1.75                                                            |
+| Expired              | orbit 1 to 0.25 over 1.2, dim 1 to 0.35 , ink 1 to 0.15 and blur 0 to 1.5 modules over 1                                            |
+| Orbit (swirl) factor | 1 normal, 2.2 in the vortex, 0.6 after a connect, 0.25 expired                                                                      |
+| Margin               | card plus 1.5 cells; wisps fade over 12 units                                                                                       |
+| Idle drop            | after 10 s of waiting, 30 fps (60 otherwise); an expired card settles to one still frame                                            |
+| Card floor           | 192 px (12 rem); the card's share is max(0.5, 192 over the stage), at most 0.8                                                      |
+| Ambient thinning     | after the idle drop the ambient light thins to 0.5 of its particles over 1.5 s                                                      |
+| Roles of colour      | ground `#05060d`; ink `#160c30`; paper `#ffffff` to `#f3eeff`; finder gap `#fbf9ff`; glow from the product accent when there is one |
+| Glow tints           | violet `#9a5cff` (the brand's violet on dark), lavender `#c4aaff`, ice `#b0ccff`, white `#fff6ff`                                   |
+| Seeded PRNG          | mulberry32, written out in the module; the seed is an unsigned 32-bit integer                                                       |
 
 **The envelope.** The timeline (`forming`, `ready`, `refreshing`, `connected`, `expired`) is driven
 by an injected time and yields, for each frame, the card opacity, the share of particles landed, the

@@ -2389,7 +2389,7 @@
     <string name="localPairing_pairedDevices__macos">Dispositivos vinculados</string>
     <!-- Pair with a Code: show: what to do with the code. -->
     <string name="localPairing_showBody">Introduce este código en el otro dispositivo.</string>
-    <!-- Pair with a Code: Screen reader label; never shown. Names the QR beside the pairing code. -->
+    <!-- Pair with a Code: Screen reader label; never shown. Names the QR in the QR view. -->
     <string name="a11y_qrPairing">Código QR con el código de vinculación</string>
     <!-- Pair with a Code: show: next to the ring. Arguments: {time} = m:ss left. Arguments: 1=time. -->
     <string name="localPairing_expires">Caduca en %1$s</string>
