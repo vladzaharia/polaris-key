@@ -256,6 +256,18 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
     shows:
       "The product, its version, Privacy and Get help pages, Open-source licenses and Copy diagnostics, over the game or as a page of its own menu",
   },
+  LocalPairing: {
+    view: "local_pairing/pkey_local_pairing",
+    model: "LocalPairing",
+    shows:
+      "Pair with a Code: one device shows an 8-digit code or a QR with its time left, the other types the code, and both people say yes with the categories chosen first. No account; it runs over `PolarisKey.cloud_connect.local_links` with `attach(links, options)`, or draws a state the host computed",
+  },
+  PairedDevices: {
+    view: "paired_devices/pkey_paired_devices",
+    model: "PairedDevices",
+    shows:
+      "The devices this one paired with by a code, with Rename and Forget in the row, the Can connect switches when more than 8 are paired or one is off, and Pair with a Code as the one primary",
+  },
   ChannelPicker: {
     view: "dev_menu/pkey_dev_menu_section",
     controller: "dev_menu/dev_menu_controller",
