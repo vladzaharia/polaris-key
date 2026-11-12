@@ -19695,7 +19695,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5", "plans/CC-01.md §4"],
       "brief": "wp/U-40-e2e-client-godot.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "U-41",
@@ -20027,7 +20027,7 @@
       "optional": false,
       "refs": [],
       "brief": "wp/CC-29X-live-pairing-test.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "CC-31",
