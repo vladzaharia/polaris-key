@@ -178,6 +178,8 @@ internal actual fun decodeIcon(bytes: ByteArray, targetPx: Int, maxSide: Int): I
     }
 }.getOrNull()
 
+internal actual fun blurSupported(): Boolean = true
+
 @Composable
 internal actual fun PolarisQr(content: String, contentDescription: String, modifier: Modifier) = Unit
 

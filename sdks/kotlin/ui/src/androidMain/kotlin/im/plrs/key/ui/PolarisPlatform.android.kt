@@ -91,6 +91,10 @@ internal actual fun decodeIcon(bytes: ByteArray, targetPx: Int, maxSide: Int): I
     return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
 }
 
+internal actual fun blurSupported(): Boolean = android.os.Build.VERSION.SDK_INT >= BLUR_API
+
+private const val BLUR_API = 31
+
 @Composable
 internal actual fun PolarisQr(content: String, contentDescription: String, modifier: Modifier) = PolarisQrCode(content, contentDescription, modifier)
 

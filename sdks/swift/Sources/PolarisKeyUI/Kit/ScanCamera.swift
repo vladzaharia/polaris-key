@@ -177,8 +177,8 @@ struct ScanViewfinder: View {
                     .font(.body)
                     .foregroundStyle(Color.white)
                     .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.8)
-                    .padding(16)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(12)
             }
         }
         // A fixed square: a flexible frame shares the screen's spare height with the scaffold's spacer and collapses.

@@ -165,11 +165,17 @@ internal fun PairQrCard(c: PairCtx, size: Dp, dimmed: Boolean, focus: FocusReque
         Spacer(Modifier.size(size))
     } else {
         Box(Modifier.size(size).alpha(if (dimmed) DIMMED else 1f).focusRequester(focus).focusable()) {
-            // A dead code is blurred past reading (two module widths of a 37-module card) as well as faded and dimmed, so a decoder
-            // finds nothing even when its levels are stretched.
-            PolarisQr(qr, c.text("a11y.qrPairing"), Modifier.size(size).then(if (dimmed) Modifier.blur(size / QR_MODULES * 2) else Modifier))
-            // The paper over the ink: dark modules end at 4 % of their strength.
-            if (dimmed) Box(Modifier.size(size).background(QR_PAPER.copy(alpha = FADE_PAPER)).clearAndSetSemantics {})
+            if (dimmed && !blurSupported()) {
+                // Below API 31 the blur does nothing, so a dead code draws no modules at all: the dimmed paper alone says it is gone.
+                val name = c.text("a11y.qrPairing")
+                Box(Modifier.size(size).background(QR_PAPER).clearAndSetSemantics { contentDescription = name })
+            } else {
+                // A dead code is blurred past reading (two module widths of a 37-module card) as well as faded and dimmed, so a decoder
+                // finds nothing even when its levels are stretched.
+                PolarisQr(qr, c.text("a11y.qrPairing"), Modifier.size(size).then(if (dimmed) Modifier.blur(size / QR_MODULES * 2) else Modifier))
+                // The paper over the ink: dark modules end at 4 % of their strength.
+                if (dimmed) Box(Modifier.size(size).background(QR_PAPER.copy(alpha = FADE_PAPER)).clearAndSetSemantics {})
+            }
         }
     }
 }

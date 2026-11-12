@@ -632,3 +632,70 @@ class ExpiredQrScanTest {
         }
     }
 }
+
+/** Below API 31 `Modifier.blur` does nothing: the expired card draws no modules at all, so zxing finds nothing, plain or stretched. */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [30], qualifiers = "w411dp-h891dp-mdpi")
+class ExpiredQrScanBelowBlurTest {
+    @get:Rule
+    val rule = createEmptyComposeRule()
+
+    private val text = "PKP1:DJDL:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y"
+
+    /** What a camera would read off the screen: the activity's window drawn to a bitmap, then a QR decoder run over it. */
+    private fun scanned(scenario: ActivityScenario<ComponentActivity>, stretch: Boolean = false): String? {
+        lateinit var bitmap: Bitmap
+        scenario.onActivity { activity ->
+            val view = activity.window.decorView
+            bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(bitmap))
+        }
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        if (stretch) {
+            // The levels stretched to the full range, as a camera's auto-exposure would see the card.
+            val grey =
+                IntArray(pixels.size) {
+                    ((pixels[it] shr 16 and 0xff) * 299 + (pixels[it] shr 8 and 0xff) * 587 + (pixels[it] and 0xff) * 114) /
+                        1000
+                }
+            val low = grey.min()
+            val span = maxOf(grey.max() - low, 1)
+            for (i in pixels.indices) {
+                val v = (grey[i] - low) * 255 / span
+                pixels[i] = 0xff shl 24 or (v shl 16) or (v shl 8) or v
+            }
+        }
+        val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
+        // A decoder that finds no code throws one of its three not-found errors: that is "nothing scanned".
+        return runCatching { QRCodeReader().decode(BinaryBitmap(HybridBinarizer(source))).text }.getOrNull()
+    }
+
+    @Test
+    fun belowApi31TheExpiredCardDrawsNoModulesAndDoesNotScan() {
+        var ui by mutableStateOf(
+            PolarisLocalPairingUi(step = "show", code = "4812 3456", qr = text, secondsLeft = 291, view = "qr", categories = listOf("crates")),
+        )
+        rule.mainClock.autoAdvance = false
+        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.setContent {
+                    MaterialTheme(colorScheme = lightColorScheme()) {
+                        PolarisTheme(branding = PolarisBranding.PolarisKey, copy = sampleCopy, darkTheme = false) {
+                            CompositionLocalProvider(LocalPolarisReduceMotion provides true) { PolarisLocalPairingScreen(ui) }
+                        }
+                    }
+                }
+            }
+            rule.mainClock.advanceTimeBy(2_600)
+            assertEquals("the live card scans", text, scanned(scenario))
+            assertEquals("the live card scans with its levels stretched", text, scanned(scenario, stretch = true))
+            ui = ui.copy(secondsLeft = 0, expired = true)
+            rule.mainClock.advanceTimeBy(2_600)
+            assertEquals("the expired card does not scan", null, scanned(scenario))
+            assertEquals("the expired card does not scan with its levels stretched", null, scanned(scenario, stretch = true))
+            rule.onNodeWithText("Code expired").assertIsDisplayed()
+        }
+    }
+}
