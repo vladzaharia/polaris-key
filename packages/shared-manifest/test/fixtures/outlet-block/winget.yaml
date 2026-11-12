@@ -1,5 +1,5 @@
 outlets:
-  # winget
+  # WinGet
   winget:
     kind: winget
     # winget package identifier.
