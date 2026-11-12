@@ -1356,18 +1356,11 @@ static func _refusal_members(o: PKeySignInOutcome, out: Dictionary) -> void:
 
 
 ## Discovery for the redirect conversations: Identity on, the authorize and token endpoints at the
-## Worker's standard paths on the loopback server, and the issuer the recorded callback carries
-## (RFC 9207), else the Worker's own `<base>/<product>/identity`.
+## Worker's standard paths on the loopback server, and the issuer the Worker's discovery names,
+## `<recorded base>/<product>/identity`, whichever host the recorded callbacks came back through.
 static func _redirect_discovery(base: String, tr: Dictionary) -> Dictionary:
 	var root := "%s/%s/identity" % [base, tr["product"]]
-	var issuer := root
-	for step in tr["steps"]:
-		if step["action"] == "redirectComplete":
-			var url := String(step["args"].get("callbackUrl", ""))
-			var m := RegEx.create_from_string("[?&]iss=([^&#]*)").search(url)
-			if m != null:
-				issuer = m.get_string(1).uri_decode()
-				break
+	var issuer := "%s/%s/identity" % [tr["baseUrl"], tr["product"]]
 	var endpoints := {
 		"authorize": root + "/authorize", "token": root + "/token",
 		"choiceLicenses": root + "/choice/licenses", "choiceDevices": root + "/choice/devices",

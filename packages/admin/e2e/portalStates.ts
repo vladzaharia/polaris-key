@@ -1,6 +1,6 @@
 import type { Locator, Page } from "playwright";
 import { atRest } from "./atRest.js";
-import { h1, type Override } from "./portalHarness.js";
+import { h1, settle, type Override } from "./portalHarness.js";
 import { REQUEST_STATES } from "./portalRequestStates.js";
 import {
   PROFILE_BORN,
@@ -1541,6 +1541,9 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Account");
       const region = p.getByRole("region", { name: /^Packages$/ });
+      await region.waitFor();
+      // Same as the Connected Apps states: the click scrolls, so settle the layout first.
+      await settle(p);
       await region
         .getByRole("button", { name: "Create personal token" })
         .click();
@@ -1764,7 +1767,22 @@ export const SHIPPED: ShippedState[] = [
       scenario: "three",
       path: "/#/account/apps",
       routes: { "GET /api/me/connected-apps": { body: CONNECTED_APPS } },
-      ready: (p) => ready(p.getByRole("region", { name: "Connected Apps" })),
+      ready: async (p) => {
+        const region = p.getByRole("region", { name: "Connected Apps" });
+        await region.waitFor();
+        // The click below scrolls its button into view, so the offset it leaves is the layout's
+        // at that moment: let fonts and images land first, or a late image moves the page under
+        // a fixed offset and the capture differs run to run.
+        await settle(p);
+        await ready(region);
+        // Where the click left the page depends on the layout at click time (two stable
+        // offsets, a few px apart). End on one fixed offset instead: the region's top under the
+        // sticky chrome (the root's scroll-padding), instant so a smooth-scroll rule cannot
+        // leave it moving. The capture settles again.
+        await region.evaluate((el) =>
+          el.scrollIntoView({ block: "start", behavior: "instant" }),
+        );
+      },
     }),
   ),
   {

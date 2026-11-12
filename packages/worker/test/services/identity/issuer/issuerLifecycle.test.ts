@@ -435,6 +435,25 @@ describe("Change what <Client> gets", () => {
   });
 });
 
+describe("a token older than its grant", () => {
+  it("userinfo refuses a token minted before a Disconnect and a new grant; the new token is served", async () => {
+    const old = await signIn();
+    expect((await info(old)).status).toBe(200);
+    expect(
+      await disconnectClient(s.w.db, SLUG, s.accountId, s.spa.clientId, NOW),
+    ).toBe(true);
+    const later = NOW + 1;
+    const res = await token(
+      grantForm(s.spa, await codeFor(s.spa, {}, ["name", "email"], later)),
+      { at: later },
+    );
+    expect(res.status).toBe(200);
+    const fresh = (await res.json()) as Tokens;
+    expect((await info(old, later)).status).toBe(401);
+    expect((await info(fresh, later)).status).toBe(200);
+  });
+});
+
 describe("the client", () => {
   it("disabled: families revoked, the grant kept", async () => {
     const t = await signIn();

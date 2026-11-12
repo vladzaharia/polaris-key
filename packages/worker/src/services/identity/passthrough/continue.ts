@@ -43,7 +43,7 @@ import { cardJson, readJsonObject } from "../card/http.js";
 import { getPortalAccount } from "../portal/repo.js";
 import { stmtRecordTermsAcceptance } from "../accounts/terms.js";
 import { termsGate } from "../productTerms.js";
-import { issuerOf } from "./authorize.js";
+import { issuerFor } from "./authorize.js";
 import { offerFor, replaceView, type ChoiceCx } from "./choice.js";
 import { mintAccountLicense } from "./mint.js";
 import type { LicenseChoiceInput } from "@polaris-key/protocol/identity";
@@ -169,14 +169,14 @@ export async function handleSignInCancel(
       redirect: withQuery(authz.redirectUri, {
         error: ACCESS_DENIED,
         ...(authz.state !== null ? { state: authz.state } : {}),
-        iss: issuerOf(req, { slug: record.product }),
+        iss: issuerFor(req, authz, { slug: record.product }),
       }),
     });
   return cardJson({
     redirect: withLoopbackRequest(
       target(
         authz.redirectUri,
-        issuerOf(req, { slug: record.product }),
+        issuerFor(req, authz, { slug: record.product }),
         authz.state,
         { error: ACCESS_DENIED },
       ),
@@ -366,7 +366,7 @@ export async function handleSignInContinue(
     redirect: withLoopbackRequest(
       target(
         record.authz.redirectUri,
-        issuerOf(req, product),
+        issuerFor(req, record.authz, product),
         record.authz.state,
         { code },
       ),

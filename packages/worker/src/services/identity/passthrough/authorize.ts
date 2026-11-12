@@ -83,6 +83,15 @@ export function issuerOf(req: Request, product: { slug: string }): string {
   return `${new URL(req.url).origin}/${product.slug}/identity`;
 }
 
+/** The `iss` of a redirect built for a stored request: the issuer `authorize` recorded. */
+export function issuerFor(
+  req: Request,
+  authz: { issuer?: string },
+  product: { slug: string },
+): string {
+  return authz.issuer ?? issuerOf(req, product);
+}
+
 /** `302 <redirect_uri>?error=…&state=…&iss=…` (RFC 6749 §4.1.2.1 with RFC 9207's `iss`). */
 export function errorRedirect(
   redirectUri: string,
@@ -410,7 +419,7 @@ export async function handleAuthorize(ctx: {
         kind,
         origin: reqOrigin,
         flowRef: "authorize",
-        authz,
+        authz: { ...authz, issuer },
         ...(deviceLabel ? { deviceLabel } : {}),
         ...(native ? { native } : {}),
         crossHost,

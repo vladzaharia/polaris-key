@@ -46,6 +46,7 @@ interface Step {
   uses?: string;
   run?: string;
   if?: string;
+  env?: Record<string, string>;
 }
 interface Job {
   name?: string;
@@ -1155,6 +1156,23 @@ describe("the JS test jobs narrow with the js base", () => {
     expect(step.run).toContain('${JS_BASE:+"--filter=...[$JS_BASE]"}');
     for (const p of ["worker", "admin", "conformance-browser"])
       expect(step.run).toContain(`--filter=!@polaris-key/${p}`);
+  });
+
+  it("scopes the React live lane's request check with the same js base, and no other lane", () => {
+    const steps = ci.jobs["js-rest"]!.steps!;
+    const start = steps.find((st) =>
+      st.run?.includes("start-dev-ci.mjs start --lang react"),
+    )!;
+    expect(start.run).toContain("--scope-package @polaris-key/react");
+    expect(start.env?.JS_BASE).toContain("needs.changes.outputs.js-base");
+    const stop = steps.find((st) =>
+      st.run?.includes("start-dev-ci.mjs stop --lang react"),
+    )!;
+    expect(stop.run).toContain('--job-status "${{ job.status }}"');
+    for (const [id, job] of Object.entries(ci.jobs))
+      for (const st of job.steps ?? [])
+        if (st.run?.includes("--scope-package"))
+          expect(`${id}: ${st.run}`).toContain("js-rest: ");
   });
 
   it("runs a package when there is no base, or turbo cannot say", () => {

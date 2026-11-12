@@ -17,6 +17,9 @@ import { setServices } from "../../src/core/products/store.js";
 import { handlePortalApi as portalApi } from "../../src/services/identity/portal/api.js";
 import { SETTINGS } from "../../src/mount.js";
 import { portalHooksFor } from "../portalHarness.js";
+import { seedLicenseWithKey } from "../seed.js";
+import { cardPress, portalLogin, redirectOf } from "../cardPress.js";
+import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
 import type { Env } from "../../src/platform/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 
@@ -72,7 +75,7 @@ const go = (
   method = "GET",
 ) => dispatchWith(new Request(url, { method, headers }), env, db, NOW);
 
-const authorize = () => {
+const authorize = (extra: Record<string, string> = {}) => {
   const q = new URLSearchParams({
     response_type: "code",
     client_id: SLUG,
@@ -80,6 +83,7 @@ const authorize = () => {
     state: STATE,
     code_challenge: CHALLENGE,
     code_challenge_method: "S256",
+    ...extra,
   });
   return go(`${API}/${SLUG}/identity/authorize?${q}`);
 };
@@ -195,4 +199,52 @@ describe("the hop on the customer host", () => {
     url.searchParams.delete("bind");
     expect((await go(url.toString())).status).toBe(404);
   });
+});
+
+describe("the redirect answers on the customer host", () => {
+  async function hop(extra: Record<string, string> = {}) {
+    const url = (await authorize(extra)).headers.get("location")!;
+    const res = await go(url);
+    return {
+      handle: new URL(url).searchParams.get("request")!,
+      binder: res.headers.get("set-cookie")!.split(";")[0]!,
+    };
+  }
+
+  for (const verb of ["continue", "cancel", "key"] as const) {
+    it(`${verb} carries the issuer discovery names as iss`, async () => {
+      const e = env as unknown as Record<string, unknown>;
+      e.PORTAL_SESSION_SECRET = "test-portal-session-secret";
+      e.LAUNCH_IDENTITY_RETURNKEY = "on";
+      const discovery = (await (
+        await go(`${API}/${SLUG}/.well-known/polaris.json`)
+      ).json()) as { services: { identity: { issuer: string } } };
+      const issuer = discovery.services.identity.issuer;
+      expect(new URL(issuer).origin).toBe(API);
+
+      const { handle, binder } = await hop(
+        verb === "key" ? { key_return: "allow" } : {},
+      );
+      const account = await getOrCreateAccountByEmail(
+        db,
+        "ada@example.com",
+        NOW,
+      );
+      const key =
+        verb === "key" ? (await seedLicenseWithKey(db, SLUG)).key : undefined;
+      const to = await redirectOf(
+        await cardPress(env, db, {
+          origin: CUSTOMER,
+          handle,
+          verb,
+          binder,
+          // The key return needs no session.
+          ...(verb === "key"
+            ? { body: { key } }
+            : { session: await portalLogin(env, db, account.id) }),
+        }),
+      );
+      expect(to.searchParams.get("iss")).toBe(issuer);
+    });
+  }
 });

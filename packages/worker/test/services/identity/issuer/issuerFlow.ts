@@ -120,6 +120,7 @@ export function issuerFlow(ctx: () => FlowCtx) {
     client: ClientRecord,
     extra: Record<string, string> = {},
     consent: string[] = ["name", "email"],
+    at: number = NOW,
   ): Promise<string> {
     const redirect = client.redirectUris[0]!;
     const p = new URLSearchParams({
@@ -140,7 +141,7 @@ export function issuerFlow(ctx: () => FlowCtx) {
       new Request(`${BASE}/${SLUG}/identity/authorize?${p}`),
       ctx().w.env,
       ctx().w.db,
-      NOW,
+      at,
     );
     expect(auth.status).toBe(303);
     const handle = /request=(rq_[A-Za-z0-9_-]{22})/.exec(
@@ -157,9 +158,9 @@ export function issuerFlow(ctx: () => FlowCtx) {
       ctx().w.db,
       { accountId: ctx().accountId },
       handle,
-      NOW,
+      at,
       SETTINGS,
-      NOW,
+      at,
     );
     expect(res.status).toBe(200);
     return new URL(

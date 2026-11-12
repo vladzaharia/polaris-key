@@ -76,6 +76,12 @@ export interface AuthzRecord {
   keyReturn?: true;
   loginHint: string | null;
   nameHint: string | null;
+  /**
+   * The issuer `authorize` answered as (RFC 9207). Every redirect the card host builds for this
+   * request carries it as `iss`, so it names the issuer on every host. Absent on a handle minted
+   * before it was recorded: those fall back to the request's own origin.
+   */
+  issuer?: string;
   /** Present on a request from a registered client (V5 §12.13.3); absent for the own client. */
   registered?: RegisteredAuthz;
 }

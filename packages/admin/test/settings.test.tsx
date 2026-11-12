@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProductDetail } from "../src/api.js";
+import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
 import { expectNoAxeViolations, renderAt, resetCore } from "./coreTestUtils.js";
 
 const fns = vi.hoisted(() => ({
@@ -718,6 +719,53 @@ describe("Core → Settings", () => {
       expect(
         within(panel).getByText("Updated: product details, catalog, tiers."),
       ).toBeTruthy();
+    });
+
+    it("a link refused for want of a fresh sign-in keeps the plan, signs in again and reopens with the repository", async () => {
+      const user = userEvent.setup();
+      const redirect = vi.fn();
+      setStepUpRedirectForTests(() => redirect());
+      window.sessionStorage.clear();
+      fns.checkRepoLink.mockResolvedValue(CHECKED);
+      fns.linkProductRepo.mockRejectedValue(
+        new HttpError(403, { code: "step_up_required" }),
+      );
+      const drawer = await openDrawer(user);
+      const typed = within(drawer).getByLabelText(/^Repository/);
+      await user.type(typed, "acme/djdl");
+      await user.click(within(drawer).getByText("Check"));
+      await within(drawer).findByText("Tier pro added");
+      await user.click(
+        within(drawer).getByRole("button", { name: /^Link and remove/ }),
+      );
+      // The plan stays, and the button now asks to sign in again.
+      const again = await within(drawer).findByRole("button", {
+        name: "Sign in again",
+      });
+      expect(within(drawer).getByText("Tier pro added")).toBeTruthy();
+      expect(fns.linkProductRepo).toHaveBeenCalledTimes(1);
+      await user.click(again);
+      expect(redirect).toHaveBeenCalledTimes(1);
+
+      // The sign-in returns to the page: the drawer is back, the repository checked again.
+      cleanup();
+      fns.checkRepoLink.mockClear();
+      mount();
+      const back = await screen.findByRole("dialog", {
+        name: "Link repository",
+      });
+      expect(
+        (
+          within(back).getByRole("textbox", {
+            name: /Repository/,
+          }) as HTMLInputElement
+        ).value,
+      ).toBe("acme/djdl");
+      await waitFor(() =>
+        expect(fns.checkRepoLink).toHaveBeenCalledWith("djdl", "acme/djdl"),
+      );
+      expect(await within(back).findByText("Tier pro added")).toBeTruthy();
+      setStepUpRedirectForTests();
     });
 
     it("marks the check that failed and words its fix", async () => {

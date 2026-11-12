@@ -32,6 +32,37 @@ const revoke = (
     NOW,
   );
 
+describe("authorize (IS-14)", () => {
+  const nav = (ip: string, at: number) => {
+    const q = new URLSearchParams({
+      response_type: "code",
+      client_id: s.spa.clientId,
+      redirect_uri: s.spa.redirectUris[0]!,
+      scope: "openid",
+      state: "st",
+      code_challenge: s.pair.challenge,
+      code_challenge_method: "S256",
+    });
+    return dispatchWith(
+      new Request(`${ISSUER}/authorize?${q}`, {
+        headers: { "cf-connecting-ip": ip },
+      }),
+      s.w.env,
+      s.w.db,
+      at,
+    );
+  };
+
+  it("is 60 navigations a minute per client network, and the window reopens", async () => {
+    for (let i = 0; i < 60; i++)
+      expect((await nav("198.51.100.1", NOW)).status).toBe(303);
+    expect((await nav("198.51.100.1", NOW)).status).toBe(429);
+    // Another network has its own budget.
+    expect((await nav("203.0.113.9", NOW)).status).toBe(303);
+    expect((await nav("198.51.100.1", NOW + 61)).status).toBe(303);
+  });
+});
+
 describe("revoke (IS-14, IS-2)", () => {
   it("is 60 a minute per public client and network, failing closed, and another network or client has its own", async () => {
     const spa = (ip: string) =>

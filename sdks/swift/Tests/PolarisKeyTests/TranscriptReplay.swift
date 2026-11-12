@@ -431,17 +431,9 @@ actor ReplayServer {
             ["browser", "redirectComplete"].contains($0.action)
         })
         // The redirect transcripts (identity.redirect.web, identity.signin.hints) ride a product
-        // that runs Identity; the fragment names `authorize` and `token`, and the issuer the
-        // recorded callback carries (RFC 9207), else the Worker's own `<base>/identity`.
-        var issuer = "\(base)/identity"
-        for step in transcript.steps where step.action == "redirectComplete" {
-            if let raw = step.args["callbackUrl"]?.stringValue,
-                let iss = URLComponents(string: raw)?.queryItems?.first(where: { $0.name == "iss" })?.value
-            {
-                issuer = iss
-                break
-            }
-        }
+        // that runs Identity; the fragment names `authorize` and `token`, and the Worker's own
+        // `<base>/identity` as the issuer, whichever host the recorded callback came back through.
+        let issuer = "\(base)/identity"
         var redirectEndpoints: [String: JSONValue] = [
             "authorize": .string("\(base)/identity/authorize"),
             "token": .string("\(base)/identity/token"),

@@ -863,7 +863,14 @@ describe("POST …/release/link (the console route)", () => {
     const { token, session } = await consoleTestSession(
       env,
       db,
-      { sub: "u1", name: "Ada", email: "a@x.io", groups: ["admins"] },
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "a@x.io",
+        groups: ["admins"],
+        authTime: NOW,
+        stepUp: true,
+      },
       NOW,
     );
     // The query rides on the request URL; the router hands the handler the bare path.

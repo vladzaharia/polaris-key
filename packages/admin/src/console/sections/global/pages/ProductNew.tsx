@@ -3,7 +3,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { HttpError, type SlugCheck } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
+import { startStepUp } from "../../../../lib/stepUp.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
+import { StepUpNotice } from "../../../../ui/useStepUpDraft.js";
+import { isStepUpRequired } from "../../../../ui/ConfirmDialog.js";
 import { announce } from "../../../../ui/LiveRegion.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { useUnsavedChangesGuard } from "../../../../ui/useUnsavedChangesGuard.js";
@@ -103,6 +106,8 @@ export function ProductNew(): React.ReactElement {
   const [notice, setNotice] = React.useState<string | null>(null);
   const [stale, setStale] = React.useState(false);
   const [changed, setChanged] = React.useState(false);
+  // Creating from a repository applies its manifest: the Worker asks for a fresh sign-in first.
+  const [stepUpNeeded, setStepUpNeeded] = React.useState(false);
   const created = React.useRef(false);
   const refusalRef = React.useRef<HTMLDivElement>(null);
   const resultRef = React.useRef<HTMLDivElement>(null);
@@ -293,6 +298,8 @@ export function ProductNew(): React.ReactElement {
 
   const createLinked = async () => {
     if (submitting || !check.data) return;
+    // The draft is kept in the session, so the sign-in returns to this page with it.
+    if (stepUpNeeded) return startStepUp();
     setSubmitting(true);
     setSubmitError(null);
     setChanged(false);
@@ -305,6 +312,11 @@ export function ProductNew(): React.ReactElement {
       });
       finish(res.slug);
     } catch (err) {
+      if (isStepUpRequired(err)) {
+        setSubmitting(false);
+        setStepUpNeeded(true);
+        return;
+      }
       failWith(err, "github");
     }
   };
@@ -394,9 +406,11 @@ export function ProductNew(): React.ReactElement {
           disabledReason={checkReason}
           className={wrap}
         >
-          {data?.product?.name
-            ? `Create ${data.product.name}`
-            : "Create product"}
+          {stepUpNeeded
+            ? "Sign in again"
+            : data?.product?.name
+              ? `Create ${data.product.name}`
+              : "Create product"}
         </Button>
       )
     ) : current === "name" ? (
@@ -553,6 +567,9 @@ export function ProductNew(): React.ReactElement {
           ) : null}
           {rail ? (
             <CreatesBar lines={rail.lines} summary={rail.summary} />
+          ) : null}
+          {stepUpNeeded ? (
+            <StepUpNotice why="Creating from a repository applies its manifest, which needs a sign-in from the last 5 minutes." />
           ) : null}
           {showRefusal ? (
             <div ref={refusalRef} tabIndex={-1} className="outline-none">

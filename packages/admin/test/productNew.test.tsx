@@ -9,6 +9,7 @@ import {
   slugVerdict,
   suggestSlug,
 } from "../src/console/sections/global/pages/ProductNew.js";
+import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
 import { ALL_ON, boot, productRow, resetConsole } from "./consoleHarness.js";
 
 /**
@@ -649,6 +650,40 @@ describe("New product from a repository", () => {
       manifestDigest: "digest-1",
       trustReleaseWorkflow: true,
     });
+  });
+
+  it("a create refused for want of a fresh sign-in turns Create into Sign in again and keeps the draft", async () => {
+    const redirect = vi.fn();
+    setStepUpRedirectForTests(() => redirect());
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": (q: URLSearchParams) =>
+          q.get("dryRun") === "1"
+            ? DRY
+            : json(403, {
+                error: { code: "step_up_required", message: "sign in again" },
+                code: "step_up_required",
+              }),
+      }),
+    });
+    await page();
+    await userEvent.click(
+      await within(main()).findByRole("radio", { name: /acme\/tonebox/ }),
+    );
+    await userEvent.click(next("Read acme/tonebox"));
+    await within(main()).findByLabelText("The product");
+    await userEvent.click(next("Create Tonebox"));
+    const again = await within(main()).findByRole("button", {
+      name: "Sign in again",
+    });
+    expect(within(main()).getByText("Sign in again to save")).toBeTruthy();
+    expect(window.location.hash).toMatch(/^#\/products\/new/);
+    expect(redirect).not.toHaveBeenCalled();
+    await userEvent.click(again);
+    expect(redirect).toHaveBeenCalledTimes(1);
+    // The draft is in the session, so the sign-in returns to the same entries.
+    expect(window.sessionStorage.getItem(DRAFT_KEY)).toContain("acme/tonebox");
+    setStepUpRedirectForTests();
   });
 
   it("a long name wraps inside the Create button", async () => {

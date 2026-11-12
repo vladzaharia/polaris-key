@@ -46,6 +46,7 @@ import { claimsOfScopes, lineScopes } from "../issuer/coverage.js";
 import { getClientGrant } from "../issuer/grantsRepo.js";
 import { needsFreshSignIn, requestCreatedAt } from "../issuer/reauth.js";
 import { registeredClientRecord } from "../issuer/registeredView.js";
+import { stillRegistered } from "../issuer/registration.js";
 import { issuerServed } from "../issuer/served.js";
 
 /** The profile claims an app may receive (D19); the consent list names all three. */
@@ -96,7 +97,11 @@ export async function signInRequestView(
       product.slug,
       record.authz.clientId,
     );
-    if (!stored || !(await issuerServed(db, product.slug)))
+    if (
+      !stored ||
+      !(await issuerServed(db, product.slug)) ||
+      !stillRegistered(stored, record.authz.redirectUri, record.authz.scope)
+    )
       return { status: 404 };
     client.registered = await registeredClientRecord(
       env,

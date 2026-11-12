@@ -254,16 +254,9 @@ function standardDiscovery(t: Transcript): DiscoveryDocument {
   } as unknown as DiscoveryDocument;
 }
 
-/** The issuer the Worker's discovery names for a redirect transcript: the `iss` its recorded
- *  callbacks carry (the customer host's issuer differs from the API host's), else the product's. */
+/** The issuer the Worker's discovery names for a redirect transcript: the product's, on the API
+ *  host, whichever host the recorded callbacks came back through. */
 function redirectIssuer(t: Transcript): string {
-  for (const step of t.steps) {
-    const cb = step.args.callbackUrl;
-    if (typeof cb === "string") {
-      const iss = new URL(cb).searchParams.get("iss");
-      if (iss) return iss;
-    }
-  }
   return `${t.baseUrl}/${t.product}/identity`;
 }
 

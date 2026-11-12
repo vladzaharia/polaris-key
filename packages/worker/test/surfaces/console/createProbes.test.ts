@@ -165,7 +165,14 @@ async function call(
   const { token, session } = await consoleTestSession(
     env,
     db,
-    { sub: "u1", name: "Ada", email: "a@x.io", groups },
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups,
+      stepUp: true,
+      authTime: NOW,
+    },
     NOW,
   );
   const req = new Request(`https://key.plrs.im/manage${path}`, {

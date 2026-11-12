@@ -308,8 +308,8 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             mapOf("enabled" to JsonPrimitive(true), "endpoints" to JsonObject(endpoints.mapValues { JsonPrimitive(it.value) })),
         )
         // The redirect transcripts (identity.redirect.web, identity.signin.hints) ride a product that runs Identity;
-        // the fragment names `authorize` and `token`, and the issuer the recorded callback carries (RFC 9207),
-        // else the Worker's own `<base>/identity`.
+        // the fragment names `authorize` and `token`, and the Worker's own
+        // `<base>/identity` as the issuer, whichever host the recorded callback came back through.
         // A transcript that attaches after a redirect sign-in (holders-add-to-account) also runs Licence and Config
         // and names the account endpoints beside the redirect ones.
         val account = "identity.account" in transcript.features || "identity.attach" in transcript.features
@@ -329,17 +329,7 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             } else {
                 emptyList()
             }
-            var issuer = "$base/identity"
-            for (st in transcript.steps) {
-                if (st["action"].stringValue != "redirectComplete") continue
-                val raw = st["args"]!!.obj["callbackUrl"].stringValue ?: continue
-                val iss = raw.substringAfter('?', "").substringBefore('#').split('&')
-                    .map { it.split('=', limit = 2) }.firstOrNull { it[0] == "iss" }?.getOrNull(1)
-                if (iss != null) {
-                    issuer = java.net.URLDecoder.decode(iss, "UTF-8")
-                    break
-                }
-            }
+            val issuer = "$base/identity"
             // identity.link: the exchange that leaves the handle, then the redirect sign-in, then the link (V5 section 12.11.4).
             val link = "identity.link" in transcript.features
             val identity = JsonObject(

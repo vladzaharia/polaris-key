@@ -61,6 +61,7 @@ import { platformFromFileName } from "@polaris-key/manifest";
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/console/session.js";
+import { requireStepUp } from "../../core/console/stepUp.js";
 import {
   adminJson,
   notFound as adminNotFound,
@@ -197,6 +198,12 @@ async function handleLink(
       remainingSecrets: prepared.remainingSecrets,
     });
   }
+
+  // Linking applies a whole manifest from a repository the operator names, `identity.clients` and
+  // the issuer setting included, so the apply is held to the step-up that creating a client needs.
+  // The dry run writes nothing and stays free.
+  const stale = requireStepUp(session, now);
+  if (stale) return stale;
 
   const digest =
     typeof body.manifestDigest === "string" ? body.manifestDigest : "";

@@ -635,13 +635,26 @@ export async function settle(page: Page): Promise<void> {
     // end before late layout settled, as on CI's runner: account-delete-mobile-light, whose whole
     // sheet sat 1-2 px high) moves the whole layer against the baseline. Snap it; instant, so a
     // stylesheet's `scroll-behavior: smooth` cannot leave it moving.
+    const frame = () => new Promise((r) => requestAnimationFrame(r));
+    // Opening a panel or dialog can start a smooth scroll (scrollIntoView, a focus move) that
+    // is still running when the capture fires: the sticky bar and every fixed layer then land
+    // at whatever offset the animation had reached. Wait until the offset holds over two
+    // consecutive frames (no wall clock: a slow runner just takes more frames).
+    const stable = async () => {
+      let [x, y] = [window.scrollX, window.scrollY];
+      for (let held = 0; held < 2; ) {
+        await frame();
+        const [nx, ny] = [window.scrollX, window.scrollY];
+        held = nx === x && ny === y ? held + 1 : 0;
+        [x, y] = [nx, ny];
+      }
+    };
+    await stable();
     const root = document.documentElement;
     const max = root.scrollHeight - window.innerHeight;
     if (max > 0 && max - window.scrollY > 0 && max - window.scrollY <= 4)
       window.scrollTo({ top: max, behavior: "instant" });
-    await new Promise((r) =>
-      requestAnimationFrame(() => requestAnimationFrame(r)),
-    );
+    await stable();
   });
 }
 

@@ -24,9 +24,19 @@ import {
   linkLicense,
 } from "../../../../src/services/identity/portal/repo.js";
 import { subjectFor } from "../../../../src/core/accounts/accountSubjects.js";
+import { setServices } from "../../../../src/core/products/store.js";
+import {
+  SERVICE_SLUGS,
+  serializeServices,
+  type ServicesMap,
+} from "../../../../src/core/services.js";
+import { handleSignInContinue } from "../../../../src/services/identity/passthrough/continue.js";
+import { SETTINGS } from "../../../../src/mount.js";
 import { NOW, seedLicenseWithKey, seedProduct } from "../../../seed.js";
 import { BASE, SLUG } from "../../connect/connectFixture.js";
 import { issuerSuite } from "./issuerFlow.js";
+import { redirectOf } from "../../../cardPress.js";
+import { enableIssuer } from "./issuerHelpers.js";
 import { mkClient } from "./issuerWorld.js";
 
 const ISSUER = `${BASE}/${SLUG}/identity`;
@@ -615,5 +625,143 @@ describe("resolveSubjectEntitlements (LX-01 §2.2)", () => {
       })
     ).payload;
     expect(p2["pkey:entitlements"]).toBeUndefined();
+  });
+});
+
+describe("the pairwise subject on the token path", () => {
+  const claimsOf = (jwt: string) =>
+    JSON.parse(Buffer.from(jwt.split(".")[1]!, "base64url").toString()) as {
+      sub: string;
+    };
+
+  /** A code for `client` of product `slug` through authorize and Continue, then its tokens. */
+  async function tokensFor(
+    slug: string,
+    client: { clientId: string; redirectUris: string[]; type: string },
+    secret?: string,
+  ) {
+    const p = new URLSearchParams({
+      response_type: "code",
+      client_id: client.clientId,
+      redirect_uri: client.redirectUris[0]!,
+      scope: "openid profile email",
+      state: "s",
+      ...(client.type === "web"
+        ? { nonce: "n-1" }
+        : {
+            code_challenge: s.pair.challenge,
+            code_challenge_method: "S256",
+          }),
+    });
+    const auth = await dispatchWith(
+      new Request(`${BASE}/${slug}/identity/authorize?${p}`),
+      s.w.env,
+      s.w.db,
+      NOW,
+    );
+    expect(auth.status).toBe(303);
+    const handle = /request=(rq_[A-Za-z0-9_-]{22})/.exec(
+      auth.headers.get("location")!,
+    )![1]!;
+    const res = await handleSignInContinue(
+      new Request(`${BASE}/api/x`, {
+        method: "POST",
+        headers: {
+          cookie: auth.headers.get("set-cookie")!.split(";")[0]!,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ consent: { claims: ["name", "email"] } }),
+      }),
+      s.w.env,
+      s.w.db,
+      { accountId: s.accountId },
+      handle,
+      NOW,
+      SETTINGS,
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    const code = (await redirectOf(res)).searchParams.get("code")!;
+    const form = new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: client.clientId,
+      code,
+      redirect_uri: client.redirectUris[0]!,
+      ...(client.type === "web"
+        ? { client_secret: secret! }
+        : { code_verifier: s.pair.verifier }),
+    });
+    const out = await dispatchWith(
+      new Request(`${BASE}/${slug}/identity/token`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: form.toString(),
+      }),
+      s.w.env,
+      s.w.db,
+      NOW,
+    );
+    expect(out.status).toBe(200);
+    const text = await out.text();
+    const body = JSON.parse(text) as {
+      id_token: string;
+      access_token: string;
+    };
+    const info = await dispatchWith(
+      new Request(`${BASE}/${slug}/identity/userinfo`, {
+        headers: { authorization: `Bearer ${body.access_token}` },
+      }),
+      s.w.env,
+      s.w.db,
+      NOW,
+    );
+    expect(info.status).toBe(200);
+    const infoText = await info.text();
+    return {
+      idSub: claimsOf(body.id_token).sub,
+      atSub: claimsOf(body.access_token).sub,
+      infoSub: (JSON.parse(infoText) as { sub: string }).sub,
+      bodies: [text, infoText],
+    };
+  }
+
+  it("is the account's per-product subject in every token and in userinfo, and never the account id", async () => {
+    const own = await subjectFor(s.w.db, s.accountId, SLUG, NOW);
+    expect(own).toBe(s.w.subject);
+    expect(own).not.toBe(s.accountId);
+    const viaSpa = await tokensFor(SLUG, s.spa);
+    const viaWeb = await tokensFor(SLUG, s.web, s.secret);
+    for (const t of [viaSpa, viaWeb]) {
+      expect([t.idSub, t.atSub, t.infoSub]).toEqual([own, own, own]);
+      for (const body of t.bodies) expect(body).not.toContain(s.accountId);
+    }
+
+    // The same account through a client of another product gets another subject.
+    const OTHER = "other";
+    await seedProduct(s.w.db, OTHER);
+    await setServices(
+      s.w.db,
+      OTHER,
+      serializeServices({
+        services: Object.fromEntries(
+          SERVICE_SLUGS.map((slug) => [slug, { enabled: slug === "identity" }]),
+        ) as ServicesMap,
+      }),
+      "manifest",
+      NOW,
+    );
+    await enableIssuer(s.w.db, OTHER);
+    const b = await mkClient(s.w, {
+      product: OTHER,
+      key: "other-app",
+      type: "spa",
+      redirectUris: ["https://other.example.com/cb"],
+    });
+    const viaOther = await tokensFor(OTHER, b);
+    expect(viaOther.idSub).toBe(viaOther.atSub);
+    expect(viaOther.idSub).toBe(viaOther.infoSub);
+    expect(viaOther.idSub).not.toBe(own);
+    expect(viaOther.idSub).not.toBe(s.accountId);
+    for (const body of viaOther.bodies) expect(body).not.toContain(s.accountId);
   });
 });

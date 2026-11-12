@@ -11,6 +11,7 @@ import { putClientGrant } from "../../src/services/identity/issuer/grantsRepo.js
 import { signIssuerJwt } from "../../src/services/identity/issuer/keys.js";
 import { revokeAllAccountSessions } from "../../src/services/identity/portal/accountSessions.js";
 import { PORTAL_COOKIE } from "../../src/services/identity/portal/session.js";
+import { cardPress, portalLogin, redirectOf } from "../cardPress.js";
 import { NOW, seedProduct } from "../seed.js";
 import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { BASE, SLUG, type World } from "../services/connect/connectFixture.js";
@@ -350,4 +351,64 @@ describe("prompt=none abuse (D4, IS-8)", () => {
     expect(u.hash).toBe("");
     expect(u.href).not.toContain(EVIL);
   });
+});
+
+describe("a registered client's Continue and Cancel need the session, the CSRF header and the binder", () => {
+  const begin = async () => {
+    const res = await authorize(params(victim));
+    expect(res.status).toBe(303);
+    return {
+      handle: /request=(rq_[A-Za-z0-9_-]{22})/.exec(
+        res.headers.get("location")!,
+      )![1]!,
+      binder: res.headers.get("set-cookie")!.split(";")[0]!,
+    };
+  };
+
+  for (const verb of ["continue", "cancel"] as const) {
+    it(`${verb}: each refusal leaves the request, and the right press then succeeds`, async () => {
+      const { handle, binder } = await begin();
+      const other = await begin();
+      const session = await portalLogin(w.env, w.db, accountId);
+      const body = verb === "continue" ? { consent: { claims: ["name"] } } : {};
+      const status = async (o: {
+        session?: boolean;
+        csrf?: string | null;
+        binder?: string | null;
+        site?: string;
+      }) =>
+        (
+          await cardPress(w.env, w.db, {
+            origin: BASE,
+            handle,
+            verb,
+            body,
+            ...o,
+            session: o.session === false ? undefined : session,
+          })
+        ).status;
+      expect(await status({ session: false, binder })).toBe(401);
+      expect(await status({ binder, csrf: null })).toBe(403);
+      expect(await status({ binder, csrf: "x".repeat(20) })).toBe(403);
+      expect(await status({ binder: null })).toBe(404);
+      expect(await status({ binder: other.binder })).toBe(404);
+      // Continue names the cross-site press; Cancel answers it as an unknown handle.
+      expect(await status({ binder, site: "cross-site" })).toBe(
+        verb === "continue" ? 400 : 404,
+      );
+      const to = await redirectOf(
+        await cardPress(w.env, w.db, {
+          origin: BASE,
+          handle,
+          verb,
+          body,
+          binder,
+          session,
+        }),
+      );
+      if (verb === "continue")
+        expect(to.searchParams.get("code")).not.toBeNull();
+      else expect(to.searchParams.get("error")).toBe("access_denied");
+    });
+  }
 });

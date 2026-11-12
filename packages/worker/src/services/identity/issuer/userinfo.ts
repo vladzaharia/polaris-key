@@ -189,6 +189,9 @@ export async function handleUserinfo(
     return invalidToken();
   const grant = await getClientGrant(db, slug, row.id, client.clientId);
   if (!grant) return invalidToken();
+  // A token minted before the grant it now meets (a Disconnect, then a new grant) is refused.
+  if (typeof claims.iat !== "number" || claims.iat < grant.grantedAt)
+    return invalidToken();
 
   const granted = new Set(claimsForCode(grant, scopes));
   const body: UserInfoResponse = {

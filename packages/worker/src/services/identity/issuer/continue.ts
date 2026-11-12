@@ -42,7 +42,7 @@ import {
   takeSignInRequest,
   type SignInRequestRecord,
 } from "../passthrough/request.js";
-import { issuerOf } from "../passthrough/authorize.js";
+import { issuerFor } from "../passthrough/authorize.js";
 import { consentScope } from "../passthrough/routes.js";
 import { termsGate } from "../productTerms.js";
 import { getActiveClient } from "./clientsRepo.js";
@@ -85,7 +85,7 @@ function redirectTo(
     redirect: withQuery(authz.redirectUri, {
       ...members,
       ...(authz.state !== null ? { state: authz.state } : {}),
-      iss: issuerOf(cx.req, { slug: cx.record.product }),
+      iss: issuerFor(cx.req, authz, { slug: cx.record.product }),
     }),
   });
 }
