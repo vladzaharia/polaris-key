@@ -1499,7 +1499,7 @@ Mockups: [web](ui-kits/shots/web-settings-light.png),
   state. A window that ends or is withdrawn opens its next one on the view the person last chose, and
   Cancel forgets the choice.
 - **Expired.** A window that runs out keeps the open view on screen: the QR view keeps the card,
-  dimmed, its dark modules faded toward the paper so the dead code does not scan, and the orbit
+  dimmed, its dark modules blurred and faded so the dead code does not scan, and the orbit
   slowed to a stop (one still frame, no animation); the code view keeps the digits, muted. The
   title becomes "Code expired" (`core.codes.sign-in-expired.title`) and says it once: no
   instruction line, no time row, no switch link; a screen reader hears "The code expired." once.
@@ -1656,6 +1656,13 @@ port checks itself against it. Particle positions are decorative (they depend on
   `#b0ccff`, and white; the Polaris violet when there is no product accent. The centre carries the
   product's mark when one is given, the Polaris star otherwise. The ink and the paper never change:
   the code stays dark on light whatever the accent.
+- **An expired code must not scan.** On expiry: blur >= 1.5 module widths + ink <= 15 % of the paper
+  contrast + dim, all over the same second, drawn on the card itself so the stage behind it does
+  not matter, in both themes. A fade alone is not enough: a phone's decoder reads a faint, sharp
+  code that jsQR misses. Every kit's port proves it with a platform-grade decoder (Apple Vision,
+  ML Kit or Chromium's `BarcodeDetector`) on the live card (reads) and the expired card (reads
+  nothing, also with the card's own levels stretched to the full range as auto-exposure does), and
+  keeps a weaker decoder as a second check.
 - **Idle.** After the 10 s idle drop the ambient light thins to half its particles.
 - **States.**
   - **New code:** the card breaks back into light (0.45 s) and re-condenses.
@@ -1689,7 +1696,7 @@ its stage's side over 440. Seconds unless noted.
 | Landing order        | `at = start + 0.15 + 0.55 d + 0.1 r`; `d` is the cell's distance to the centre, 0 to 1                                              |
 | New code             | break 0.45, then re-condense with 0.6 of the forming curve already elapsed                                                          |
 | Connected            | vortex 0.85, check forms over 0.9, card dissolves over 0.4, done at 1.75                                                            |
-| Expired              | orbit 1 to 0.25 over 1.2, dim 1 to 0.35 and ink 1 to 0.15 over 1                                                                    |
+| Expired              | orbit 1 to 0.25 over 1.2, dim 1 to 0.35 , ink 1 to 0.15 and blur 0 to 1.5 modules over 1                                            |
 | Orbit (swirl) factor | 1 normal, 2.2 in the vortex, 0.6 after a connect, 0.25 expired                                                                      |
 | Margin               | card plus 1.5 cells; wisps fade over 12 units                                                                                       |
 | Idle drop            | after 10 s of waiting, 30 fps (60 otherwise); an expired card settles to one still frame                                            |

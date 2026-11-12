@@ -246,44 +246,106 @@ describe("the level Q encoder", () => {
 const SLUG =
   "PKP1:driftkart-mobile-companion-beta-channel:P1-ABCDEFGHIJKLMNOP:7KQ2M5TXNRB4WV3Y";
 
-describe("an expired card", () => {
-  it("no longer decodes once it has dimmed, and the live frame still does", async () => {
-    useClock();
-    clock.t = 0;
-    const live = await mount();
-    clock.t = 3;
-    for (let i = 0; i < 120 && paints.at(-1)?.phase !== "ready"; i++)
-      await frame();
-    await frames(2);
-    expect(decode(live)).toBe(PAYLOAD);
-    root?.unmount();
-    host?.remove();
+/** The platform's own decoder (Apple Vision on macOS): the bar a phone's camera sets. */
+async function platformDecode(canvas: HTMLCanvasElement): Promise<string[]> {
+  const Detector = (
+    globalThis as unknown as {
+      BarcodeDetector?: new (o: { formats: string[] }) => {
+        detect(s: CanvasImageSource): Promise<{ rawValue: string }[]>;
+      };
+    }
+  ).BarcodeDetector;
+  expect(Detector, "a platform QR decoder (BarcodeDetector)").toBeDefined();
+  const found = await new Detector!({ formats: ["qr_code"] }).detect(canvas);
+  return found.map((f) => f.rawValue);
+}
 
-    paints = [];
-    clock.t = 0;
-    host = document.body.appendChild(document.createElement("div"));
-    root = createRoot(host);
-    root.render(
-      <Kit.LocalPairing
-        input={expiredInput()}
-        fill
-        theme={{ colorScheme: "dark" }}
-      />,
+/** What auto-exposure does to a faint code: the card's own levels stretched to the full range. */
+function stretched(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const w = canvas.width;
+  const ctx0 = canvas.getContext("2d")!;
+  const luma = (d: Uint8ClampedArray, i: number): number =>
+    (d[i]! + d[i + 1]! + d[i + 2]!) / 3;
+  // The levels come from the paper alone (inside the card), the crop is the card and its margin.
+  const inner = Math.round(w * 0.3);
+  const core = ctx0.getImageData(inner, inner, w - 2 * inner, w - 2 * inner);
+  let lo = 255;
+  let hi = 0;
+  for (let i = 0; i < core.data.length; i += 4) {
+    lo = Math.min(lo, luma(core.data, i));
+    hi = Math.max(hi, luma(core.data, i));
+  }
+  const inset = Math.round(w * 0.22);
+  const side = w - 2 * inset;
+  const src = ctx0.getImageData(inset, inset, side, side);
+  const out = document.createElement("canvas");
+  out.width = out.height = side;
+  const ctx = out.getContext("2d")!;
+  const dst = ctx.createImageData(side, side);
+  for (let i = 0; i < src.data.length; i += 4) {
+    const v = Math.max(
+      0,
+      Math.min(255, ((luma(src.data, i) - lo) / Math.max(1, hi - lo)) * 255),
     );
-    let canvas: HTMLCanvasElement | null = null;
-    for (let i = 0; i < 400 && !canvas; i++) {
-      await frame();
-      canvas = host.querySelector("figure[data-lightcard] canvas");
-    }
-    await frames(3);
-    // Over the same second the card dims, the dark modules fade toward the paper.
-    for (let i = 0; i < 240; i++) {
-      clock.t += 1 / 60;
-      await frame();
-    }
-    expect(paints.at(-1)?.phase).toBe("expired");
-    expect(decode(canvas!)).toBeNull();
-  });
+    dst.data[i] = dst.data[i + 1] = dst.data[i + 2] = v;
+    dst.data[i + 3] = 255;
+  }
+  ctx.putImageData(dst, 0, 0);
+  return out;
+}
+
+describe("an expired card", () => {
+  for (const [width, height] of [
+    [390, 844],
+    [1440, 900],
+  ] as const)
+    for (const scheme of ["dark", "light"] as const)
+      it(`${width}x${height} ${scheme}: the live card decodes and the expired card does not, in the platform's decoder and jsQR`, async () => {
+        await page.viewport(width, height);
+        useClock();
+        clock.t = 0;
+        const live = await mount({ colorScheme: scheme });
+        clock.t = 3;
+        for (let i = 0; i < 120 && paints.at(-1)?.phase !== "ready"; i++)
+          await frame();
+        await frames(2);
+        expect(decode(live)).toBe(PAYLOAD);
+        expect(await platformDecode(live)).toEqual([PAYLOAD]);
+        root?.unmount();
+        host?.remove();
+
+        paints = [];
+        clock.t = 0;
+        host = document.body.appendChild(document.createElement("div"));
+        root = createRoot(host);
+        root.render(
+          <Kit.LocalPairing
+            input={expiredInput()}
+            fill
+            theme={{ colorScheme: scheme }}
+          />,
+        );
+        let canvas: HTMLCanvasElement | null = null;
+        for (let i = 0; i < 400 && !canvas; i++) {
+          await frame();
+          canvas = host.querySelector("figure[data-lightcard] canvas");
+        }
+        await frames(3);
+        // Over the same second the card dims, the dark modules fade and blur.
+        for (let i = 0; i < 240; i++) {
+          clock.t += 1 / 60;
+          await frame();
+        }
+        expect(paints.at(-1)?.phase).toBe("expired");
+        expect(decode(canvas!)).toBeNull();
+        expect(await platformDecode(canvas!)).toEqual([]);
+        // Even with the card's levels stretched to the full range, as a camera's exposure would.
+        const levels = stretched(canvas!);
+        expect(await platformDecode(levels)).toEqual([]);
+        const lctx = levels.getContext("2d")!;
+        const px = lctx.getImageData(0, 0, levels.width, levels.height);
+        expect(jsQR(px.data, px.width, px.height)).toBeNull();
+      });
 });
 
 describe("size and look", () => {

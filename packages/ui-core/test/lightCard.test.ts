@@ -48,6 +48,7 @@ const ENVELOPE_KEYS = [
   "orbit",
   "dim",
   "ink",
+  "blur",
   "check",
   "flare",
   "ambient",
@@ -291,6 +292,10 @@ describe("size, colours and a view that comes back", () => {
   it("fades the dark modules toward the paper while the code expires", () => {
     const tl = dispatchTimeline(createTimeline(0), "expired", 5);
     const at = (t: number) => envelopeAt(tl, t).ink;
+    const blur = (t: number) => envelopeAt(tl, t).blur;
+    expect(blur(5)).toBe(0);
+    expect(blur(6)).toBe(LIGHT_CARD.blurExpired);
+    expect(LIGHT_CARD.blurExpired).toBeGreaterThanOrEqual(1.5);
     expect(at(5)).toBe(1);
     expect(at(5.5)).toBeLessThan(1);
     expect(at(6)).toBeCloseTo(LIGHT_CARD.inkExpired, 9);
@@ -299,6 +304,7 @@ describe("size, colours and a view that comes back", () => {
     const again = dispatchTimeline(tl, "newCode", 9);
     expect(envelopeAt(again, 9).ink).toBeCloseTo(LIGHT_CARD.inkExpired, 9);
     expect(envelopeAt(again, 9.45).ink).toBe(1);
+    expect(envelopeAt(again, 9.45).blur).toBe(0);
   });
 
   it("takes the product's accent for the glow and leaves violet the default", () => {
