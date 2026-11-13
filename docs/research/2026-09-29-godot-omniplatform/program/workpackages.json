@@ -19992,7 +19992,7 @@
     },
     {
       "id": "CC-29S",
-      "title": "Local links security sign-off (LP1-LP3) and cryptographer part P5",
+      "title": "Local links security sign-off and cryptographer part P5",
       "phase": "CC",
       "stage": "v0.11",
       "lane": "worker",

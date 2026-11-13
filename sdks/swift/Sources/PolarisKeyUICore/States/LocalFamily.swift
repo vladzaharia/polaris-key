@@ -22,7 +22,7 @@ public let kitMaxConnectable = 8
 public let kitMaxPaired = 32
 /// The longest name a person may give a paired device.
 public let kitMaxDeviceName = 64
-/// Seconds a new code waits after Too many tries (LP1 F9).
+/// Seconds a new code waits after Too many tries.
 public let kitCooldownSeconds = 30
 
 public enum LocalPairingState: String, KitStateID {

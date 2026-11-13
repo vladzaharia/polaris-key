@@ -1,4 +1,4 @@
-# CC-29S Local links security sign-off (LP1-LP3) and cryptographer part P5
+# CC-29S Local links security sign-off and cryptographer part P5
 
 | Field       | Value                                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -28,7 +28,7 @@ Write-ups are kept out of the public repository until released. Findings are fix
 
 ## Acceptance criteria
 
-- [ ] LP1-LP3 are closed and the cryptographer's P5 verdict is recorded; the gate column is set.
+- [ ] The local links security passes are closed and the cryptographer's P5 verdict is recorded; the gate column is set.
 
 ## Hand-off
 

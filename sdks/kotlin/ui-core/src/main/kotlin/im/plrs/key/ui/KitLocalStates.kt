@@ -27,7 +27,7 @@ public object KitLocal {
     /** The longest name a person may give a paired device. */
     public const val MAX_NAME: Int = 64
 
-    /** Seconds a new code waits after Too many tries (LP1 F9). */
+    /** Seconds a new code waits after Too many tries. */
     public const val COOLDOWN_SECONDS: Int = 30
 
     private const val SECONDS_PER_MINUTE: Int = 60
