@@ -15,13 +15,13 @@
     "lint": "prettier --check \"src/**/*.{ts,js}\" \"test/**/*.ts\" \"e2e/**/*.ts\" \"bin/**/*.mjs\" \"rules/**/*.json\""
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
+    "@types/node": "^26.6.6",
     "@types/pngjs": "^6.0.5",
-    "playwright": "1.63.0",
+    "playwright": "1.64.1",
     "pngjs": "7.0.0",
-    "prettier": "^3.5.0",
-    "tsx": "^4.19.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.0",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.5"
   }
 }
