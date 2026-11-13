@@ -137,7 +137,7 @@
     "@types/node": "^22.20.5",
     "express": "^5.1.0",
     "fastify": "^5.2.0",
-    "hono": "^4.7.0",
+    "hono": "^4.13.16",
     "koa": "^3.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.0"
