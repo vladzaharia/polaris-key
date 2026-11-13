@@ -36,17 +36,17 @@
     "ui:report": "pnpm --filter @polaris-key/ui-qa exec tsx src/cli/report.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "husky": "^9.1.7",
-    "jscpd": "5.4.0",
-    "knip": "6.41.0",
-    "prettier": "^3.5.0",
-    "tsup": "^8.4.0",
-    "tsx": "^4.19.0",
-    "turbo": "^2.5.0",
+    "jscpd": "5.4.2",
+    "knip": "6.44.0",
+    "prettier": "^3.9.10",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "turbo": "^2.11.10",
     "typescript": "^5.8.0",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.5"
   }
 }
