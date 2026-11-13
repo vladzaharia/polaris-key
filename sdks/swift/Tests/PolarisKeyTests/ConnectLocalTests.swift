@@ -145,6 +145,23 @@ import XCTest
         XCTFail("timed out waiting for \(what)")
     }
 
+    /// The next message of `s`, or a failure that names `what` when none comes: a lost message fails the test, never idles it.
+    private func receive(_ s: ConnectSession, _ what: String, seconds: UInt64 = 30) async throws -> ConnectMessage {
+        try await withThrowingTaskGroup(of: ConnectMessage?.self) { group in
+            group.addTask { try await s.receive() }
+            group.addTask {
+                try await Task.sleep(nanoseconds: seconds * 1_000_000_000)
+                return nil
+            }
+            defer { group.cancelAll() }
+            guard let first = try await group.next(), let m = first else {
+                struct NoMessage: Error, CustomStringConvertible { let description: String }
+                throw NoMessage(description: "no message arrived for \(what) within \(seconds) s")
+            }
+            return m
+        }
+    }
+
     /// One device: a client with no account (no token), memory-only keys and links.
     private struct Device {
         let client: PolarisKeyClient
@@ -284,7 +301,8 @@ import XCTest
             XCTAssertEqual(listB.first?.platform, pairingPlatformName)
             XCTAssertTrue(PLATFORM_VALUES.contains(pairingPlatformName))
             await until("the window closes after a link") { !handle.isOpen }
-            XCTAssertEqual(dir.count(mode: "q"), 0)
+            // The window is marked closed first; the advert is withdrawn after it.
+            await until("the pairing advert is withdrawn") { dir.count(mode: "q") == 0 }
             return (listA[0].id, listB[0].id)
         }
 
@@ -414,9 +432,10 @@ import XCTest
                             allowLoopback: true))
                 } catch {}
             }
-            await until("the fifth failure closes the window") { !handle.isOpen }
+            // The window is marked closed first; the host hears of the failure and the advert goes after it.
+            await until("the fifth failure closes the window") { !handle.isOpen && failed.current != nil }
             XCTAssertEqual(failed.current?.reason, .tooManyTries)
-            XCTAssertEqual(dir.count(mode: "q"), 0)
+            await until("the pairing advert is withdrawn") { dir.count(mode: "q") == 0 }
         }
 
         func testTheDialBudgetSpansJoinsForOneCode() async throws {
@@ -518,7 +537,7 @@ import XCTest
             let dir = Directory()
             let (a, b) = (try await Device.make(), try await Device.make())
             let (idA, idB) = try await pairDevices(a, b, dir)
-            let inbound = LockedValue<ConnectSession?>(nil)
+            let inbound = Latest<ConnectSession>()
             b.local.onLink { inbound.set($0) }
             try await a.start(dir)
             try await b.start(dir)
@@ -527,8 +546,14 @@ import XCTest
             // `m=l`, TXT exactly `v=1`, `m=l`; a name per reachable link.
             XCTAssertEqual(dir.count(mode: "l"), 2)
             for t in dir.txts() where t.contains("m=l") { XCTAssertEqual(Set(t), ["v=1", "m=l"]) }
-            await until("A finds B") { await (try? a.local.open(idA)) != nil }
-            let s = try await a.local.open(idA)
+            // Every open is a session B is called for, so the one that finds B is the one the test keeps.
+            let opened = Latest<ConnectSession>()
+            await until("A finds B") {
+                if opened.current != nil { return true }
+                if let s = try? await a.local.open(idA) { opened.set(s) }
+                return opened.current != nil
+            }
+            let s = try XCTUnwrap(opened.current)
             XCTAssertEqual(s.local?.id, idA)
             XCTAssertEqual(s.local?.label, "Ben's Phone")
             XCTAssertEqual(s.local?.categories, cats)
@@ -537,12 +562,11 @@ import XCTest
             let r = try XCTUnwrap(inbound.current)
             XCTAssertEqual(r.local?.id, idB)
             XCTAssertEqual(r.local?.label, "Anna's Mac")
-            // A second open while it runs is a second session, but a simultaneous call joins the first dial.
             try await s.send(Data("ping".utf8))
-            let m = try await r.receive()
+            let m = try await receive(r, "ping on B")
             XCTAssertEqual(m.body, Data("ping".utf8))
             try await r.send(Data("pong".utf8))
-            let back = try await s.receive()
+            let back = try await receive(s, "pong on A")
             XCTAssertEqual(back.body, Data("pong".utf8))
             await until("last seen is written") { (try? await a.local.list().first?.lastSeen) != nil }
             let seen = try await a.local.list().first?.lastSeen
@@ -1366,7 +1390,7 @@ import XCTest
             await until("the renewal is answered") { renewed.current != nil }
             XCTAssertEqual(renewed.current, "cooldown")
             XCTAssertFalse(handle.isOpen)
-            XCTAssertEqual(dir.count(mode: "q"), 0)
+            await until("the pairing advert is withdrawn") { dir.count(mode: "q") == 0 }
         }
 
         func testFiveWrongGuessesEndTheWindowAndStartTheCooldown() async throws {

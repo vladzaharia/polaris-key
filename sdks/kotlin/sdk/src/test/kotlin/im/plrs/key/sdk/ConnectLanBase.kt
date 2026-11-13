@@ -108,6 +108,14 @@ abstract class ConnectLanBase {
         fun names(): List<String> = synchronized(adverts) { adverts.keys.toList() }
     }
 
+    /** What NsdManager does: a name the browse does not accept when it appears is dropped, and a new browse hears every service again. */
+    internal class NsdLike(private val inner: Network) : MdnsAdapter {
+        override suspend fun advertise(advert: MdnsAdvert): MdnsHandle = inner.advertise(advert)
+
+        override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle =
+            inner.browse({ f -> if (accept(f.instance)) onUp(f) }, onDown, accept)
+    }
+
     // -- devices and sources --------------------------------------------------------------------
 
     internal class Device(val id: String, val port: DeviceKeyPort, val signKey: String, val agreeKey: String)
