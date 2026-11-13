@@ -150,7 +150,7 @@ jobs:
         run: pnpm audit --prod --audit-level high
       # The docs snippet lane (packages/docs/test/snippets) compiles every Python code block on a
       # covered docs page against the SDK with mypy, so it needs the SDK's own venv (with the Qt kit).
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Python venv for the docs snippet lane
@@ -283,7 +283,7 @@ jobs:
       - uses: ./.github/actions/setup-js
       # The docs snippet lane (packages/docs/test/snippets) compiles every Python code block on a
       # covered docs page against the SDK with mypy, so it needs the SDK's own venv (with the Qt kit).
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Python venv for the docs snippet lane
@@ -763,7 +763,7 @@ jobs:
       matrix: ${{ fromJSON(needs.changes.outputs.python-matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
       # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the qt source rules of
@@ -887,7 +887,7 @@ jobs:
       - name: Stop pkey dev (Node leg)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang node
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Python venv (the SDK, FastAPI, Flask, uvicorn)
@@ -926,7 +926,7 @@ jobs:
           install: "false"
       - run: pnpm install --frozen-lockfile --filter=@polaris-key/node...
       - run: pnpm exec turbo run build --filter=@polaris-key/node...
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Python venv (the SDK)
@@ -940,7 +940,7 @@ jobs:
           distribution: temurin
           java-version: "17"
       # The same Gradle cache policy as the kotlin job: only next writes it.
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/next' }}
           cache-cleanup: on-success
@@ -976,7 +976,7 @@ jobs:
           install: "false"
       - run: pnpm install --frozen-lockfile --filter=@polaris-key/node...
       - run: pnpm exec turbo run build --filter=@polaris-key/node...
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Python venv (the SDK)
@@ -1339,7 +1339,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: true
       - name: Android SDK packages
@@ -1373,7 +1373,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Gradle wrapper validation
-        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
@@ -1381,7 +1381,7 @@ jobs:
       # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
       # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
       # and overflowed the repo's 10 GB cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/next' }}
           cache-cleanup: on-success
@@ -1474,7 +1474,7 @@ jobs:
       # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
       # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
       # and overflowed the repo's 10 GB cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: true
       - name: Secret Service (gnome-keyring) for the headless session
@@ -1573,7 +1573,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Gradle wrapper validation
-        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
@@ -1581,7 +1581,7 @@ jobs:
       # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
       # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
       # and overflowed the repo's 10 GB cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/next' }}
           cache-cleanup: on-success
@@ -1675,7 +1675,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Gradle wrapper validation
-        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
@@ -1683,7 +1683,7 @@ jobs:
       # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
       # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
       # and overflowed the repo's 10 GB cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: true
       - name: Android SDK packages
@@ -1702,7 +1702,7 @@ jobs:
         run: ./gradlew --no-daemon -p samples/android-consumer assembleDebug assembleRelease assembleLeanDebugAndroidTest
       - name: Gradle 9.7.1 for the latest toolchain
         if: matrix.toolchain == 'latest'
-        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           gradle-version: "9.7.1"
           cache-disabled: true
@@ -1740,7 +1740,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Gradle wrapper validation
-        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
@@ -1748,7 +1748,7 @@ jobs:
       # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
       # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
       # and overflowed the repo's 10 GB cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: true
       - name: KVM for the emulator
