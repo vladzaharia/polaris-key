@@ -225,7 +225,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: env.PICKED == 'true'
       # No `version:` here: the action reads `packageManager` from package.json.
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: env.PICKED == 'true'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: env.PICKED == 'true'
@@ -251,7 +251,7 @@ jobs:
         if: env.PICKED == 'true'
       # F-09: GodotEnv is a .NET tool; the godot client fails rather than skips without it here.
       - if: env.PICKED == 'true' && matrix.client == 'godot'
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: "8.0.x"
       - if: env.PICKED == 'true' && matrix.client == 'godot'
