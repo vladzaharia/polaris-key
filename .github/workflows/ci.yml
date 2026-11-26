@@ -69,8 +69,9 @@ jobs:
       full: ${{ steps.scope.outputs.full }}
       # "true" only for a push to main, a tag and a dispatch: every lane on the full matrices.
       full-run: ${{ steps.scope.outputs.full-run }}
-      # The js group's green base when only packages/ changed since it, else empty: the test jobs
-      # then run turbo for the affected packages only (tools/ci-js-affected.mjs).
+      # The base the JS test jobs narrow against, else empty: a pull request's merge base, or on a
+      # push to `next` the js group's green base, only when every file changed since it is under
+      # packages/. The jobs then run turbo for the affected packages only (tools/ci-js-affected.mjs).
       js-base: ${{ steps.scope.outputs.js-base }}
       # One per lane and matrix of tools/ci-scope.json (tools/ci-scope.test.ts checks the list).
       workerd: ${{ steps.scope.outputs.workerd }}
@@ -320,13 +321,15 @@ jobs:
       # below, each on the toolchain it needs; this job runs the TypeScript and Python lanes.
       # Every package except the Worker, the admin SPA and conformance-browser (its own job: it needs
       # a Playwright browser): the three filters of the three jobs partition the old `pnpm test`.
-      # With a js base (see js-worker) only the packages `...[base]` selects, and their dependents,
-      # run: turbo's `--filter=...[sha]` includes them and the three `!` filters take the other
-      # jobs' packages out. Without a base the three `!` filters alone select everything else.
-      - run: >-
-          tools/ci-measure.sh "js-rest tests" pnpm exec turbo run test ${JS_BASE:+"--filter=...[$JS_BASE]"}
-          --filter=!@polaris-key/worker --filter=!@polaris-key/admin
-          --filter=!@polaris-key/conformance-browser
+      # With a js base (see js-worker) only the packages `...[base]` selects, their dependents, and
+      # the packages that read one of them from disk (EXTRA_INPUTS) run: tools/ci-js-affected.mjs
+      # --filters names them and the three `!` filters take the other jobs' packages out. Without a
+      # base the three `!` filters alone select everything else.
+      - run: |
+          read -ra SELECT <<< "$(node tools/ci-js-affected.mjs --filters)"
+          tools/ci-measure.sh "js-rest tests" pnpm exec turbo run test "${SELECT[@]}" \
+            --filter=!@polaris-key/worker --filter=!@polaris-key/admin \
+            --filter=!@polaris-key/conformance-browser
         env:
           PKEY_DOCS_SKIP_LANES: swift,kotlin,gdscript
           JS_BASE: ${{ needs.changes.outputs.js-base }}

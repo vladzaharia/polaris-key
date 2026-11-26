@@ -144,7 +144,7 @@ const baseGroup = (scope, lane) =>
 
 /**
  * The `changes` job's outputs: lane flags, `full`, `js-base` and one JSON matrix per matrix.
- * A pull request with known `files` narrows to their lanes and the pull-request matrices; its
+ * A pull request with known, non-empty `files` narrows to their lanes and the pull-request matrices; its
  * `js-base` is `prBase` (the pull request's merge base) when every changed file is under
  * `packages/`, else empty. A push to `next` (`ref` is refs/heads/next) with `push` (`{ bases, files }`:
  * each tracked group's green base and the files changed since it, null when unknown) narrows each
@@ -159,7 +159,8 @@ const baseGroup = (scope, lane) =>
  */
 export function ciOutputs(scope, { event, ref, files, push, prBase }) {
   const lanes = Object.keys(scope.lanes);
-  const pr = event === "pull_request" && files !== null && files !== undefined;
+  // No changed files at all is not a change set a pull request has: it means the diff was misread.
+  const pr = event === "pull_request" && !!files && files.length > 0;
   const nextPush = event === "push" && ref === NEXT_REF;
   const next = nextPush && !!push && Object.values(push.bases).some(Boolean);
   const on = pr
@@ -317,8 +318,7 @@ function main(argv) {
       } catch {
         prBase = null;
       }
-    }
-    else if (event === "push" && ref === NEXT_REF) {
+    } else if (event === "push" && ref === NEXT_REF) {
       const repo = arg(rest, "--repo") ?? process.env.GITHUB_REPOSITORY;
       const bases = repo ? greenBasesOf({ scope, repo, head }) : null;
       if (bases) {

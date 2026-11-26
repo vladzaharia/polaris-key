@@ -6,3 +6,11 @@ export declare function affected(
   run?: (args: string[]) => string,
 ): boolean;
 export declare const EXTRA_INPUTS: Record<string, string[]>;
+export declare function selectedPackages(
+  base: string,
+  run?: (args: string[]) => string,
+): Set<string>;
+export declare function filters(
+  base: string | undefined,
+  run?: (args: string[]) => string,
+): string[];

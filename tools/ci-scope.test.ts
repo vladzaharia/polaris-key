@@ -19,11 +19,16 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
-import { affected, EXTRA_INPUTS, packagesOf } from "./ci-js-affected.mjs";
+import {
+  affected,
+  EXTRA_INPUTS,
+  filters,
+  packagesOf,
+} from "./ci-js-affected.mjs";
 import {
   changedFiles,
   ciOutputs,
@@ -545,6 +550,31 @@ describe("the ci-scope command", () => {
     },
   );
 
+  it("runs every lane, with no js base, when the merge base cannot be computed", () => {
+    const r = repo({ "packages/a/x.ts": "export {};\n" });
+    // A branch with its own history: `main...other` has no merge base.
+    r.git("checkout", "-q", "--orphan", "other");
+    r.write("packages/a/y.ts", "export {};\n");
+    r.git("add", "-A");
+    r.git("commit", "-q", "-m", "other");
+    const run = cli(
+      r.dir,
+      "ci",
+      "--event",
+      "pull_request",
+      "--base",
+      "main",
+      "--head",
+      "other",
+    );
+    expect(run.status, run.stderr).toBe(0);
+    const out = outputsOf(run.stdout);
+    expect(out["js-base"]).toBe("");
+    expect(out.full).toBe("true");
+    expect(out.python).toBe("true");
+    expectFullMatrices(out);
+  });
+
   it("touches: exits 0 for a lane the change needs, 1 for one it can skip, 0 when git cannot say", () => {
     const r = repo({ [swift]: "struct CoreContext {}\n" });
     r.move(swift, moved);
@@ -980,6 +1010,33 @@ describe("a push to next narrows each lane to the files since its own base", () 
     expect(pr(["packages/a/b.ts"], "M")).toBe("M");
     expect(pr(["packages/a/b.ts", "sdks/python/a.py"], "M")).toBe("");
     expect(pr(["packages/a/b.ts"])).toBe("");
+    // A failed merge-base computation (null), and no changed files at all, hand turbo nothing.
+    expect(pr(["packages/a/b.ts"], null as unknown as string)).toBe("");
+    expect(pr([], "M")).toBe("");
+  });
+
+  it("runs everything for a pull request with no changed files, even with a base", () => {
+    const out = ciOutputs(scope, {
+      event: "pull_request",
+      files: [],
+      prBase: "M",
+    });
+    expect(out).toEqual(ciOutputs(scope, { event: "push", files: null }));
+    expect(out["js-base"]).toBe("");
+    expect(out.full).toBe("true");
+    expectFullMatrices(out);
+  });
+
+  it("runs everything for a pull request whose files are unknown, even with a base", () => {
+    const out = ciOutputs(scope, {
+      event: "pull_request",
+      files: null,
+      prBase: "M",
+    });
+    expect(out).toEqual(ciOutputs(scope, { event: "push", files: null }));
+    expect(out["js-base"]).toBe("");
+    expect(out.full).toBe("true");
+    expectFullMatrices(out);
   });
 
   it("reads the bases through git and the API, HEAD excluded, newest runs only", () => {
@@ -1153,7 +1210,8 @@ describe("the JS test jobs narrow with the js base", () => {
     const step = ci.jobs["js-rest"]!.steps!.find((st) =>
       st.run?.includes("turbo run test"),
     )!;
-    expect(step.run).toContain('${JS_BASE:+"--filter=...[$JS_BASE]"}');
+    expect(step.run).toContain("tools/ci-js-affected.mjs --filters");
+    expect(step.run).toContain('"${SELECT[@]}"');
     for (const p of ["worker", "admin", "conformance-browser"])
       expect(step.run).toContain(`--filter=!@polaris-key/${p}`);
   });
@@ -1185,39 +1243,126 @@ describe("the JS test jobs narrow with the js base", () => {
     expect(affected("@polaris-key/worker", "abc", () => "not json")).toBe(true);
   });
 
-  it("selects the Worker when docs, admin or elements changed: its tests read their files", () => {
+  it("selects a package when a package its tests read changed", () => {
     const only = (pkg: string) => () => `{"tasks":[{"package":"${pkg}"}]}`;
-    for (const pkg of ["docs", "admin", "elements"])
+    for (const pkg of ["docs", "admin"])
       expect(
         affected("@polaris-key/worker", "abc", only(`@polaris-key/${pkg}`)),
         pkg,
       ).toBe(true);
+    // The Worker's tests read the listing profiles; admin's and the CLI's read the Worker's source.
+    for (const reader of ["admin", "cli"])
+      expect(
+        affected(`@polaris-key/${reader}`, "abc", only("@polaris-key/worker")),
+        reader,
+      ).toBe(true);
+    // The docs tests read the admin SPA's and the CLI's sources.
+    for (const read of ["admin", "cli"])
+      expect(
+        affected("@polaris-key/docs", "abc", only(`@polaris-key/${read}`)),
+        read,
+      ).toBe(true);
     expect(
       affected("@polaris-key/worker", "abc", only("@polaris-key/node")),
     ).toBe(false);
-    // Only the Worker has undeclared inputs; the admin SPA's own tests do not read the docs build.
-    expect(
-      affected("@polaris-key/admin", "abc", only("@polaris-key/docs")),
-    ).toBe(false);
-    expect(Object.keys(EXTRA_INPUTS)).toEqual(["@polaris-key/worker"]);
   });
 
-  it("lists every sibling package the Worker's tests open by relative path", () => {
-    const tests = (dir: string): string[] =>
-      readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
-        e.isDirectory() ? tests(join(dir, e.name)) : [join(dir, e.name)],
-      );
-    const sibling =
-      /["']\.\.["'], ["']\.\.["'], ["'](docs|admin|elements|cli|ui-core|sdk-[a-z]+|server|ui-qa)["']/;
-    const found = new Set<string>();
-    for (const f of tests(join(ROOT, "packages", "worker", "test")))
-      if (/\.(ts|tsx)$/.test(f))
-        for (const m of readFileSync(f, "utf8").matchAll(
-          new RegExp(sibling, "g"),
-        ))
-          found.add(`@polaris-key/${m[1]}`);
-    for (const pkg of found)
-      expect(EXTRA_INPUTS["@polaris-key/worker"], pkg).toContain(pkg);
+  it("hands js-rest the same selection as turbo filters: the readers too, nothing when it cannot say", () => {
+    const run = () => '{"tasks":[{"package":"@polaris-key/worker"}]}';
+    expect(filters("abc", run)).toEqual([
+      "--filter=@polaris-key/admin",
+      "--filter=@polaris-key/cli",
+      "--filter=@polaris-key/docs",
+      "--filter=@polaris-key/worker",
+    ]);
+    expect(filters("abc", () => '{"tasks":[]}')).toEqual(["--filter=...[abc]"]);
+    expect(filters(undefined, run)).toEqual([]);
+    expect(filters("abc", () => "not json")).toEqual([]);
+  });
+
+  it("covers every package that reads another package's files without depending on it", () => {
+    const pkgs = join(ROOT, "packages");
+    const meta = new Map<string, { name: string; deps: string[] }>();
+    for (const e of readdirSync(pkgs, { withFileTypes: true })) {
+      const file = join(pkgs, e.name, "package.json");
+      if (!e.isDirectory() || !existsSync(file)) continue;
+      const j = JSON.parse(readFileSync(file, "utf8")) as Record<
+        string,
+        Record<string, string> | string
+      >;
+      meta.set(e.name, {
+        name: j.name as string,
+        deps: ["dependencies", "devDependencies", "peerDependencies"].flatMap(
+          (k) => Object.keys((j[k] as Record<string, string>) ?? {}),
+        ),
+      });
+    }
+    const dirOf = new Map([...meta].map(([d, m]) => [m.name, d]));
+    // What turbo's `...[base]` reaches from a package's own side: its declared packages, transitively.
+    const reach = (dir: string, seen = new Set<string>()): Set<string> => {
+      for (const n of meta.get(dir)!.deps) {
+        const d = dirOf.get(n);
+        if (d && !seen.has(d)) reach(d, seen.add(d));
+      }
+      return seen;
+    };
+    const files = (dir: string): string[] =>
+      !existsSync(dir)
+        ? []
+        : readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+            e.name === "node_modules" || e.name === "dist"
+              ? []
+              : e.isDirectory()
+                ? files(join(dir, e.name))
+                : /\.(m?[jt]sx?|cjs|json|sh|py)$/.test(e.name)
+                  ? [join(dir, e.name)]
+                  : [],
+          );
+    // Every sibling package a file names as a path: `../x`, `"..", "x"` and "packages/x" in a string
+    // (src files only by the first two: a source file names a package path in prose and imports).
+    const reads = (file: string, own: string, inSrc: boolean) => {
+      const text = readFileSync(file, "utf8");
+      const out = new Set<string>();
+      for (const m of text.matchAll(/((?:\.\.\/)+)([\w.-]+)/g))
+        if (dirname(resolve(dirname(file), m[1]! + m[2]!)) === pkgs)
+          out.add(m[2]!);
+      for (const m of text.matchAll(/((?:"\.\."\s*,\s*)+)"([\w.-]+)"/g))
+        if (
+          dirname(
+            resolve(
+              dirname(file),
+              ...m[1]!
+                .split("..")
+                .slice(1)
+                .map(() => ".."),
+              m[2]!,
+            ),
+          ) === pkgs
+        )
+          out.add(m[2]!);
+      for (const m of text.matchAll(/"packages"\s*,\s*"([\w-]+)"/g))
+        out.add(m[1]!);
+      if (!inSrc)
+        for (const line of text.split("\n"))
+          if (!/^\s*(\/\/|\*|\/\*|#)/.test(line))
+            for (const m of line.matchAll(/["'`][^"'`]*packages\/([\w-]+)/g))
+              out.add(m[1]!);
+      out.delete(own);
+      return [...out].filter((d) => meta.has(d));
+    };
+    const uncovered: string[] = [];
+    for (const [dir, { name }] of meta)
+      for (const sub of ["src", "test", "tests", "scripts"])
+        for (const file of files(join(pkgs, dir, sub)))
+          for (const read of reads(file, dir, sub === "src")) {
+            const readName = meta.get(read)!.name;
+            if (reach(dir).has(read) || EXTRA_INPUTS[name]?.includes(readName))
+              continue;
+            uncovered.push(
+              `${relative(ROOT, file)}: ${name} reads ${readName}, which neither its package.json nor EXTRA_INPUTS (tools/ci-js-affected.mjs) lists`,
+            );
+          }
+    expect(uncovered).toEqual([]);
   });
 
   it("selects by turbo's `...[base]` task list", () => {
@@ -1230,6 +1375,12 @@ describe("the JS test jobs narrow with the js base", () => {
     expect(affected("@polaris-key/worker", "abc", run)).toBe(false);
     expect(calls[0]).toContain("--filter=...[abc]");
     expect(packagesOf('{"tasks":[]}').size).toBe(0);
+    // Turbo's own `packages` list wins: a package built only as a dependency is not selected.
+    expect([
+      ...packagesOf(
+        '{"packages":["@polaris-key/worker"],"tasks":[{"package":"@polaris-key/cli"}]}',
+      ),
+    ]).toEqual(["@polaris-key/worker"]);
   });
 });
 
