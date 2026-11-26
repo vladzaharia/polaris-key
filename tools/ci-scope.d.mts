@@ -31,6 +31,7 @@ export declare function ciOutputs(
     ref?: string;
     files?: string[] | null;
     push?: PushScope | null;
+    prBase?: string | null;
   },
 ): Record<string, string>;
 export declare function changedFiles(opts: {
