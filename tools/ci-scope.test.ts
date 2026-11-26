@@ -1273,6 +1273,7 @@ describe("the JS test jobs narrow with the js base", () => {
       "--filter=@polaris-key/admin",
       "--filter=@polaris-key/cli",
       "--filter=@polaris-key/docs",
+      "--filter=@polaris-key/react",
       "--filter=@polaris-key/worker",
     ]);
     expect(filters("abc", () => '{"tasks":[]}')).toEqual(["--filter=...[abc]"]);

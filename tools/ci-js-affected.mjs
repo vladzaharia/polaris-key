@@ -37,6 +37,11 @@ export function packagesOf(dryRunText) {
  * packages/admin/dist and packages/admin/src. tools/ci-scope.test.ts scans every package for such
  * reads and fails on one neither package.json (directly or through other packages) nor this table
  * covers. (Reads that leave packages/: products/, sdks/, conformance/, which a js base never narrows.)
+ *
+ * What that scan cannot see, and so must be added here by hand: a path built from variables; a read
+ * from a file outside src/, test/, tests/ and scripts/ or from a .css, .astro or .mdx file; and an edge
+ * that exists only at run time, such as a test that drives a binary another package builds (the React
+ * live suite runs against `pkey dev`, which the CLI builds from the Worker's sources).
  */
 export const EXTRA_INPUTS = {
   "@polaris-key/admin": ["@polaris-key/docs", "@polaris-key/worker"],
@@ -53,6 +58,7 @@ export const EXTRA_INPUTS = {
   "@polaris-key/elements": ["@polaris-key/ui-qa"],
   "@polaris-key/manifest": ["@polaris-key/admin", "@polaris-key/cli"],
   "@polaris-key/node": ["@polaris-key/admin", "@polaris-key/ui-qa"],
+  "@polaris-key/react": ["@polaris-key/cli", "@polaris-key/worker"],
   "@polaris-key/ui-core": [
     "@polaris-key/docs",
     "@polaris-key/node",
@@ -70,7 +76,12 @@ export const EXTRA_INPUTS = {
   "@polaris-key/worker": ["@polaris-key/admin", "@polaris-key/docs"],
 };
 
-/** The packages with tests to run for `...[base]`: turbo's selection plus every reader of one of them. */
+/**
+ * The packages with tests to run for `...[base]`: turbo's selection plus every reader of one of them.
+ * One step only, on purpose: these reads are of sources and built output, so a reader's tests depend
+ * on what it reads, not on what that package reads in turn. (Followed to a fixed point the table is
+ * connected enough that nearly any change would select every package.)
+ */
 export function selectedPackages(base, run = turbo) {
   const selected = packagesOf(
     run(["run", "test", "--dry=json", `--filter=...[${base}]`]),
