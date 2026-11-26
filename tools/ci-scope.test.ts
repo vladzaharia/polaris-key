@@ -974,12 +974,12 @@ describe("a push to next narrows each lane to the files since its own base", () 
     expect(js(["packages/worker/src/a.ts", "sdks/python/a.py"])).toBe("");
     expect(js(["packages/worker/src/a.ts", "pnpm-lock.yaml"])).toBe("");
     expect(js(["conformance/node/a.ts"])).toBe("");
-    // A pull request never narrows the JS tests.
-    expect(
-      ciOutputs(scope, { event: "pull_request", files: ["packages/a/b.ts"] })[
-        "js-base"
-      ],
-    ).toBe("");
+    // A pull request narrows the JS tests against its merge base, on the same rule.
+    const pr = (files: string[], prBase?: string) =>
+      ciOutputs(scope, { event: "pull_request", files, prBase })["js-base"];
+    expect(pr(["packages/a/b.ts"], "M")).toBe("M");
+    expect(pr(["packages/a/b.ts", "sdks/python/a.py"], "M")).toBe("");
+    expect(pr(["packages/a/b.ts"])).toBe("");
   });
 
   it("reads the bases through git and the API, HEAD excluded, newest runs only", () => {

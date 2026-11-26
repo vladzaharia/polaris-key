@@ -232,7 +232,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
       - uses: ./.github/actions/setup-js
-      # With a js base (a push to next where only packages/ changed since the js jobs were last
+      # With a js base (a pull request, or a push to next, where only packages/ changed since the merge base or the js jobs were last
       # green) the suite runs when turbo's `...[base]` selection holds the package; else always.
       - id: affected
         run: node tools/ci-js-affected.mjs @polaris-key/worker --github-output

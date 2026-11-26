@@ -145,7 +145,8 @@ const baseGroup = (scope, lane) =>
 /**
  * The `changes` job's outputs: lane flags, `full`, `js-base` and one JSON matrix per matrix.
  * A pull request with known `files` narrows to their lanes and the pull-request matrices; its
- * `js-base` is empty. A push to `next` (`ref` is refs/heads/next) with `push` (`{ bases, files }`:
+ * `js-base` is `prBase` (the pull request's merge base) when every changed file is under
+ * `packages/`, else empty. A push to `next` (`ref` is refs/heads/next) with `push` (`{ bases, files }`:
  * each tracked group's green base and the files changed since it, null when unknown) narrows each
  * lane to the files changed since its own base, on the FULL matrices; a lane without a base, or
  * whose diff is unknown, runs. `js-base` is the js group's base when every file changed since it is
@@ -156,7 +157,7 @@ const baseGroup = (scope, lane) =>
  * on main, on a tag and on a dispatch (the nightly, and the run before a tag). `full-run` is "true"
  * only for those.
  */
-export function ciOutputs(scope, { event, ref, files, push }) {
+export function ciOutputs(scope, { event, ref, files, push, prBase }) {
   const lanes = Object.keys(scope.lanes);
   const pr = event === "pull_request" && files !== null && files !== undefined;
   const nextPush = event === "push" && ref === NEXT_REF;
@@ -180,13 +181,13 @@ export function ciOutputs(scope, { event, ref, files, push }) {
   // dispatch. A push to `next` never is, even when no lane has a base (every lane runs then, on the
   // pull-request matrices), so `require-ci-ok.sh` can tell the run a tag needs from a push.
   out["full-run"] = String(!(pr || nextPush));
-  const jsFiles = next ? push.files.js : null;
+  // A pull request's js base is its merge base with the target branch, so the JS test jobs run
+  // turbo for the packages the pull request changed (and their dependents) only.
+  const jsBase = next ? push.bases.js : pr ? prBase : null;
+  const jsFiles = next ? push.files.js : pr ? files : null;
   out["js-base"] =
-    next &&
-    push.bases.js &&
-    jsFiles &&
-    jsFiles.every((f) => f.startsWith("packages/"))
-      ? push.bases.js
+    jsBase && jsFiles && jsFiles.every((f) => f.startsWith("packages/"))
+      ? jsBase
       : "";
   for (const name of Object.keys(scope.matrices))
     out[`${name}-matrix`] = JSON.stringify(
@@ -307,8 +308,16 @@ function main(argv) {
     const head = arg(rest, "--head") ?? "HEAD";
     let files = null;
     let push = null;
+    let prBase = null;
     let note = "";
-    if (event === "pull_request" && base) files = changedFiles({ base, head });
+    if (event === "pull_request" && base) {
+      files = changedFiles({ base, head });
+      try {
+        prBase = git(["merge-base", base, head]).trim() || null;
+      } catch {
+        prBase = null;
+      }
+    }
     else if (event === "push" && ref === NEXT_REF) {
       const repo = arg(rest, "--repo") ?? process.env.GITHUB_REPOSITORY;
       const bases = repo ? greenBasesOf({ scope, repo, head }) : null;
@@ -333,7 +342,7 @@ function main(argv) {
           .join(" ")}`;
       } else note = " (green bases unreadable)";
     }
-    const out = ciOutputs(scope, { event, ref, files, push });
+    const out = ciOutputs(scope, { event, ref, files, push, prBase });
     const lines = Object.entries(out).map(([k, v]) => `${k}=${v}`);
     if (rest.includes("--github-output")) {
       const file = process.env.GITHUB_OUTPUT;
