@@ -71,7 +71,7 @@
     "@polaris-key/client-core": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
     "@polaris-key/catalog": "workspace:*",
-    "hash-wasm": "^4.12.0"
+    "hash-wasm": "^4.13.0"
   },
   "peerDependencies": {
     "@polaris-key/brand": "workspace:*"
@@ -83,6 +83,6 @@
   },
   "devDependencies": {
     "@polaris-key/brand": "workspace:*",
-    "@types/node": "^22.14.0"
+    "@types/node": "^26.6.6"
   }
 }
